@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="#0f172a"/>
+  <!-- Radar rings -->
+  <circle cx="90" cy="90" r="56" stroke="#3b82f6" stroke-width="3" stroke-opacity="0.3" fill="none"/>
+  <circle cx="90" cy="90" r="36" stroke="#3b82f6" stroke-width="3" stroke-opacity="0.5" fill="none"/>
+  <circle cx="90" cy="90" r="17" stroke="#3b82f6" stroke-width="3" stroke-opacity="0.7" fill="none"/>
+  <!-- Crosshairs -->
+  <line x1="90" y1="28" x2="90" y2="152" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="28" y1="90" x2="152" y2="90" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.2"/>
+  <!-- Sweep line -->
+  <line x1="90" y1="90" x2="135" y2="50" stroke="#60a5fa" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Data points -->
+  <circle cx="110" cy="68" r="6" fill="#34d399"/>
+  <circle cx="67" cy="75" r="5" fill="#fbbf24"/>
+  <circle cx="112" cy="108" r="4.5" fill="#60a5fa"/>
+  <!-- Center dot -->
+  <circle cx="90" cy="90" r="6" fill="#3b82f6"/>
+</svg>

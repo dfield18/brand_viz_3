@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String
+  displayName String?  // conversational name e.g. "Apple" for "Apple Inc" — set via GPT
+  slug        String   @unique
+  category    String?  // "commercial" | "political_advocacy" — set via GPT classification
+  industry    String?  // short industry label e.g. "cars", "fast food" — set via GPT
+  createdAt   DateTime @default(now())
+
+  jobs    Job[]
+  runs    Run[]
+  prompts Prompt[]
+}
+
+model Prompt {
+  id           String   @id @default(cuid())
+  text         String
+  cluster      String   // direct|related|comparative|network|industry
+  intent       String   // informational|high-intent
+  topicKey     String?  // classified topic key from TOPIC_TAXONOMY
+  createdAt    DateTime @default(now())
+
+  brandId      String?                          // null = global template
+  source       String   @default("suggested")   // "suggested" | "custom"
+  enabled      Boolean  @default(true)
+  originalText String?                          // original template text (for "Reset to default")
+  templateId   String?                          // links back to the global template this was copied from
+
+  brand Brand? @relation(fields: [brandId], references: [id])
+  runs  Run[]
+
+  @@index([brandId, enabled])
+}
+
+model Job {
+  id         String    @id @default(cuid())
+  brandId    String
+  model      String    // chatgpt|gemini|claude|perplexity
+  range      Int       // 7|30|90
+  status     String    @default("queued") // queued|running|done|error
+  error      String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  brand Brand @relation(fields: [brandId], references: [id])
+  runs  Run[]
+
+  @@index([brandId, createdAt])
+}
+
+model Run {
+  id              String   @id @default(cuid())
+  jobId           String
+  brandId         String
+  promptId        String
+  model           String
+  requestHash     String   @unique
+  promptTextHash  String?  // sha256(model + "|" + effective prompt text) for response caching
+  rawResponseText String   @db.Text
+  analysisJson              Json?
+  narrativeJson             Json?
+  competitorNarrativesJson  Json?    // { [entityId: string]: NarrativeExtractionResult }
+  createdAt       DateTime @default(now())
+
+  job    Job    @relation(fields: [jobId], references: [id])
+  brand  Brand  @relation(fields: [brandId], references: [id])
+  prompt Prompt @relation(fields: [promptId], references: [id])
+
+  prominenceMetrics    EntityResponseMetric[]
+  sourceOccurrences    SourceOccurrence[]
+
+  @@index([brandId, createdAt])
+  @@index([jobId])
+  @@index([promptTextHash])
+}
+
+model EntityResponseMetric {
+  id              String   @id @default(cuid())
+  runId           String
+  model           String
+  promptId        String
+  entityId        String   // brand slug or competitor name (lowercased)
+  frequencyScore  Float
+  positionScore   Float
+  depthScore      Float
+  structureScore  Float
+  prominenceScore       Float
+  rankPosition          Int?    // 1-based among mentioned entities (1 = highest prominence)
+  normalizedRankScore   Float?  // 0-100 (100 for rank 1)
+  competitorsInResponse Int?    // K = how many entities mentioned in this response
+  createdAt             DateTime @default(now())
+
+  run Run @relation(fields: [runId], references: [id])
+
+  @@unique([runId, entityId])
+  @@index([entityId])
+  @@index([runId])
+}
+
+model Source {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  category  String?  // cached classification: "reviews", "news_media", "video", "ecommerce", "reference", "social_media", "government", "academic", "blog_forum", "brand_official", "other"
+  createdAt DateTime @default(now())
+
+  occurrences SourceOccurrence[]
+}
+
+model SourceOccurrence {
+  id            String   @id @default(cuid())
+  runId         String
+  promptId      String
+  model         String
+  entityId      String?
+  sourceId      String
+  normalizedUrl String
+  originalUrl   String
+  sourceType    String   // "markdown_link" | "bare_url"
+  positionIndex Int
+  createdAt     DateTime @default(now())
+
+  run    Run    @relation(fields: [runId], references: [id])
+  source Source @relation(fields: [sourceId], references: [id])
+
+  @@index([runId])
+  @@index([sourceId])
+  @@index([entityId])
+  @@index([model])
+}

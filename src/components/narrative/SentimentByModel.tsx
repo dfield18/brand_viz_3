@@ -1,0 +1,82 @@
+"use client";
+
+import { useMemo } from "react";
+import type { SentimentTrendPoint } from "@/types/api";
+import { MODEL_LABELS } from "@/lib/constants";
+
+interface SentimentByModelProps {
+  trend: SentimentTrendPoint[];
+  brandName?: string;
+}
+
+function barColor(score: number): string {
+  if (score >= 65) return "bg-emerald-500";
+  if (score >= 55) return "bg-emerald-400";
+  if (score >= 45) return "bg-gray-400";
+  if (score >= 35) return "bg-amber-400";
+  return "bg-red-400";
+}
+
+function scoreLabel(score: number): string {
+  if (score >= 65) return "Positive";
+  if (score >= 55) return "Leaning positive";
+  if (score >= 45) return "Neutral";
+  if (score >= 35) return "Leaning negative";
+  return "Negative";
+}
+
+export function SentimentByModel({ trend, brandName = "the Brand" }: SentimentByModelProps) {
+  const modelScores = useMemo(() => {
+    const buckets = new Map<string, { sum: number; count: number }>();
+    for (const t of trend) {
+      if (t.model === "all") continue;
+      const entry = buckets.get(t.model) ?? { sum: 0, count: 0 };
+      entry.sum += t.positive;
+      entry.count++;
+      buckets.set(t.model, entry);
+    }
+    return [...buckets.entries()]
+      .map(([model, { sum, count }]) => ({
+        model,
+        label: MODEL_LABELS[model] ?? model,
+        score: Math.round(sum / count),
+      }))
+      .sort((a, b) => b.score - a.score);
+  }, [trend]);
+
+  if (modelScores.length === 0) return null;
+
+  return (
+    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <h2 className="text-base font-semibold">How Each AI Platform Sees {brandName}</h2>
+      <p className="text-xs text-muted-foreground mt-1 mb-4">
+        Whether ChatGPT, Gemini, Claude, and Perplexity describe the brand positively or negatively
+      </p>
+
+      <div className="space-y-3">
+        {modelScores.map(({ model, label, score }) => (
+          <div key={model} className="flex items-center gap-3">
+            <span className="text-sm w-24 shrink-0 truncate text-left text-muted-foreground">
+              {label}
+            </span>
+            <div className="flex-1 h-7 rounded bg-muted/40 overflow-hidden relative">
+              {/* Neutral reference line at 50% */}
+              <div
+                className="absolute top-0 bottom-0 w-px bg-border z-10"
+                style={{ left: "50%" }}
+              />
+              <div
+                className={`h-full rounded transition-all duration-300 ${barColor(score)}`}
+                style={{ width: `${score}%` }}
+              />
+            </div>
+            <div className="shrink-0 text-right w-20">
+              <span className="text-sm font-semibold tabular-nums">{score}</span>
+              <span className="text-[10px] text-muted-foreground ml-1">{scoreLabel(score)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
