@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { SourcesResponse, TopDomainRow } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
@@ -18,7 +19,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
+const CATEGORY_BADGE_COLORS: Record<string, string> = {
   reviews: "bg-sky-100 text-sky-700",
   news_media: "bg-indigo-100 text-indigo-700",
   video: "bg-slate-200 text-slate-800",
@@ -32,6 +33,99 @@ const CATEGORY_COLORS: Record<string, string> = {
   technology: "bg-cyan-100 text-cyan-700",
   other: "bg-gray-100 text-gray-600",
 };
+
+const DONUT_COLORS: Record<string, string> = {
+  reviews: "hsl(200, 70%, 55%)",
+  news_media: "hsl(230, 60%, 55%)",
+  video: "hsl(0, 65%, 55%)",
+  ecommerce: "hsl(155, 60%, 45%)",
+  reference: "hsl(270, 55%, 55%)",
+  social_media: "hsl(330, 60%, 55%)",
+  government: "hsl(210, 15%, 50%)",
+  academic: "hsl(240, 50%, 55%)",
+  blog_forum: "hsl(25, 70%, 55%)",
+  brand_official: "hsl(190, 60%, 50%)",
+  technology: "hsl(170, 50%, 45%)",
+  other: "hsl(0, 0%, 65%)",
+};
+
+/* ─── Mini Donut ──────────────────────────────────────────────────── */
+
+function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
+  const breakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let total = 0;
+    for (const d of topDomains) {
+      const cat = d.category || "other";
+      counts[cat] = (counts[cat] ?? 0) + d.citations;
+      total += d.citations;
+    }
+    if (total === 0) return { slices: [], total: 0 };
+    const slices = Object.entries(counts)
+      .map(([category, citations]) => ({
+        category,
+        label: CATEGORY_LABELS[category] ?? category,
+        citations,
+        pct: Math.round((citations / total) * 1000) / 10,
+        color: DONUT_COLORS[category] ?? DONUT_COLORS.other,
+      }))
+      .sort((a, b) => b.citations - a.citations);
+    return { slices, total };
+  }, [topDomains]);
+
+  if (breakdown.slices.length === 0) return null;
+
+  const size = 130;
+  const strokeWidth = 18;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  let cumulativeOffset = 0;
+
+  return (
+    <div className="flex flex-col items-center">
+      <p className="text-xs font-medium text-muted-foreground mb-2">Source Types</p>
+      <div className="relative">
+        <svg width={size} height={size}>
+          {breakdown.slices.map((slice) => {
+            const dashLength = (slice.pct / 100) * circumference;
+            const offset = circumference - dashLength;
+            const rotation = (cumulativeOffset / circumference) * 360 - 90;
+            cumulativeOffset += dashLength;
+            return (
+              <circle
+                key={slice.category}
+                cx={center}
+                cy={center}
+                r={radius}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+                strokeDashoffset={0}
+                transform={`rotate(${rotation} ${center} ${center})`}
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-lg font-bold">{breakdown.total}</span>
+          <span className="text-[10px] text-muted-foreground">citations</span>
+        </div>
+      </div>
+      <div className="mt-2.5 space-y-0.5 w-full">
+        {breakdown.slices.slice(0, 5).map((b) => (
+          <div key={b.category} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+            <span className="text-[11px] text-muted-foreground flex-1 truncate">{b.label}</span>
+            <span className="text-[11px] font-medium tabular-nums">{b.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface SourcesApiResponse {
   hasData: boolean;
@@ -82,44 +176,52 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
         The most-cited websites when AI discusses your industry
       </p>
 
-      <div className="space-y-2.5">
-        {top5.map((d, i) => {
-          const barWidth = Math.max(4, (d.citations / maxCitations) * 100);
-          const cat = d.category ?? "other";
-          return (
-            <div key={d.domain} className="flex items-center gap-3">
-              <span className="w-5 text-xs text-muted-foreground text-right tabular-nums shrink-0">
-                {i + 1}.
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium truncate">{d.domain}</span>
-                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_COLORS[cat] || CATEGORY_COLORS.other}`}>
-                    {CATEGORY_LABELS[cat] || "Other"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-chart-2"
-                      style={{ width: `${barWidth}%` }}
-                    />
+      <div className="flex gap-6">
+        {/* Left: top source bars */}
+        <div className="flex-1 min-w-0 space-y-2.5">
+          {top5.map((d, i) => {
+            const barWidth = Math.max(4, (d.citations / maxCitations) * 100);
+            const cat = d.category ?? "other";
+            return (
+              <div key={d.domain} className="flex items-center gap-3">
+                <span className="w-5 text-xs text-muted-foreground text-right tabular-nums shrink-0">
+                  {i + 1}.
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium truncate">{d.domain}</span>
+                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_BADGE_COLORS[cat] || CATEGORY_BADGE_COLORS.other}`}>
+                      {CATEGORY_LABELS[cat] || "Other"}
+                    </span>
                   </div>
-                  <span className="text-[11px] tabular-nums text-muted-foreground w-16 text-right shrink-0">
-                    {d.citations} citations
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-chart-2"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                    <span className="text-[11px] tabular-nums text-muted-foreground w-16 text-right shrink-0">
+                      {d.citations} citations
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
 
-      {apiData.sources.topDomains.length > 5 && (
-        <p className="text-[11px] text-muted-foreground mt-3">
-          +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details
-        </p>
-      )}
+          {apiData.sources.topDomains.length > 5 && (
+            <p className="text-[11px] text-muted-foreground mt-3">
+              +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details
+            </p>
+          )}
+        </div>
+
+        {/* Right: source type donut */}
+        <div className="shrink-0 hidden sm:block w-44">
+          <SourceTypeDonut topDomains={apiData.sources.topDomains} />
+        </div>
+      </div>
     </section>
   );
 }
