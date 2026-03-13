@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { SourcesResponse, TopDomainRow } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
@@ -73,15 +73,19 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
     return { slices, total };
   }, [topDomains]);
 
+  const [hovered, setHovered] = useState<string | null>(null);
+
   if (breakdown.slices.length === 0) return null;
 
-  const size = 130;
-  const strokeWidth = 18;
+  const size = 150;
+  const strokeWidth = 20;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
   let cumulativeOffset = 0;
+
+  const hoveredSlice = hovered ? breakdown.slices.find((s) => s.category === hovered) : null;
 
   return (
     <div className="flex flex-col items-center">
@@ -90,7 +94,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
         <svg width={size} height={size}>
           {breakdown.slices.map((slice) => {
             const dashLength = (slice.pct / 100) * circumference;
-            const offset = circumference - dashLength;
+            const isHovered = hovered === slice.category;
             const rotation = (cumulativeOffset / circumference) * 360 - 90;
             cumulativeOffset += dashLength;
             return (
@@ -101,22 +105,41 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
                 r={radius}
                 fill="none"
                 stroke={slice.color}
-                strokeWidth={strokeWidth}
+                strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
+                strokeOpacity={hovered && !isHovered ? 0.35 : 1}
                 strokeDasharray={`${dashLength} ${circumference - dashLength}`}
                 strokeDashoffset={0}
                 transform={`rotate(${rotation} ${center} ${center})`}
+                className="cursor-pointer transition-all duration-150"
+                onMouseEnter={() => setHovered(slice.category)}
+                onMouseLeave={() => setHovered(null)}
               />
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-bold">{breakdown.total}</span>
-          <span className="text-[10px] text-muted-foreground">citations</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          {hoveredSlice ? (
+            <>
+              <span className="text-base font-bold">{hoveredSlice.pct}%</span>
+              <span className="text-[10px] font-medium text-foreground">{hoveredSlice.label}</span>
+              <span className="text-[9px] text-muted-foreground">{hoveredSlice.citations} citations</span>
+            </>
+          ) : (
+            <>
+              <span className="text-lg font-bold">{breakdown.total}</span>
+              <span className="text-[10px] text-muted-foreground">citations</span>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-2.5 space-y-0.5 w-full">
         {breakdown.slices.slice(0, 5).map((b) => (
-          <div key={b.category} className="flex items-center gap-1.5">
+          <div
+            key={b.category}
+            className={`flex items-center gap-1.5 rounded px-1 -mx-1 transition-colors cursor-default ${hovered === b.category ? "bg-muted/60" : ""}`}
+            onMouseEnter={() => setHovered(b.category)}
+            onMouseLeave={() => setHovered(null)}
+          >
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
             <span className="text-[11px] text-muted-foreground flex-1 truncate">{b.label}</span>
             <span className="text-[11px] font-medium tabular-nums">{b.pct}%</span>
@@ -218,7 +241,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
         </div>
 
         {/* Right: source type donut */}
-        <div className="shrink-0 hidden sm:block w-44">
+        <div className="shrink-0 hidden sm:block w-52">
           <SourceTypeDonut topDomains={apiData.sources.topDomains} />
         </div>
       </div>
