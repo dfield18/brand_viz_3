@@ -5,6 +5,54 @@ import { titleCase } from "@/lib/utils";
 import { openai } from "@/lib/openai";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Strip URLs from text, replacing with publication name if possible. Also cleans list markers. */
+function stripUrls(text: string): string {
+  // Remove leading markdown list markers (- or *)
+  const cleaned = text.replace(/^[\s]*[-*]\s+/, "");
+  return cleaned.replace(/https?:\/\/[^\s)]+/g, (url) => {
+    try {
+      const hostname = new URL(url).hostname.replace(/^www\./, "");
+      // Map common domains to readable names
+      const knownPubs: Record<string, string> = {
+        "nytimes.com": "The New York Times",
+        "washingtonpost.com": "The Washington Post",
+        "wsj.com": "The Wall Street Journal",
+        "bbc.com": "BBC", "bbc.co.uk": "BBC",
+        "cnn.com": "CNN",
+        "reuters.com": "Reuters",
+        "bloomberg.com": "Bloomberg",
+        "forbes.com": "Forbes",
+        "techcrunch.com": "TechCrunch",
+        "theverge.com": "The Verge",
+        "wired.com": "Wired",
+        "arstechnica.com": "Ars Technica",
+        "theguardian.com": "The Guardian",
+        "fastcompany.com": "Fast Company",
+        "businessinsider.com": "Business Insider",
+        "cnbc.com": "CNBC",
+        "apnews.com": "AP News",
+        "nbcnews.com": "NBC News",
+        "abcnews.go.com": "ABC News",
+        "foxnews.com": "Fox News",
+        "usatoday.com": "USA Today",
+        "economist.com": "The Economist",
+        "ft.com": "Financial Times",
+        "medium.com": "Medium",
+        "reddit.com": "Reddit",
+        "wikipedia.org": "Wikipedia",
+        "en.wikipedia.org": "Wikipedia",
+      };
+      return knownPubs[hostname] ?? hostname.split(".").slice(-2, -1)[0];
+    } catch {
+      return "a news report";
+    }
+  }).replace(/\s{2,}/g, " ").trim();
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -394,7 +442,7 @@ export async function GET(req: NextRequest) {
       weakness,
       count,
       responses: (weaknessResponses[weakness] ?? []).slice(0, 10),
-      suggestion: `Address "${weakness}" perception \u2014 mentioned in ${count} response${count > 1 ? "s" : ""}. Consider publishing case studies or data that counter this narrative.`,
+      suggestion: `Address "${stripUrls(weakness)}" perception \u2014 mentioned in ${count} response${count > 1 ? "s" : ""}. Consider publishing case studies or data that counter this narrative.`,
     }));
 
   const negativeThemes = Object.entries(themesBySentiment)
