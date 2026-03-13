@@ -14,7 +14,7 @@ import { BrandPositionByPlatform } from "@/components/visibility/BrandPositionBy
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { DriverDecomposition } from "@/components/overview/DriverDecomposition";
 
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useBrandName } from "@/lib/useBrandName";
@@ -72,6 +72,7 @@ function VisibilityV2Inner() {
   const [activeMetric, setActiveMetric] = useState<MetricTab>("visibility");
   const [deepDiveModel, setDeepDiveModel] = useState("all");
   const [promptModel, setPromptModel] = useState("all");
+  const [driversOpen, setDriversOpen] = useState(false);
 
   const validModel = model === "all" || VALID_MODELS.includes(model);
 
@@ -184,10 +185,25 @@ function VisibilityV2Inner() {
   const expandPrompt = (text: string) =>
     text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, industryLabel);
 
+  // Sparkline data for scorecard cards (last 3 "all" trend points)
+  const sparklines = useMemo(() => {
+    const allPoints = filteredTrend.filter((t) => t.model === "all" && (!t.prompt || t.prompt === "all"));
+    const last3 = allPoints.slice(-3);
+    return {
+      visibility: last3.map((t) => t.mentionRate),
+      sov: last3.map((t) => t.sovPct ?? 0),
+      topResult: last3.map((t) => t.firstMentionPct ?? 0),
+    };
+  }, [filteredTrend]);
+
+  const handleCardClick = (metric: MetricTab) => {
+    setActiveMetric(metric);
+    document.getElementById("metric-deep-dive")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
-    { id: "metric-deep-dive", label: "Trend Over Time", heading: "Metrics Deep Dive" },
-    { id: "metric-drivers", label: "What's Driving This" },
+    { id: "metric-deep-dive", label: "Trend Over Time" },
     { id: "ranking-breakdown", label: "Position Over Time", heading: "Ranking Breakdown" },
     { id: "ranking-distribution", label: "Position Distribution" },
     { id: "brand-position", label: `Where AI Ranks ${brandName}`, heading: "Performance by Prompt" },
@@ -203,14 +219,16 @@ function VisibilityV2Inner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
-        <p className="text-base text-muted-foreground leading-relaxed">
-          This tab shows how visible {brandName} is when people ask AI platforms general industry questions — none mention {brandName} by name, so results reflect organic AI awareness. Use the scorecard to track key metrics, then dig into trends, ranking positions, and per-question performance below.
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Organic AI visibility — how often AI platforms mention {brandName} without being asked by name.
+          </p>
           {data.resultsByQuestion?.[0]?.promptText && (
-            <>
-              {" "}For example: <span className="italic">&ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;</span>
-            </>
+            <p className="text-sm text-muted-foreground/70 italic">
+              Example prompt: &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
+            </p>
           )}
-        </p>
+        </div>
 
         {/* Section: Scorecard */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Scorecard</h2>
@@ -224,13 +242,14 @@ function VisibilityV2Inner() {
             firstMentionRate={data.firstMentionRate}
             kpiDeltas={data.kpiDeltas}
             brandName={brandName}
+            onCardClick={handleCardClick}
+            activeMetric={activeMetric}
+            sparklines={sparklines}
           />
         </div>
 
-        {/* Section: Metrics Deep Dive */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Metrics Deep Dive</h2>
-
-        <section id="metric-deep-dive" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
+        {/* Trend Over Time — directly below scorecard */}
+        <div id="metric-deep-dive" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-base font-semibold">Trend Over Time</h3>
             <select
@@ -270,7 +289,7 @@ function VisibilityV2Inner() {
             {getMetricDescription(activeMetric, brandName)}
           </p>
 
-          {/* Trend chart — compact, no description */}
+          {/* Trend chart */}
           <VisibilityTrendChart
             trend={deepDiveTrend}
             prompts={[...new Set(data.resultsByQuestion.map((r) => r.promptText))]}
@@ -279,19 +298,30 @@ function VisibilityV2Inner() {
             compact
           />
 
-          {/* Driver section — lighter separator */}
+          {/* Collapsible driver section */}
           <div id="metric-drivers" className="scroll-mt-24 mt-8 pt-7 border-t border-border/50">
-            <DriverDecomposition
-              brandSlug={params.slug}
-              model={deepDiveModel}
-              range={range}
-              fixedKpi={METRIC_KPI_MAP[activeMetric]}
-              brandName={brandName}
-              inline
-              compact
-            />
+            <button
+              onClick={() => setDriversOpen((o) => !o)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${driversOpen ? "rotate-180" : ""}`} />
+              <span className="font-medium">What&apos;s Driving This</span>
+            </button>
+            {driversOpen && (
+              <div className="mt-4">
+                <DriverDecomposition
+                  brandSlug={params.slug}
+                  model={deepDiveModel}
+                  range={range}
+                  fixedKpi={METRIC_KPI_MAP[activeMetric]}
+                  brandName={brandName}
+                  inline
+                  compact
+                />
+              </div>
+            )}
           </div>
-        </section>
+        </div>
 
 
 

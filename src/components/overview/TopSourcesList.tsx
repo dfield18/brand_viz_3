@@ -120,7 +120,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {hoveredSlice ? (
             <>
-              <span className="text-base font-bold">{hoveredSlice.pct}%</span>
+              <span className="text-base font-bold">{Math.round(hoveredSlice.pct)}%</span>
               <span className="text-[10px] font-medium text-foreground">{hoveredSlice.label}</span>
               <span className="text-[9px] text-muted-foreground">{hoveredSlice.citations} citations</span>
             </>
@@ -142,7 +142,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
           >
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
             <span className="text-[11px] text-muted-foreground flex-1 truncate">{b.label}</span>
-            <span className="text-[11px] font-medium tabular-nums">{b.pct}%</span>
+            <span className="text-[11px] font-medium tabular-nums">{Math.round(b.pct)}%</span>
           </div>
         ))}
       </div>
@@ -200,8 +200,8 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
       </p>
 
       <div className="flex gap-6">
-        {/* Left: top source bars */}
-        <div className="flex-1 min-w-0 space-y-2.5">
+        {/* Left: top source bars (55%) */}
+        <div className="min-w-0 space-y-2.5" style={{ flex: "0 1 55%" }}>
           {top5.map((d, i) => {
             const barWidth = Math.max(4, (d.citations / maxCitations) * 100);
             const cat = d.category ?? "other";
@@ -240,8 +240,8 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
           )}
         </div>
 
-        {/* Right: source type donut */}
-        <div className="shrink-0 hidden sm:block w-52">
+        {/* Right: source type donut (45%) */}
+        <div className="hidden sm:block" style={{ flex: "0 1 45%" }}>
           <SourceTypeDonut topDomains={apiData.sources.topDomains} />
         </div>
       </div>

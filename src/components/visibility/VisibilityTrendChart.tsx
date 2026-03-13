@@ -177,19 +177,17 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
             )}
           </div>
           {/* Hero value + delta */}
-          {!compact && (
-            <div className="flex items-baseline gap-2.5 mt-2">
-              {currentValue !== null && (
-                <span className="text-3xl font-bold tabular-nums">{Math.round(currentValue)}%</span>
-              )}
-              {delta !== null && delta !== 0 && (
-                <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
-                  {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {delta > 0 ? "+" : ""}{delta}% vs prior month
-                </span>
-              )}
-            </div>
-          )}
+          <div className={`flex items-baseline gap-2.5 ${compact ? "mt-1" : "mt-2"}`}>
+            {currentValue !== null && (
+              <span className={`font-bold tabular-nums ${compact ? "text-xl" : "text-3xl"}`}>{Math.round(currentValue)}%</span>
+            )}
+            {delta !== null && delta !== 0 && (
+              <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {delta > 0 ? "+" : ""}{delta}% vs prior month
+              </span>
+            )}
+          </div>
           {!compact && (
             <p className="text-xs text-muted-foreground mt-1">
               {effectiveMetric === "visibility"

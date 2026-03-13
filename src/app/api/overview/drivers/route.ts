@@ -37,13 +37,10 @@ export async function GET(req: NextRequest) {
   const isAll = model === "all";
   const modelFilter = isAll ? {} : { model };
 
-  // Period comparison: most recent 30 days vs prior 30 days
+  // Compare the two most recent distinct data-point dates (month-over-month)
   const now = new Date();
   const DAY = 86_400_000;
-
-  let currentStart: Date = new Date(now.getTime() - 30 * DAY);
-  let previousStart: Date = new Date(now.getTime() - 60 * DAY);
-  let previousEnd: Date = currentStart;
+  const lookback = Math.max(range, 90); // look back far enough to find 2 dates
 
   const runSelect = {
     model: true,
@@ -53,61 +50,36 @@ export async function GET(req: NextRequest) {
     prompt: { select: { cluster: true, topicKey: true } },
   } as const;
 
-  let currentRawRuns: Awaited<ReturnType<typeof prisma.run.findMany<{ select: typeof runSelect }>>>;
-  let previousRawRuns: typeof currentRawRuns;
+  const recentRuns = await prisma.run.findMany({
+    where: {
+      brandId: brand.id,
+      ...modelFilter,
+      createdAt: { gte: new Date(now.getTime() - lookback * DAY), lte: now },
+      job: { status: "done" },
+    },
+    select: runSelect,
+    orderBy: { createdAt: "desc" },
+  });
 
-  if (range === 7) {
-    // 7 days: find the two most recent distinct dates with data
-    const recentRuns = await prisma.run.findMany({
-      where: {
-        brandId: brand.id,
-        ...modelFilter,
-        createdAt: { gte: new Date(now.getTime() - 10 * DAY), lte: now },
-        job: { status: "done" },
-      },
-      select: runSelect,
-      orderBy: { createdAt: "desc" },
-    });
+  // Group by date string to find distinct dates
+  const byDate = new Map<string, typeof recentRuns>();
+  for (const r of recentRuns) {
+    const dateKey = r.createdAt.toISOString().slice(0, 10);
+    if (!byDate.has(dateKey)) byDate.set(dateKey, []);
+    byDate.get(dateKey)!.push(r);
+  }
 
-    // Group by date string to find distinct dates
-    const byDate = new Map<string, typeof recentRuns>();
-    for (const r of recentRuns) {
-      const dateKey = r.createdAt.toISOString().slice(0, 10);
-      if (!byDate.has(dateKey)) byDate.set(dateKey, []);
-      byDate.get(dateKey)!.push(r);
-    }
+  const sortedDates = [...byDate.keys()].sort().reverse(); // most recent first
+  const currentRawRuns = sortedDates.length >= 1 ? byDate.get(sortedDates[0])! : [];
+  const previousRawRuns = sortedDates.length >= 2 ? byDate.get(sortedDates[1])! : [];
 
-    const sortedDates = [...byDate.keys()].sort().reverse(); // most recent first
-    currentRawRuns = sortedDates.length >= 1 ? byDate.get(sortedDates[0])! : [];
-    previousRawRuns = sortedDates.length >= 2 ? byDate.get(sortedDates[1])! : [];
-
-    // Update period labels to reflect actual dates
-    if (sortedDates.length >= 2) {
-      currentStart = new Date(sortedDates[0] + "T00:00:00Z");
-      previousStart = new Date(sortedDates[1] + "T00:00:00Z");
-      previousEnd = new Date(sortedDates[1] + "T23:59:59Z");
-    }
-  } else {
-    [currentRawRuns, previousRawRuns] = await Promise.all([
-      prisma.run.findMany({
-        where: {
-          brandId: brand.id,
-          ...modelFilter,
-          createdAt: { gte: currentStart, lte: now },
-          job: { status: "done" },
-        },
-        select: runSelect,
-      }),
-      prisma.run.findMany({
-        where: {
-          brandId: brand.id,
-          ...modelFilter,
-          createdAt: { gte: previousStart, lt: previousEnd },
-          job: { status: "done" },
-        },
-        select: runSelect,
-      }),
-    ]);
+  let currentStart = now;
+  let previousStart = new Date(now.getTime() - 30 * DAY);
+  let previousEnd = previousStart;
+  if (sortedDates.length >= 2) {
+    currentStart = new Date(sortedDates[0] + "T00:00:00Z");
+    previousStart = new Date(sortedDates[1] + "T00:00:00Z");
+    previousEnd = new Date(sortedDates[1] + "T23:59:59Z");
   }
 
   function toDecomposed(

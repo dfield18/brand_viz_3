@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
 
+type MetricTab = "visibility" | "sov" | "topResult";
+
 interface SummaryCardsDonutProps {
   overallMentionRate: number;
   shareOfVoice: number;
@@ -11,6 +13,9 @@ interface SummaryCardsDonutProps {
   firstMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
+  onCardClick?: (metric: MetricTab) => void;
+  activeMetric?: MetricTab;
+  sparklines?: { visibility: number[]; sov: number[]; topResult: number[] };
 }
 
 interface DonutCardConfig {
@@ -24,6 +29,30 @@ interface DonutCardConfig {
   delta: number | null;
   invertDelta?: boolean;
   deltaFormat: (v: number) => string;
+  metricKey?: MetricTab;
+  sparkKey?: "visibility" | "sov" | "topResult";
+}
+
+function MiniSparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const w = 48;
+  const h = 18;
+  const pad = 2;
+  const coords = points.map((v, i) => {
+    const x = pad + (i / (points.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  });
+  const trending = points[points.length - 1] - points[0];
+  const color = trending > 0.5 ? "rgb(16 185 129)" : trending < -0.5 ? "rgb(239 68 68)" : "rgb(156 163 175)";
+  return (
+    <svg width={w} height={h} className="shrink-0">
+      <polyline points={coords.join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percentage: number; color: string; size?: number; strokeWidth?: number }) {
@@ -122,6 +151,9 @@ export function SummaryCardsDonut({
   firstMentionRate,
   kpiDeltas,
   brandName = "Brand",
+  onCardClick,
+  activeMetric,
+  sparklines,
 }: SummaryCardsDonutProps) {
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
@@ -139,6 +171,8 @@ export function SummaryCardsDonut({
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
+      metricKey: "visibility",
+      sparkKey: "visibility",
     },
     {
       label: "SHARE OF VOICE",
@@ -150,6 +184,8 @@ export function SummaryCardsDonut({
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.shareOfVoice ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v} pts vs prior month`,
+      metricKey: "sov",
+      sparkKey: "sov",
     },
     {
       label: "TOP RESULT RATE",
@@ -161,6 +197,8 @@ export function SummaryCardsDonut({
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.firstMentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
+      metricKey: "topResult",
+      sparkKey: "topResult",
     },
     {
       label: "AVG. POSITION",
@@ -179,10 +217,15 @@ export function SummaryCardsDonut({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {cards.map((card) => (
+      {cards.map((card) => {
+        const isActive = card.metricKey && activeMetric === card.metricKey;
+        const isClickable = !!card.metricKey && !!onCardClick;
+        const sparkData = card.sparkKey && sparklines?.[card.sparkKey];
+        return (
         <div
           key={card.label}
-          className="rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col"
+          className={`rounded-xl border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${isActive ? "border-primary/50 ring-1 ring-primary/20" : "border-border"} ${isClickable ? "cursor-pointer hover:border-primary/40" : ""}`}
+          onClick={() => isClickable && onCardClick!(card.metricKey!)}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -211,11 +254,12 @@ export function SummaryCardsDonut({
             )}
           </div>
 
-          {/* Badge */}
-          <div className="flex justify-center mb-3">
+          {/* Badge + Sparkline */}
+          <div className="flex items-center justify-center gap-2 mb-3">
             <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${card.badge.color}`}>
               {card.badge.text}
             </span>
+            {sparkData && sparkData.length >= 2 && <MiniSparkline points={sparkData} />}
           </div>
 
           {/* Description */}
@@ -240,7 +284,8 @@ export function SummaryCardsDonut({
             );
           })()}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
