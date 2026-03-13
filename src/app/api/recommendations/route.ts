@@ -8,48 +8,80 @@ import { openai } from "@/lib/openai";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Strip URLs from text, replacing with publication name if possible. Also cleans list markers. */
-function stripUrls(text: string): string {
-  // Remove leading markdown list markers (- or *)
-  const cleaned = text.replace(/^[\s]*[-*]\s+/, "");
-  return cleaned.replace(/https?:\/\/[^\s)]+/g, (url) => {
-    try {
-      const hostname = new URL(url).hostname.replace(/^www\./, "");
-      // Map common domains to readable names
-      const knownPubs: Record<string, string> = {
-        "nytimes.com": "The New York Times",
-        "washingtonpost.com": "The Washington Post",
-        "wsj.com": "The Wall Street Journal",
-        "bbc.com": "BBC", "bbc.co.uk": "BBC",
-        "cnn.com": "CNN",
-        "reuters.com": "Reuters",
-        "bloomberg.com": "Bloomberg",
-        "forbes.com": "Forbes",
-        "techcrunch.com": "TechCrunch",
-        "theverge.com": "The Verge",
-        "wired.com": "Wired",
-        "arstechnica.com": "Ars Technica",
-        "theguardian.com": "The Guardian",
-        "fastcompany.com": "Fast Company",
-        "businessinsider.com": "Business Insider",
-        "cnbc.com": "CNBC",
-        "apnews.com": "AP News",
-        "nbcnews.com": "NBC News",
-        "abcnews.go.com": "ABC News",
-        "foxnews.com": "Fox News",
-        "usatoday.com": "USA Today",
-        "economist.com": "The Economist",
-        "ft.com": "Financial Times",
-        "medium.com": "Medium",
-        "reddit.com": "Reddit",
-        "wikipedia.org": "Wikipedia",
-        "en.wikipedia.org": "Wikipedia",
-      };
-      return knownPubs[hostname] ?? hostname.split(".").slice(-2, -1)[0];
-    } catch {
-      return "a news report";
-    }
-  }).replace(/\s{2,}/g, " ").trim();
+const KNOWN_PUBS: Record<string, string> = {
+  "nytimes.com": "The New York Times",
+  "washingtonpost.com": "The Washington Post",
+  "wsj.com": "The Wall Street Journal",
+  "bbc.com": "BBC", "bbc.co.uk": "BBC",
+  "cnn.com": "CNN",
+  "reuters.com": "Reuters",
+  "bloomberg.com": "Bloomberg",
+  "forbes.com": "Forbes",
+  "techcrunch.com": "TechCrunch",
+  "theverge.com": "The Verge",
+  "wired.com": "Wired",
+  "arstechnica.com": "Ars Technica",
+  "theguardian.com": "The Guardian",
+  "fastcompany.com": "Fast Company",
+  "businessinsider.com": "Business Insider",
+  "cnbc.com": "CNBC",
+  "apnews.com": "AP News",
+  "nbcnews.com": "NBC News",
+  "abcnews.go.com": "ABC News",
+  "foxnews.com": "Fox News",
+  "usatoday.com": "USA Today",
+  "economist.com": "The Economist",
+  "ft.com": "Financial Times",
+  "medium.com": "Medium",
+  "reddit.com": "Reddit",
+  "wikipedia.org": "Wikipedia",
+  "en.wikipedia.org": "Wikipedia",
+};
+
+function urlToPubName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    return KNOWN_PUBS[hostname] ?? hostname.split(".").slice(-2, -1)[0];
+  } catch {
+    return "a news report";
+  }
+}
+
+/** Parse a weakness claim into clean narrative text and any cited sources. */
+function parseWeakness(raw: string): { narrative: string; sources: string[] } {
+  // Remove leading markdown list markers
+  let text = raw.replace(/^[\s]*[-*]\s+/, "");
+
+  // Extract URLs and collect source names
+  const sources: string[] = [];
+  text = text.replace(/https?:\/\/[^\s)]+/g, (url) => {
+    sources.push(urlToPubName(url));
+    return "";
+  });
+
+  // Clean up leftover punctuation and whitespace
+  text = text.replace(/\s{2,}/g, " ").replace(/^[,\s\-:]+|[,\s\-:]+$/g, "").trim();
+
+  return { narrative: text, sources };
+}
+
+/** Build a readable weakness suggestion with the actual issue and cited sources. */
+function buildWeaknessSuggestion(raw: string, count: number): string {
+  const { narrative, sources } = parseWeakness(raw);
+
+  const countLabel = `${count} AI response${count > 1 ? "s" : ""}`;
+  const sourceLabel = sources.length > 0
+    ? `, citing ${sources.join(" and ")}`
+    : "";
+
+  if (!narrative) {
+    // Entire claim was just a URL
+    return sources.length > 0
+      ? `${countLabel} reference a negative narrative from ${sources.join(" and ")}. Review and consider publishing a response or counter-narrative.`
+      : `A negative perception was mentioned in ${countLabel}. Consider publishing case studies or data that counter this narrative.`;
+  }
+
+  return `"${narrative}" \u2014 mentioned in ${countLabel}${sourceLabel}. Consider publishing content that directly addresses this perception.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -442,7 +474,7 @@ export async function GET(req: NextRequest) {
       weakness,
       count,
       responses: (weaknessResponses[weakness] ?? []).slice(0, 10),
-      suggestion: `Address "${stripUrls(weakness)}" perception \u2014 mentioned in ${count} response${count > 1 ? "s" : ""}. Consider publishing case studies or data that counter this narrative.`,
+      suggestion: buildWeaknessSuggestion(weakness, count),
     }));
 
   const negativeThemes = Object.entries(themesBySentiment)
