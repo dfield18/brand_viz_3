@@ -26,6 +26,7 @@ import { PATAGONIA_DUMMY_VISIBILITY, PATAGONIA_DUMMY_TOTALS, PATAGONIA_DUMMY_JOB
 interface ApiResponse {
   hasData: boolean;
   reason?: string;
+  brandIndustry?: string | null;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
   visibility?: VisibilityResponse;
   totals?: { totalRuns: number; totalMentions: number };
@@ -179,6 +180,9 @@ function VisibilityV2Inner() {
   if (!apiData?.visibility) return null;
   const data = apiData.visibility;
   const totals = apiData.totals ?? { totalRuns: 0, totalMentions: 0 };
+  const industryLabel = apiData.brandIndustry || `${brandName}'s industry`;
+  const expandPrompt = (text: string) =>
+    text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, industryLabel);
 
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
@@ -201,6 +205,11 @@ function VisibilityV2Inner() {
       <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
         <p className="text-base text-muted-foreground leading-relaxed">
           This tab shows how visible {brandName} is when people ask AI platforms general industry questions — none mention {brandName} by name, so results reflect organic AI awareness. Use the scorecard to track key metrics, then dig into trends, ranking positions, and per-question performance below.
+          {data.resultsByQuestion?.[0]?.promptText && (
+            <>
+              {" "}For example: <span className="italic">&ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;</span>
+            </>
+          )}
         </p>
 
         {/* Section: Scorecard */}

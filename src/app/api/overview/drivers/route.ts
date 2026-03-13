@@ -37,33 +37,13 @@ export async function GET(req: NextRequest) {
   const isAll = model === "all";
   const modelFilter = isAll ? {} : { model };
 
-  // Period comparison logic:
-  //   90 days: last 30 days vs prior 60 days (2-month avg)
-  //   30 days: last 7 days vs prior 21 days (3-week avg)
-  //    7 days: last 1 day vs 1 day a week earlier
+  // Period comparison: most recent 30 days vs prior 30 days
   const now = new Date();
   const DAY = 86_400_000;
 
-  let currentStart: Date;
-  let previousStart: Date;
-  let previousEnd: Date;
-
-  if (range === 90) {
-    // Last month vs avg of prior two months
-    currentStart = new Date(now.getTime() - 30 * DAY);
-    previousStart = new Date(now.getTime() - 90 * DAY);
-    previousEnd = currentStart;
-  } else if (range === 30) {
-    // Last week vs prior three-week avg
-    currentStart = new Date(now.getTime() - 7 * DAY);
-    previousStart = new Date(now.getTime() - 28 * DAY);
-    previousEnd = currentStart;
-  } else {
-    // 7 days: most recent day vs day a week earlier
-    currentStart = new Date(now.getTime() - 1 * DAY);
-    previousStart = new Date(now.getTime() - 8 * DAY);
-    previousEnd = new Date(now.getTime() - 7 * DAY);
-  }
+  let currentStart: Date = new Date(now.getTime() - 30 * DAY);
+  let previousStart: Date = new Date(now.getTime() - 60 * DAY);
+  let previousEnd: Date = currentStart;
 
   const runSelect = {
     model: true,

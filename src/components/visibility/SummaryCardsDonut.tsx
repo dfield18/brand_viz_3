@@ -138,7 +138,7 @@ export function SummaryCardsDonut({
       description: `% of AI answers that mention ${brandName}`,
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.mentionRate ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior period`,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },
     {
       label: "SHARE OF VOICE",
@@ -149,7 +149,7 @@ export function SummaryCardsDonut({
       description: `% of all AI brand mentions captured by ${brandName}`,
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.shareOfVoice ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v} pts vs prior period`,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v} pts vs prior month`,
     },
     {
       label: "TOP RESULT RATE",
@@ -160,7 +160,7 @@ export function SummaryCardsDonut({
       description: `% of responses where ${brandName} is the first recommendation`,
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.firstMentionRate ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior period`,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },
     {
       label: "AVG. POSITION",
@@ -173,7 +173,7 @@ export function SummaryCardsDonut({
       isPosition: true,
       delta: kpiDeltas?.avgRank ?? null,
       invertDelta: true,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} pos vs prior period`,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} pos vs prior month`,
     },
   ];
 

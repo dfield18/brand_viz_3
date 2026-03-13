@@ -299,13 +299,13 @@ export async function GET(req: NextRequest) {
     ).length;
     const overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
-    // Week-over-week KPI deltas
+    // Month-over-month KPI deltas (most recent 30 days vs prior 30 days)
     const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const thisWeekIndustry = industryRuns.filter((r) => r.createdAt >= oneWeekAgo);
-    const priorWeekIndustry = industryRuns.filter(
-      (r) => r.createdAt >= twoWeeksAgo && r.createdAt < oneWeekAgo,
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const thisMonthIndustry = industryRuns.filter((r) => r.createdAt >= oneMonthAgo);
+    const priorMonthIndustry = industryRuns.filter(
+      (r) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
     );
 
     function computeWeekKpis(weekRuns: VisibilityRun[]) {
@@ -329,44 +329,44 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const thisWeek = computeWeekKpis(thisWeekIndustry);
-    const priorWeek = computeWeekKpis(priorWeekIndustry);
+    const thisMonth = computeWeekKpis(thisMonthIndustry);
+    const priorMonth = computeWeekKpis(priorMonthIndustry);
 
     // SOV deltas
-    const thisWeekIds = thisWeekIndustry.map((r) => r.id);
-    const priorWeekIds = priorWeekIndustry.map((r) => r.id);
-    let thisWeekSov = 0;
-    let priorWeekSov = 0;
-    if (thisWeekIds.length > 0 || priorWeekIds.length > 0) {
-      const allWowIds = [...thisWeekIds, ...priorWeekIds];
-      const wowMetrics = await prisma.entityResponseMetric.findMany({
-        where: { runId: { in: allWowIds }, prominenceScore: { gt: 0 } },
+    const thisMonthIds = thisMonthIndustry.map((r) => r.id);
+    const priorMonthIds = priorMonthIndustry.map((r) => r.id);
+    let thisMonthSov = 0;
+    let priorMonthSov = 0;
+    if (thisMonthIds.length > 0 || priorMonthIds.length > 0) {
+      const allMomIds = [...thisMonthIds, ...priorMonthIds];
+      const momMetrics = await prisma.entityResponseMetric.findMany({
+        where: { runId: { in: allMomIds }, prominenceScore: { gt: 0 } },
         select: { runId: true, entityId: true },
       });
-      const thisWeekIdSet = new Set(thisWeekIds);
-      const priorWeekIdSet = new Set(priorWeekIds);
-      let twBrand = 0, twTotal = 0, pwBrand = 0, pwTotal = 0;
-      for (const m of wowMetrics) {
-        if (thisWeekIdSet.has(m.runId)) {
-          twTotal++;
-          if (m.entityId === brand.slug) twBrand++;
-        } else if (priorWeekIdSet.has(m.runId)) {
-          pwTotal++;
-          if (m.entityId === brand.slug) pwBrand++;
+      const thisMonthIdSet = new Set(thisMonthIds);
+      const priorMonthIdSet = new Set(priorMonthIds);
+      let tmBrand = 0, tmTotal = 0, pmBrand = 0, pmTotal = 0;
+      for (const m of momMetrics) {
+        if (thisMonthIdSet.has(m.runId)) {
+          tmTotal++;
+          if (m.entityId === brand.slug) tmBrand++;
+        } else if (priorMonthIdSet.has(m.runId)) {
+          pmTotal++;
+          if (m.entityId === brand.slug) pmBrand++;
         }
       }
-      thisWeekSov = computeShareOfVoice(twBrand, twTotal);
-      priorWeekSov = computeShareOfVoice(pwBrand, pwTotal);
+      thisMonthSov = computeShareOfVoice(tmBrand, tmTotal);
+      priorMonthSov = computeShareOfVoice(pmBrand, pmTotal);
     }
 
-    const hasPriorWeek = priorWeekIndustry.length > 0;
-    const kpiDeltas = hasPriorWeek
+    const hasPriorMonth = priorMonthIndustry.length > 0;
+    const kpiDeltas = hasPriorMonth
       ? {
-          mentionRate: Math.round((thisWeek.mentionRate - priorWeek.mentionRate) * 10) / 10,
-          shareOfVoice: thisWeekSov - priorWeekSov,
-          avgRank: Math.round((thisWeek.avgRank - priorWeek.avgRank) * 100) / 100,
-          firstMentionRate: Math.round((thisWeek.firstMentionRate - priorWeek.firstMentionRate) * 10) / 10,
-          prominence: Math.round((thisWeek.prominence - priorWeek.prominence) * 100) / 100,
+          mentionRate: Math.round((thisMonth.mentionRate - priorMonth.mentionRate) * 10) / 10,
+          shareOfVoice: thisMonthSov - priorMonthSov,
+          avgRank: Math.round((thisMonth.avgRank - priorMonth.avgRank) * 100) / 100,
+          firstMentionRate: Math.round((thisMonth.firstMentionRate - priorMonth.firstMentionRate) * 10) / 10,
+          prominence: Math.round((thisMonth.prominence - priorMonth.prominence) * 100) / 100,
         }
       : null;
 

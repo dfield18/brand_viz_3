@@ -111,10 +111,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function getComparisonLabel(range: number): string {
-  if (range === 90) return "last 30 days vs prior 2-month avg";
-  if (range === 30) return "last 7 days vs prior 3-week avg";
-  return "most recent data point vs previous data point";
+function getComparisonLabel(_range: number): string {
+  return "vs prior month";
 }
 
 const CONFIDENCE_STYLE: Record<string, { bg: string; text: string }> = {

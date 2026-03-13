@@ -65,7 +65,7 @@ const KNOWN_NAMES: Record<string, string> = {
   xbox: "Xbox",
   mcdonalds: "McDonald's",
   "mcdonald's": "McDonald's",
-  jpmorgan chase: "JPMorgan Chase",
+  "jpmorgan chase": "JPMorgan Chase",
   walmart: "Walmart",
   salesforce: "Salesforce",
   hubspot: "HubSpot",

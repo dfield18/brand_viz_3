@@ -62,16 +62,27 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
     return MODEL_KEYS.filter((m) => set.has(m));
   }, [filteredTrend]);
 
-  // Current value + delta for the hero stat
+  // Current value + delta vs ~30 days prior
   const { currentValue, delta } = useMemo(() => {
     if (chartData.length === 0) return { currentValue: null, delta: null };
     const mainKey = effectiveMetric === "visibility" ? "mentionRate" : effectiveMetric === "topResult" ? "firstMentionPct" : "sovPct";
     const activeKey = focusModel === "all" ? mainKey : `${focusModel}_${mainKey}`;
     const last = chartData[chartData.length - 1] as Record<string, unknown>;
     const cur = typeof last[activeKey] === "number" ? (last[activeKey] as number) : null;
-    // Find first non-null value for delta
-    const first = chartData[0] as Record<string, unknown>;
-    const prev = typeof first[activeKey] === "number" ? (first[activeKey] as number) : null;
+    // Find the data point closest to 30 days before the most recent
+    const lastDate = new Date(chartData[chartData.length - 1].date + "T00:00:00").getTime();
+    const targetDate = lastDate - 30 * 86_400_000;
+    let closest = chartData[0];
+    let closestDist = Infinity;
+    for (const row of chartData) {
+      const rowDate = new Date(row.date + "T00:00:00").getTime();
+      const dist = Math.abs(rowDate - targetDate);
+      if (dist < closestDist) { closestDist = dist; closest = row; }
+    }
+    // Only compare if the closest point is a different data point than the last
+    const priorRow = closest as Record<string, unknown>;
+    const prev = closest !== chartData[chartData.length - 1] && typeof priorRow[activeKey] === "number"
+      ? (priorRow[activeKey] as number) : null;
     const d = cur !== null && prev !== null ? +(cur - prev).toFixed(1) : null;
     return { currentValue: cur, delta: d };
   }, [chartData, effectiveMetric, focusModel]);
@@ -174,7 +185,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
               {delta !== null && delta !== 0 && (
                 <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
                   {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {delta > 0 ? "+" : ""}{delta}% vs start
+                  {delta > 0 ? "+" : ""}{delta}% vs prior month
                 </span>
               )}
             </div>

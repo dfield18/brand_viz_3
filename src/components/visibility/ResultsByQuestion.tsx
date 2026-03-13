@@ -489,7 +489,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                           <div className="grid gap-3">
                             <p className="text-xs text-muted-foreground">Click a response to view the full answer:</p>
                             {previews.map((preview) => {
-                              const snippet = preview.responseText.slice(0, 200).replace(/\n+/g, " ").trim();
+                              const snippet = preview.responseText.slice(0, 300).replace(/[*#_~`>]/g, "").replace(/^[-•]\s*/gm, "").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 200);
                               return (
                                 <button
                                   key={preview.model + preview.date}
