@@ -6,14 +6,90 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Convert a slug or kebab-case/snake-case string to Title Case.
- * Splits on hyphens, underscores, and whitespace.
+ * Known brand/entity names that need special casing (acronyms, etc.).
+ * Keys are lowercase; values are the canonical display form.
+ */
+const KNOWN_NAMES: Record<string, string> = {
+  cnn: "CNN",
+  nbcu: "NBCU",
+  nbc: "NBC",
+  abc: "ABC",
+  cbs: "CBS",
+  bbc: "BBC",
+  hbo: "HBO",
+  espn: "ESPN",
+  ibm: "IBM",
+  att: "AT&T",
+  "at&t": "AT&T",
+  bmw: "BMW",
+  ups: "UPS",
+  dhl: "DHL",
+  hp: "HP",
+  lg: "LG",
+  ge: "GE",
+  gm: "GM",
+  jpmorgan: "JPMorgan",
+  hsbc: "HSBC",
+  usaa: "USAA",
+  aaa: "AAA",
+  ikea: "IKEA",
+  nasa: "NASA",
+  nfl: "NFL",
+  nba: "NBA",
+  mlb: "MLB",
+  nhl: "NHL",
+  ufc: "UFC",
+  wwe: "WWE",
+  aws: "AWS",
+  sap: "SAP",
+  tsmc: "TSMC",
+  amd: "AMD",
+  byd: "BYD",
+  kia: "Kia",
+  msnbc: "MSNBC",
+  cnbc: "CNBC",
+  hulu: "Hulu",
+  roku: "Roku",
+  meta: "Meta",
+  openai: "OpenAI",
+  chatgpt: "ChatGPT",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  tiktok: "TikTok",
+  iphone: "iPhone",
+  ipad: "iPad",
+  imac: "iMac",
+  ios: "iOS",
+  macos: "macOS",
+  playstation: "PlayStation",
+  xbox: "Xbox",
+  mcdonalds: "McDonald's",
+  "mcdonald's": "McDonald's",
+  jpmorgan chase: "JPMorgan Chase",
+  walmart: "Walmart",
+  salesforce: "Salesforce",
+  hubspot: "HubSpot",
+  wordpress: "WordPress",
+  github: "GitHub",
+  stackoverflow: "StackOverflow",
+};
+
+/**
+ * Convert a slug or kebab-case/snake_case string to proper display name.
+ * Uses a known-names map for acronyms and special casing, then falls
+ * back to standard Title Case.
  */
 export function titleCase(input: string): string {
-  return input
-    .split(/[-_\s]+/)
+  const lower = input.toLowerCase().replace(/[-_]/g, " ").trim();
+
+  // Check full string first
+  if (KNOWN_NAMES[lower]) return KNOWN_NAMES[lower];
+
+  // Title-case each word, checking known names per-word for compound names
+  return lower
+    .split(/\s+/)
     .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w) => KNOWN_NAMES[w] ?? (w.charAt(0).toUpperCase() + w.slice(1)))
     .join(" ");
 }
 
