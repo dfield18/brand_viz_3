@@ -583,6 +583,19 @@ export async function GET(req: NextRequest) {
       competitiveTrend.push({ date, mentionShare, mentionRate, avgPosition, rank1Rate });
     }
 
+    // Ensure the trend spans the full selected range by adding anchor points
+    // that repeat the nearest real data so the X-axis covers the entire window
+    const rangeStartDate = rangeCutoff.toISOString().slice(0, 10);
+    const todayDate = new Date().toISOString().slice(0, 10);
+    if (competitiveTrend.length > 0) {
+      if (competitiveTrend[0].date > rangeStartDate) {
+        competitiveTrend.unshift({ ...competitiveTrend[0], date: rangeStartDate });
+      }
+      if (competitiveTrend[competitiveTrend.length - 1].date < todayDate) {
+        competitiveTrend.push({ ...competitiveTrend[competitiveTrend.length - 1], date: todayDate });
+      }
+    }
+
     // --- Sentiment Trend: per-entity sentiment score per date ---
     // Fetch raw text for trend runs
     const trendRunIds = new Set<string>();
@@ -670,6 +683,16 @@ export async function GET(req: NextRequest) {
       // Only include dates where at least one entity has data
       if (Object.keys(sentiment).length > 0) {
         sentimentTrend.push({ date, sentiment });
+      }
+    }
+
+    // Ensure sentiment trend also spans the full range
+    if (sentimentTrend.length > 0) {
+      if (sentimentTrend[0].date > rangeStartDate) {
+        sentimentTrend.unshift({ ...sentimentTrend[0], date: rangeStartDate });
+      }
+      if (sentimentTrend[sentimentTrend.length - 1].date < todayDate) {
+        sentimentTrend.push({ ...sentimentTrend[sentimentTrend.length - 1], date: todayDate });
       }
     }
 
