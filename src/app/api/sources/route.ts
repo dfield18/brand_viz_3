@@ -208,8 +208,9 @@ export async function GET(req: NextRequest) {
     );
 
     // Classify domains (uses DB cache → static map → GPT fallback)
-    const allDomains = rawTopDomains.map((d) => d.domain);
-    const categories = await classifyDomains(allDomains);
+    // Classify ALL unique domains from occurrences so categoryOverTime has proper breakdowns
+    const allOccurrenceDomains = [...new Set(occurrences.map((o) => o.domain))];
+    const categories = await classifyDomains(allOccurrenceDomains);
     const topDomains = rawTopDomains.map((d) => ({
       ...d,
       category: categories[d.domain] ?? "other",
