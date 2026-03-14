@@ -560,6 +560,19 @@ function NegativeNarrativesSection({
       .replace(/\*+/g, "")
       .replace(/^[·•\-\s]+/, "")
       .replace(/[·•]+\s*$/, "")
+      // markdown links: ([label](url)) or [label](url) → keep label unless it's a URL
+      .replace(/\(\[([^\]]*)\]\([^)]*\)\)/g, (_, label: string) =>
+        /^(https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})/.test(label) ? "" : label,
+      )
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, (_, label: string) =>
+        /^(https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})/.test(label) ? "" : label,
+      )
+      // bare parenthesized URLs
+      .replace(/\(https?:\/\/[^)]*\)/g, "")
+      // bare URLs
+      .replace(/https?:\/\/\S+/g, "")
+      // empty parens leftover
+      .replace(/\(\s*\)/g, "")
       .replace(/\s{2,}/g, " ")
       .trim();
 
