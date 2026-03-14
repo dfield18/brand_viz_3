@@ -1,6 +1,5 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
 import { Info } from "lucide-react";
 
 interface Props {
@@ -77,19 +76,14 @@ interface CardConfig {
   badge: { text: string; color: string };
   description: string;
   render: () => React.ReactNode;
-  href?: string;
+  scrollTarget?: string;
 }
 
 export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFrame, topSourceType }: Props) {
-  const params = useParams<{ slug: string }>();
-  const searchParams = useSearchParams();
-  const qs = searchParams.toString();
-  const base = `/entity/${params.slug}`;
-
   const cards: CardConfig[] = [
     {
       label: "AI VISIBILITY SCORE",
-      href: `${base}/visibility-v2${qs ? `?${qs}` : ""}`,
+      scrollTarget: "key-insights",
       tooltip: "A composite score (0–100) combining brand recall, share of voice, ranking position, and top-result rate across AI platforms.",
       badge: getVisibilityBadge(visibilityScore),
       description: "Overall AI presence across all platforms",
@@ -104,7 +98,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
     },
     {
       label: "SENTIMENT SCORE",
-      href: `${base}/narrative${qs ? `?${qs}` : ""}`,
+      scrollTarget: "narrative-section",
       tooltip: "Net sentiment across AI responses — the percentage of positive responses minus negative, normalized to 0–100.",
       badge: getSentimentBadge(sentimentScore),
       description: "How positively AI models talk about you",
@@ -124,7 +118,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
     },
     {
       label: "DOMINANT NARRATIVE",
-      href: `${base}/narrative${qs ? `?${qs}` : ""}`,
+      scrollTarget: "narrative-section",
       tooltip: "The narrative frame AI models most frequently use when discussing your brand. The percentage reflects how often this frame appears.",
       badge: dominantFrame
         ? { text: `${dominantFrame.percentage}%`, color: "text-violet-700 bg-violet-50 border-violet-200" }
@@ -148,7 +142,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
     },
     {
       label: "TOP SOURCE TYPE",
-      href: `${base}/sources${qs ? `?${qs}` : ""}`,
+      scrollTarget: "sources-trend",
       tooltip: "The category of sources most frequently cited alongside your brand in AI responses.",
       badge: topSourceType
         ? { text: `${Math.round((topSourceType.count / topSourceType.totalSources) * 100)}%`, color: "text-blue-700 bg-blue-50 border-blue-200" }
@@ -218,18 +212,11 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
           </>
         );
 
-        return card.href ? (
-          <a
-            key={card.label}
-            href={card.href}
-            className="rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col cursor-pointer hover:border-primary/40 transition-colors no-underline text-inherit"
-          >
-            {inner}
-          </a>
-        ) : (
+        return (
           <div
             key={card.label}
-            className="rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col"
+            className={`rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${card.scrollTarget ? "cursor-pointer hover:border-primary/40" : ""}`}
+            onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
           >
             {inner}
           </div>

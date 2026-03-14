@@ -236,11 +236,11 @@ function VisibilityV2Inner() {
 
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
-            Organic AI visibility — how often AI platforms mention {brandName} without being asked by name.
+            When someone asks AI about your industry, does {brandName} come up? These metrics track how often AI platforms recommend {brandName} unprompted — no brand name in the query, just pure organic visibility.
           </p>
           {data.resultsByQuestion?.[0]?.promptText && (
             <p className="text-sm text-muted-foreground/70 italic">
-              Example prompt: &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
+              e.g. &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
             </p>
           )}
         </div>

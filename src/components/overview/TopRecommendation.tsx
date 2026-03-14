@@ -27,7 +27,7 @@ export function TopRecommendation({ brandSlug, brandName, model, range }: Props)
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5 shadow-section animate-pulse">
+      <div className="px-5 py-4 animate-pulse">
         <div className="h-4 w-48 bg-muted rounded mb-3" />
         <div className="h-10 bg-muted/40 rounded" />
       </div>
@@ -101,21 +101,19 @@ export function TopRecommendation({ brandSlug, brandName, model, range }: Props)
   if (!recommendation) return null;
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-amber-50/50 px-5 py-4 shadow-section">
-      <div className="flex items-start gap-3">
-        <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-sm font-semibold">Top Recommendation</h2>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-              {source}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {recommendation}
-          </p>
+    <div className="flex items-start gap-3 px-5 py-4 bg-amber-50/30">
+      <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-semibold text-amber-700">Recommended Action</span>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+            {source}
+          </span>
         </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {recommendation}
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
