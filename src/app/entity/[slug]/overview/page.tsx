@@ -134,15 +134,15 @@ function OverviewInner() {
   const data = apiData.overview;
 
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard" },
+    { id: "kpi-summary", label: "Scorecard", heading: "Summary" },
     { id: "key-insights", label: "Key Insights" },
     { id: "visibility-trend", label: "Visibility Trend" },
-    { id: "narrative-section", label: "Top Narratives" },
+    { id: "narrative-section", label: "Top Narratives", heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
-    { id: "competitor-snapshot", label: "Competitive Landscape" },
+    { id: "competitor-snapshot", label: "Competitive Landscape", heading: "Competition" },
     { id: "competitor-alerts", label: "Competitor Movement" },
     { id: "cross-model", label: "Cross-Model Comparison" },
-    { id: "sources-trend", label: "Top Sources" },
+    { id: "sources-trend", label: "Top Sources", heading: "More" },
     { id: "prompt-manager", label: "Run Prompts" },
   ];
 
