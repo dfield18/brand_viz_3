@@ -143,6 +143,7 @@ function getConfidenceBadge(confidence: number): { text: string; color: string }
 const CONFIDENCE_COLOR_CARD = (confidence: number) =>
   confidence >= 85 ? "hsl(160, 60%, 45%)" : confidence >= 65 ? "hsl(38, 92%, 50%)" : "hsl(0, 72%, 55%)";
 
+const CONSISTENCY_PCT: Record<string, number> = { Low: 30, Moderate: 60, High: 85 };
 const POLARIZATION_PCT: Record<string, number> = { Low: 20, Moderate: 55, High: 90 };
 const POLARIZATION_COLOR: Record<string, string> = {
   Low: "hsl(160, 60%, 45%)",
@@ -239,14 +240,15 @@ export function NarrativeMetricCards({
   });
 
   // 3. Platform Consistency
+  const consistencyPct = polarization ? CONSISTENCY_PCT[polarization] ?? 0 : 0;
   cards.push({
     label: "PLATFORM CONSISTENCY",
     tooltip: "Whether AI platforms tell a consistent story about the brand. Low consistency means different platforms describe the brand very differently.",
     description: "AI description consistency across different platforms",
     badge: [polarization ? getPolarizationBadge(polarization) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
-    donutPct: polarization ? POLARIZATION_PCT[polarization] ?? 0 : 0,
+    donutPct: consistencyPct,
     donutColor: polarization ? POLARIZATION_COLOR[polarization] ?? "hsl(218, 11%, 72%)" : "hsl(218, 11%, 72%)",
-    donutValue: polarization ?? "\u2014",
+    donutValue: `${consistencyPct}%`,
     delta: null,
     deltaFormat: () => "",
     scrollTarget: "sentiment-by-model",
@@ -274,7 +276,7 @@ export function NarrativeMetricCards({
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors${card.scrollTarget ? " cursor-pointer hover:border-primary/40" : ""}`}
+          className={`rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col transition-all${card.scrollTarget ? " cursor-pointer hover:border-primary/40 hover:shadow-md" : ""}`}
           onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
           {/* Header */}

@@ -229,7 +229,8 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       };
     });
 
-    return deduped.map((d) => ({
+    // Assign sibling info for jitter before returning
+    const raw = deduped.map((d) => ({
       ...d,
       x: SENTIMENT_X[d.sentiment] ?? 2,
       y: d.consistency,
@@ -237,7 +238,79 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       siblingIndex: 0,
       siblingCount: 1,
     }));
+
+    // Count siblings at same x,y and assign indices for jitter
+    const posMap = new Map<string, number[]>();
+    raw.forEach((d, i) => {
+      const key = `${d.x}|${d.y}`;
+      if (!posMap.has(key)) posMap.set(key, []);
+      posMap.get(key)!.push(i);
+    });
+    for (const indices of posMap.values()) {
+      for (let j = 0; j < indices.length; j++) {
+        raw[indices[j]].siblingIndex = j;
+        raw[indices[j]].siblingCount = indices.length;
+      }
+    }
+
+    return raw;
   }, [data]);
+
+  // Auto-scale: find which sentiment categories are actually used and Y range
+  const { xDomain, xTicks, yDomain, yTicks } = useMemo(() => {
+    if (chartData.length === 0) {
+      return { xDomain: [-0.5, 4.5] as [number, number], xTicks: [0, 1, 2, 3, 4], yDomain: [0, 100] as [number, number], yTicks: [0, 25, 50, 75, 100] };
+    }
+    const xVals = chartData.map((d) => d.x);
+    const yVals = chartData.map((d) => d.y);
+    const xMin = Math.min(...xVals);
+    const xMax = Math.max(...xVals);
+    const yMin = Math.min(...yVals);
+    const yMax = Math.max(...yVals);
+
+    // X: show categories from (min-1) to (max+1), clamped to 0-4
+    const xLo = Math.max(0, xMin - 1);
+    const xHi = Math.min(4, xMax + 1);
+    const ticks: number[] = [];
+    for (let i = xLo; i <= xHi; i++) ticks.push(i);
+
+    // Y: pad 10% below/above, clamped 0-100, round to nearest 5
+    const yPad = Math.max((yMax - yMin) * 0.15, 10);
+    const yLo = Math.max(0, Math.floor((yMin - yPad) / 5) * 5);
+    const yHi = Math.min(100, Math.ceil((yMax + yPad) / 5) * 5);
+    const yStep = Math.max(5, Math.round((yHi - yLo) / 4 / 5) * 5);
+    const yt: number[] = [];
+    for (let v = yLo; v <= yHi; v += yStep) yt.push(v);
+    if (yt[yt.length - 1] < yHi) yt.push(yHi);
+
+    return {
+      xDomain: [xLo - 0.5, xHi + 0.5] as [number, number],
+      xTicks: ticks,
+      yDomain: [yLo, yHi] as [number, number],
+      yTicks: yt,
+    };
+  }, [chartData]);
+
+  // Generate insight takeaway
+  const insightText = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const strongPositive = chartData.filter((d) => d.sentiment === "Strong" || d.sentiment === "Positive");
+    const negative = chartData.filter((d) => d.sentiment === "Negative" || d.sentiment === "Conditional");
+    const highAgreement = chartData.filter((d) => d.consistency >= 75);
+
+    if (strongPositive.length > 0 && negative.length === 0) {
+      const best = strongPositive.sort((a, b) => b.consistency - a.consistency)[0];
+      return `All questions get positive-to-strong responses — "${firstWords(best.prompt, 6)}" has the highest agreement at ${best.consistency}%.`;
+    }
+    if (strongPositive.length > 0 && negative.length > 0) {
+      const best = strongPositive.sort((a, b) => b.consistency - a.consistency)[0];
+      return `${strongPositive.length} question${strongPositive.length > 1 ? "s" : ""} trigger${strongPositive.length === 1 ? "s" : ""} positive responses while ${negative.length} get cautious or negative reactions. "${firstWords(best.prompt, 6)}" stands out as the strongest positive signal.`;
+    }
+    if (highAgreement.length > 0) {
+      return `${highAgreement.length} of ${chartData.length} questions show high platform agreement (75%+), suggesting AI models largely converge on these topics.`;
+    }
+    return null;
+  }, [chartData]);
 
   // Collect pixel positions from shape renders for the HTML click overlay
   const pixelRef = useRef<{ cx: number; cy: number; idx: number }[]>([]);
@@ -294,6 +367,11 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
           <p className="text-xs text-muted-foreground mt-1">
             Click any dot to preview responses, then click a response to view the full answer
           </p>
+          {insightText && (
+            <p className="text-xs text-muted-foreground/80 mt-1.5 italic leading-relaxed max-w-[600px]">
+              {insightText}
+            </p>
+          )}
         </div>
 
         {/* Model selector */}
@@ -338,14 +416,14 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
       {/* Chart with HTML click overlay */}
       <div className="mt-2 relative" ref={chartContainerRef}>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={360}>
           <ScatterChart margin={{ top: 40, right: 140, bottom: 40, left: 20 }}>
             <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis
               type="number"
               dataKey="x"
-              domain={[-0.5, 4.5]}
-              ticks={[0, 1, 2, 3, 4]}
+              domain={xDomain}
+              ticks={xTicks}
               tickFormatter={(v) => SENTIMENT_ORDER[v] ?? ""}
               fontSize={12}
               tickLine={false}
@@ -355,13 +433,13 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
             <YAxis
               type="number"
               dataKey="y"
-              domain={[0, 100]}
+              domain={yDomain}
               fontSize={12}
               tickLine={false}
-              ticks={[0, 25, 50, 75, 100]}
+              ticks={yTicks}
               tickFormatter={(v) => `${v}%`}
             >
-              <Label value="Agreement Across AI Platforms" angle={-90} position="center" dx={-24} fontSize={14} fontWeight={500} fill="var(--muted-foreground)" />
+              <Label value="Platform Agreement" angle={-90} position="center" dx={-24} fontSize={14} fontWeight={500} fill="var(--muted-foreground)" />
             </YAxis>
             {/* Tooltip disabled — we use our own HTML tooltip via hover overlay */}
             <Tooltip content={() => null} cursor={false} />
@@ -369,11 +447,21 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
               data={chartData}
               isAnimationActive={false}
               shape={((props: { cx: number; cy: number; payload: (typeof chartData)[number]; index: number }) => {
-                const { cx, cy, payload, index } = props;
+                const { cx: rawCx, cy: rawCy, payload, index } = props;
                 const fill = SENTIMENT_COLOR[payload.sentiment] ?? "hsl(218, 11%, 72%)";
                 const isSelected = selectedPrompt === payload.prompt;
                 const hasOverlap = payload.siblingCount > 1;
-                const r = isSelected ? 9 : hasOverlap ? 5 : 7;
+                const r = isSelected ? 9 : 7;
+
+                // Apply jitter for overlapping dots
+                let cx = rawCx;
+                let cy = rawCy;
+                if (hasOverlap) {
+                  const angle = (payload.siblingIndex / payload.siblingCount) * 2 * Math.PI - Math.PI / 2;
+                  const jitterRadius = 12;
+                  cx = rawCx + Math.cos(angle) * jitterRadius;
+                  cy = rawCy + Math.sin(angle) * jitterRadius;
+                }
 
                 // Collect pixel positions; resolve labels + dot positions once all rendered
                 pixelRef.current[index] = { cx, cy, idx: index };

@@ -95,7 +95,7 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
         </div>
       ) : (
       <div className="mt-4">
-      <ResponsiveContainer width="100%" height={320}>
+      <ResponsiveContainer width="100%" height={260}>
         <LineChart
           data={chartData}
           margin={{ top: 5, right: 20, bottom: 5, left: 0 }}

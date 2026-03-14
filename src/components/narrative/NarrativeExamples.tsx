@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { ExternalLink, Download, FileText } from "lucide-react";
+import { ExternalLink, Download, FileText, MessageCircleQuestion } from "lucide-react";
 import type { NarrativeExample } from "@/types/api";
 import { useResponseDetail } from "@/lib/useResponseDetail";
 
@@ -11,10 +11,10 @@ interface NarrativeExamplesProps {
   brandName?: string;
 }
 
-const SENTIMENT_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  POS: { bg: "bg-emerald-100 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400", label: "Positive" },
-  NEG: { bg: "bg-red-100 dark:bg-red-950/30", text: "text-red-700 dark:text-red-400", label: "Negative" },
-  NEU: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-400", label: "Neutral" },
+const SENTIMENT_BADGE: Record<string, { bg: string; text: string; label: string; border: string }> = {
+  POS: { bg: "bg-emerald-100 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400", label: "Positive", border: "border-l-emerald-500" },
+  NEG: { bg: "bg-red-100 dark:bg-red-950/30", text: "text-red-700 dark:text-red-400", label: "Negative", border: "border-l-red-400" },
+  NEU: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-400", label: "Neutral", border: "border-l-gray-400" },
 };
 
 const MODEL_LABELS: Record<string, string> = {
@@ -24,7 +24,48 @@ const MODEL_LABELS: Record<string, string> = {
   perplexity: "Perplexity",
 };
 
+const MAX_TAGS = 3;
 const INITIAL_COUNT = 3;
+
+/** Strip AI preamble like "Here are 5 bullet points..." from the start of text */
+function trimPreamble(text: string): string {
+  const preamblePatterns = [
+    /^(?:Here (?:are|is)|Sure,?\s+here(?:'s| is| are)|Let me|I(?:'d| would) (?:say|recommend|suggest))[^:.\n]*[:.]\s*/i,
+    /^(?:Based on|According to|When (?:it comes to|looking at|considering))[^:.\n]*[:.]\s*/i,
+  ];
+  let result = text;
+  for (const pattern of preamblePatterns) {
+    result = result.replace(pattern, "");
+  }
+  if (result.length > 0 && result !== text) {
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+  }
+  return result;
+}
+
+/** Strip markdown formatting */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/`/g, "")
+    .replace(/~~/g, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Remove "Title: " prefix patterns from excerpts */
+function stripTitlePrefix(text: string): string {
+  // Patterns like "Fox's Competitors and Recommendation Factors: Direct Competitors:"
+  const match = text.match(/^[^:]{10,60}:\s*([\s\S]+)$/);
+  if (match && match[1].length > 40) {
+    return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  }
+  return text;
+}
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -125,9 +166,14 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
 
   return (
     <div className="space-y-4">
-      {/* Header with export buttons */}
+      {/* Header with count badge and export buttons */}
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Explore AI Responses by Narrative</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">Explore AI Responses by Narrative</h2>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+            {examples.length}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={exportCSV}
@@ -190,38 +236,54 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
       ) : (
         visible.map((ex, i) => {
           const badge = SENTIMENT_BADGE[ex.sentiment] ?? SENTIMENT_BADGE.NEU;
+          const cleanExcerpt = stripMarkdown(stripTitlePrefix(trimPreamble(ex.excerpt)));
+          const visibleThemes = ex.themes.slice(0, MAX_TAGS);
+          const hiddenCount = ex.themes.length - MAX_TAGS;
+
           return (
             <div
               key={i}
-              className={`rounded-lg border border-border bg-card p-4 space-y-2 ${brandSlug ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
+              className={`rounded-lg border border-border ${badge.border} border-l-[3px] bg-card p-4 space-y-2.5 ${brandSlug ? "cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all" : ""}`}
               onClick={brandSlug ? () => openResponse({ promptText: ex.prompt, model: ex.model, brandName }) : undefined}
             >
+              {/* Prompt + model row */}
               <div className="flex items-center gap-2">
-                <p className="text-xs font-medium text-muted-foreground flex-1">
+                <MessageCircleQuestion className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                <p className="text-xs font-semibold text-muted-foreground flex-1 leading-snug">
                   {ex.prompt}
                 </p>
-                {brandSlug && <ExternalLink className="h-3 w-3 text-muted-foreground/40 shrink-0" />}
                 {ex.model && (
                   <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
                     {MODEL_LABELS[ex.model] ?? ex.model}
                   </span>
                 )}
+                {brandSlug && <ExternalLink className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
               </div>
-              <p className="text-sm leading-relaxed">
-                {ex.excerpt}
+
+              {/* Excerpt */}
+              <p className="text-sm leading-relaxed text-foreground/90">
+                {cleanExcerpt}
                 {ex.excerpt.length >= 198 && "..."}
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {ex.themes.map((theme) => (
+
+              {/* Tags row: themes + sentiment */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {visibleThemes.map((theme) => (
                   <span
                     key={theme}
-                    className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs"
+                    className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px]"
                   >
                     {theme}
                   </span>
                 ))}
+                {hiddenCount > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-muted/50 text-muted-foreground px-2 py-0.5 text-[11px] border border-border">
+                    +{hiddenCount} more
+                  </span>
+                )}
+                <span className="mx-0.5" />
                 <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${badge.bg} ${badge.text}`}
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.bg} ${badge.text}`}
                 >
                   {badge.label}
                 </span>
@@ -235,7 +297,7 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
       {hasMore && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
         >
           {showAll ? "Show less" : `Show all ${filtered.length} examples`}
         </button>

@@ -58,17 +58,26 @@ export default function EmergingTopicsList({ emerging }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">{e.topicLabel}</span>
-                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-                      +{e.growthRate}%
-                    </span>
+                    {e.previousMentions > 0 ? (
+                      <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                        +{e.growthRate}%
+                      </span>
+                    ) : (
+                      <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                        New
+                      </span>
+                    )}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${conf.color} ${conf.bg}`}
                       title={`Confidence: ${e.confidence} (based on ${e.currentMentions} current mentions)`}
                     >
-                      {e.confidence}
+                      {e.currentMentions} mention{e.currentMentions !== 1 ? "s" : ""}
                     </span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {e.previousMentions} → {e.currentMentions} mentions
+                    {e.previousMentions === 0
+                      ? `Not mentioned before — now ${e.currentMentions} mention${e.currentMentions !== 1 ? "s" : ""}`
+                      : `${e.previousMentions} → ${e.currentMentions} mentions`
+                    }
                   </p>
                 </div>
                 {e.samplePrompts.length > 0 && (

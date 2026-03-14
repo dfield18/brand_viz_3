@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
+import { Lightbulb } from "lucide-react";
 import { NarrativeResponse, TopicsResponse, NarrativeDeltas } from "@/types/api";
 import { NarrativeMetricCards } from "@/components/narrative/NarrativeMetricCards";
 
@@ -12,7 +13,6 @@ import { NarrativeExamples } from "@/components/narrative/NarrativeExamples";
 import { SentimentByQuestion } from "@/components/narrative/SentimentByQuestion";
 import { SentimentTrendChart } from "@/components/narrative/SentimentTrendChart";
 import { SentimentByModel } from "@/components/narrative/SentimentByModel";
-
 
 import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
 import { FrameTrendChart } from "@/components/narrative/FrameTrendChart";
@@ -38,6 +38,24 @@ interface TopicsApiResponse {
   topics?: TopicsResponse;
 }
 
+interface RecsApiResponse {
+  hasData: boolean;
+  negativeNarratives?: { weaknesses: { weakness: string; suggestion: string }[]; narrativeSummary?: string };
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/`/g, "")
+    .replace(/~~/g, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function NarrativeInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -57,6 +75,12 @@ function NarrativeInner() {
     ? `/api/topics?brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`
     : null;
   const { data: topicsData } = useCachedFetch<TopicsApiResponse>(topicsUrl);
+
+  // Fetch recommendations for narrative insight
+  const recsUrl = validModel
+    ? `/api/recommendations?brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`
+    : null;
+  const { data: recsData } = useCachedFetch<RecsApiResponse>(recsUrl);
 
   // Loading
   if (loading) {
@@ -114,6 +138,7 @@ function NarrativeInner() {
 
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
+    { id: "narrative-insight", label: "Key Insights" },
     { id: "sentiment-trend", label: "Sentiment Trend" },
     { id: "narrative-frames", label: "Narrative Frames", heading: "Narratives" },
     { id: "top-narratives", label: "Top Narratives" },
@@ -121,7 +146,7 @@ function NarrativeInner() {
     { id: "strengths-weaknesses", label: "Strengths & Weaknesses", heading: "Sentiment" },
     { id: "sentiment-by-model", label: "Sentiment by Platform" },
     { id: "sentiment-by-prompt", label: "Sentiment by Question" },
-    { id: "emerging-topics", label: "Emerging Topics", heading: "More" },
+    { id: "emerging-topics", label: "Emerging Topics", heading: "Trends & Exploration" },
     { id: "evidence-examples", label: "Explore AI Responses" },
   ];
 
@@ -150,6 +175,84 @@ function NarrativeInner() {
             sentimentTrend={data.sentimentTrend}
             narrativeDeltas={apiData.narrativeDeltas}
           />
+        </div>
+
+        {/* Narrative Summary + Recommendation */}
+        <div id="narrative-insight" className="scroll-mt-24 space-y-4">
+          {/* Narrative Summary */}
+          {data.sentimentSplit && data.frames && data.frames.length > 0 && (
+            <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+              <div className="px-6 py-5 border-l-4 border-l-primary/40">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Narrative Summary</h3>
+                <p className="text-sm text-foreground/80 leading-[1.7]">
+                  {(() => {
+                    const parts: string[] = [];
+                    const topFrame = data.frames![0];
+                    const split = data.sentimentSplit!;
+
+                    // Frame
+                    parts.push(`AI primarily frames ${brandName} as a "${topFrame.frame}" — this narrative appears in ${topFrame.percentage}% of responses.`);
+
+                    // Sentiment
+                    if (split.positive >= 60) {
+                      parts.push(`Sentiment is strongly positive at ${split.positive}%, with only ${split.negative}% negative responses.`);
+                    } else if (split.positive >= 40) {
+                      parts.push(`Sentiment leans positive (${split.positive}%), though ${split.neutral}% of responses remain neutral.`);
+                    } else if (split.neutral >= 60) {
+                      parts.push(`Most responses (${split.neutral}%) are neutral — AI isn't strongly advocating for or against the brand.`);
+                    } else if (split.negative >= 30) {
+                      parts.push(`Watch the sentiment: ${split.negative}% of responses carry a negative tone, with only ${split.positive}% positive.`);
+                    } else {
+                      parts.push(`Sentiment is mixed — ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`);
+                    }
+
+                    // Consistency
+                    if (data.polarization === "High") {
+                      parts.push(`AI platforms disagree significantly about ${brandName} — different models tell very different stories.`);
+                    } else if (data.polarization === "Low") {
+                      parts.push(`AI platforms largely agree on how they describe ${brandName}.`);
+                    }
+
+                    // Confidence
+                    if (data.hedgingRate != null) {
+                      const conf = 100 - data.hedgingRate;
+                      if (conf < 65) {
+                        parts.push(`AI models frequently hedge when discussing ${brandName}, using cautious language ${data.hedgingRate}% of the time.`);
+                      } else if (conf >= 85) {
+                        parts.push(`AI models speak confidently about ${brandName}, with direct recommendations ${conf}% of the time.`);
+                      }
+                    }
+
+                    return parts.join(" ");
+                  })()}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Narrative Recommendation */}
+          {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
+            <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+              <div className="flex items-start gap-4 px-6 py-5 bg-amber-50/30">
+                <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Narrative Action</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                      Perception Issue
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/80 leading-[1.7]">
+                    {stripMarkdown(
+                      recsData.negativeNarratives.narrativeSummary
+                        ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
+                        : recsData.negativeNarratives.weaknesses[0].suggestion
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sentiment Trend — right after scorecard for trend visibility */}
@@ -181,6 +284,11 @@ function NarrativeInner() {
               frames={data.frames}
               examples={data.examples}
               brandName={brandName}
+              frameTrend={data.frameTrend}
+              onFrameClick={(frame) => {
+                const el = document.getElementById("frame-trend");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
             />
           </div>
         )}
@@ -231,8 +339,8 @@ function NarrativeInner() {
           </div>
         )}
 
-        {/* Section: More */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">More</h2>
+        {/* Section: Trends & Exploration */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2">Trends & Exploration</h2>
 
         {/* Emerging Topics */}
         {topicsData?.hasData && topicsData.topics && topicsData.topics.emerging.length > 0 && (

@@ -121,6 +121,7 @@ interface CardConfig {
   donutPct: number;
   donutColor: string;
   donutValue: string;
+  scrollTo?: string;
 }
 
 export function CompetitionSummaryCards({
@@ -145,6 +146,7 @@ export function CompetitionSummaryCards({
       donutPct: Math.min(scope.entitiesTracked * 5, 100),
       donutColor: "var(--chart-1)",
       donutValue: String(scope.entitiesTracked),
+      scrollTo: "brand-breakdown",
     },
     {
       label: `${brandName.toUpperCase()} MENTION SHARE`,
@@ -154,6 +156,7 @@ export function CompetitionSummaryCards({
       donutPct: brandCompetitor.mentionShare,
       donutColor: "var(--chart-3)",
       donutValue: `${Math.round(brandCompetitor.mentionShare)}%`,
+      scrollTo: "visibility-trend",
     },
     {
       label: "MARKET FRAGMENTATION",
@@ -163,6 +166,7 @@ export function CompetitionSummaryCards({
       donutPct: fragmentation?.score ?? 0,
       donutColor: "var(--chart-2)",
       donutValue: `${Math.round(fragmentation?.score ?? 0)}`,
+      scrollTo: "visibility-sentiment",
     },
     {
       label: "WIN RATE",
@@ -172,6 +176,7 @@ export function CompetitionSummaryCards({
       donutPct: winRate,
       donutColor: "var(--chart-4)",
       donutValue: `${winRate}%`,
+      scrollTo: "win-loss",
     },
   ];
 
@@ -180,7 +185,12 @@ export function CompetitionSummaryCards({
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col"
+          className={`rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col ${card.scrollTo ? "cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" : ""}`}
+          onClick={() => {
+            if (card.scrollTo) {
+              document.getElementById(card.scrollTo)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
