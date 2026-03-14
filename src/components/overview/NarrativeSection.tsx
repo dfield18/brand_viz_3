@@ -93,7 +93,7 @@ export function NarrativeSection({ frames, brandName = "this brand" }: Narrative
         )}
       </div>
       <p className="text-xs text-muted-foreground mb-5">
-        How AI models frame {brandName}, and how each model&apos;s framing differs
+        How AI models frame {brandName}
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-[5fr_4fr] gap-6">
         {/* Bar chart */}
