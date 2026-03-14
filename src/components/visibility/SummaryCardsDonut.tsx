@@ -267,7 +267,12 @@ export function SummaryCardsDonut({
             <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${card.badge.color}`}>
               {card.badge.text}
             </span>
-            {sparkData && sparkData.length >= 2 && <MiniSparkline points={sparkData} />}
+            {sparkData && sparkData.length >= 2 && (
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wide">Trend</span>
+                <MiniSparkline points={sparkData} />
+              </div>
+            )}
           </div>
 
           {/* Description */}
