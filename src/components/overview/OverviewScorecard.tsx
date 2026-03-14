@@ -91,6 +91,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             /100
           </span>
         </div>
+        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Overall AI presence across platforms</p>
       </div>
 
       {/* Sentiment */}
@@ -113,6 +114,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             /100
           </span>
         </div>
+        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">How positively AI talks about you</p>
       </div>
 
       {/* Dominant Narrative */}
@@ -132,6 +134,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             <span className="text-[11px] font-medium tabular-nums text-violet-600">{dominantFrame.percentage}%</span>
           </div>
         )}
+        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Primary story AI tells about you</p>
       </div>
 
       {/* Top Source */}
@@ -151,6 +154,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             <span className="text-[11px] font-medium tabular-nums text-muted-foreground">{sourcePct}%</span>
           </div>
         )}
+        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Most-cited source category</p>
       </div>
     </div>
   );
