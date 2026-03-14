@@ -93,7 +93,7 @@ export function CompetitorRankDistribution({
                 })}
               </div>
               <span className="text-[11px] tabular-nums w-20 text-right text-muted-foreground">
-                {total} responses
+                {total} response{total !== 1 ? "s" : ""}
               </span>
             </div>
           );

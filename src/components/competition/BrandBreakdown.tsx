@@ -279,7 +279,7 @@ function ExpandableRow({
   return (
     <>
       <tr
-        className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+        className={`border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer ${comp.isBrand ? "bg-primary/5" : ""}`}
         onClick={onToggle}
       >
         {/* Brand */}
@@ -305,13 +305,13 @@ function ExpandableRow({
           {Math.round(comp.mentionShare)}%
         </td>
         {/* Top Result Rate */}
-        <td className="py-4 px-4 text-center font-semibold tabular-nums">
+        <td className={`py-4 px-4 text-center font-semibold tabular-nums ${comp.rank1Rate >= 50 ? "text-emerald-600" : comp.rank1Rate >= 20 ? "text-amber-600" : comp.rank1Rate > 0 ? "text-red-500" : ""}`}>
           {comp.rank1Rate}%
         </td>
         {/* Avg. Position */}
         <td className="py-4 px-4 text-center font-semibold tabular-nums">
           {comp.avgRank !== null ? (
-            <span className={comp.avgRank <= 2 ? "text-emerald-600" : ""}>
+            <span className={comp.avgRank <= 2 ? "text-emerald-600" : comp.avgRank <= 4 ? "text-amber-600" : "text-red-500"}>
               #{comp.avgRank.toFixed(1)}
             </span>
           ) : (

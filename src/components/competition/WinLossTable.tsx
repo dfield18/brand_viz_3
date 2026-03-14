@@ -47,7 +47,7 @@ export function WinLossTable({ winLoss }: WinLossTableProps) {
                   <td className="py-2.5 pr-4 font-medium">{c.name}</td>
                   <td className="py-2.5 px-4 text-right tabular-nums text-emerald-600">{c.wins}</td>
                   <td className="py-2.5 px-4 text-right tabular-nums text-red-500">{c.losses}</td>
-                  <td className="py-2.5 px-4 text-right tabular-nums">{total > 0 ? Math.round((c.wins / total) * 100) : 0}%</td>
+                  <td className={`py-2.5 px-4 text-right tabular-nums font-medium ${total > 0 ? (Math.round((c.wins / total) * 100) > 50 ? "text-emerald-600" : Math.round((c.wins / total) * 100) === 50 ? "text-amber-600" : "text-red-500") : ""}`}>{total > 0 ? Math.round((c.wins / total) * 100) : 0}%</td>
                   <td className="py-2.5 pl-4">
                     <div className="flex h-3 rounded overflow-hidden bg-muted/50">
                       <div

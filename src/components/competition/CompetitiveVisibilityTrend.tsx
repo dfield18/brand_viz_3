@@ -364,6 +364,20 @@ export function CompetitiveVisibilityTrend({
               ))}
             </AreaChart>
           </ResponsiveContainer>
+
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 justify-center">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="inline-block w-3 h-[3px] rounded-full shrink-0" style={{ backgroundColor: strokeColor }} />
+              <span className="font-medium text-foreground">{entityNames[brandEntityId] ?? brandName ?? "Brand"}</span>
+            </div>
+            {sortedEntityIds.filter((id) => id !== brandEntityId).map((entityId, i) => (
+              <div key={entityId} className="flex items-center gap-1.5 text-xs">
+                <span className="inline-block w-3 h-[3px] rounded-full shrink-0 opacity-50" style={{ backgroundColor: COMPETITOR_COLORS[i % COMPETITOR_COLORS.length] }} />
+                <span className="text-muted-foreground">{entityNames[entityId] ?? entityId}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

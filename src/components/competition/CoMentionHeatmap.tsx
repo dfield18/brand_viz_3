@@ -62,8 +62,8 @@ export function CoMentionHeatmap({
               {entityIds.map((colId) => {
                 if (rowId === colId) {
                   return (
-                    <td key={colId} className="px-3 py-2 text-center bg-muted/30 text-muted-foreground">
-                      &mdash;
+                    <td key={colId} className="px-3 py-2 text-center bg-muted/60 text-muted-foreground/50 text-[10px]">
+                      N/A
                     </td>
                   );
                 }

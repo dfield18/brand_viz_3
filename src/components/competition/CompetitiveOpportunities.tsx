@@ -53,14 +53,14 @@ export function CompetitiveOpportunities({ opportunities, brandName }: Competiti
                 <td className="py-2.5 pr-4 text-foreground">{opp.promptText}</td>
                 <td className="py-2.5 px-4 text-center tabular-nums">
                   {opp.brandRank ? (
-                    <span className="text-red-500">#{opp.brandRank}</span>
+                    <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">#{opp.brandRank}</span>
                   ) : (
-                    <span className="text-red-500">Absent</span>
+                    <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Absent</span>
                   )}
                 </td>
                 <td className="py-2.5 px-4 text-center">
                   <div className="text-foreground font-medium">{opp.topCompetitor}</div>
-                  <div className="text-xs text-emerald-600">#{opp.topCompetitorRank}</div>
+                  <span className="inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 mt-0.5">#{opp.topCompetitorRank}</span>
                 </td>
                 <td className="py-2.5 px-4 text-center text-muted-foreground">
                   {MODEL_LABELS[opp.model] ?? opp.model}

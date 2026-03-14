@@ -79,7 +79,7 @@ export function SentimentDistribution({ competitors }: SentimentDistributionProp
                       >
                         {seg.pct >= 14 && (
                           <span className="text-[10px] font-semibold text-white drop-shadow-sm">
-                            {pctRound}%
+                            {segments.length === 1 ? `${SENTIMENT_CONFIG[seg.key].label} ${pctRound}%` : `${pctRound}%`}
                           </span>
                         )}
                       </div>
