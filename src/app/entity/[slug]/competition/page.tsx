@@ -142,10 +142,6 @@ function CompetitionInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
-        <p className="text-base text-muted-foreground leading-relaxed">
-          This tab shows how {compBrandName} stacks up against competitors in AI responses. See who AI mentions most often, track how competitive positioning is shifting over time, and identify where {compBrandName} is winning or losing head-to-head matchups.
-        </p>
-
         {/* KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           {brandCompetitor && (
@@ -166,6 +162,9 @@ function CompetitionInner() {
 
         {/* ── Metrics Deep Dive ─────────────────────────── */}
         <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed -mt-6">
+          This tab shows how {compBrandName} stacks up against competitors in AI responses. See who AI mentions most often, track how competitive positioning is shifting over time, and identify where {compBrandName} is winning or losing head-to-head matchups.
+        </p>
 
         {/* Visibility Trend */}
         {data.competitiveTrend.length >= 1 && (
