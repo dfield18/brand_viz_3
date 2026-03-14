@@ -75,15 +75,26 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
 
   const [hovered, setHovered] = useState<string | null>(null);
 
-  if (breakdown.slices.length === 0) return null;
-
   const size = 150;
   const strokeWidth = 20;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
-  let cumulativeOffset = 0;
+  // Precompute cumulative offsets immutably to avoid render-time mutation
+  const sliceOffsets = useMemo(() => {
+    return breakdown.slices.reduce<{ dashLength: number; rotation: number }[]>((acc, slice) => {
+      const prevOffset = acc.length > 0
+        ? acc.reduce((sum, s) => sum + s.dashLength, 0)
+        : 0;
+      const dashLength = (slice.pct / 100) * circumference;
+      const rotation = (prevOffset / circumference) * 360 - 90;
+      acc.push({ dashLength, rotation });
+      return acc;
+    }, []);
+  }, [breakdown.slices, circumference]);
+
+  if (breakdown.slices.length === 0) return null;
 
   const hoveredSlice = hovered ? breakdown.slices.find((s) => s.category === hovered) : null;
 
@@ -92,11 +103,9 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
       <p className="text-xs font-medium text-muted-foreground mb-2">Source Types</p>
       <div className="relative">
         <svg width={size} height={size}>
-          {breakdown.slices.map((slice) => {
-            const dashLength = (slice.pct / 100) * circumference;
+          {breakdown.slices.map((slice, i) => {
+            const { dashLength, rotation } = sliceOffsets[i];
             const isHovered = hovered === slice.category;
-            const rotation = (cumulativeOffset / circumference) * 360 - 90;
-            cumulativeOffset += dashLength;
             return (
               <circle
                 key={slice.category}

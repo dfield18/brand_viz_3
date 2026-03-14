@@ -14,12 +14,12 @@ function createLimiter(tokens: number, window: string) {
       analytics: true,
     });
   }
-  // Fallback: ephemeral in-memory store (resets on redeploy)
-  return new Ratelimit({
-    redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(tokens, window as Parameters<typeof Ratelimit.slidingWindow>[1]),
-    ephemeralCache: new Map(),
-  });
+  // Fallback: no-op limiter when Upstash env vars aren't set (local dev).
+  // checkRateLimit() already skips when UPSTASH_REDIS_REST_URL is absent,
+  // but we still need a valid object so the export doesn't throw.
+  return {
+    limit: async () => ({ success: true, limit: tokens, remaining: tokens, reset: Date.now(), pending: Promise.resolve() }),
+  } as unknown as Ratelimit;
 }
 
 // Tiers — mutating/expensive routes get tighter limits

@@ -111,6 +111,17 @@ function VisibilityV2Inner() {
     return ["chatgpt", "gemini", "claude", "perplexity", "google"].filter((m) => set.has(m));
   }, [filteredTrend]);
 
+  // Sparkline data for scorecard cards (last 3 "all" trend points)
+  const sparklines = useMemo(() => {
+    const allPoints = filteredTrend.filter((t) => t.model === "all" && (!t.prompt || t.prompt === "all"));
+    const last3 = allPoints.slice(-3);
+    return {
+      visibility: last3.map((t) => t.mentionRate),
+      sov: last3.map((t) => t.sovPct ?? 0),
+      topResult: last3.map((t) => t.firstMentionPct ?? 0),
+    };
+  }, [filteredTrend]);
+
   // Invalid model selection
   if (!validModel) {
     return (
@@ -184,17 +195,6 @@ function VisibilityV2Inner() {
   const industryLabel = apiData.brandIndustry || `${brandName}'s industry`;
   const expandPrompt = (text: string) =>
     text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, industryLabel);
-
-  // Sparkline data for scorecard cards (last 3 "all" trend points)
-  const sparklines = useMemo(() => {
-    const allPoints = filteredTrend.filter((t) => t.model === "all" && (!t.prompt || t.prompt === "all"));
-    const last3 = allPoints.slice(-3);
-    return {
-      visibility: last3.map((t) => t.mentionRate),
-      sov: last3.map((t) => t.sovPct ?? 0),
-      topResult: last3.map((t) => t.firstMentionPct ?? 0),
-    };
-  }, [filteredTrend]);
 
   const handleCardClick = (metric: MetricTab) => {
     setActiveMetric(metric);

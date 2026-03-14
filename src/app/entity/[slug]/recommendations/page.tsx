@@ -541,7 +541,6 @@ function NegativeNarrativesSection({
   const hasThemes = data?.negativeThemes && data.negativeThemes.length > 0;
   const SCROLL_THRESHOLD = 5;
   const [showThemes, setShowThemes] = useState(false);
-  if (!hasWeaknesses && !hasThemes) return <EmptyState message="No negative narratives detected." />;
 
   const clean = (text: string) =>
     text
@@ -588,6 +587,8 @@ function NegativeNarrativesSection({
     }
     return map;
   }, [data]);
+
+  if (!hasWeaknesses && !hasThemes) return <EmptyState message="No negative narratives detected." />;
 
   const weaknesses = data?.weaknesses ?? [];
   const needsScroll = weaknesses.length >= SCROLL_THRESHOLD;

@@ -111,8 +111,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function getComparisonLabel(_range: number): string {
-  return "vs prior month";
+function getComparisonLabel(periodCurrent?: string, periodPrevious?: string): string {
+  if (periodCurrent && periodPrevious) {
+    return `${periodPrevious} vs ${periodCurrent}`;
+  }
+  return "vs prior period";
 }
 
 const CONFIDENCE_STYLE: Record<string, { bg: string; text: string }> = {
@@ -381,7 +384,7 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
           </div>
 
           <DimensionChart drivers={decomp.drivers} dimension={activeTab} kpi={selectedKpi} />
-          <p className="text-[11px] text-muted-foreground mt-3">Comparing {getComparisonLabel(range)}.</p>
+          <p className="text-[11px] text-muted-foreground mt-3">Comparing {getComparisonLabel(apiData?.periodCurrent, apiData?.periodPrevious)}.</p>
         </div>
       ) : (
         <div className="text-center py-6">

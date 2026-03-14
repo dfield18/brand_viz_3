@@ -455,7 +455,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
                 // Apply jitter for overlapping dots — spread horizontally
                 let cx = rawCx;
-                let cy = rawCy;
+                const cy = rawCy;
                 if (hasOverlap) {
                   const spread = 14; // px between dots
                   const totalWidth = (payload.siblingCount - 1) * spread;

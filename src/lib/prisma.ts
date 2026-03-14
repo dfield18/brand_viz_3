@@ -11,6 +11,12 @@ function createClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/** Lazily-initialized Prisma client — throws on first DB access if DATABASE_URL is missing. */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    if (!globalForPrisma.prisma) {
+      globalForPrisma.prisma = createClient();
+    }
+    return Reflect.get(globalForPrisma.prisma, prop, receiver);
+  },
+});
