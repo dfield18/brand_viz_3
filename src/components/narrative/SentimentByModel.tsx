@@ -66,13 +66,19 @@ export function SentimentByModel({ trend, brandName = "the Brand" }: SentimentBy
                 style={{ left: "50%" }}
               />
               <div
-                className={`h-full rounded transition-all duration-300 ${barColor(score)}`}
+                className={`h-full rounded transition-all duration-300 flex items-center ${barColor(score)}`}
                 style={{ width: `${score}%` }}
-              />
+              >
+                {score >= 30 && (
+                  <span className="text-[11px] font-semibold text-white drop-shadow-sm ml-auto mr-2 tabular-nums">{score}%</span>
+                )}
+              </div>
+              {score < 30 && (
+                <span className="absolute top-0 bottom-0 flex items-center text-[11px] font-semibold text-muted-foreground tabular-nums" style={{ left: `${score + 1}%`, paddingLeft: 4 }}>{score}%</span>
+              )}
             </div>
-            <div className="shrink-0 text-right w-20">
-              <span className="text-sm font-semibold tabular-nums">{score}</span>
-              <span className="text-[10px] text-muted-foreground ml-1">{scoreLabel(score)}</span>
+            <div className="shrink-0 text-right w-24">
+              <span className="text-[11px] text-muted-foreground">{scoreLabel(score)}</span>
             </div>
           </div>
         ))}

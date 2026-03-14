@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { MessageSquareQuote } from "lucide-react";
+import { MessageSquareQuote, TrendingUp, TrendingDown } from "lucide-react";
 import type { NarrativeFrame, NarrativeExample } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
 
@@ -230,7 +230,8 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
                 </div>
                 {/* Trend delta */}
                 {delta != null && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
+                    {delta > 0 ? <TrendingUp className="h-2.5 w-2.5 text-emerald-600" /> : <TrendingDown className="h-2.5 w-2.5 text-red-500" />}
                     <span className={delta > 0 ? "text-emerald-600" : "text-red-500"}>
                       {delta > 0 ? "+" : ""}{delta}%
                     </span>

@@ -225,6 +225,11 @@ function ClaimCard({
             );
           })()}
           <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-muted-foreground/60">
+            {claim.count > 1 && (
+              <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/50">
+                {claim.count} responses
+              </span>
+            )}
             {claim.model && (
               <span className="font-medium text-muted-foreground/70">{MODEL_LABELS[claim.model] ?? claim.model}</span>
             )}
@@ -232,12 +237,6 @@ function ClaimCard({
               <>
                 {claim.model && <span className="text-border">·</span>}
                 <span className="line-clamp-1">{claim.prompt}</span>
-              </>
-            )}
-            {claim.count > 1 && (
-              <>
-                {(claim.model || claim.prompt) && <span className="text-border">·</span>}
-                <span>{claim.count} responses</span>
               </>
             )}
           </div>

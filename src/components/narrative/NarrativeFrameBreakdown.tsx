@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
   Radar,
   RadarChart,
   PolarGrid,
@@ -69,6 +70,12 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
     ? "All Models"
     : MODEL_CONFIG.find((m) => m.key === selectedModel)?.name ?? selectedModel;
 
+  // Scale bar/radar size based on frame count
+  const rowHeight = frames.length <= 3 ? 64 : frames.length <= 5 ? 50 : 38;
+  const barSize = frames.length <= 3 ? 28 : frames.length <= 5 ? 22 : 18;
+  const barChartHeight = Math.max(frames.length * rowHeight + 20, 220);
+  const radarHeight = Math.max(barChartHeight, 240);
+
   return (
     <section className="rounded-xl border border-border bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
@@ -96,11 +103,11 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
           <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
             Overall Distribution
           </h3>
-          <ResponsiveContainer width="100%" height={frames.length * 38 + 20}>
+          <ResponsiveContainer width="100%" height={barChartHeight}>
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
+              margin={{ top: 0, right: 40, bottom: 0, left: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis
@@ -132,10 +139,16 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
                   );
                 }}
               />
-              <Bar dataKey={barDataKey} radius={[0, 4, 4, 0]} barSize={18}>
+              <Bar dataKey={barDataKey} radius={[0, 4, 4, 0]} barSize={barSize}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                 ))}
+                <LabelList
+                  dataKey={barDataKey}
+                  position="right"
+                  formatter={(v: unknown) => `${v ?? 0}%`}
+                  style={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -149,7 +162,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
           <p className="text-[11px] text-muted-foreground mb-3">
             Larger area = more AI responses use this narrative
           </p>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={radarHeight}>
             <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
@@ -188,7 +201,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
           </ResponsiveContainer>
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground mt-6 leading-relaxed">
+      <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
         AI responses are classified into narrative frames (e.g., &quot;Reliability,&quot; &quot;Innovation&quot;) using keyword and theme analysis. Percentages show how frequently each frame appears in responses from the selected model.
       </p>
     </section>

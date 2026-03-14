@@ -41,24 +41,29 @@ export function WinLossTable({ winLoss }: WinLossTableProps) {
           <tbody>
             {sorted.map((c) => {
               const total = c.wins + c.losses;
-              const winPct = total > 0 ? (c.wins / total) * 100 : 50;
+              const winPct = total > 0 ? (c.wins / total) * 100 : 0;
+              const winRateRound = total > 0 ? Math.round(winPct) : null;
               return (
                 <tr key={c.entityId} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="py-2.5 pr-4 font-medium">{c.name}</td>
                   <td className="py-2.5 px-4 text-right tabular-nums text-emerald-600">{c.wins}</td>
                   <td className="py-2.5 px-4 text-right tabular-nums text-red-500">{c.losses}</td>
-                  <td className={`py-2.5 px-4 text-right tabular-nums font-medium ${total > 0 ? (Math.round((c.wins / total) * 100) > 50 ? "text-emerald-600" : Math.round((c.wins / total) * 100) === 50 ? "text-amber-600" : "text-red-500") : ""}`}>{total > 0 ? Math.round((c.wins / total) * 100) : 0}%</td>
+                  <td className={`py-2.5 px-4 text-right tabular-nums font-medium ${winRateRound != null ? (winRateRound > 50 ? "text-emerald-600" : winRateRound === 50 ? "text-amber-600" : "text-red-500") : "text-muted-foreground"}`}>{winRateRound != null ? `${winRateRound}%` : "\u2014"}</td>
                   <td className="py-2.5 pl-4">
-                    <div className="flex h-3 rounded overflow-hidden bg-muted/50">
-                      <div
-                        className="h-full bg-emerald-500 transition-all duration-300"
-                        style={{ width: `${winPct}%` }}
-                      />
-                      <div
-                        className="h-full bg-red-400 transition-all duration-300"
-                        style={{ width: `${100 - winPct}%` }}
-                      />
-                    </div>
+                    {total > 0 ? (
+                      <div className="flex h-3 rounded overflow-hidden bg-muted/50">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-300"
+                          style={{ width: `${winPct}%` }}
+                        />
+                        <div
+                          className="h-full bg-red-400 transition-all duration-300"
+                          style={{ width: `${100 - winPct}%` }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-3 rounded bg-muted/30" />
+                    )}
                   </td>
                 </tr>
               );

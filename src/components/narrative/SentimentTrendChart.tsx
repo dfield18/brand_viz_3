@@ -9,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import type { SentimentTrendPoint, NarrativeResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
@@ -28,6 +27,14 @@ interface NarrativeApiResponse {
 }
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
+
+const MODEL_LINE_COLORS: Record<string, string> = {
+  chatgpt: "hsl(160, 60%, 45%)",
+  gemini: "hsl(199, 89%, 48%)",
+  claude: "hsl(24, 95%, 53%)",
+  perplexity: "hsl(263, 70%, 58%)",
+  google: "hsl(4, 80%, 56%)",
+};
 
 export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pageModel }: SentimentTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
@@ -152,12 +159,12 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
                   key={`${m}_pos`}
                   type="monotone"
                   dataKey={`${m}_positive`}
-                  stroke="hsl(160, 60%, 45%)"
+                  stroke={MODEL_LINE_COLORS[m] ?? "hsl(160, 60%, 45%)"}
                   strokeWidth={1}
-                  strokeOpacity={0.3}
+                  strokeOpacity={0.35}
                   dot={false}
                   activeDot={{ r: 3 }}
-                  name={`${MODEL_LABELS[m] ?? m} Sentiment`}
+                  name={`${MODEL_LABELS[m] ?? m}`}
                   connectNulls
                   legendType="none"
                 />
@@ -194,6 +201,35 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
           )}
         </LineChart>
       </ResponsiveContainer>
+
+      {/* Legend */}
+      {focusModel === "all" ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 justify-center">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block w-3 h-[3px] rounded-full shrink-0" style={{ backgroundColor: "hsl(160, 60%, 45%)" }} />
+            <span className="font-medium text-foreground">All Models</span>
+          </div>
+          {availableModels.map((m) => (
+            <div key={m} className="flex items-center gap-1.5 text-xs">
+              <span className="inline-block w-3 h-[3px] rounded-full shrink-0 opacity-50" style={{ backgroundColor: MODEL_LINE_COLORS[m] ?? "hsl(160, 60%, 45%)" }} />
+              <span className="text-muted-foreground">{MODEL_LABELS[m] ?? m}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 justify-center">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block w-3 h-[3px] rounded-full shrink-0" style={{ backgroundColor: "hsl(160, 60%, 45%)" }} />
+            <span className="font-medium text-foreground">{MODEL_LABELS[focusModel] ?? focusModel}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <svg width={12} height={3} className="shrink-0 opacity-50">
+              <line x1="0" y1="1.5" x2="12" y2="1.5" stroke="hsl(160, 60%, 45%)" strokeWidth="1.5" strokeDasharray="3 2" />
+            </svg>
+            <span className="text-muted-foreground">All Models</span>
+          </div>
+        </div>
+      )}
       </div>
       )}
     </section>

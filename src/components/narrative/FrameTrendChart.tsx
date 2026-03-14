@@ -9,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import { MODEL_LABELS } from "@/lib/constants";
 
@@ -30,8 +29,11 @@ const FRAME_COLORS = [
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
+const MAX_VISIBLE_FRAMES = 4;
+
 export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
   const [selectedModel, setSelectedModel] = useState("all");
+  const [highlightFrame, setHighlightFrame] = useState<string | null>(null);
 
   // Available models in the data
   const availableModels = useMemo(() => {
@@ -60,11 +62,10 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
     });
   }, [filteredData]);
 
-  // Default to the top frame
-  const [selectedFrame, setSelectedFrame] = useState(() => "");
+  const visibleFrames = frameNames.slice(0, MAX_VISIBLE_FRAMES);
 
-  // Set initial selection once frameNames are computed
-  const effectiveSelection = selectedFrame && frameNames.includes(selectedFrame) ? selectedFrame : frameNames[0] || "";
+  // Reset highlight if the selected frame is no longer visible
+  const effectiveHighlight = highlightFrame && visibleFrames.includes(highlightFrame) ? highlightFrame : null;
 
   const colorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -88,27 +89,16 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
             % of responses with this narrative
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={effectiveSelection}
-            onChange={(e) => setSelectedFrame(e.target.value)}
-            className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
-          >
-            {frameNames.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
-          >
-            <option value="all">All Models</option>
-            {availableModels.map((m) => (
-              <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0"
+        >
+          <option value="all">All Models</option>
+          {availableModels.map((m) => (
+            <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+          ))}
+        </select>
       </div>
 
       {filteredData.length < 2 ? (
@@ -158,20 +148,37 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
                   fontSize: "12px",
                 }}
               />
-              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: "11px" }} />
 
-              <Line
-                type="monotone"
-                dataKey={effectiveSelection}
-                stroke={colorMap[effectiveSelection]}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 4 }}
-                name={effectiveSelection}
-                connectNulls
-              />
+              {visibleFrames.map((name) => (
+                <Line
+                  key={name}
+                  type="monotone"
+                  dataKey={name}
+                  stroke={colorMap[name]}
+                  strokeWidth={effectiveHighlight === name ? 3 : effectiveHighlight ? 1 : 2}
+                  strokeOpacity={effectiveHighlight && effectiveHighlight !== name ? 0.25 : 1}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name={name}
+                  connectNulls
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
+
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 justify-center">
+            {visibleFrames.map((name) => (
+              <button
+                key={name}
+                className={`flex items-center gap-1.5 text-xs transition-opacity ${effectiveHighlight && effectiveHighlight !== name ? "opacity-40" : ""}`}
+                onClick={() => setHighlightFrame(effectiveHighlight === name ? null : name)}
+              >
+                <span className="inline-block w-3 h-[3px] rounded-full shrink-0" style={{ backgroundColor: colorMap[name] }} />
+                <span className={effectiveHighlight === name ? "font-medium text-foreground" : "text-muted-foreground"}>{name}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </section>
