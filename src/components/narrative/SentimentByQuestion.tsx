@@ -67,23 +67,25 @@ const SENTIMENT_BADGE_STYLES: Record<string, string> = {
 function firstWords(s: string, n: number) {
   const trimmed = s.trim();
   const words = trimmed.split(/\s+/);
-  return words.length <= n ? trimmed : words.slice(0, n).join(" ") + "…";
+  const result = words.length <= n ? trimmed : words.slice(0, n).join(" ") + "…";
+  // Cap at 30 chars to reduce label overlap
+  return result.length > 30 ? result.slice(0, 28) + "…" : result;
 }
 
 /** Candidate positions for a label relative to its dot (px offsets). */
 const CANDIDATES = [
-  { dx: 12, dy: -2, anchor: "start" },    // right
-  { dx: 0, dy: -16, anchor: "middle" },   // top
-  { dx: 0, dy: 22, anchor: "middle" },    // bottom
-  { dx: -12, dy: -2, anchor: "end" },     // left
-  { dx: 12, dy: -16, anchor: "start" },   // top-right
-  { dx: -12, dy: -16, anchor: "end" },    // top-left
-  { dx: 12, dy: 22, anchor: "start" },    // bottom-right
-  { dx: -12, dy: 22, anchor: "end" },     // bottom-left
+  { dx: 14, dy: -2, anchor: "start" },    // right
+  { dx: 0, dy: -18, anchor: "middle" },   // top
+  { dx: 0, dy: 24, anchor: "middle" },    // bottom
+  { dx: -14, dy: -2, anchor: "end" },     // left
+  { dx: 14, dy: -18, anchor: "start" },   // top-right
+  { dx: -14, dy: -18, anchor: "end" },    // top-left
+  { dx: 14, dy: 24, anchor: "start" },    // bottom-right
+  { dx: -14, dy: 24, anchor: "end" },     // bottom-left
 ] as const;
 
-const LABEL_W = 100;
-const LABEL_H = 16;
+const LABEL_W = 120;
+const LABEL_H = 18;
 
 type TextAnchor = "start" | "middle" | "end";
 
@@ -234,7 +236,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       ...d,
       x: SENTIMENT_X[d.sentiment] ?? 2,
       y: d.consistency,
-      label: firstWords(d.prompt, 5),
+      label: firstWords(d.prompt, 4),
       siblingIndex: 0,
       siblingCount: 1,
     }));
@@ -416,8 +418,8 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
       {/* Chart with HTML click overlay */}
       <div className="mt-2 relative" ref={chartContainerRef}>
-        <ResponsiveContainer width="100%" height={360}>
-          <ScatterChart margin={{ top: 40, right: 140, bottom: 40, left: 20 }}>
+        <ResponsiveContainer width="100%" height={380}>
+          <ScatterChart margin={{ top: 30, right: 30, bottom: 40, left: 30 }}>
             <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis
               type="number"
@@ -425,21 +427,23 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
               domain={xDomain}
               ticks={xTicks}
               tickFormatter={(v) => SENTIMENT_ORDER[v] ?? ""}
-              fontSize={12}
+              fontSize={11}
               tickLine={false}
+              axisLine={false}
             >
-              <Label value="Sentiment" position="bottom" offset={16} fontSize={14} fontWeight={500} fill="var(--muted-foreground)" />
+              <Label value="← More Negative    Sentiment    More Positive →" position="bottom" offset={16} fontSize={11} fill="var(--muted-foreground)" />
             </XAxis>
             <YAxis
               type="number"
               dataKey="y"
               domain={yDomain}
-              fontSize={12}
+              fontSize={11}
               tickLine={false}
+              axisLine={false}
               ticks={yTicks}
               tickFormatter={(v) => `${v}%`}
             >
-              <Label value="Platform Agreement" angle={-90} position="center" dx={-24} fontSize={14} fontWeight={500} fill="var(--muted-foreground)" />
+              <Label value="Platform Agreement (consistency across AI models)" angle={-90} position="center" dx={-28} fontSize={11} fill="var(--muted-foreground)" />
             </YAxis>
             {/* Tooltip disabled — we use our own HTML tooltip via hover overlay */}
             <Tooltip content={() => null} cursor={false} />
