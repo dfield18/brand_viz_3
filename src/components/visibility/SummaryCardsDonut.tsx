@@ -31,6 +31,7 @@ interface DonutCardConfig {
   deltaFormat: (v: number) => string;
   metricKey?: MetricTab;
   sparkKey?: "visibility" | "sov" | "topResult";
+  scrollTarget?: string;
 }
 
 function MiniSparkline({ points }: { points: number[] }) {
@@ -212,6 +213,7 @@ export function SummaryCardsDonut({
       delta: kpiDeltas?.avgRank ?? null,
       invertDelta: true,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} pos vs prior month`,
+      scrollTarget: "ranking-breakdown",
     },
   ];
 
@@ -219,13 +221,19 @@ export function SummaryCardsDonut({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {cards.map((card) => {
         const isActive = card.metricKey && activeMetric === card.metricKey;
-        const isClickable = !!card.metricKey && !!onCardClick;
+        const isClickable = (!!card.metricKey && !!onCardClick) || !!card.scrollTarget;
         const sparkData = card.sparkKey && sparklines?.[card.sparkKey];
         return (
         <div
           key={card.label}
           className={`rounded-xl border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${isActive ? "border-primary/50 ring-1 ring-primary/20" : "border-border"} ${isClickable ? "cursor-pointer hover:border-primary/40" : ""}`}
-          onClick={() => isClickable && onCardClick!(card.metricKey!)}
+          onClick={() => {
+            if (card.metricKey && onCardClick) {
+              onCardClick(card.metricKey);
+            } else if (card.scrollTarget) {
+              document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">

@@ -204,9 +204,9 @@ function VisibilityV2Inner() {
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
     { id: "metric-deep-dive", label: "Trend Over Time" },
-    { id: "ranking-breakdown", label: "Position Over Time", heading: "Ranking Breakdown" },
+    { id: "ranking-breakdown", label: "Position Over Time" },
     { id: "ranking-distribution", label: "Position Distribution" },
-    { id: "brand-position", label: `Where AI Ranks ${brandName}`, heading: "Performance by Prompt" },
+    { id: "brand-position", label: `Where AI Ranks ${brandName}` },
     { id: "results-by-prompt", label: "Performance by Question" },
   ];
 
@@ -230,10 +230,7 @@ function VisibilityV2Inner() {
           )}
         </div>
 
-        {/* Section: Scorecard */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Scorecard</h2>
-
-        {/* Donut KPI Cards */}
+        {/* Scorecard KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SummaryCardsDonut
             overallMentionRate={data.overallMentionRate}
@@ -323,12 +320,7 @@ function VisibilityV2Inner() {
           </div>
         </div>
 
-
-
-        {/* Section: Ranking Breakdown */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Ranking Breakdown</h2>
-
-        {/* How Your Rankings Are Changing + Ranking Breakdown */}
+        {/* Ranking: Position Distribution Over Time + Breakdown */}
         {data.positionDistributionOverTime && data.positionDistributionOverTime.length > 0 && (
           <PositionDistributionOverTime
             id="ranking-breakdown"
@@ -342,10 +334,8 @@ function VisibilityV2Inner() {
           </PositionDistributionOverTime>
         )}
 
-        {/* Section: Performance by Prompt */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Performance by Prompt</h2>
-
-        <section id="brand-position" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
+        {/* Performance: Where AI Ranks You + Performance by Question */}
+        <div id="brand-position" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-6">
             <p className="text-xs text-muted-foreground">How your brand performs across individual AI queries — broken down by platform and question</p>
             <select
@@ -362,12 +352,12 @@ function VisibilityV2Inner() {
             </select>
           </div>
 
-          <BrandPositionByPlatform promptPositions={data.promptPositions} modelBreakdown={data.modelBreakdown} brandSlug={params.slug} brandName={params.slug.replace(/-/g, " ")} inline externalModel={promptModel} />
+          <BrandPositionByPlatform promptPositions={data.promptPositions} modelBreakdown={data.modelBreakdown} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} />
 
           <div id="results-by-prompt" className="scroll-mt-24 border-t border-border/40 mt-10 pt-8">
-            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={params.slug.replace(/-/g, " ")} inline externalModel={promptModel} />
+            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} />
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
