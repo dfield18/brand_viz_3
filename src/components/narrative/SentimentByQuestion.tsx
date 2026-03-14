@@ -74,18 +74,22 @@ function firstWords(s: string, n: number) {
 
 /** Candidate positions for a label relative to its dot (px offsets). */
 const CANDIDATES = [
-  { dx: 14, dy: -2, anchor: "start" },    // right
-  { dx: 0, dy: -18, anchor: "middle" },   // top
-  { dx: 0, dy: 24, anchor: "middle" },    // bottom
-  { dx: -14, dy: -2, anchor: "end" },     // left
-  { dx: 14, dy: -18, anchor: "start" },   // top-right
-  { dx: -14, dy: -18, anchor: "end" },    // top-left
-  { dx: 14, dy: 24, anchor: "start" },    // bottom-right
-  { dx: -14, dy: 24, anchor: "end" },     // bottom-left
+  { dx: 16, dy: -2, anchor: "start" },    // right
+  { dx: 0, dy: -20, anchor: "middle" },   // top
+  { dx: 0, dy: 28, anchor: "middle" },    // bottom
+  { dx: -16, dy: -2, anchor: "end" },     // left
+  { dx: 16, dy: -20, anchor: "start" },   // top-right
+  { dx: -16, dy: -20, anchor: "end" },    // top-left
+  { dx: 16, dy: 28, anchor: "start" },    // bottom-right
+  { dx: -16, dy: 28, anchor: "end" },     // bottom-left
+  { dx: 0, dy: -36, anchor: "middle" },   // far top
+  { dx: 0, dy: 42, anchor: "middle" },    // far bottom
+  { dx: 16, dy: -36, anchor: "start" },   // far top-right
+  { dx: -16, dy: -36, anchor: "end" },    // far top-left
 ] as const;
 
-const LABEL_W = 120;
-const LABEL_H = 18;
+const LABEL_W = 130;
+const LABEL_H = 20;
 
 type TextAnchor = "start" | "middle" | "end";
 
@@ -418,8 +422,8 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
       {/* Chart with HTML click overlay */}
       <div className="mt-2 relative" ref={chartContainerRef}>
-        <ResponsiveContainer width="100%" height={380}>
-          <ScatterChart margin={{ top: 30, right: 30, bottom: 40, left: 30 }}>
+        <ResponsiveContainer width="100%" height={440}>
+          <ScatterChart margin={{ top: 36, right: 30, bottom: 40, left: 36 }}>
             <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis
               type="number"
@@ -431,7 +435,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
               tickLine={false}
               axisLine={false}
             >
-              <Label value="← More Negative    Sentiment    More Positive →" position="bottom" offset={16} fontSize={11} fill="var(--muted-foreground)" />
+              <Label value="← More Negative          Sentiment          More Positive →" position="bottom" offset={16} fontSize={11} fill="var(--muted-foreground)" />
             </XAxis>
             <YAxis
               type="number"
@@ -443,7 +447,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
               ticks={yTicks}
               tickFormatter={(v) => `${v}%`}
             >
-              <Label value="Platform Agreement (consistency across AI models)" angle={-90} position="center" dx={-28} fontSize={11} fill="var(--muted-foreground)" />
+              <Label value="Platform Agreement (%)" angle={-90} position="center" dx={-28} fontSize={11} fill="var(--muted-foreground)" />
             </YAxis>
             {/* Tooltip disabled — we use our own HTML tooltip via hover overlay */}
             <Tooltip content={() => null} cursor={false} />
@@ -455,15 +459,19 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
                 const fill = SENTIMENT_COLOR[payload.sentiment] ?? "hsl(218, 11%, 72%)";
                 const isSelected = selectedPrompt === payload.prompt;
                 const hasOverlap = payload.siblingCount > 1;
-                const r = isSelected ? 9 : 7;
+                const r = isSelected ? 8 : hasOverlap && payload.siblingCount > 3 ? 5.5 : 6.5;
 
-                // Apply jitter for overlapping dots — spread horizontally
+                // Apply jitter for overlapping dots — spread horizontally + slight vertical offset
                 let cx = rawCx;
-                const cy = rawCy;
+                let cy = rawCy;
                 if (hasOverlap) {
-                  const spread = 14; // px between dots
+                  const spread = 20; // px between dots
                   const totalWidth = (payload.siblingCount - 1) * spread;
                   cx = rawCx - totalWidth / 2 + payload.siblingIndex * spread;
+                  // Alternate slight vertical offset for dense clusters
+                  if (payload.siblingCount > 4) {
+                    cy = rawCy + (payload.siblingIndex % 2 === 0 ? -6 : 6);
+                  }
                 }
 
                 // Collect pixel positions; resolve labels + dot positions once all rendered
