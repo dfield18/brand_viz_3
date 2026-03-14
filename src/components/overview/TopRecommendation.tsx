@@ -21,6 +21,20 @@ interface Props {
   range: number;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")  // [text](url) → text
+    .replace(/\*\*/g, "")                       // bold **
+    .replace(/\*/g, "")                         // italic *
+    .replace(/^#+\s+/gm, "")                    // heading markers
+    .replace(/^[-•]\s+/gm, "")                  // bullet markers
+    .replace(/`/g, "")                           // inline code
+    .replace(/~~/g, "")                          // strikethrough
+    .replace(/\(\s*\)/g, "")                     // empty parens ()
+    .replace(/\s{2,}/g, " ")                     // collapse multiple spaces
+    .trim();
+}
+
 export function TopRecommendation({ brandSlug, brandName, model, range }: Props) {
   const url = `/api/recommendations?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data, loading } = useCachedFetch<RecsApiResponse>(url);
@@ -111,7 +125,7 @@ export function TopRecommendation({ brandSlug, brandName, model, range }: Props)
           </span>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          {recommendation}
+          {stripMarkdown(recommendation)}
         </p>
       </div>
     </div>

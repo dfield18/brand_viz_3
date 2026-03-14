@@ -227,11 +227,23 @@ export async function GET(req: NextRequest) {
         .slice(0, 5);
 
   // Drift: group ALL runs (not just latest per prompt) by week → theme counts per week
+  // Fetch runs with narrativeJson for drift/sentiment (strict)
   const driftRunWhere = isAll
     ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, narrativeJson: { not: Prisma.DbNull } }
     : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, narrativeJson: { not: Prisma.DbNull } };
   const driftRuns = await prisma.run.findMany({
     where: driftRunWhere,
+    select: { narrativeJson: true, analysisJson: true, createdAt: true, model: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // Also fetch ALL runs with analysisJson for frame trend + sentiment fallback
+  // (older runs may have analysisJson but no narrativeJson)
+  const allTrendRunWhere = isAll
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull } }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull } };
+  const allTrendRuns = await prisma.run.findMany({
+    where: allTrendRunWhere,
     select: { narrativeJson: true, analysisJson: true, createdAt: true, model: true },
     orderBy: { createdAt: "asc" },
   });
@@ -257,20 +269,29 @@ export async function GET(req: NextRequest) {
   const drift = computeDrift(driftBuckets);
 
   // Sentiment trend: group by (week, model) → average sentiment score scaled to 0-100
+  // Uses allTrendRuns so older runs without narrativeJson still contribute via analysisJson fallback
   const sentimentBuckets: Record<string, Record<string, { sum: number; count: number }>> = {};
-  for (const dr of driftRuns) {
-    const parsed = parseNarrative(dr.narrativeJson);
-    if (!parsed) continue;
+  for (const dr of allTrendRuns) {
+    const narr = parseNarrative(dr.narrativeJson);
+    const analysis = parseAnalysis(dr.analysisJson);
+    // Derive a -1 to 1 sentiment score from whichever source is available
+    let score: number | null = null;
+    if (narr) {
+      score = narr.sentiment.label === "POS" ? narr.sentiment.score
+        : narr.sentiment.label === "NEG" ? -narr.sentiment.score
+        : 0;
+    } else if (analysis) {
+      // Fallback: use legitimacy (0-100) → scale to -1..1 (50 = neutral)
+      score = (analysis.sentiment.legitimacy - 50) / 50;
+    }
+    if (score === null) continue;
+
     const d = new Date(dr.createdAt);
     const day = d.getDay();
     const monday = new Date(d);
     monday.setDate(d.getDate() - ((day + 6) % 7));
     const weekKey = monday.toISOString().slice(0, 10);
     if (!sentimentBuckets[weekKey]) sentimentBuckets[weekKey] = {};
-    // Score: POS → +score, NEG → -score, NEU → 0
-    const score = parsed.sentiment.label === "POS" ? parsed.sentiment.score
-      : parsed.sentiment.label === "NEG" ? -parsed.sentiment.score
-      : 0;
     // Per-model bucket
     if (!sentimentBuckets[weekKey][dr.model]) sentimentBuckets[weekKey][dr.model] = { sum: 0, count: 0 };
     sentimentBuckets[weekKey][dr.model].sum += score;
@@ -294,8 +315,9 @@ export async function GET(req: NextRequest) {
     );
 
   // Frame trend: group by (week, model) with "all" aggregate
+  // Uses allTrendRuns so older runs without narrativeJson still contribute
   const frameWeekModelBuckets: Record<string, Record<string, Record<string, number[]>>> = {};
-  for (const dr of driftRuns) {
+  for (const dr of allTrendRuns) {
     const a = parseAnalysis(dr.analysisJson);
     if (!a || a.frames.length === 0) continue;
     const d = new Date(dr.createdAt);
@@ -316,7 +338,7 @@ export async function GET(req: NextRequest) {
 
   // Track run counts per week/model for frequency calculation
   const weekModelRunCounts: Record<string, Record<string, number>> = {};
-  for (const dr of driftRuns) {
+  for (const dr of allTrendRuns) {
     const a = parseAnalysis(dr.analysisJson);
     if (!a) continue;
     const d = new Date(dr.createdAt);
