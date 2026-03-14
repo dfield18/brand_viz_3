@@ -141,7 +141,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
           )}
         </div>
       </div>
-      <div className="mt-2.5 space-y-0.5 w-full">
+      <div className="mt-2.5 space-y-0.5 mx-auto" style={{ maxWidth: 160 }}>
         {breakdown.slices.slice(0, 5).map((b) => (
           <div
             key={b.category}
