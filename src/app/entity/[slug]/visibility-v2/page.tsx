@@ -219,17 +219,6 @@ function VisibilityV2Inner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">
-            Organic AI visibility — how often AI platforms mention {brandName} without being asked by name.
-          </p>
-          {data.resultsByQuestion?.[0]?.promptText && (
-            <p className="text-sm text-muted-foreground/70 italic">
-              Example prompt: &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
-            </p>
-          )}
-        </div>
-
         {/* Scorecard KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SummaryCardsDonut
@@ -245,7 +234,18 @@ function VisibilityV2Inner() {
           />
         </div>
 
-        {/* Trend Over Time — directly below scorecard */}
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Organic AI visibility — how often AI platforms mention {brandName} without being asked by name.
+          </p>
+          {data.resultsByQuestion?.[0]?.promptText && (
+            <p className="text-sm text-muted-foreground/70 italic">
+              Example prompt: &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
+            </p>
+          )}
+        </div>
+
+        {/* Trend Over Time */}
         <div id="metric-deep-dive" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-base font-semibold">Trend Over Time</h3>
