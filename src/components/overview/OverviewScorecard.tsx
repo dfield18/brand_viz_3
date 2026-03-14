@@ -76,7 +76,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {/* AI Visibility */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors"
+        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("key-insights")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">AI Visibility</p>
@@ -91,12 +91,12 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             /100
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Overall AI presence across platforms</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-auto pt-2.5 leading-snug">Overall AI presence across platforms</p>
       </div>
 
       {/* Sentiment */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors"
+        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("narrative-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Sentiment</p>
@@ -114,12 +114,12 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             /100
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">How positively AI talks about you</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-auto pt-2.5 leading-snug">How positively AI talks about you</p>
       </div>
 
       {/* Dominant Narrative */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors"
+        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("narrative-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Top Narrative</p>
@@ -134,12 +134,12 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             <span className="text-[11px] font-medium tabular-nums text-violet-600">{dominantFrame.percentage}%</span>
           </div>
         )}
-        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Primary story AI tells about you</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-auto pt-2.5 leading-snug">Primary story AI tells about you</p>
       </div>
 
       {/* Top Source */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors"
+        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("sources-trend")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Top Source</p>
@@ -154,7 +154,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
             <span className="text-[11px] font-medium tabular-nums text-muted-foreground">{sourcePct}%</span>
           </div>
         )}
-        <p className="text-[10px] text-muted-foreground/70 mt-2.5 leading-snug">Most-cited source category</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-auto pt-2.5 leading-snug">Most-cited source category</p>
       </div>
     </div>
   );
