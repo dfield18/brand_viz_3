@@ -159,10 +159,6 @@ function NarrativeInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
-        <p className="text-base text-muted-foreground leading-relaxed">
-          This tab shows how AI platforms talk about {brandName}. Start with <span className="font-medium text-muted-foreground">Narratives</span> to see which stories and themes AI uses most often when describing {brandName}, then check <span className="font-medium text-muted-foreground">Sentiment</span> to understand whether those stories are casting {brandName} positively or negatively — and how much platforms agree.
-        </p>
-
         {/* Metric Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <NarrativeMetricCards
@@ -176,6 +172,10 @@ function NarrativeInner() {
             narrativeDeltas={apiData.narrativeDeltas}
           />
         </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          This tab shows how AI platforms talk about {brandName}. Start with <span className="font-medium text-muted-foreground">Narratives</span> to see which stories and themes AI uses most often when describing {brandName}, then check <span className="font-medium text-muted-foreground">Sentiment</span> to understand whether those stories are casting {brandName} positively or negatively — and how much platforms agree.
+        </p>
 
         {/* Narrative Summary + Recommendation */}
         <div id="narrative-insight" className="scroll-mt-24 space-y-4">
