@@ -42,12 +42,15 @@ export default function EmergingSourcesList({ emerging: initialEmerging, brandSl
     ? []
     : initialEmerging;
 
-  // Sort by growth rate desc, tiebreak by absolute citation increase desc
+  // Sort by growth rate desc, tiebreak by citation count desc.
+  // If all sources are new (previousCitations === 0), sort by citation count instead.
   const sorted = useMemo(() => {
+    const allNew = emerging.every((e) => e.previousCitations === 0);
     return [...emerging].sort((a, b) => {
+      if (allNew) return b.currentCitations - a.currentCitations;
       const cmp = b.growthRate - a.growthRate;
       if (cmp !== 0) return cmp;
-      return (b.currentCitations - b.previousCitations) - (a.currentCitations - a.previousCitations);
+      return b.currentCitations - a.currentCitations;
     });
   }, [emerging]);
 
@@ -111,7 +114,7 @@ export default function EmergingSourcesList({ emerging: initialEmerging, brandSl
                 <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span className="text-sm font-medium flex-1 truncate">{e.domain}</span>
                 <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold shrink-0">
-                  +{e.growthRate}%
+                  {e.previousCitations === 0 ? "New" : `+${e.growthRate}%`}
                 </span>
                 <span className="text-[11px] text-muted-foreground shrink-0">
                   {e.previousCitations} &rarr; {e.currentCitations} citations

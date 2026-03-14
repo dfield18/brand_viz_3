@@ -117,11 +117,13 @@ export default function CompetitorSourceComparison({
   }, [crossCitation, brandSlug]);
 
   const sortedBrand = useMemo(() => {
-    return [...crossCitation].sort((a, b) => {
-      const totalA = Object.values(a.entityCounts).reduce((s, v) => s + v, 0);
-      const totalB = Object.values(b.entityCounts).reduce((s, v) => s + v, 0);
-      return totalB - totalA;
-    });
+    return [...crossCitation]
+      .filter((row) => Object.values(row.entityCounts).some((v) => v > 0))
+      .sort((a, b) => {
+        const totalA = Object.values(a.entityCounts).reduce((s, v) => s + v, 0);
+        const totalB = Object.values(b.entityCounts).reduce((s, v) => s + v, 0);
+        return totalB - totalA;
+      });
   }, [crossCitation]);
 
   const otherByDomain = useMemo(() => {

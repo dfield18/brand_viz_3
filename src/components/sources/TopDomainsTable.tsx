@@ -252,7 +252,7 @@ function DomainRow({
         </td>
         <td className="py-2 pr-4">
           <span className="font-medium truncate max-w-[200px] block" title={d.domain}>
-            {d.domain}
+            {d.domain.replace(/^www\./, "")}
           </span>
         </td>
         <td className="py-2 pr-2">
@@ -262,10 +262,12 @@ function DomainRow({
         </td>
         <td className="text-right py-2 px-2 tabular-nums">{d.citations}</td>
         <td className="text-right py-2 px-2 tabular-nums">{d.responses}</td>
-        <td className="text-right py-2 px-2 tabular-nums">
+        <td className={`text-right py-2 px-2 tabular-nums ${d.avgRankWhenCited !== null ? (d.avgRankWhenCited <= 2 ? "text-emerald-600 font-medium" : d.avgRankWhenCited <= 4 ? "text-amber-600" : "text-red-500") : ""}`}>
           {d.avgRankWhenCited !== null ? r1(d.avgRankWhenCited) : "—"}
         </td>
-        <td className="text-right py-2 px-2 tabular-nums">{d.rank1RateWhenCited ?? 0}%</td>
+        <td className={`text-right py-2 px-2 tabular-nums ${(d.rank1RateWhenCited ?? 0) >= 50 ? "text-emerald-600 font-medium" : (d.rank1RateWhenCited ?? 0) >= 20 ? "text-amber-600" : (d.rank1RateWhenCited ?? 0) > 0 ? "text-red-500" : ""}`}>
+          {d.rank1RateWhenCited ?? 0}%
+        </td>
         <td className="text-right py-2 px-2 text-muted-foreground">{shortDate(d.firstSeen)}</td>
         <td className="text-right py-2 px-2 text-muted-foreground">{shortDate(d.lastSeen)}</td>
       </tr>

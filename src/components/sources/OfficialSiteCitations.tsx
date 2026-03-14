@@ -108,7 +108,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
       )}
 
       {!loading && (
-        <div className="space-y-0 divide-y divide-border/50">
+        <div className={`space-y-0 divide-y divide-border/50 ${officialSites.length > 6 ? "max-h-[400px] overflow-y-auto" : ""}`}>
           {officialSites.map((site, i) => {
             const isOpen = expanded.has(site.entityId);
             const uniquePages = site.pages.length;
@@ -118,7 +118,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
                 <button
                   type="button"
                   onClick={() => toggle(site.entityId)}
-                  className="flex items-center gap-3 w-full py-3 text-left hover:bg-muted/30 transition-colors rounded-sm px-1 -mx-1"
+                  className="flex items-center gap-3 w-full py-2 text-left hover:bg-muted/30 transition-colors rounded-sm px-1 -mx-1"
                 >
                   <span className="w-6 text-xs text-muted-foreground text-right tabular-nums shrink-0">
                     {i + 1}.
@@ -150,7 +150,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
                 </button>
 
                 {isOpen && (
-                  <div className="pl-14 pb-3 space-y-1.5">
+                  <div className="pl-14 pb-2 space-y-1">
                     <p className="text-[11px] text-muted-foreground">
                       {uniquePages} unique page{uniquePages !== 1 ? "s" : ""} cited:
                     </p>

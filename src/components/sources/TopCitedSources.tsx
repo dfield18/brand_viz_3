@@ -183,10 +183,10 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
                   <button
                     type="button"
                     onClick={() => onDomainClick?.(d.domain)}
-                    className="w-36 text-xs font-medium truncate hover:text-foreground hover:underline underline-offset-2 transition-colors text-left shrink-0"
+                    className="w-44 text-xs font-medium truncate hover:text-foreground hover:underline underline-offset-2 transition-colors text-left shrink-0"
                     title={d.domain}
                   >
-                    {d.domain}
+                    {d.domain.replace(/^www\./, "")}
                   </button>
                   <div className="flex items-center gap-1 shrink-0">
                     {shownModels.map((m) => (
