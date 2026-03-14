@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
-import { NarrativeResponse, TopicsResponse } from "@/types/api";
+import { NarrativeResponse, TopicsResponse, NarrativeDeltas } from "@/types/api";
 import { NarrativeMetricCards } from "@/components/narrative/NarrativeMetricCards";
 
 import { StrengthsWeaknesses } from "@/components/narrative/StrengthsWeaknesses";
@@ -29,6 +29,7 @@ interface ApiResponse {
   hint?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
   narrative?: NarrativeResponse;
+  narrativeDeltas?: NarrativeDeltas | null;
   totals?: { totalRuns: number; analyzedRuns: number };
 }
 
@@ -113,11 +114,11 @@ function NarrativeInner() {
 
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
+    { id: "sentiment-trend", label: "Sentiment Trend" },
     { id: "narrative-frames", label: "Narrative Frames", heading: "Narratives" },
     { id: "top-narratives", label: "Top Narratives" },
     { id: "frame-trend", label: "Frame Trend" },
     { id: "strengths-weaknesses", label: "Strengths & Weaknesses", heading: "Sentiment" },
-    { id: "sentiment-trend", label: "Sentiment Over Time" },
     { id: "sentiment-by-model", label: "Sentiment by Platform" },
     { id: "sentiment-by-prompt", label: "Sentiment by Question" },
     { id: "emerging-topics", label: "Emerging Topics", heading: "More" },
@@ -146,8 +147,22 @@ function NarrativeInner() {
             polarization={data.polarization}
             frames={data.frames}
             hedgingRate={data.hedgingRate}
+            sentimentTrend={data.sentimentTrend}
+            narrativeDeltas={apiData.narrativeDeltas}
           />
         </div>
+
+        {/* Sentiment Trend — right after scorecard for trend visibility */}
+        {data.sentimentTrend && data.sentimentTrend.length > 0 && (
+          <div id="sentiment-trend" className="scroll-mt-24">
+            <SentimentTrendChart
+              trend={data.sentimentTrend}
+              brandSlug={params.slug}
+              range={range}
+              pageModel={model}
+            />
+          </div>
+        )}
 
         {/* Section: Narratives */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Narratives</h2>
@@ -193,18 +208,6 @@ function NarrativeInner() {
                 brandName={brandName}
               />
             </section>
-          </div>
-        )}
-
-        {/* Sentiment Trend */}
-        {data.sentimentTrend && data.sentimentTrend.length > 0 && (
-          <div id="sentiment-trend" className="scroll-mt-24">
-            <SentimentTrendChart
-              trend={data.sentimentTrend}
-              brandSlug={params.slug}
-              range={range}
-              pageModel={model}
-            />
           </div>
         )}
 

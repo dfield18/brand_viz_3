@@ -111,7 +111,7 @@ export function PositionDistributionOverTime({ id, data, children }: PositionDis
                 }}
                 itemSorter={(item) => -(item.value as number)}
               />
-              <Legend verticalAlign="top" height={36} />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: "12px" }} />
 
               {SERIES.map((s) => (
                 <Area

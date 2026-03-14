@@ -1,7 +1,8 @@
 "use client";
 
-import { Info } from "lucide-react";
-import type { NarrativeSentimentSplit, NarrativeFrame } from "@/types/api";
+import { useMemo } from "react";
+import { Info, TrendingUp, TrendingDown } from "lucide-react";
+import type { NarrativeSentimentSplit, NarrativeFrame, SentimentTrendPoint, NarrativeDeltas } from "@/types/api";
 
 interface NarrativeMetricCardsProps {
   sentimentSplit?: NarrativeSentimentSplit;
@@ -10,6 +11,32 @@ interface NarrativeMetricCardsProps {
   polarization?: "Low" | "Moderate" | "High";
   frames?: NarrativeFrame[];
   hedgingRate?: number;
+  sentimentTrend?: SentimentTrendPoint[];
+  narrativeDeltas?: NarrativeDeltas | null;
+}
+
+/* ── Mini sparkline (matches visibility tab) ──────────────────────── */
+
+function MiniSparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const w = 48;
+  const h = 18;
+  const pad = 2;
+  const coords = points.map((v, i) => {
+    const x = pad + (i / (points.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  });
+  const trending = points[points.length - 1] - points[0];
+  const color = trending > 0.5 ? "rgb(16 185 129)" : trending < -0.5 ? "rgb(239 68 68)" : "rgb(156 163 175)";
+  return (
+    <svg width={w} height={h} className="shrink-0">
+      <polyline points={coords.join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 /* ── Donut ring (same as visibility tab) ───────────────────────────── */
@@ -101,32 +128,11 @@ function getSentimentBadge(split: NarrativeSentimentSplit): { text: string; colo
   return { text: "Mixed sentiment", color: "text-amber-700 bg-amber-50 border-amber-200" };
 }
 
-function getTrustBadge(rate: number): { text: string; color: string } {
-  if (rate >= 60) return { text: "High trust", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (rate >= 30) return { text: "Moderate trust", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { text: "Low trust", color: "text-orange-700 bg-orange-50 border-orange-200" };
-}
-
-function getWeaknessBadge(rate: number): { text: string; color: string } {
-  if (rate <= 10) return { text: "Few weaknesses", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (rate <= 30) return { text: "Some weaknesses", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { text: "Many weaknesses", color: "text-red-700 bg-red-50 border-red-200" };
-}
-
 function getPolarizationBadge(level: string): { text: string; color: string } {
   if (level === "Low") return { text: "Consensus narrative", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
   if (level === "Moderate") return { text: "Some disagreement", color: "text-amber-700 bg-amber-50 border-amber-200" };
   return { text: "Highly divided", color: "text-red-700 bg-red-50 border-red-200" };
 }
-
-function getConsistencyBadge(pct: number): { text: string; color: string } {
-  if (pct >= 50) return { text: "Stable narrative", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (pct >= 30) return { text: "Moderate focus", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { text: "Fragmented", color: "text-red-700 bg-red-50 border-red-200" };
-}
-
-const CONSISTENCY_COLOR = (pct: number) =>
-  pct >= 50 ? "hsl(160, 60%, 45%)" : pct >= 30 ? "hsl(38, 92%, 50%)" : "hsl(0, 72%, 55%)";
 
 function getConfidenceBadge(confidence: number): { text: string; color: string } {
   if (confidence >= 85) return { text: "Direct & confident", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
@@ -153,7 +159,18 @@ export function NarrativeMetricCards({
   polarization,
   frames,
   hedgingRate,
+  sentimentTrend,
+  narrativeDeltas,
 }: NarrativeMetricCardsProps) {
+  // Sparkline: extract "all" model positive sentiment over time
+  const sentimentSparkline = useMemo(() => {
+    if (!sentimentTrend) return [];
+    return sentimentTrend
+      .filter((t) => t.model === "all")
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((t) => t.positive);
+  }, [sentimentTrend]);
+
   // Find all frames tied for the top percentage
   const topFrames = (() => {
     if (!frames || frames.length === 0) return [];
@@ -170,6 +187,10 @@ export function NarrativeMetricCards({
     donutColor: string;
     donutValue: string;
     custom?: React.ReactNode;
+    delta: number | null;
+    deltaFormat: (v: number) => string;
+    sparkData?: number[];
+    scrollTarget?: string;
   }
 
   const cards: CardConfig[] = [];
@@ -188,18 +209,21 @@ export function NarrativeMetricCards({
       : [{ text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
     donutPct: topFrames[0]?.percentage ?? 0,
     donutColor: "var(--chart-1)",
-    donutValue: topFrames.length > 0 ? `${topFrames[0].percentage}%` : "—",
+    donutValue: topFrames.length > 0 ? `${topFrames[0].percentage}%` : "\u2014",
+    delta: null,
+    deltaFormat: () => "",
+    scrollTarget: "narrative-frames",
   });
 
   // 2. Sentiment
   cards.push({
     label: "SENTIMENT",
-    tooltip: "Breakdown of how AI models frame the brand — positive, neutral, or negative.",
+    tooltip: "Breakdown of how AI models frame the brand \u2014 positive, neutral, or negative.",
     description: "Distribution of positive, neutral, and negative responses",
     badge: [sentimentSplit ? getSentimentBadge(sentimentSplit) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
     donutPct: sentimentSplit?.positive ?? 0,
     donutColor: "hsl(160, 60%, 45%)",
-    donutValue: sentimentSplit ? `${sentimentSplit.positive}%` : "—",
+    donutValue: sentimentSplit ? `${sentimentSplit.positive}%` : "\u2014",
     custom: sentimentSplit ? (
       <div className="flex items-center justify-center mb-4 h-[88px]">
         <div className="w-full px-2 flex flex-col items-center justify-center gap-2">
@@ -208,10 +232,13 @@ export function NarrativeMetricCards({
         </div>
       </div>
     ) : undefined,
+    delta: narrativeDeltas?.sentimentPositive ?? null,
+    deltaFormat: (v) => `${v > 0 ? "+" : ""}${Math.round(v)} pts`,
+    sparkData: sentimentSparkline,
+    scrollTarget: "sentiment-trend",
   });
 
-
-  // 4. Polarization
+  // 3. Platform Consistency
   cards.push({
     label: "PLATFORM CONSISTENCY",
     tooltip: "Whether AI platforms tell a consistent story about the brand. Low consistency means different platforms describe the brand very differently.",
@@ -219,11 +246,13 @@ export function NarrativeMetricCards({
     badge: [polarization ? getPolarizationBadge(polarization) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
     donutPct: polarization ? POLARIZATION_PCT[polarization] ?? 0 : 0,
     donutColor: polarization ? POLARIZATION_COLOR[polarization] ?? "hsl(218, 11%, 72%)" : "hsl(218, 11%, 72%)",
-    donutValue: polarization ?? "—",
+    donutValue: polarization ?? "\u2014",
+    delta: null,
+    deltaFormat: () => "",
+    scrollTarget: "sentiment-by-model",
   });
 
-
-  // 7. Model Confidence (inverted hedging rate)
+  // 4. Model Confidence (inverted hedging rate)
   if (hedgingRate != null) {
     const confidence = 100 - hedgingRate;
     cards.push({
@@ -234,6 +263,9 @@ export function NarrativeMetricCards({
       donutPct: confidence,
       donutColor: CONFIDENCE_COLOR_CARD(confidence),
       donutValue: `${confidence}%`,
+      delta: narrativeDeltas?.confidence ?? null,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${Math.round(v)} pts`,
+      scrollTarget: "strengths-weaknesses",
     });
   }
 
@@ -242,16 +274,17 @@ export function NarrativeMetricCards({
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col"
+          className={`rounded-xl border border-border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors${card.scrollTarget ? " cursor-pointer hover:border-primary/40" : ""}`}
+          onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
               {card.label}
             </span>
-            <div className="relative group shrink-0">
+            <div className="relative group/tip shrink-0">
               <Info className="h-3 w-3 text-muted-foreground/40 cursor-default" />
-              <div className="absolute right-0 top-full mt-1.5 z-50 hidden group-hover:block w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
+              <div className="absolute right-0 top-full mt-1.5 z-50 hidden group-hover/tip:block w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
                 {card.tooltip}
               </div>
             </div>
@@ -271,8 +304,8 @@ export function NarrativeMetricCards({
             </div>
           )}
 
-          {/* Badge(s) — show max 2, then "+N more" overflow */}
-          <div className="flex flex-wrap justify-center gap-1.5 mb-3">
+          {/* Badge(s) + Sparkline */}
+          <div className="flex flex-wrap justify-center items-center gap-1.5 mb-3">
             {card.badge.slice(0, 2).map((b, i) => (
               <span key={i} className={`text-[11px] font-medium rounded-full border text-center px-2.5 py-0.5 ${b.color}`}>
                 {b.text}
@@ -299,12 +332,30 @@ export function NarrativeMetricCards({
                 </div>
               </div>
             )}
+            {card.sparkData && card.sparkData.length >= 2 && (
+              <MiniSparkline points={card.sparkData} />
+            )}
           </div>
 
           {/* Description */}
           <p className="text-[11px] text-muted-foreground text-center leading-relaxed mt-auto">
             {card.description}
           </p>
+
+          {/* Delta footer */}
+          {card.delta != null && card.delta !== 0 && (
+            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-1.5">
+              {card.delta > 0 ? (
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-red-500" />
+              )}
+              <span className={`text-[11px] font-medium tabular-nums ${card.delta > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                {card.deltaFormat(card.delta)}
+              </span>
+              <span className="text-[10px] text-muted-foreground">vs prior month</span>
+            </div>
+          )}
         </div>
       ))}
     </div>

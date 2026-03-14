@@ -260,6 +260,11 @@ export interface KpiDeltas {
   prominence: number;
 }
 
+export interface NarrativeDeltas {
+  sentimentPositive: number;  // delta in positive % points
+  confidence: number;         // delta in confidence % points (100 - hedging)
+}
+
 export interface WorstPerformingPrompt {
   prompt: string;
   rank: number | null;        // null = brand absent

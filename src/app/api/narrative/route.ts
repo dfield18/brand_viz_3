@@ -407,6 +407,52 @@ export async function GET(req: NextRequest) {
     return { prompt, mentions, mentionRate, consistency, sentiment, sentimentScore: Math.round(avg * 100) / 100 };
   });
 
+  // --- Month-over-month deltas ---
+  // Sentiment delta: compare most recent "all" trend point to the one closest to 30 days prior
+  let narrativeDeltas: { sentimentPositive: number; confidence: number } | null = null;
+  {
+    const allSentimentPoints = sentimentTrend
+      .filter((t) => t.model === "all")
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (allSentimentPoints.length >= 2) {
+      const current = allSentimentPoints[allSentimentPoints.length - 1];
+      const lastDate = new Date(current.date + "T00:00:00").getTime();
+      const targetDate = lastDate - 30 * 86_400_000;
+      let closest = allSentimentPoints[0];
+      let closestDist = Infinity;
+      for (const pt of allSentimentPoints.slice(0, -1)) {
+        const dist = Math.abs(new Date(pt.date + "T00:00:00").getTime() - targetDate);
+        if (dist < closestDist) { closestDist = dist; closest = pt; }
+      }
+      const sentimentDelta = current.positive - closest.positive;
+
+      // Confidence delta: split driftRuns into two periods, compute hedging rate each
+      const splitDate = new Date(targetDate);
+      const recentNarrativeRuns = driftRuns.filter((r) => r.createdAt >= splitDate);
+      const priorNarrativeRuns = driftRuns.filter((r) => r.createdAt < splitDate);
+
+      const hedgingFor = (runs: typeof driftRuns) => {
+        let total = 0, hedged = 0;
+        for (const r of runs) {
+          const p = parseNarrative(r.narrativeJson);
+          if (!p) continue;
+          total++;
+          // hedging = has cautious language markers
+          if (p.trustSignals === 0 && p.authoritySignals === 0) hedged++;
+        }
+        return total > 0 ? Math.round((hedged / total) * 100) : 0;
+      };
+      const currentConfidence = 100 - hedgingFor(recentNarrativeRuns);
+      const priorConfidence = 100 - hedgingFor(priorNarrativeRuns);
+
+      narrativeDeltas = {
+        sentimentPositive: sentimentDelta,
+        confidence: currentConfidence - priorConfidence,
+      };
+    }
+  }
+
   // Merge enhanced data into narrative response
   const narrative = {
     ...narrativeBase,
@@ -435,6 +481,7 @@ export async function GET(req: NextRequest) {
     hasData: true,
     job: formatJobMeta(job!),
     narrative,
+    narrativeDeltas,
     totals: { totalRuns: runs.length, analyzedRuns: analyses.length },
   }, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
