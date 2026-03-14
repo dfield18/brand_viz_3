@@ -263,16 +263,16 @@ function PromptOpportunitiesSection({
     n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
 
   const severityBorder = (worstRank: number | null) => {
-    if (worstRank === null) return "border-l-red-500";
-    if (worstRank > 3) return "border-l-orange-400";
-    return "border-l-amber-400";
+    if (worstRank === null) return "border-l-red-300 dark:border-l-red-800";
+    if (worstRank > 3) return "border-l-orange-300 dark:border-l-orange-800";
+    return "border-l-amber-300 dark:border-l-amber-800";
   };
 
   const severityLabel = (worstRank: number | null, bestRank: number | null) => {
-    if (worstRank === null) return { text: "Not mentioned", className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" };
+    if (worstRank === null) return { text: "Not mentioned", className: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400" };
     const rankStr = bestRank === worstRank ? `#${worstRank}` : `#${bestRank}–${worstRank}`;
-    if (worstRank > 3) return { text: `Ranked ${rankStr}`, className: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" };
-    return { text: `Ranked ${rankStr}`, className: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" };
+    if (worstRank > 3) return { text: `Ranked ${rankStr}`, className: "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400" };
+    return { text: `Ranked ${rankStr}`, className: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400" };
   };
 
   const visible = showAll ? grouped : grouped.slice(0, INITIAL_COUNT);
@@ -290,12 +290,12 @@ function PromptOpportunitiesSection({
         return (
           <div
             key={i}
-            className={`rounded-lg border border-border ${severityBorder(item.worstRank)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
+            className={`rounded-lg border border-border/80 ${severityBorder(item.worstRank)} border-l-[3px] bg-card px-5 py-3.5 space-y-2.5`}
           >
             {/* Prompt + status */}
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground leading-snug">
+                <p className="text-sm font-medium text-foreground/90 leading-snug">
                   &ldquo;{item.promptText}&rdquo;
                 </p>
               </div>
@@ -308,28 +308,28 @@ function PromptOpportunitiesSection({
             <div className="flex flex-wrap items-center gap-1.5">
               {competitors.length > 0 && (
                 <>
-                  <span className="text-[11px] text-muted-foreground/70 mr-0.5">Beating you:</span>
+                  <span className="text-[11px] text-muted-foreground/60 mr-0.5">Beating you:</span>
                   {competitors.map((c) => (
                     <span
                       key={c.displayName}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground"
                     >
                       {c.displayName}
-                      <span className="text-muted-foreground/50">#{c.bestRank}</span>
+                      <span className="text-muted-foreground/40">#{c.bestRank}</span>
                     </span>
                   ))}
                 </>
               )}
-              <span className="text-[11px] text-muted-foreground/50 ml-auto">
+              <span className="text-[11px] text-muted-foreground/40 ml-auto">
                 {item.count} platform{item.count !== 1 ? "s" : ""}
               </span>
             </div>
 
             {/* Recommendation */}
             {recommendation && (
-              <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-[13px] text-foreground/80 leading-relaxed">
+              <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2.5">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
                   {recommendation}
                 </p>
               </div>
@@ -502,9 +502,9 @@ function NegativeNarrativesSection({
   const hasMore = weaknesses.length > INITIAL_COUNT;
 
   const severityBorder = (count: number) => {
-    if (count >= 5) return "border-l-red-500";
-    if (count >= 2) return "border-l-orange-400";
-    return "border-l-amber-400";
+    if (count >= 5) return "border-l-red-300 dark:border-l-red-800";
+    if (count >= 2) return "border-l-orange-300 dark:border-l-orange-800";
+    return "border-l-amber-300 dark:border-l-amber-800";
   };
 
   return (
@@ -519,18 +519,18 @@ function NegativeNarrativesSection({
         return (
           <div
             key={i}
-            className={`rounded-lg border border-border ${severityBorder(w.count)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
+            className={`rounded-lg border border-border/80 ${severityBorder(w.count)} border-l-[3px] bg-card px-5 py-3.5 space-y-2.5`}
           >
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground leading-snug">{clean(w.weakness)}</p>
+                <p className="text-sm font-medium text-foreground/90 leading-snug">{clean(w.weakness)}</p>
               </div>
               <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
                 w.count >= 5
-                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                  ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                   : w.count >= 2
-                    ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                    ? "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
+                    : "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
               }`}>
                 {w.count} mention{w.count !== 1 ? "s" : ""}
               </span>
@@ -539,11 +539,11 @@ function NegativeNarrativesSection({
             {/* Platforms */}
             {platforms.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground/70 mr-0.5">Platforms:</span>
+                <span className="text-[11px] text-muted-foreground/60 mr-0.5">Platforms:</span>
                 {platforms.map((p) => (
                   <span
                     key={p}
-                    className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                    className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground"
                   >
                     {p}
                   </span>
@@ -553,9 +553,9 @@ function NegativeNarrativesSection({
 
             {/* Recommendation */}
             {recommendation && (
-              <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-[13px] text-foreground/80 leading-relaxed">
+              <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2.5">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
                   {recommendation}
                 </p>
               </div>
@@ -757,19 +757,19 @@ function SourceGapsSection({
       {visible.map((sg, i) => (
         <div
           key={i}
-          className="rounded-lg border border-border border-l-[3px] border-l-violet-400 bg-card px-5 py-4 space-y-3"
+          className="rounded-lg border border-border/80 border-l-[3px] border-l-violet-300 dark:border-l-violet-800 bg-card px-5 py-3.5 space-y-2.5"
         >
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground leading-snug">{sg.domain}</p>
+              <p className="text-sm font-medium text-foreground/90 leading-snug">{sg.domain}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {sg.category && sg.category !== "uncategorized" && (
-                <span className="inline-flex items-center rounded-full border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:text-purple-400">
+                <span className="inline-flex items-center rounded-full bg-purple-50/80 dark:bg-purple-950/20 px-2 py-0.5 text-[11px] text-purple-600 dark:text-purple-400">
                   {sg.category}
                 </span>
               )}
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
                 {sg.totalCitations} citation{sg.totalCitations !== 1 ? "s" : ""}
               </span>
             </div>
@@ -778,11 +778,11 @@ function SourceGapsSection({
           {/* Competitors cited */}
           {sg.competitorsCited.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground/70 mr-0.5">Cites competitors:</span>
+              <span className="text-[11px] text-muted-foreground/60 mr-0.5">Cites competitors:</span>
               {sg.competitorsCited.map((c) => (
                 <span
                   key={c}
-                  className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                  className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground"
                 >
                   {c}
                 </span>
@@ -791,9 +791,9 @@ function SourceGapsSection({
           )}
 
           {/* Suggestion */}
-          <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
-            <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-[13px] text-foreground/80 leading-relaxed">
+          <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2.5">
+            <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
               {stripMarkdown(sg.suggestion)}
             </p>
           </div>
@@ -831,41 +831,41 @@ function TopicGapsSection({
     key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const severityBorder = (mentionRate: number, avgRank: number | null) => {
-    if (mentionRate < 0.3) return "border-l-red-500";
-    if ((avgRank ?? 99) > 3) return "border-l-orange-400";
-    return "border-l-amber-400";
+    if (mentionRate < 0.3) return "border-l-red-300 dark:border-l-red-800";
+    if ((avgRank ?? 99) > 3) return "border-l-orange-300 dark:border-l-orange-800";
+    return "border-l-amber-300 dark:border-l-amber-800";
   };
 
   return (
     <div className="space-y-3">
       {visible.map((tg, i) => {
         const barColor =
-          tg.mentionRate < 0.3 ? "bg-red-500" : tg.mentionRate < 0.6 ? "bg-amber-500" : "bg-green-500";
+          tg.mentionRate < 0.3 ? "bg-red-400" : tg.mentionRate < 0.6 ? "bg-amber-400" : "bg-green-400";
 
         return (
           <div
             key={i}
-            className={`rounded-lg border border-border ${severityBorder(tg.mentionRate, tg.avgRank)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
+            className={`rounded-lg border border-border/80 ${severityBorder(tg.mentionRate, tg.avgRank)} border-l-[3px] bg-card px-5 py-3.5 space-y-2.5`}
           >
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground leading-snug">{topicLabel(tg.topicKey)}</p>
+                <p className="text-sm font-medium text-foreground/90 leading-snug">{topicLabel(tg.topicKey)}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                   tg.mentionRate < 0.3
-                    ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                    ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                     : tg.mentionRate < 0.6
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                      : "bg-muted/50 text-muted-foreground"
                 }`}>
                   {pct(tg.mentionRate)} mentioned
                 </span>
                 {tg.avgRank !== null && (
                   <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                     tg.avgRank > 3
-                      ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
+                      : "bg-muted/50 text-muted-foreground"
                   }`}>
                     Avg #{tg.avgRank.toFixed(1)}
                   </span>
@@ -876,7 +876,7 @@ function TopicGapsSection({
             {/* Mention rate bar + competitors */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+                <div className="h-1.5 w-24 rounded-full bg-muted/60 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${barColor}`}
                     style={{ width: `${(tg.mentionRate * 100).toFixed(0)}%` }}
@@ -885,14 +885,14 @@ function TopicGapsSection({
               </div>
               {tg.competitorLeaders.length > 0 && (
                 <>
-                  <span className="text-[11px] text-muted-foreground/70">Ranks #1 instead:</span>
+                  <span className="text-[11px] text-muted-foreground/60">Ranks #1 instead:</span>
                   {tg.competitorLeaders.map((cl) => (
                     <span
                       key={cl.entityId}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground"
                     >
                       {cl.displayName}
-                      <span className="text-muted-foreground/50">{cl.rank1Count}x</span>
+                      <span className="text-muted-foreground/40">{cl.rank1Count}x</span>
                     </span>
                   ))}
                 </>
@@ -900,9 +900,9 @@ function TopicGapsSection({
             </div>
 
             {/* Suggestion */}
-            <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
-              <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-[13px] text-foreground/80 leading-relaxed">
+            <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2.5">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
                 {stripMarkdown(tg.suggestion)}
               </p>
             </div>
