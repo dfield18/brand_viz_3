@@ -70,6 +70,7 @@ const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-ca
 export default function TopCitedSources({ topDomains: initialTopDomains, modelSplit: initialModelSplit, onDomainClick, brandSlug, range, pageModel }: Props) {
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
+  const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
 
   const needsFetch = model !== pageModel || cluster !== "all";
   const url = needsFetch
@@ -214,7 +215,7 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
           {/* Right: Source Type donut chart */}
           <div>
             <h3 className="text-sm font-semibold mb-3">Source Types</h3>
-            <div className="flex items-center justify-center">
+            <div className="relative">
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
@@ -227,6 +228,11 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
                     dataKey="value"
                     nameKey="name"
                     stroke="none"
+                    onMouseEnter={(_, idx) => {
+                      const d = pieData[idx];
+                      if (d) setHoveredSlice({ name: d.name, value: d.value, pct: d.pct });
+                    }}
+                    onMouseLeave={() => setHoveredSlice(null)}
                   >
                     {pieData.map((entry) => (
                       <Cell
@@ -252,6 +258,21 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
                   />
                 </PieChart>
               </ResponsiveContainer>
+              {/* Center label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                {hoveredSlice ? (
+                  <>
+                    <span className="text-lg font-bold tabular-nums">{hoveredSlice.pct}%</span>
+                    <span className="text-[11px] font-medium text-foreground">{hoveredSlice.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{hoveredSlice.value} citations</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold tabular-nums">{totalCitations.toLocaleString()}</span>
+                    <span className="text-[10px] text-muted-foreground">Total citations</span>
+                  </>
+                )}
+              </div>
             </div>
             {/* Legend */}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-2">

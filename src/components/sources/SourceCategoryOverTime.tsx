@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,12 +11,12 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { SourceCategoryOverTimeEntry, SourcesResponse } from "@/types/api";
+import type { DomainOverTimeEntry, SourcesResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS, VALID_CLUSTERS, CLUSTER_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
 interface Props {
-  data: SourceCategoryOverTimeEntry[];
+  data: DomainOverTimeEntry[];
   brandSlug: string;
   range: number;
   pageModel: string;
@@ -27,19 +27,15 @@ interface ApiResponse {
   sources?: SourcesResponse;
 }
 
-const CATEGORY_SERIES: { key: string; label: string; color: string }[] = [
-  { key: "reviews", label: "Reviews", color: "hsl(38, 92%, 50%)" },
-  { key: "news_media", label: "News & Media", color: "hsl(217, 91%, 50%)" },
-  { key: "video", label: "Video", color: "hsl(0, 72%, 55%)" },
-  { key: "ecommerce", label: "E-commerce", color: "hsl(160, 60%, 45%)" },
-  { key: "reference", label: "Reference", color: "hsl(263, 70%, 55%)" },
-  { key: "social_media", label: "Social Media", color: "hsl(330, 80%, 55%)" },
-  { key: "government", label: "Government", color: "hsl(215, 15%, 47%)" },
-  { key: "academic", label: "Academic", color: "hsl(239, 84%, 57%)" },
-  { key: "blog_forum", label: "Blog / Forum", color: "hsl(24, 95%, 53%)" },
-  { key: "brand_official", label: "Brand / Official", color: "hsl(187, 72%, 45%)" },
-  { key: "technology", label: "Technology", color: "hsl(172, 66%, 40%)" },
-  { key: "other", label: "Other", color: "hsl(218, 11%, 65%)" },
+const DOMAIN_COLORS = [
+  "hsl(217, 91%, 50%)",
+  "hsl(0, 72%, 55%)",
+  "hsl(160, 60%, 45%)",
+  "hsl(38, 92%, 50%)",
+  "hsl(263, 70%, 55%)",
+  "hsl(330, 80%, 55%)",
+  "hsl(187, 72%, 45%)",
+  "hsl(24, 95%, 53%)",
 ];
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
@@ -56,8 +52,8 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
     : null;
   const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
 
-  const data = needsFetch && apiData?.sources?.categoryOverTime
-    ? apiData.sources.categoryOverTime
+  const data = needsFetch && apiData?.sources?.domainOverTime
+    ? apiData.sources.domainOverTime
     : needsFetch && apiData && !apiData.sources
     ? []
     : initialData;
@@ -67,51 +63,36 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
     return MODEL_KEYS.filter((m) => set.has(m));
   }, [data]);
 
-  // Filter to selected model, keep top 6 categories by total volume, merge rest into "Other"
-  const { chartData, activeCategories } = useMemo(() => {
+  // Filter to selected model, find top domains, build chart data
+  const { chartData, topDomains } = useMemo(() => {
     const filtered = data.filter((d) => d.model === selectedModel);
 
-    // Sum totals per category across all time points
-    const catTotals: Record<string, number> = {};
+    // Sum totals per domain across all time points
+    const domainTotals: Record<string, number> = {};
     for (const entry of filtered) {
       for (const key of Object.keys(entry)) {
         if (key !== "date" && key !== "model") {
-          catTotals[key] = (catTotals[key] ?? 0) + Number(entry[key] ?? 0);
+          domainTotals[key] = (domainTotals[key] ?? 0) + Number(entry[key] ?? 0);
         }
       }
     }
 
-    // Pick top 6 categories by total, everything else goes to "other"
-    const sorted = Object.entries(catTotals)
+    // Pick top 8 domains by total citations
+    const sorted = Object.entries(domainTotals)
       .filter(([, v]) => v > 0)
       .sort(([, a], [, b]) => b - a);
-    const top6Keys = new Set(sorted.slice(0, 6).map(([k]) => k));
-    const mergedKeys = sorted.filter(([k]) => !top6Keys.has(k)).map(([k]) => k);
+    const domains = sorted.slice(0, 8).map(([k]) => k);
 
-    const active = CATEGORY_SERIES.filter((s) => top6Keys.has(s.key) && s.key !== "other");
-    if (mergedKeys.length > 0 || top6Keys.has("other")) {
-      const otherSeries = CATEGORY_SERIES.find((s) => s.key === "other");
-      if (otherSeries) active.push(otherSeries);
-    }
-
+    // Build chart rows with all top domains
     const filled = filtered.map((entry) => {
-      const row: Record<string, string | number> = { date: entry.date, model: entry.model };
-      let otherVal = 0;
-      for (const s of active) {
-        if (s.key === "other") continue;
-        row[s.key] = Number(entry[s.key]) || 0;
-      }
-      for (const k of mergedKeys) {
-        otherVal += Number(entry[k]) || 0;
-      }
-      otherVal += Number(entry["other"]) || 0;
-      if (active.some((s) => s.key === "other")) {
-        row["other"] = otherVal;
+      const row: Record<string, string | number> = { date: String(entry.date) };
+      for (const d of domains) {
+        row[d] = Number(entry[d]) || 0;
       }
       return row;
     });
 
-    return { chartData: filled, activeCategories: active };
+    return { chartData: filled, topDomains: domains };
   }, [data, selectedModel]);
 
   if (!loading && data.length === 0 && initialData.length === 0) return null;
@@ -120,9 +101,9 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
     <section className="rounded-xl border border-border bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className="text-base font-semibold">Source Types Over Time</h2>
+          <h2 className="text-base font-semibold">Top Source Trends</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How the mix of source types AI references is changing over time
+            How the most-cited sources are trending over time
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -148,17 +129,16 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
 
       {!loading && chartData.length === 0 && (
         <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-sm text-muted-foreground">No source category data for this selection.</p>
+          <p className="text-sm text-muted-foreground">No source trend data for this selection.</p>
         </div>
       )}
 
       {!loading && chartData.length > 0 && (
         <div className="mt-4">
           <ResponsiveContainer width="100%" height={320}>
-            <AreaChart
+            <LineChart
               data={chartData}
               margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-              stackOffset="expand"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
@@ -171,11 +151,10 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
                 }}
               />
               <YAxis
-                domain={[0, 1]}
                 fontSize={12}
                 tickLine={false}
-                tickFormatter={(v) => `${Math.round(v * 100)}%`}
-                width={48}
+                width={40}
+                allowDecimals={false}
               />
               <Tooltip
                 content={({ active, payload, label }) => {
@@ -189,7 +168,7 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
                       {items.map((item) => (
                         <p key={item.dataKey as string} className="text-muted-foreground flex items-center gap-1.5">
                           <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                          {item.name}: <span className="font-medium text-popover-foreground">{Math.round(Number(item.value) * 100)}%</span>
+                          {item.name}: <span className="font-medium text-popover-foreground">{item.value} citations</span>
                         </p>
                       ))}
                     </div>
@@ -201,23 +180,23 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
                 height={44}
                 wrapperStyle={{ paddingBottom: 8 }}
                 formatter={(value: string) => (
-                  <span style={{ fontSize: 12, marginRight: 12, color: "var(--foreground)" }}>{value}</span>
+                  <span style={{ fontSize: 11, marginRight: 10, color: "var(--foreground)" }}>{value}</span>
                 )}
               />
 
-              {activeCategories.map((s) => (
-                <Area
-                  key={s.key}
+              {topDomains.map((domain, i) => (
+                <Line
+                  key={domain}
                   type="monotone"
-                  dataKey={s.key}
-                  stackId="cat"
-                  fill={s.color}
-                  stroke={s.color}
-                  strokeWidth={0}
-                  name={s.label}
+                  dataKey={domain}
+                  name={domain}
+                  stroke={DOMAIN_COLORS[i % DOMAIN_COLORS.length]}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
                 />
               ))}
-            </AreaChart>
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}

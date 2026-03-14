@@ -102,7 +102,7 @@ function SourcesInner() {
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
     { id: "top-cited", label: "Top Cited Sources", heading: "Source Overview" },
-    { id: "source-types-over-time", label: "Source Types" },
+    { id: "source-types-over-time", label: "Top Source Trends" },
     { id: "official-sites", label: "Official Sites" },
     { id: "competitor-only", label: "Competitor-Only Sources" },
     { id: "competitor-sources", label: "Source Citation Matrix", heading: "Source Breakout" },
@@ -119,14 +119,14 @@ function SourcesInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
-        <p className="text-base text-muted-foreground leading-relaxed">
-          See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps you identify which content to optimize and which third-party sources are shaping your brand&apos;s AI presence.
-        </p>
-
         {/* KPI Summary */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} range={range} />
         </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps you identify which content to optimize and which third-party sources are shaping your brand&apos;s AI presence.
+        </p>
 
         {/* ── Source Overview ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Source Overview</h2>
@@ -136,10 +136,10 @@ function SourcesInner() {
           <TopCitedSources topDomains={data.topDomains} modelSplit={data.modelSplit} onDomainClick={setSelectedDomain} brandSlug={params.slug} range={range} pageModel={model} />
         </div>
 
-        {/* Source Types Over Time */}
-        {data.categoryOverTime && data.categoryOverTime.length > 0 && (
+        {/* Top Source Trends */}
+        {data.domainOverTime && data.domainOverTime.length > 0 && (
           <div id="source-types-over-time" className="scroll-mt-24">
-            <SourceCategoryOverTime data={data.categoryOverTime} brandSlug={params.slug} range={range} pageModel={model} />
+            <SourceCategoryOverTime data={data.domainOverTime} brandSlug={params.slug} range={range} pageModel={model} />
           </div>
         )}
 

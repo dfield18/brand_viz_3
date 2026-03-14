@@ -294,6 +294,45 @@ export async function GET(req: NextRequest) {
       return entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     })();
 
+    // Top domain citation counts over time (for "Top Source Trends" chart)
+    const domainOverTime = (() => {
+      // Determine the top 8 domains by total citation count
+      const domainTotals = new Map<string, number>();
+      for (const o of occurrences) {
+        domainTotals.set(o.domain, (domainTotals.get(o.domain) ?? 0) + 1);
+      }
+      const topDomainKeys = [...domainTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([d]) => d);
+      const topSet = new Set(topDomainKeys);
+
+      // Build map: `${date}|${model}` → { domain → count }
+      const buckets = new Map<string, Map<string, number>>();
+      for (const o of occurrences) {
+        if (!topSet.has(o.domain)) continue;
+        const runDate = runDateMap.get(o.runId);
+        const date = (runDate ?? o.createdAt).toISOString().slice(0, 10);
+        for (const m of ["all", o.model]) {
+          const key = `${date}|${m}`;
+          let domMap = buckets.get(key);
+          if (!domMap) { domMap = new Map(); buckets.set(key, domMap); }
+          domMap.set(o.domain, (domMap.get(o.domain) ?? 0) + 1);
+        }
+      }
+
+      const entries: Array<Record<string, string | number>> = [];
+      for (const [key, domMap] of buckets) {
+        const [date, mdl] = key.split("|");
+        const entry: Record<string, string | number> = { date, model: mdl };
+        for (const d of topDomainKeys) {
+          entry[d] = domMap.get(d) ?? 0;
+        }
+        entries.push(entry);
+      }
+      return entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    })();
+
     // Official site citations for brand + competitors
     const officialSites = computeOfficialSiteCitations(occurrences, brand.slug);
 
@@ -347,6 +386,7 @@ export async function GET(req: NextRequest) {
         matrixPrompts: matrixPromptList,
         brandAttributedSources,
         categoryOverTime,
+        domainOverTime,
       },
       totals: { totalRuns: totalResponses },
     }, {

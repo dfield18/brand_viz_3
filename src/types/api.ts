@@ -673,6 +673,12 @@ export interface SourceCategoryOverTimeEntry {
   [category: string]: string | number; // category keys map to percentage 0–100
 }
 
+export interface DomainOverTimeEntry {
+  date: string;          // "YYYY-MM-DD"
+  model: string;         // "all" | "chatgpt" | "gemini" | "claude" | "perplexity"
+  [domain: string]: string | number; // domain keys map to citation count
+}
+
 export interface SourcesResponse {
   scope: SourcesScope;
   summary: SourceSummary;
@@ -685,6 +691,7 @@ export interface SourcesResponse {
   matrixPrompts: SourceMatrixPrompt[];
   brandAttributedSources?: BrandAttributedSource[];
   categoryOverTime: SourceCategoryOverTimeEntry[];
+  domainOverTime: DomainOverTimeEntry[];
 }
 
 export interface DomainDetailExample {
