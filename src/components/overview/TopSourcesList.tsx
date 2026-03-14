@@ -210,7 +210,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
 
       <div className="flex gap-6">
         {/* Left: top source bars (55%) */}
-        <div className="min-w-0 space-y-2.5" style={{ flex: "0 1 55%" }}>
+        <div className="min-w-0 space-y-4" style={{ flex: "0 1 55%" }}>
           {top5.map((d, i) => {
             const barWidth = Math.max(4, (d.citations / maxCitations) * 100);
             const cat = d.category ?? "other";
@@ -220,7 +220,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
                   {i + 1}.
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-sm font-medium truncate">{d.domain}</span>
                     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_BADGE_COLORS[cat] || CATEGORY_BADGE_COLORS.other}`}>
                       {CATEGORY_LABELS[cat] || "Other"}
