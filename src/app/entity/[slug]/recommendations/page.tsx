@@ -445,7 +445,7 @@ function PlatformPlaybooksSection({
             {/* Platform name + stat pills */}
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground/90 leading-snug">
+                <p className="text-[13px] font-medium text-foreground/90 leading-snug">
                   {MODEL_LABELS[pb.model] ?? pb.model}
                 </p>
               </div>
@@ -616,7 +616,7 @@ function NegativeNarrativesSection({
           >
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground/90 leading-snug">{clean(w.weakness)}</p>
+                <p className="text-[13px] font-medium text-foreground/90 leading-snug">{clean(w.weakness)}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <PriorityBadge level={priority} />
@@ -793,7 +793,7 @@ function SourceGapsSection({
         >
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground/90 leading-snug">{sg.domain}</p>
+              <p className="text-[13px] font-medium text-foreground/90 leading-snug">{sg.domain}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <PriorityBadge level={priority} />
@@ -874,7 +874,7 @@ function TopicGapsSection({
           >
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground/90 leading-snug">{topicLabel(tg.topicKey)}</p>
+                <p className="text-[13px] font-medium text-foreground/90 leading-snug">{topicLabel(tg.topicKey)}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <PriorityBadge level={priority} />
