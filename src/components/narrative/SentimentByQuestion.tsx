@@ -82,8 +82,8 @@ const CANDIDATES = [
   { dx: -12, dy: 22, anchor: "end" },     // bottom-left
 ] as const;
 
-const LABEL_W = 90;
-const LABEL_H = 14;
+const LABEL_W = 100;
+const LABEL_H = 16;
 
 type TextAnchor = "start" | "middle" | "end";
 
@@ -91,41 +91,57 @@ interface LabelPos {
   dx: number;
   dy: number;
   anchor: TextAnchor;
+  hidden: boolean;
 }
 
-function rectsOverlap(
-  ax: number, ay: number, bx: number, by: number,
-): boolean {
-  return Math.abs(ax - bx) < LABEL_W && Math.abs(ay - by) < LABEL_H;
+/** Check if two label bounding boxes overlap. Anchored labels need offset based on text-anchor. */
+function labelRect(x: number, y: number, anchor: TextAnchor): { left: number; right: number; top: number; bottom: number } {
+  const halfH = LABEL_H / 2;
+  if (anchor === "start") return { left: x, right: x + LABEL_W, top: y - halfH, bottom: y + halfH };
+  if (anchor === "end") return { left: x - LABEL_W, right: x, top: y - halfH, bottom: y + halfH };
+  return { left: x - LABEL_W / 2, right: x + LABEL_W / 2, top: y - halfH, bottom: y + halfH };
+}
+
+function rectsOverlap(a: ReturnType<typeof labelRect>, b: ReturnType<typeof labelRect>): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
 function resolveLabels(
   points: { cx: number; cy: number }[],
 ): LabelPos[] {
-  const placed: { x: number; y: number }[] = [];
+  const placed: { rect: ReturnType<typeof labelRect> }[] = [];
   const result: LabelPos[] = [];
 
   for (const pt of points) {
-    let bestCandidate: LabelPos = { dx: CANDIDATES[0].dx, dy: CANDIDATES[0].dy, anchor: CANDIDATES[0].anchor };
+    let bestCandidate: LabelPos = { dx: CANDIDATES[0].dx, dy: CANDIDATES[0].dy, anchor: CANDIDATES[0].anchor, hidden: false };
     let bestOverlaps = Infinity;
 
     for (const c of CANDIDATES) {
       const lx = pt.cx + c.dx;
       const ly = pt.cy + c.dy;
+      const rect = labelRect(lx, ly, c.anchor);
       let overlaps = 0;
       for (const p of placed) {
-        if (rectsOverlap(lx, ly, p.x, p.y)) overlaps++;
+        if (rectsOverlap(rect, p.rect)) overlaps++;
       }
       if (overlaps < bestOverlaps) {
         bestOverlaps = overlaps;
-        bestCandidate = { dx: c.dx, dy: c.dy, anchor: c.anchor };
+        bestCandidate = { dx: c.dx, dy: c.dy, anchor: c.anchor, hidden: false };
         if (overlaps === 0) break;
       }
     }
 
-    const chosen = bestCandidate;
-    placed.push({ x: pt.cx + chosen.dx, y: pt.cy + chosen.dy });
-    result.push(chosen);
+    // If no overlap-free position found, hide this label
+    if (bestOverlaps > 0) {
+      bestCandidate.hidden = true;
+    }
+
+    const lx = pt.cx + bestCandidate.dx;
+    const ly = pt.cy + bestCandidate.dy;
+    if (!bestCandidate.hidden) {
+      placed.push({ rect: labelRect(lx, ly, bestCandidate.anchor) });
+    }
+    result.push(bestCandidate);
   }
 
   return result;
@@ -396,6 +412,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
                       const px = pixelRef.current[i];
                       if (!px) return null;
                       const lp = labelPositions[i];
+                      if (lp.hidden) return null;
                       const textX = px.cx + lp.dx;
                       const textY = px.cy + lp.dy;
                       return (
