@@ -103,6 +103,11 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
     percentage: t.pct,
   }));
 
+  // Scale bar size and spacing based on frame count so few-frame charts don't look cramped
+  const rowHeight = data.length <= 3 ? 64 : data.length <= 5 ? 50 : 38;
+  const barHeight = data.length <= 3 ? 28 : data.length <= 5 ? 22 : 18;
+  const chartHeight = Math.max(data.length * rowHeight + 20, 220);
+
   return (
     <div>
 
@@ -112,7 +117,7 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
           <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
             Frame Distribution for {selectedNarrative.name}
           </h3>
-          <ResponsiveContainer width="100%" height={data.length * 38 + 20}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart
               data={data}
               layout="vertical"
@@ -148,7 +153,7 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
                   );
                 }}
               />
-              <Bar dataKey="percentage" radius={[0, 4, 4, 0]} barSize={18}>
+              <Bar dataKey="percentage" radius={[0, 4, 4, 0]} barSize={barHeight}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                 ))}

@@ -31,6 +31,10 @@ type ViewMode = "brands" | "questions" | "platforms";
 const INITIAL_ROWS = 8;
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
+/* Consistent column widths across all three views */
+const SOURCE_COL_W = "w-[200px] min-w-[200px]";
+const DATA_COL_W = "w-[130px] min-w-[130px]";
+
 function titleCase(s: string): string {
   return s
     .replace(/[-_]/g, " ")
@@ -340,22 +344,22 @@ export default function CompetitorSourceComparison({
       {/* ── Brand View ────────────────────── */}
       {!loading && view === "brands" && hasBrandData && (
         <div className={`overflow-x-auto ${hasMore ? "max-h-[400px] overflow-y-auto" : ""}`}>
-          <table className="w-full text-xs border-collapse">
+          <table className="text-xs border-collapse table-fixed">
             <thead className={hasMore ? "sticky top-0 bg-card z-10" : ""}>
               <tr className="border-b border-border">
-                <th className="py-2.5 pr-4 text-left font-medium text-muted-foreground min-w-[180px]">
+                <th className={`py-2.5 pr-4 text-left font-medium text-muted-foreground ${SOURCE_COL_W}`}>
                   Source
                 </th>
                 {entityIds.map((id) => (
                   <th
                     key={id}
-                    className={`py-2.5 px-3 text-center font-medium text-xs min-w-[90px] whitespace-nowrap ${id === brandSlug ? "text-primary" : "text-muted-foreground"}`}
+                    className={`py-2.5 px-3 text-center font-medium text-xs whitespace-nowrap ${DATA_COL_W} ${id === brandSlug ? "text-primary" : "text-muted-foreground"}`}
                   >
                     {id === brandSlug ? `${titleCase(id)} (You)` : titleCase(id)}
                   </th>
                 ))}
                 {hasOther && (
-                  <th className="py-2.5 px-3 text-center font-medium text-xs min-w-[90px] whitespace-nowrap text-muted-foreground">
+                  <th className={`py-2.5 px-3 text-center font-medium text-xs whitespace-nowrap text-muted-foreground ${DATA_COL_W}`}>
                     Other
                   </th>
                 )}
@@ -367,7 +371,7 @@ export default function CompetitorSourceComparison({
                   key={row.domain}
                   className={`border-b border-border/30 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? "bg-muted/10" : ""}`}
                 >
-                  <td className="py-2.5 pr-4 font-medium truncate max-w-[220px]" title={row.domain}>
+                  <td className={`py-2.5 pr-4 font-medium truncate ${SOURCE_COL_W}`} title={row.domain}>
                     {row.domain}
                   </td>
                   {entityIds.map((id) => {
@@ -423,10 +427,10 @@ export default function CompetitorSourceComparison({
       {!loading && view === "questions" && hasQuestionData && (
         <div className="overflow-x-auto">
           <div className={hasMore ? "max-h-[440px] overflow-y-auto" : ""}>
-            <table className="text-xs border-collapse">
+            <table className="text-xs border-collapse table-fixed">
               <thead className="sticky top-0 z-20 bg-card">
                 <tr className="border-b border-border">
-                  <th className="text-left py-2.5 pr-4 font-medium text-muted-foreground sticky left-0 bg-card z-30 min-w-[180px]">
+                  <th className={`text-left py-2.5 pr-4 font-medium text-muted-foreground sticky left-0 bg-card z-30 ${SOURCE_COL_W}`}>
                     Source
                   </th>
                   {activePrompts.map((p) => {
@@ -435,7 +439,7 @@ export default function CompetitorSourceComparison({
                     return (
                       <th
                         key={p.promptId}
-                        className="py-2.5 px-3 font-medium text-muted-foreground text-left min-w-[160px] max-w-[200px] bg-card"
+                        className={`py-2.5 px-3 font-medium text-muted-foreground text-left bg-card ${DATA_COL_W}`}
                         title={fullText}
                       >
                         <span className="text-[10px] leading-snug line-clamp-2">{shortLabel}</span>
@@ -461,7 +465,7 @@ export default function CompetitorSourceComparison({
                   return rows;
                 })().map((row, i) => (
                   <tr key={row.domain} className={`border-b border-border/30 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                    <td className="py-2.5 pr-4 font-medium truncate max-w-[220px] sticky left-0 bg-card z-10" title={row.domain}>
+                    <td className={`py-2.5 pr-4 font-medium truncate sticky left-0 bg-card z-10 ${SOURCE_COL_W}`} title={row.domain}>
                       {row.domain}
                     </td>
                     {activePrompts.map((p) => {
@@ -511,16 +515,16 @@ export default function CompetitorSourceComparison({
       {/* ── Platform View ─────────────────── */}
       {!loading && view === "platforms" && hasPlatformData && (
         <div className={`overflow-x-auto ${platformDomainRows.length > INITIAL_ROWS ? "max-h-[400px] overflow-y-auto" : ""}`}>
-          <table className="w-full text-xs border-collapse">
+          <table className="text-xs border-collapse table-fixed">
             <thead className={platformDomainRows.length > INITIAL_ROWS ? "sticky top-0 bg-card z-10" : ""}>
               <tr className="border-b border-border">
-                <th className="py-2.5 pr-4 text-left font-medium text-muted-foreground min-w-[180px]">
+                <th className={`py-2.5 pr-4 text-left font-medium text-muted-foreground ${SOURCE_COL_W}`}>
                   Source
                 </th>
                 {platformModels.map((m) => (
                   <th
                     key={m}
-                    className="py-2.5 px-3 text-center font-medium text-xs min-w-[100px] whitespace-nowrap text-muted-foreground"
+                    className={`py-2.5 px-3 text-center font-medium text-xs whitespace-nowrap text-muted-foreground ${DATA_COL_W}`}
                   >
                     {MODEL_LABELS[m] ?? titleCase(m)}
                   </th>
@@ -535,7 +539,7 @@ export default function CompetitorSourceComparison({
                     key={domain}
                     className={`border-b border-border/30 hover:bg-muted/20 transition-colors ${i % 2 === 1 ? "bg-muted/10" : ""}`}
                   >
-                    <td className="py-2.5 pr-4 font-medium truncate max-w-[220px]" title={domain}>
+                    <td className={`py-2.5 pr-4 font-medium truncate ${SOURCE_COL_W}`} title={domain}>
                       {domain}
                     </td>
                     {platformModels.map((m) => {
