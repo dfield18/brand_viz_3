@@ -53,7 +53,7 @@ function deriveTitle(raw: string): { title: string; body: string } {
   // Try to split on **bold** title pattern first
   const boldMatch = text.match(/\*\*(.+?)\*\*:?\s*([\s\S]*)$/);
   if (boldMatch) {
-    const title = stripMarkdownAndUrls(boldMatch[1]);
+    const title = stripMarkdownAndUrls(boldMatch[1]).replace(/:+$/, "").trim();
     const body = stripMarkdownAndUrls(boldMatch[2]);
     // If the "title" is too long (looks like a sentence), re-derive
     if (title.split(/\s+/).length <= 6) {
@@ -70,16 +70,16 @@ function deriveTitle(raw: string): { title: string; body: string } {
     const candidate = colonSplit[1].trim();
     // Only use if it reads like a label (not a sentence fragment starting with quotes/data)
     if (candidate.split(/\s+/).length <= 6 && !/^\d/.test(candidate) && !/^["'"…]/.test(candidate)) {
-      return { title: candidate, body: colonSplit[2].trim() };
+      return { title: candidate.replace(/:+$/, "").trim(), body: colonSplit[2].trim() };
     }
   }
 
   // Take first ~4 words as title, rest as body
   const words = clean.split(/\s+/);
   if (words.length <= 4) {
-    return { title: clean, body: "" };
+    return { title: clean.replace(/:+$/, "").trim(), body: "" };
   }
-  return { title: words.slice(0, 4).join(" ") + "…", body: clean };
+  return { title: words.slice(0, 4).join(" ").replace(/:+$/, "").trim() + "…", body: clean };
 }
 
 const VARIANT_STYLES = {

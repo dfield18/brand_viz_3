@@ -453,14 +453,13 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
                 const hasOverlap = payload.siblingCount > 1;
                 const r = isSelected ? 9 : 7;
 
-                // Apply jitter for overlapping dots
+                // Apply jitter for overlapping dots — spread horizontally
                 let cx = rawCx;
                 let cy = rawCy;
                 if (hasOverlap) {
-                  const angle = (payload.siblingIndex / payload.siblingCount) * 2 * Math.PI - Math.PI / 2;
-                  const jitterRadius = 12;
-                  cx = rawCx + Math.cos(angle) * jitterRadius;
-                  cy = rawCy + Math.sin(angle) * jitterRadius;
+                  const spread = 14; // px between dots
+                  const totalWidth = (payload.siblingCount - 1) * spread;
+                  cx = rawCx - totalWidth / 2 + payload.siblingIndex * spread;
                 }
 
                 // Collect pixel positions; resolve labels + dot positions once all rendered

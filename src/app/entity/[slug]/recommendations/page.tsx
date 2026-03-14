@@ -20,6 +20,7 @@ import {
   Zap,
   Shield,
   Eye,
+  Lightbulb,
 } from "lucide-react";
 
 /* ─── API Response Types ────────────────────────────────────────────── */
@@ -176,6 +177,9 @@ function PromptOpportunitiesSection({
   brandName: string;
   summary: string;
 }) {
+  const INITIAL_COUNT = 5;
+  const [showAll, setShowAll] = useState(false);
+
   // Group duplicate prompts across models
   const grouped = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -204,18 +208,15 @@ function PromptOpportunitiesSection({
       }
       group.count++;
 
-      // Track worst (highest number) brand rank; null means not mentioned
       if (item.brandRank === null) {
         group.worstRank = null;
       } else if (group.worstRank !== null) {
         group.worstRank = Math.max(group.worstRank, item.brandRank);
       }
-      // Track best rank for display
       if (item.brandRank !== null) {
         group.bestRank = group.bestRank === null ? item.brandRank : Math.min(group.bestRank, item.brandRank);
       }
 
-      // Merge competitors, keeping the best rank for each
       for (const c of item.topCompetitors) {
         const existing = group.competitors.get(c.entityId);
         if (!existing || c.rank < existing.bestRank) {
@@ -228,74 +229,124 @@ function PromptOpportunitiesSection({
       .sort((a, b) => b.competitors.size - a.competitors.size || b.count - a.count);
   }, [data]);
 
-  const [showGaps, setShowGaps] = useState(false);
+  // Match AI summary bullets to specific prompts by finding quoted prompt text
+  const matchedRecommendations = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!summary) return map;
+    const bullets = summary.split("\n").filter(Boolean);
+    for (const bullet of bullets) {
+      const clean = stripMarkdown(bullet);
+      // Find which grouped prompt this bullet references
+      let bestMatch: string | null = null;
+      let bestLen = 0;
+      for (const g of grouped) {
+        // Check if the bullet contains a substantial substring of the prompt
+        const promptLower = g.promptText.toLowerCase();
+        const bulletLower = clean.toLowerCase();
+        if (bulletLower.includes(promptLower) || bulletLower.includes(promptLower.slice(0, 40))) {
+          if (promptLower.length > bestLen) {
+            bestLen = promptLower.length;
+            bestMatch = g.promptText;
+          }
+        }
+      }
+      if (bestMatch) {
+        map.set(bestMatch, clean.replace(/^[-•]\s*/, ""));
+      }
+    }
+    return map;
+  }, [summary, grouped]);
 
   if (!data || data.length === 0) return <EmptyState message="No prompt gaps found — great coverage!" />;
 
   const ordinal = (n: number) =>
     n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
 
+  const severityBorder = (worstRank: number | null) => {
+    if (worstRank === null) return "border-l-red-500";
+    if (worstRank > 3) return "border-l-orange-400";
+    return "border-l-amber-400";
+  };
+
+  const severityLabel = (worstRank: number | null, bestRank: number | null) => {
+    if (worstRank === null) return { text: "Not mentioned", className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" };
+    const rankStr = bestRank === worstRank ? `#${worstRank}` : `#${bestRank}–${worstRank}`;
+    if (worstRank > 3) return { text: `Ranked ${rankStr}`, className: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" };
+    return { text: `Ranked ${rankStr}`, className: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" };
+  };
+
+  const visible = showAll ? grouped : grouped.slice(0, INITIAL_COUNT);
+  const hasMore = grouped.length > INITIAL_COUNT;
+
   return (
-    <div className="space-y-6">
-      {/* AI-generated recommendations */}
-      {summary && (
-        <div>
-          <p className="text-sm font-semibold mb-3">Recommendations</p>
-          <div className="text-sm text-muted-foreground space-y-2">
-            {summary.split("\n").filter(Boolean).map((line, i) => (
-              <p key={i}>{stripMarkdown(line)}</p>
-            ))}
+    <div className="space-y-3">
+      {visible.map((item, i) => {
+        const competitors = [...item.competitors.values()]
+          .sort((a, b) => a.bestRank - b.bestRank)
+          .slice(0, 5);
+        const severity = severityLabel(item.worstRank, item.bestRank);
+        const recommendation = matchedRecommendations.get(item.promptText);
+
+        return (
+          <div
+            key={i}
+            className={`rounded-lg border border-border ${severityBorder(item.worstRank)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
+          >
+            {/* Prompt + status */}
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground leading-snug">
+                  &ldquo;{item.promptText}&rdquo;
+                </p>
+              </div>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${severity.className}`}>
+                {severity.text}
+              </span>
+            </div>
+
+            {/* Competitors + platform count */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {competitors.length > 0 && (
+                <>
+                  <span className="text-[11px] text-muted-foreground/70 mr-0.5">Beating you:</span>
+                  {competitors.map((c) => (
+                    <span
+                      key={c.displayName}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                    >
+                      {c.displayName}
+                      <span className="text-muted-foreground/50">#{c.bestRank}</span>
+                    </span>
+                  ))}
+                </>
+              )}
+              <span className="text-[11px] text-muted-foreground/50 ml-auto">
+                {item.count} platform{item.count !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* Recommendation */}
+            {recommendation && (
+              <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-foreground/80 leading-relaxed">
+                  {recommendation}
+                </p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })}
 
-      {/* Prompt gaps — collapsible */}
-      <div className="border-t border-border pt-5">
+      {/* Show more / less */}
+      {hasMore && (
         <button
-          type="button"
-          onClick={() => setShowGaps((v) => !v)}
-          className="flex items-center gap-1.5 text-sm font-semibold hover:text-foreground/80 transition-colors"
+          onClick={() => setShowAll((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
         >
-          <ChevronRight className={`h-4 w-4 transition-transform ${showGaps ? "rotate-90" : ""}`} />
-          Where {brandName} is missing or ranked poorly
-          <span className="text-xs font-normal text-muted-foreground ml-1">({grouped.length})</span>
+          {showAll ? "Show less" : `Show all ${grouped.length} gaps`}
         </button>
-        {showGaps && (
-          <ul className="space-y-3 text-sm mt-3 ml-5.5">
-            {grouped.map((item, i) => {
-              const competitors = [...item.competitors.values()]
-                .sort((a, b) => a.bestRank - b.bestRank)
-                .slice(0, 5);
-
-              const rankText = item.worstRank === null
-                ? `${brandName} doesn't appear`
-                : item.bestRank === item.worstRank
-                  ? `${brandName} ranks ${ordinal(item.worstRank)}`
-                  : `${brandName} ranks ${ordinal(item.bestRank!)} to ${ordinal(item.worstRank)}`;
-
-              const compText = competitors.length > 0
-                ? ` · Ahead: ${competitors.map((c) => c.displayName).join(", ")}`
-                : "";
-
-              return (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground leading-snug">{item.promptText}</p>
-                    <p className="text-muted-foreground mt-0.5">
-                      <span className={item.worstRank === null ? "text-red-600 font-medium" : (item.worstRank ?? 0) > 3 ? "text-orange-600 font-medium" : ""}>
-                        {rankText}
-                      </span>
-                      {compText}
-                      <span className="text-muted-foreground/60"> · {item.count} platform{item.count !== 1 ? "s" : ""}</span>
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -408,11 +459,11 @@ function NegativeNarrativesSection({
 }) {
   const hasWeaknesses = data?.weaknesses && data.weaknesses.length > 0;
   const hasThemes = data?.negativeThemes && data.negativeThemes.length > 0;
-  const [showWeaknesses, setShowWeaknesses] = useState(false);
+  const INITIAL_COUNT = 5;
+  const [showAll, setShowAll] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
   if (!hasWeaknesses && !hasThemes) return <EmptyState message="No negative narratives detected." />;
 
-  // Strip markdown markers, leading/trailing bullets and punctuation artifacts
   const clean = (text: string) =>
     text
       .replace(/\*+/g, "")
@@ -421,56 +472,111 @@ function NegativeNarrativesSection({
       .replace(/\s{2,}/g, " ")
       .trim();
 
+  // Match AI summary bullets to specific weaknesses
+  const matchedRecs = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!data?.narrativeSummary || !data?.weaknesses) return map;
+    const bullets = data.narrativeSummary.split("\n").filter(Boolean);
+    for (const bullet of bullets) {
+      const cleanBullet = stripMarkdown(bullet).replace(/^[-•]\s*/, "");
+      let bestIdx = -1;
+      let bestScore = 0;
+      for (let i = 0; i < data.weaknesses.length; i++) {
+        const weakness = clean(data.weaknesses[i].weakness).toLowerCase();
+        const words = weakness.split(/\s+/).filter((w) => w.length > 3);
+        const score = words.filter((w) => cleanBullet.toLowerCase().includes(w)).length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx >= 0 && bestScore >= 2 && !map.has(bestIdx)) {
+        map.set(bestIdx, cleanBullet);
+      }
+    }
+    return map;
+  }, [data]);
+
+  const weaknesses = data?.weaknesses ?? [];
+  const visible = showAll ? weaknesses : weaknesses.slice(0, INITIAL_COUNT);
+  const hasMore = weaknesses.length > INITIAL_COUNT;
+
+  const severityBorder = (count: number) => {
+    if (count >= 5) return "border-l-red-500";
+    if (count >= 2) return "border-l-orange-400";
+    return "border-l-amber-400";
+  };
+
   return (
-    <div className="space-y-6">
-      {/* AI-generated recommendations */}
-      {data.narrativeSummary && (
-        <div>
-          <p className="text-sm font-semibold mb-3">Recommendations</p>
-          <div className="text-sm text-muted-foreground space-y-2">
-            {data.narrativeSummary.split("\n").filter(Boolean).map((line, i) => (
-              <p key={i}>{stripMarkdown(line)}</p>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="space-y-3">
+      {/* Weakness cards */}
+      {hasWeaknesses && visible.map((w, i) => {
+        const platforms = w.responses.length > 0
+          ? [...new Set(w.responses.map((r) => MODEL_LABELS[r.model] ?? r.model))]
+          : [];
+        const recommendation = matchedRecs.get(i);
 
-      {/* Weaknesses — collapsible */}
-      {hasWeaknesses && (
-        <div className="border-t border-border pt-5">
-          <button
-            type="button"
-            onClick={() => setShowWeaknesses((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-semibold hover:text-foreground/80 transition-colors"
+        return (
+          <div
+            key={i}
+            className={`rounded-lg border border-border ${severityBorder(w.count)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
           >
-            <ChevronRight className={`h-4 w-4 transition-transform ${showWeaknesses ? "rotate-90" : ""}`} />
-            Weaknesses AI associates with {brandName}
-            <span className="text-xs font-normal text-muted-foreground ml-1">({data.weaknesses.length})</span>
-          </button>
-          {showWeaknesses && (
-            <ul className="space-y-3 text-sm mt-3 ml-5.5">
-              {data.weaknesses.map((w, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground leading-snug">{clean(w.weakness)}</p>
-                    <p className="text-muted-foreground mt-0.5">
-                      {w.count} response{w.count !== 1 ? "s" : ""}
-                      {w.responses.length > 0 && (
-                        <span className="text-muted-foreground/60"> · {[...new Set(w.responses.map((r) => MODEL_LABELS[r.model] ?? r.model))].join(", ")}</span>
-                      )}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground leading-snug">{clean(w.weakness)}</p>
+              </div>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                w.count >= 5
+                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                  : w.count >= 2
+                    ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+              }`}>
+                {w.count} mention{w.count !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* Platforms */}
+            {platforms.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground/70 mr-0.5">Platforms:</span>
+                {platforms.map((p) => (
+                  <span
+                    key={p}
+                    className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Recommendation */}
+            {recommendation && (
+              <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-foreground/80 leading-relaxed">
+                  {recommendation}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Show more / less */}
+      {hasMore && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
+        >
+          {showAll ? "Show less" : `Show all ${weaknesses.length} weaknesses`}
+        </button>
       )}
 
-      {/* Negative themes — collapsible */}
+      {/* Negative themes — collapsible below */}
       {hasThemes && (
-        <div className="border-t border-border pt-5">
+        <div className="border-t border-border pt-4 mt-4">
           <button
             type="button"
             onClick={() => setShowThemes((v) => !v)}
@@ -638,53 +744,70 @@ function SourceGapsSection({
   data: ApiResponse["sourceGapOpportunities"];
   brandName: string;
 }) {
+  const INITIAL_COUNT = 5;
+  const [showAll, setShowAll] = useState(false);
+
   if (!data || data.length === 0) return <EmptyState message="No source gap opportunities found." />;
 
+  const visible = showAll ? data : data.slice(0, INITIAL_COUNT);
+  const hasMore = data.length > INITIAL_COUNT;
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th className="pb-3 pr-4 font-medium">Website</th>
-            <th className="pb-3 pr-4 font-medium">Source Type</th>
-            <th className="pb-3 pr-4 font-medium">Competitors Cited Here</th>
-            <th className="pb-3 pr-4 font-medium">Times Cited by AI</th>
-            <th className="pb-3 font-medium">Suggestion</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {data.map((sg, i) => (
-            <tr key={i} className="align-top">
-              <td className="py-3 pr-4 font-medium">{sg.domain}</td>
-              <td className="py-3 pr-4">
-                {sg.category && sg.category !== "uncategorized" ? (
-                  <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-                    {sg.category}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </td>
-              <td className="py-3 pr-4">
-                <div className="flex flex-wrap gap-1">
-                  {sg.competitorsCited.map((c) => (
-                    <span
-                      key={c}
-                      className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="py-3 pr-4 font-medium">{sg.totalCitations}</td>
-              <td className="py-3 text-muted-foreground italic max-w-[240px]">
-                {stripMarkdown(sg.suggestion)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {visible.map((sg, i) => (
+        <div
+          key={i}
+          className="rounded-lg border border-border border-l-[3px] border-l-violet-400 bg-card px-5 py-4 space-y-3"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground leading-snug">{sg.domain}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {sg.category && sg.category !== "uncategorized" && (
+                <span className="inline-flex items-center rounded-full border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:text-purple-400">
+                  {sg.category}
+                </span>
+              )}
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                {sg.totalCitations} citation{sg.totalCitations !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* Competitors cited */}
+          {sg.competitorsCited.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground/70 mr-0.5">Cites competitors:</span>
+              {sg.competitorsCited.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Suggestion */}
+          <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
+            <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-[13px] text-foreground/80 leading-relaxed">
+              {stripMarkdown(sg.suggestion)}
+            </p>
+          </div>
+        </div>
+      ))}
+
+      {hasMore && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
+        >
+          {showAll ? "Show less" : `Show all ${data.length} source gaps`}
+        </button>
+      )}
     </div>
   );
 }
@@ -696,62 +819,105 @@ function TopicGapsSection({
   data: ApiResponse["topicCoverageGaps"];
   brandName: string;
 }) {
+  const INITIAL_COUNT = 5;
+  const [showAll, setShowAll] = useState(false);
+
   if (!data || data.length === 0) return <EmptyState message="No topic coverage gaps found." />;
 
+  const visible = showAll ? data : data.slice(0, INITIAL_COUNT);
+  const hasMore = data.length > INITIAL_COUNT;
+
+  const topicLabel = (key: string) =>
+    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const severityBorder = (mentionRate: number, avgRank: number | null) => {
+    if (mentionRate < 0.3) return "border-l-red-500";
+    if ((avgRank ?? 99) > 3) return "border-l-orange-400";
+    return "border-l-amber-400";
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th className="pb-3 pr-4 font-medium">Topic</th>
-            <th className="pb-3 pr-4 font-medium">How often AI mentions {brandName}</th>
-            <th className="pb-3 pr-4 font-medium">{brandName}&apos;s avg position</th>
-            <th className="pb-3 pr-4 font-medium">Who ranks #1 instead</th>
-            <th className="pb-3 font-medium">Suggestion</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {data.map((tg, i) => {
-            const barColor =
-              tg.mentionRate < 0.3 ? "bg-red-500" : tg.mentionRate < 0.6 ? "bg-amber-500" : "bg-green-500";
-            return (
-              <tr key={i} className="align-top">
-                <td className="py-3 pr-4 font-medium">{tg.topicKey}</td>
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-20 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${barColor}`}
-                        style={{ width: `${(tg.mentionRate * 100).toFixed(0)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{pct(tg.mentionRate)}</span>
-                  </div>
-                </td>
-                <td className="py-3 pr-4">
-                  {tg.avgRank !== null ? `#${tg.avgRank.toFixed(1)}` : "—"}
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="flex flex-wrap gap-1">
-                    {tg.competitorLeaders.map((cl) => (
-                      <span
-                        key={cl.entityId}
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-                      >
-                        {cl.displayName}{" "}
-                        <span className="text-muted-foreground">ranked #1 {cl.rank1Count} {cl.rank1Count === 1 ? "time" : "times"}</span>
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="py-3 text-muted-foreground italic max-w-[240px]">
-                  {stripMarkdown(tg.suggestion)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {visible.map((tg, i) => {
+        const barColor =
+          tg.mentionRate < 0.3 ? "bg-red-500" : tg.mentionRate < 0.6 ? "bg-amber-500" : "bg-green-500";
+
+        return (
+          <div
+            key={i}
+            className={`rounded-lg border border-border ${severityBorder(tg.mentionRate, tg.avgRank)} border-l-[3px] bg-card px-5 py-4 space-y-3`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground leading-snug">{topicLabel(tg.topicKey)}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  tg.mentionRate < 0.3
+                    ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                    : tg.mentionRate < 0.6
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                      : "bg-muted text-muted-foreground"
+                }`}>
+                  {pct(tg.mentionRate)} mentioned
+                </span>
+                {tg.avgRank !== null && (
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                    tg.avgRank > 3
+                      ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400"
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    Avg #{tg.avgRank.toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Mention rate bar + competitors */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${barColor}`}
+                    style={{ width: `${(tg.mentionRate * 100).toFixed(0)}%` }}
+                  />
+                </div>
+              </div>
+              {tg.competitorLeaders.length > 0 && (
+                <>
+                  <span className="text-[11px] text-muted-foreground/70">Ranks #1 instead:</span>
+                  {tg.competitorLeaders.map((cl) => (
+                    <span
+                      key={cl.entityId}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border"
+                    >
+                      {cl.displayName}
+                      <span className="text-muted-foreground/50">{cl.rank1Count}x</span>
+                    </span>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Suggestion */}
+            <div className="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-md px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[13px] text-foreground/80 leading-relaxed">
+                {stripMarkdown(tg.suggestion)}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+
+      {hasMore && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
+        >
+          {showAll ? "Show less" : `Show all ${data.length} topic gaps`}
+        </button>
+      )}
     </div>
   );
 }
@@ -974,7 +1140,7 @@ function RecommendationsInner() {
         <Section
           id="prompt-opportunities"
           title="Prompt Opportunities"
-          description={`Prompts where ${apiData.brandName} is absent or poorly ranked — the biggest content gaps to address.`}
+          description={`AI questions where ${apiData.brandName} is missing or outranked — each card shows the gap and what to do about it.`}
           icon={Target}
         >
           <PromptOpportunitiesSection data={apiData.promptOpportunities} brandName={apiData.brandName} summary={apiData.promptOpportunitySummary} />
