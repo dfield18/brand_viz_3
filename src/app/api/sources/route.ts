@@ -208,9 +208,22 @@ export async function GET(req: NextRequest) {
     );
 
     // Classify domains (uses DB cache → static map → GPT fallback)
-    // Classify ALL unique domains from occurrences so categoryOverTime has proper breakdowns
+    // Classify top domains via GPT, then bulk-fetch cached categories for all others
+    const allDomains = rawTopDomains.map((d) => d.domain);
+    const categories: Record<string, string> = await classifyDomains(allDomains);
+
+    // For categoryOverTime, also load cached categories for remaining domains
     const allOccurrenceDomains = [...new Set(occurrences.map((o) => o.domain))];
-    const categories = await classifyDomains(allOccurrenceDomains);
+    const uncategorized = allOccurrenceDomains.filter((d) => !(d in categories));
+    if (uncategorized.length > 0) {
+      const cached = await prisma.source.findMany({
+        where: { domain: { in: uncategorized }, category: { not: null } },
+        select: { domain: true, category: true },
+      });
+      for (const s of cached) {
+        if (s.category) categories[s.domain] = s.category;
+      }
+    }
     const topDomains = rawTopDomains.map((d) => ({
       ...d,
       category: categories[d.domain] ?? "other",
