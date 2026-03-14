@@ -177,23 +177,20 @@ function NarrativeInner() {
           This tab shows how AI platforms talk about {brandName}. Start with <span className="font-medium text-muted-foreground">Narratives</span> to see which stories and themes AI uses most often when describing {brandName}, then check <span className="font-medium text-muted-foreground">Sentiment</span> to understand whether those stories are casting {brandName} positively or negatively — and how much platforms agree.
         </p>
 
-        {/* Narrative Summary + Recommendation */}
-        <div id="narrative-insight" className="scroll-mt-24 space-y-4">
-          {/* Narrative Summary */}
-          {data.sentimentSplit && data.frames && data.frames.length > 0 && (
-            <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
-              <div className="px-6 py-5 border-l-4 border-l-primary/40">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Narrative Summary</h3>
-                <p className="text-sm text-foreground/80 leading-[1.7]">
+        {/* Narrative Summary + Recommendation (merged) */}
+        <div id="narrative-insight" className="scroll-mt-24">
+          <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+            {/* Summary */}
+            {data.sentimentSplit && data.frames && data.frames.length > 0 && (
+              <div className="px-5 py-4">
+                <p className="text-sm text-foreground/80 leading-relaxed">
                   {(() => {
                     const parts: string[] = [];
                     const topFrame = data.frames![0];
                     const split = data.sentimentSplit!;
 
-                    // Frame
                     parts.push(`AI primarily frames ${brandName} as a "${topFrame.frame}" — this narrative appears in ${topFrame.percentage}% of responses.`);
 
-                    // Sentiment
                     if (split.positive >= 60) {
                       parts.push(`Sentiment is strongly positive at ${split.positive}%, with only ${split.negative}% negative responses.`);
                     } else if (split.positive >= 40) {
@@ -206,14 +203,12 @@ function NarrativeInner() {
                       parts.push(`Sentiment is mixed — ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`);
                     }
 
-                    // Consistency
                     if (data.polarization === "High") {
                       parts.push(`AI platforms disagree significantly about ${brandName} — different models tell very different stories.`);
                     } else if (data.polarization === "Low") {
                       parts.push(`AI platforms largely agree on how they describe ${brandName}.`);
                     }
 
-                    // Confidence
                     if (data.hedgingRate != null) {
                       const conf = 100 - data.hedgingRate;
                       if (conf < 65) {
@@ -227,32 +222,23 @@ function NarrativeInner() {
                   })()}
                 </p>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Narrative Recommendation */}
-          {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
-            <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
-              <div className="flex items-start gap-4 px-6 py-5 bg-amber-50/30">
-                <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Narrative Action</span>
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                      Perception Issue
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground/80 leading-[1.7]">
-                    {stripMarkdown(
-                      recsData.negativeNarratives.narrativeSummary
-                        ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
-                        : recsData.negativeNarratives.weaknesses[0].suggestion
-                    )}
-                  </p>
-                </div>
+            {/* Recommendation — inline separator */}
+            {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
+              <div className="flex items-start gap-3 px-5 py-3.5 border-t border-border bg-amber-50/20">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-foreground/70 leading-relaxed">
+                  <span className="font-medium text-amber-700 mr-1.5">Perception Issue:</span>
+                  {stripMarkdown(
+                    recsData.negativeNarratives.narrativeSummary
+                      ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
+                      : recsData.negativeNarratives.weaknesses[0].suggestion
+                  )}
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Sentiment Trend — right after scorecard for trend visibility */}
