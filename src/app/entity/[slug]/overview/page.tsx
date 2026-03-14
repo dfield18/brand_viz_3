@@ -175,7 +175,7 @@ function OverviewInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {scorecardData && (
@@ -188,14 +188,13 @@ function OverviewInner() {
           )}
         </div>
 
-        {/* Key Insights: Executive Summary + Top Recommendation */}
-        <div id="key-insights" className="scroll-mt-24 space-y-4">
-          {/* Executive Summary */}
-          {apiData.visibilityKpis && (
-            <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
-              <div className="px-6 py-5 border-l-4 border-l-primary/40">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Overview</h3>
-                <p className="text-sm text-foreground/80 leading-[1.7]">
+        {/* Key Insights: Executive Summary + Top Recommendation merged */}
+        <div id="key-insights" className="scroll-mt-24">
+          <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+            {/* Summary */}
+            {apiData.visibilityKpis && (
+              <div className="px-5 py-4">
+                <p className="text-sm text-foreground/80 leading-relaxed">
                   {(() => {
                     const kpis = apiData.visibilityKpis!;
                     const parts: string[] = [];
@@ -228,10 +227,8 @@ function OverviewInner() {
                   })()}
                 </p>
               </div>
-            </div>
-          )}
-          {/* Top Recommendation */}
-          <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+            )}
+            {/* Top Recommendation — inline separator */}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
           </div>
         </div>

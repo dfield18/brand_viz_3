@@ -58,7 +58,7 @@ export function OnThisPage({ sections }: OnThisPageProps) {
           return (
             <li key={s.id}>
               {s.heading && (
-                <p className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3 ${isFirstHeading ? "mt-2" : "mt-8"}`}>
+                <p className={`text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-1.5 px-3 ${isFirstHeading ? "mt-1" : "mt-5"}`}>
                   {s.heading}
                 </p>
               )}
