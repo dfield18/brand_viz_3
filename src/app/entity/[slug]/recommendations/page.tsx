@@ -245,8 +245,7 @@ function PromptOpportunitiesSection({
   brandName: string;
   summary: string;
 }) {
-  const INITIAL_COUNT = 5;
-  const [showAll, setShowAll] = useState(false);
+  const SCROLL_THRESHOLD = 5;
 
   // Group duplicate prompts across models
   const grouped = useMemo(() => {
@@ -343,12 +342,11 @@ function PromptOpportunitiesSection({
     return { text: `Ranked ${rankStr}`, className: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400" };
   };
 
-  const visible = showAll ? grouped : grouped.slice(0, INITIAL_COUNT);
-  const hasMore = grouped.length > INITIAL_COUNT;
+  const needsScroll = grouped.length >= SCROLL_THRESHOLD;
 
   return (
-    <div className="space-y-3">
-      {visible.map((item, i) => {
+    <div className={needsScroll ? "max-h-[600px] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
+      {grouped.map((item, i) => {
         const competitors = [...item.competitors.values()]
           .sort((a, b) => a.bestRank - b.bestRank)
           .slice(0, 5);
@@ -364,7 +362,7 @@ function PromptOpportunitiesSection({
             {/* Prompt + status */}
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground/90 leading-snug">
+                <p className="text-[13px] font-medium text-foreground/90 leading-snug">
                   &ldquo;{item.promptText}&rdquo;
                 </p>
               </div>
@@ -410,15 +408,6 @@ function PromptOpportunitiesSection({
         );
       })}
 
-      {/* Show more / less */}
-      {hasMore && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
-        >
-          {showAll ? "Show less" : `Show all ${grouped.length} gaps`}
-        </button>
-      )}
     </div>
   );
 }
@@ -550,8 +539,7 @@ function NegativeNarrativesSection({
 }) {
   const hasWeaknesses = data?.weaknesses && data.weaknesses.length > 0;
   const hasThemes = data?.negativeThemes && data.negativeThemes.length > 0;
-  const INITIAL_COUNT = 5;
-  const [showAll, setShowAll] = useState(false);
+  const SCROLL_THRESHOLD = 5;
   const [showThemes, setShowThemes] = useState(false);
   if (!hasWeaknesses && !hasThemes) return <EmptyState message="No negative narratives detected." />;
 
@@ -602,8 +590,7 @@ function NegativeNarrativesSection({
   }, [data]);
 
   const weaknesses = data?.weaknesses ?? [];
-  const visible = showAll ? weaknesses : weaknesses.slice(0, INITIAL_COUNT);
-  const hasMore = weaknesses.length > INITIAL_COUNT;
+  const needsScroll = weaknesses.length >= SCROLL_THRESHOLD;
 
   const severityBorder = (count: number) => {
     if (count >= 5) return "border-l-red-300 dark:border-l-red-800";
@@ -614,7 +601,8 @@ function NegativeNarrativesSection({
   return (
     <div className="space-y-3">
       {/* Weakness cards */}
-      {hasWeaknesses && visible.map((w, i) => {
+      <div className={needsScroll ? "max-h-[600px] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
+      {hasWeaknesses && weaknesses.map((w, i) => {
         const platforms = w.responses.length > 0
           ? [...new Set(w.responses.map((r) => MODEL_LABELS[r.model] ?? r.model))]
           : [];
@@ -672,15 +660,7 @@ function NegativeNarrativesSection({
         );
       })}
 
-      {/* Show more / less */}
-      {hasMore && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
-        >
-          {showAll ? "Show less" : `Show all ${weaknesses.length} weaknesses`}
-        </button>
-      )}
+      </div>
 
       {/* Negative themes — collapsible below */}
       {hasThemes && (
@@ -794,17 +774,14 @@ function SourceGapsSection({
   data: ApiResponse["sourceGapOpportunities"];
   brandName: string;
 }) {
-  const INITIAL_COUNT = 5;
-  const [showAll, setShowAll] = useState(false);
-
   if (!data || data.length === 0) return <EmptyState message="No source gap opportunities found." />;
 
-  const visible = showAll ? data : data.slice(0, INITIAL_COUNT);
-  const hasMore = data.length > INITIAL_COUNT;
+  const SCROLL_THRESHOLD = 5;
+  const needsScroll = data.length >= SCROLL_THRESHOLD;
 
   return (
-    <div className="space-y-3">
-      {visible.map((sg, i) => {
+    <div className={needsScroll ? "max-h-[600px] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
+      {data.map((sg, i) => {
         const priority: "high" | "medium" | "low" =
           sg.totalCitations >= 5 && sg.competitorsCited.length >= 2 ? "high"
             : sg.totalCitations >= 3 || sg.competitorsCited.length >= 1 ? "medium"
@@ -857,14 +834,6 @@ function SourceGapsSection({
         );
       })}
 
-      {hasMore && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
-        >
-          {showAll ? "Show less" : `Show all ${data.length} source gaps`}
-        </button>
-      )}
     </div>
   );
 }
@@ -876,13 +845,10 @@ function TopicGapsSection({
   data: ApiResponse["topicCoverageGaps"];
   brandName: string;
 }) {
-  const INITIAL_COUNT = 5;
-  const [showAll, setShowAll] = useState(false);
-
   if (!data || data.length === 0) return <EmptyState message="No topic coverage gaps found." />;
 
-  const visible = showAll ? data : data.slice(0, INITIAL_COUNT);
-  const hasMore = data.length > INITIAL_COUNT;
+  const SCROLL_THRESHOLD = 5;
+  const needsScroll = data.length >= SCROLL_THRESHOLD;
 
   const topicLabel = (key: string) =>
     key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -894,8 +860,8 @@ function TopicGapsSection({
   };
 
   return (
-    <div className="space-y-3">
-      {visible.map((tg, i) => {
+    <div className={needsScroll ? "max-h-[600px] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
+      {data.map((tg, i) => {
         const barColor =
           tg.mentionRate < 0.3 ? "bg-red-400" : tg.mentionRate < 0.6 ? "bg-amber-400" : "bg-green-400";
         const priority: "high" | "medium" | "low" =
@@ -970,14 +936,6 @@ function TopicGapsSection({
         );
       })}
 
-      {hasMore && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-foreground"
-        >
-          {showAll ? "Show less" : `Show all ${data.length} topic gaps`}
-        </button>
-      )}
     </div>
   );
 }
