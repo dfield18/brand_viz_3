@@ -176,11 +176,6 @@ function OverviewInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
-        {/* Brand context line */}
-        <p className="text-sm text-muted-foreground">
-          How AI sees {brandName} — a snapshot of your brand&apos;s presence, sentiment, and positioning across AI platforms.
-        </p>
-
         {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {scorecardData && (
