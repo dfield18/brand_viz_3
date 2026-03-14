@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState, useMemo, useCallback } from "react";
 import { ExternalLink, Download, FileText, MessageCircleQuestion } from "lucide-react";
 import type { NarrativeExample } from "@/types/api";
@@ -43,18 +44,62 @@ function trimPreamble(text: string): string {
   return result;
 }
 
-/** Strip markdown formatting */
-function stripMarkdown(text: string): string {
+/** Strip markdown formatting but preserve links for rendering */
+function stripMarkdownPreserveLinks(text: string): string {
   return text
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\*\*/g, "")
     .replace(/\*/g, "")
     .replace(/^#+\s+/gm, "")
     .replace(/`/g, "")
     .replace(/~~/g, "")
-    .replace(/\(\s*\)/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+/** Extract the domain from a URL, stripping www. prefix. */
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    const m = url.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?)/i);
+    return m?.[1] ?? url;
+  }
+}
+
+/** Render text with markdown links and bare URLs as clickable domain-only links. */
+function renderTextWithLinks(text: string): ReactNode[] {
+  const pattern = /\(?\[([^\]]*)\]\((https?:\/\/[^\s)]*[^\s).,;:])\)?[).,;:\s]*|\(?(https?:\/\/[^\s)]+[^\s).,;:])\)?/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[2] ?? match[3];
+    const domain = extractDomain(url);
+    parts.push(
+      <a
+        key={key++}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary/70 hover:text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {domain}
+      </a>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
 }
 
 /** Remove "Title: " prefix patterns from excerpts */
@@ -236,7 +281,7 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
       ) : (
         visible.map((ex, i) => {
           const badge = SENTIMENT_BADGE[ex.sentiment] ?? SENTIMENT_BADGE.NEU;
-          const cleanExcerpt = stripMarkdown(stripTitlePrefix(trimPreamble(ex.excerpt)));
+          const cleanExcerpt = stripMarkdownPreserveLinks(stripTitlePrefix(trimPreamble(ex.excerpt)));
           const visibleThemes = ex.themes.slice(0, MAX_TAGS);
           const hiddenCount = ex.themes.length - MAX_TAGS;
 
@@ -262,7 +307,7 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
 
               {/* Excerpt */}
               <p className="text-sm leading-relaxed text-foreground/90">
-                {cleanExcerpt}
+                {renderTextWithLinks(cleanExcerpt)}
                 {ex.excerpt.length >= 198 && "..."}
               </p>
 

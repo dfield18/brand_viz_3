@@ -62,19 +62,6 @@ interface ApiResponse {
     narrativeSummary: string;
   };
 
-  competitorNarrativeGaps: {
-    entityId: string;
-    displayName: string;
-    promptsWhereCompetitorOutranks: number;
-    outranksPercent: number;
-    gaps: {
-      promptText: string;
-      competitorRank: number;
-      brandRank: number | null;
-      models: string[];
-    }[];
-  }[];
-
   competitorAlerts: {
     entityId: string;
     displayName: string;
@@ -141,6 +128,20 @@ function RankDisplay({ rank }: { rank: number | null }) {
   return <span className="font-medium">#{rank}</span>;
 }
 
+const PRIORITY_STYLES = {
+  high: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400",
+  medium: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+  low: "bg-muted/50 text-muted-foreground",
+} as const;
+
+function PriorityBadge({ level }: { level: "high" | "medium" | "low" }) {
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${PRIORITY_STYLES[level]}`}>
+      {level === "high" ? "High" : level === "medium" ? "Med" : "Low"} priority
+    </span>
+  );
+}
+
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex items-center gap-2 py-6 justify-center text-sm text-muted-foreground">
@@ -165,6 +166,73 @@ const PAGE_SECTIONS: PageSection[] = [
   { id: "topic-gaps", label: "Topic Gaps" },
   { id: "declining-metrics", label: "Declining Metrics" },
 ];
+
+/* ─── Priority Summary ─────────────────────────────────────────────── */
+
+function PrioritySummary({ data }: { data: ApiResponse }) {
+  const bullets = useMemo(() => {
+    const items: { text: string; severity: "high" | "medium" | "low" }[] = [];
+
+    const notMentioned = (data.promptOpportunities ?? []).filter((p) => p.brandRank === null).length;
+    if (notMentioned > 0) {
+      items.push({
+        text: `Not mentioned in ${notMentioned} AI prompt${notMentioned !== 1 ? "s" : ""} where competitors rank`,
+        severity: "high",
+      });
+    }
+
+    const risingCompetitors = (data.competitorAlerts ?? []).filter((a) => a.direction === "rising").length;
+    if (risingCompetitors > 0) {
+      items.push({
+        text: `${risingCompetitors} competitor${risingCompetitors !== 1 ? "s" : ""} gaining visibility`,
+        severity: risingCompetitors >= 2 ? "high" : "medium",
+      });
+    }
+
+    const weaknessCount = (data.negativeNarratives?.weaknesses ?? []).length;
+    if (weaknessCount > 0) {
+      items.push({
+        text: `${weaknessCount} negative narrative${weaknessCount !== 1 ? "s" : ""} detected across AI platforms`,
+        severity: weaknessCount >= 3 ? "high" : "medium",
+      });
+    }
+
+    const decliningCount = (data.decliningMetrics ?? []).filter((m) => m.direction === "declining").length;
+    if (decliningCount > 0) {
+      items.push({
+        text: `${decliningCount} key metric${decliningCount !== 1 ? "s" : ""} trending downward`,
+        severity: "medium",
+      });
+    }
+
+    return items;
+  }, [data]);
+
+  if (bullets.length === 0) return null;
+
+  const SEVERITY_DOT = {
+    high: "bg-red-500",
+    medium: "bg-amber-500",
+    low: "bg-muted-foreground/40",
+  };
+
+  return (
+    <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">Top Priorities</h3>
+      </div>
+      <ul className="space-y-2">
+        {bullets.map((b, i) => (
+          <li key={i} className="flex items-center gap-2.5 text-sm text-blue-900/80 dark:text-blue-300/80">
+            <span className={`h-2 w-2 rounded-full shrink-0 ${SEVERITY_DOT[b.severity]}`} />
+            {b.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /* ─── Section Components ────────────────────────────────────────────── */
 
@@ -286,6 +354,7 @@ function PromptOpportunitiesSection({
           .slice(0, 5);
         const severity = severityLabel(item.worstRank, item.bestRank);
         const recommendation = matchedRecommendations.get(item.promptText);
+        const priority: "high" | "medium" | "low" = item.worstRank === null ? "high" : item.worstRank > 3 ? "medium" : "low";
 
         return (
           <div
@@ -299,9 +368,12 @@ function PromptOpportunitiesSection({
                   &ldquo;{item.promptText}&rdquo;
                 </p>
               </div>
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${severity.className}`}>
-                {severity.text}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <PriorityBadge level={priority} />
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${severity.className}`}>
+                  {severity.text}
+                </span>
+              </div>
             </div>
 
             {/* Competitors + platform count */}
@@ -356,96 +428,115 @@ function PlatformPlaybooksSection({
 }: {
   data: ApiResponse["platformPlaybooks"];
 }) {
-  const [showGaps, setShowGaps] = useState(false);
+  const [expandedGaps, setExpandedGaps] = useState<Record<string, boolean>>({});
 
   if (!data || data.length === 0) return <EmptyState message="No platform data available yet." />;
 
-  // Filter out platforms where the brand is already performing well
   const needsWork = data.filter(
     (pb) => !(pb.avgBrandRank !== null && pb.avgBrandRank <= 2 && pb.mentionRate >= 0.8),
   );
 
   if (needsWork.length === 0) return <EmptyState message="Strong performance across all platforms — no recommendations needed." />;
 
-  // Collect all tips as recommendations text
-  const tips = needsWork.filter((pb) => pb.platformTip).map((pb) => `**${MODEL_LABELS[pb.model] ?? pb.model}:** ${stripMarkdown(pb.platformTip)}`);
-
-  // Collect total specific gaps
-  const totalGaps = needsWork.reduce((sum, pb) => sum + pb.specificGaps.length, 0);
+  const toggleGaps = (model: string) =>
+    setExpandedGaps((prev) => ({ ...prev, [model]: !prev[model] }));
 
   return (
-    <div className="space-y-6">
-      {/* Recommendations (platform tips) */}
-      {tips.length > 0 && (
-        <div>
-          <p className="text-sm font-semibold mb-3">Recommendations</p>
-          <ul className="space-y-3 text-sm">
-            {tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-                <p className="text-muted-foreground leading-snug" dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-foreground">$1</span>') }} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+    <div className="space-y-3">
+      {needsWork.map((pb) => {
+        const borderColor = MODEL_BORDER_COLORS[pb.model] ?? "border-l-muted-foreground/30";
+        const rankText = pb.avgBrandRank !== null ? `#${pb.avgBrandRank.toFixed(1)}` : "Not ranked";
+        const gapsExpanded = expandedGaps[pb.model] ?? false;
 
-      {/* Platform stats as bullet list */}
-      <ul className="space-y-3 text-sm">
-        {needsWork.map((pb) => {
-          const rankText = pb.avgBrandRank !== null ? `Avg Rank #${pb.avgBrandRank.toFixed(1)}` : "Not ranked";
-          const sourceText = pb.topSourceCategories.length > 0
-            ? ` · Top sources: ${pb.topSourceCategories.slice(0, 3).map((sc) => sc.category).join(", ")}`
-            : "";
-
-          return (
-            <li key={pb.model} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-              <div>
-                <p className="font-medium text-foreground leading-snug">{MODEL_LABELS[pb.model] ?? pb.model}</p>
-                <p className="text-muted-foreground mt-0.5">
-                  Mention Rate <span className="font-medium">{pct(pb.mentionRate)}</span>
-                  {" · "}<span className="font-medium">{rankText}</span>
-                  {sourceText}
+        return (
+          <div
+            key={pb.model}
+            className={`rounded-lg border border-border/80 ${borderColor} border-l-[3px] bg-card px-5 py-3.5 space-y-2.5`}
+          >
+            {/* Platform name + stat pills */}
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground/90 leading-snug">
+                  {MODEL_LABELS[pb.model] ?? pb.model}
                 </p>
               </div>
-            </li>
-          );
-        })}
-      </ul>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  pb.mentionRate < 0.5
+                    ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                    : pb.mentionRate < 0.8
+                      ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                      : "bg-muted/50 text-muted-foreground"
+                }`}>
+                  {pct(pb.mentionRate)} mentioned
+                </span>
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  pb.avgBrandRank === null || pb.avgBrandRank > 3
+                    ? "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
+                    : "bg-muted/50 text-muted-foreground"
+                }`}>
+                  Avg {rankText}
+                </span>
+              </div>
+            </div>
 
-      {/* Specific gaps — collapsible */}
-      {totalGaps > 0 && (
-        <div className="border-t border-border pt-5">
-          <button
-            type="button"
-            onClick={() => setShowGaps((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-semibold hover:text-foreground/80 transition-colors"
-          >
-            <ChevronRight className={`h-4 w-4 transition-transform ${showGaps ? "rotate-90" : ""}`} />
-            Platform-specific prompt gaps
-            <span className="text-xs font-normal text-muted-foreground ml-1">({totalGaps})</span>
-          </button>
-          {showGaps && (
-            <ul className="space-y-3 text-sm mt-3 ml-5.5">
-              {needsWork.map((pb) =>
-                pb.specificGaps.map((gap, j) => (
-                  <li key={`${pb.model}-${j}`} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-                    <div>
-                      <p className="font-medium text-foreground leading-snug">{gap.promptText}</p>
-                      <p className="text-muted-foreground mt-0.5">
-                        {MODEL_LABELS[pb.model] ?? pb.model}: Rank <RankDisplay rank={gap.brandRankOnModel} />
-                        <span className="text-muted-foreground/60"> · vs #{gap.crossModelAvg.toFixed(1)} avg across platforms</span>
-                      </p>
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          )}
-        </div>
-      )}
+            {/* Top source categories */}
+            {pb.topSourceCategories.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground/60 mr-0.5">Top sources:</span>
+                {pb.topSourceCategories.slice(0, 3).map((sc) => (
+                  <span
+                    key={sc.category}
+                    className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground"
+                  >
+                    {sc.category}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Platform tip */}
+            {pb.platformTip && (
+              <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2.5">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  {stripMarkdown(pb.platformTip)}
+                </p>
+              </div>
+            )}
+
+            {/* Per-platform specific gaps — collapsible */}
+            {pb.specificGaps.length > 0 && (
+              <div className="border-t border-border/50 pt-2.5">
+                <button
+                  type="button"
+                  onClick={() => toggleGaps(pb.model)}
+                  className="flex items-center gap-1 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronRight className={`h-3.5 w-3.5 transition-transform ${gapsExpanded ? "rotate-90" : ""}`} />
+                  {pb.specificGaps.length} prompt gap{pb.specificGaps.length !== 1 ? "s" : ""} on this platform
+                </button>
+                {gapsExpanded && (
+                  <ul className="space-y-2 text-sm mt-2 ml-5">
+                    {pb.specificGaps.map((gap, j) => (
+                      <li key={j} className="flex items-start gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                        <div>
+                          <p className="text-[13px] text-foreground/80 leading-snug">{gap.promptText}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Rank <RankDisplay rank={gap.brandRankOnModel} />
+                            <span className="text-muted-foreground/60"> · vs #{gap.crossModelAvg.toFixed(1)} avg across platforms</span>
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -515,6 +606,7 @@ function NegativeNarrativesSection({
           ? [...new Set(w.responses.map((r) => MODEL_LABELS[r.model] ?? r.model))]
           : [];
         const recommendation = matchedRecs.get(i);
+        const priority: "high" | "medium" | "low" = w.count >= 5 ? "high" : w.count >= 2 ? "medium" : "low";
 
         return (
           <div
@@ -525,15 +617,18 @@ function NegativeNarrativesSection({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground/90 leading-snug">{clean(w.weakness)}</p>
               </div>
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                w.count >= 5
-                  ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                  : w.count >= 2
-                    ? "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
-                    : "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
-              }`}>
-                {w.count} mention{w.count !== 1 ? "s" : ""}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <PriorityBadge level={priority} />
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  w.count >= 5
+                    ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                    : w.count >= 2
+                      ? "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
+                      : "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                }`}>
+                  {w.count} mention{w.count !== 1 ? "s" : ""}
+                </span>
+              </div>
             </div>
 
             {/* Platforms */}
@@ -605,81 +700,16 @@ function NegativeNarrativesSection({
   );
 }
 
-function CompetitorNarrativeGapsSection({
-  data,
-  brandName,
-}: {
-  data: ApiResponse["competitorNarrativeGaps"];
-  brandName: string;
-}) {
-  if (!data || data.length === 0) return <EmptyState message="No competitor narrative gaps found." />;
-
-  const ordinal = (n: number) =>
-    n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th className="pb-2 pr-4 font-medium">Competitor</th>
-            <th className="pb-2 pr-4 font-medium text-right w-44">Outranks {brandName}</th>
-            <th className="pb-2 font-medium">Where They Beat {brandName}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {data.map((cg) => (
-            <tr key={cg.entityId} className="align-top">
-              <td className="py-3 pr-4 font-medium text-foreground whitespace-nowrap">{cg.displayName}</td>
-              <td className="py-3 pr-4 text-right font-medium">
-                {cg.outranksPercent}%
-                <span className="text-muted-foreground font-normal text-xs ml-1">of responses</span>
-              </td>
-              <td className="py-3">
-                {(cg.gaps ?? []).length > 0 ? (
-                  <ul className="space-y-1.5">
-                    {(cg.gaps ?? []).map((g, j) => {
-                      const compRankText = ordinal(g.competitorRank);
-                      const brandRankText = g.brandRank === null
-                        ? `${brandName} not mentioned`
-                        : `${brandName} ${ordinal(g.brandRank)}`;
-
-                      return (
-                        <li key={j} className="flex items-start gap-1.5">
-                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                          <div>
-                            <p className="text-foreground leading-snug">{g.promptText}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              <span className="font-medium">{cg.displayName} {compRankText}</span>
-                              {" · "}
-                              <span className={g.brandRank === null ? "text-red-600" : ""}>{brandRankText}</span>
-                              {g.models.length > 0 && (
-                                <span className="text-muted-foreground/60">
-                                  {" · "}{g.models.map((m) => MODEL_LABELS[m] ?? m).join(", ")}
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <span className="text-muted-foreground/50">Higher ranked but no specific prompt gaps</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function CompetitorAlertsSection({
   data,
+  slug,
+  range,
+  model,
 }: {
   data: ApiResponse["competitorAlerts"];
+  slug: string;
+  range: number;
+  model: string;
 }) {
   if (!data || data.length === 0) return <EmptyState message="No competitor movement detected." />;
 
@@ -729,6 +759,13 @@ function CompetitorAlertsSection({
               >
                 {isRising ? "Rising competitor" : isFalling ? "Losing ground" : "Stable"}
               </span>
+              <Link
+                href={`/entity/${slug}/competition?${new URLSearchParams({ range: String(range), model }).toString()}`}
+                className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline ml-2"
+              >
+                View details
+                <ChevronRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
         );
@@ -754,7 +791,12 @@ function SourceGapsSection({
 
   return (
     <div className="space-y-3">
-      {visible.map((sg, i) => (
+      {visible.map((sg, i) => {
+        const priority: "high" | "medium" | "low" =
+          sg.totalCitations >= 5 && sg.competitorsCited.length >= 2 ? "high"
+            : sg.totalCitations >= 3 || sg.competitorsCited.length >= 1 ? "medium"
+              : "low";
+        return (
         <div
           key={i}
           className="rounded-lg border border-border/80 border-l-[3px] border-l-violet-300 dark:border-l-violet-800 bg-card px-5 py-3.5 space-y-2.5"
@@ -763,7 +805,8 @@ function SourceGapsSection({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground/90 leading-snug">{sg.domain}</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <PriorityBadge level={priority} />
               {sg.category && sg.category !== "uncategorized" && (
                 <span className="inline-flex items-center rounded-full bg-purple-50/80 dark:bg-purple-950/20 px-2 py-0.5 text-[11px] text-purple-600 dark:text-purple-400">
                   {sg.category}
@@ -798,7 +841,8 @@ function SourceGapsSection({
             </p>
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {hasMore && (
         <button
@@ -841,6 +885,8 @@ function TopicGapsSection({
       {visible.map((tg, i) => {
         const barColor =
           tg.mentionRate < 0.3 ? "bg-red-400" : tg.mentionRate < 0.6 ? "bg-amber-400" : "bg-green-400";
+        const priority: "high" | "medium" | "low" =
+          tg.mentionRate < 0.3 ? "high" : (tg.avgRank ?? 99) > 3 || tg.mentionRate < 0.6 ? "medium" : "low";
 
         return (
           <div
@@ -851,7 +897,8 @@ function TopicGapsSection({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground/90 leading-snug">{topicLabel(tg.topicKey)}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <PriorityBadge level={priority} />
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                   tg.mentionRate < 0.3
                     ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
@@ -927,6 +974,13 @@ const METRIC_DISPLAY_NAMES: Record<string, string> = {
   avgRank: "Average Position",
 };
 
+const METRIC_ADVICE: Record<string, string> = {
+  mentionRate: "Focus on content optimization — ensure your brand appears in relevant AI training data and authoritative sources.",
+  avgRank: "Improve positioning by strengthening claims, adding structured data, and targeting prompts where you rank poorly.",
+  rank1Rate: "Increase top-result appearances by building authority signals and targeting high-intent prompts.",
+  avgProminence: "Boost prominence by increasing the depth and specificity of content about your brand.",
+};
+
 function DecliningMetricsSection({
   data,
 }: {
@@ -976,6 +1030,14 @@ function DecliningMetricsSection({
             <p className="mt-2 text-xs text-muted-foreground">
               {m.previousPeriod} vs {m.recentPeriod}
             </p>
+            {METRIC_ADVICE[m.metric] && (
+              <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2 mt-3">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
+                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                  {METRIC_ADVICE[m.metric]}
+                </p>
+              </div>
+            )}
           </div>
         );
       })}
@@ -1019,7 +1081,7 @@ function Section({
           <Icon className="h-5 w-5 text-muted-foreground" />
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">{description}</p>
+        <p className="text-base text-muted-foreground mb-4">{description}</p>
         {children}
       </div>
     </div>
@@ -1134,6 +1196,8 @@ function RecommendationsInner() {
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         <Header brandName={brandName} range={range} model={model} />
 
+        <PrioritySummary data={apiData} />
+
         {/* ── Content Gaps ─────────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Content Gaps</h2>
 
@@ -1179,7 +1243,7 @@ function RecommendationsInner() {
             description="Competitors whose visibility is changing — rising threats and declining rivals."
             icon={AlertTriangle}
           >
-            <CompetitorAlertsSection data={apiData.competitorAlerts} />
+            <CompetitorAlertsSection data={apiData.competitorAlerts} slug={params.slug} range={range} model={model} />
           </Section>
         )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { NarrativeClaim } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
 import { ThumbsUp, ThumbsDown, Minus } from "lucide-react";
@@ -46,8 +47,74 @@ function stripMarkdownAndUrls(text: string): string {
     .trim();
 }
 
-/** Derive a short, clean title from claim text. Ensures it reads as a category label. */
-function deriveTitle(raw: string): { title: string; body: string } {
+/** Strip markdown formatting but preserve [label](url) links for later rendering. */
+function stripMarkdownPreserveLinks(text: string): string {
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/`/g, "")
+    .replace(/~~/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/[.,]\s*$/, "")
+    .trim();
+}
+
+/** Extract the domain from a URL, stripping www. prefix. */
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    const m = url.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?)/i);
+    return m?.[1] ?? url;
+  }
+}
+
+/** Render text with markdown links and bare URLs as clickable domain-only links. */
+function renderTextWithLinks(text: string): ReactNode[] {
+  // Match: optional parens around [label](url), or bare URLs
+  const pattern = /\(?\[([^\]]*)\]\((https?:\/\/[^\s)]*[^\s).,;:])\)?[).,;:\s]*|\(?(https?:\/\/[^\s)]+[^\s).,;:])\)?/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    // Add text before this match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    const url = match[2] ?? match[3];
+    const domain = extractDomain(url);
+
+    parts.push(
+      <a
+        key={key++}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary/70 hover:text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {domain}
+      </a>,
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
+/** Derive a short, clean title from claim text. Ensures it reads as a category label.
+ *  Returns rawBody (with links preserved) for rendering clickable domain links. */
+function deriveTitle(raw: string): { title: string; body: string; rawBody: string } {
   const text = stripListMarker(raw);
 
   // Try to split on **bold** title pattern first
@@ -55,14 +122,16 @@ function deriveTitle(raw: string): { title: string; body: string } {
   if (boldMatch) {
     const title = stripMarkdownAndUrls(boldMatch[1]).replace(/:+$/, "").trim();
     const body = stripMarkdownAndUrls(boldMatch[2]);
+    const rawBody = stripMarkdownPreserveLinks(boldMatch[2]);
     // If the "title" is too long (looks like a sentence), re-derive
     if (title.split(/\s+/).length <= 6) {
-      return { title, body };
+      return { title, body, rawBody };
     }
     // Fall through to sentence-based derivation with full text
   }
 
   const clean = stripMarkdownAndUrls(text.replace(/\*\*/g, ""));
+  const rawClean = stripMarkdownPreserveLinks(text.replace(/\*\*/g, ""));
 
   // Try splitting on colon or em-dash
   const colonSplit = clean.match(/^([^:–—]{4,50})[:\u2013\u2014]\s+([\s\S]+)$/);
@@ -70,16 +139,22 @@ function deriveTitle(raw: string): { title: string; body: string } {
     const candidate = colonSplit[1].trim();
     // Only use if it reads like a label (not a sentence fragment starting with quotes/data)
     if (candidate.split(/\s+/).length <= 6 && !/^\d/.test(candidate) && !/^["'"…]/.test(candidate)) {
-      return { title: candidate.replace(/:+$/, "").trim(), body: colonSplit[2].trim() };
+      // Find equivalent split in raw version
+      const rawColonSplit = rawClean.match(/^[^:–—]{4,80}[:\u2013\u2014]\s+([\s\S]+)$/);
+      return {
+        title: candidate.replace(/:+$/, "").trim(),
+        body: colonSplit[2].trim(),
+        rawBody: rawColonSplit?.[1]?.trim() ?? colonSplit[2].trim(),
+      };
     }
   }
 
   // Take first ~4 words as title, rest as body
   const words = clean.split(/\s+/);
   if (words.length <= 4) {
-    return { title: clean.replace(/:+$/, "").trim(), body: "" };
+    return { title: clean.replace(/:+$/, "").trim(), body: "", rawBody: "" };
   }
-  return { title: words.slice(0, 4).join(" ").replace(/:+$/, "").trim() + "…", body: clean };
+  return { title: words.slice(0, 4).join(" ").replace(/:+$/, "").trim() + "…", body: clean, rawBody: rawClean };
 }
 
 const VARIANT_STYLES = {
@@ -124,9 +199,11 @@ function ClaimCard({
   variant: "strength" | "weakness" | "neutral";
   brandName?: string;
 }) {
-  const { title: rawTitle, body: rawBody } = deriveTitle(claim.text);
+  const { title: rawTitle, body: cleanBody, rawBody } = deriveTitle(claim.text);
   const title = rawTitle ? capitalizeBrand(rawTitle, brandName) : null;
-  const body = rawBody ? capitalizeBrand(truncateBody(rawBody, 180), brandName) : "";
+  // Use rawBody (with links preserved) for display, fall back to cleanBody
+  const bodyText = rawBody || cleanBody;
+  const body = bodyText ? capitalizeBrand(truncateBody(bodyText, 180), brandName) : "";
   const style = VARIANT_STYLES[variant];
 
   return (
@@ -143,7 +220,7 @@ function ClaimCard({
             const displayBody = isMidSentence ? body : body.charAt(0).toUpperCase() + body.slice(1);
             return (
               <p className="text-[13px] text-muted-foreground leading-relaxed mt-1.5">
-                &ldquo;{isMidSentence && "… "}{displayBody}&rdquo;
+                &ldquo;{isMidSentence && "… "}{renderTextWithLinks(displayBody)}&rdquo;
               </p>
             );
           })()}

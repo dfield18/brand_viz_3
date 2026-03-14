@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { MessageSquareQuote } from "lucide-react";
 import type { NarrativeFrame, NarrativeExample } from "@/types/api";
@@ -71,6 +72,52 @@ function computeFrameDelta(
   return Math.round(delta);
 }
 
+/** Extract the domain from a URL, stripping www. prefix. */
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    const m = url.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?)/i);
+    return m?.[1] ?? url;
+  }
+}
+
+/** Render text with markdown links and bare URLs as clickable domain-only links. */
+function renderTextWithLinks(text: string): ReactNode[] {
+  const pattern = /\(?\[([^\]]*)\]\((https?:\/\/[^\s)]*[^\s).,;:])\)?[).,;:\s]*|\(?(https?:\/\/[^\s)]+[^\s).,;:])\)?/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[2] ?? match[3];
+    const domain = extractDomain(url);
+    parts.push(
+      <a
+        key={key++}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary/70 hover:text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {domain}
+      </a>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
 function QuoteCard({
   example,
   color,
@@ -85,7 +132,7 @@ function QuoteCard({
         <MessageSquareQuote className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
         <div className="min-w-0">
           <p className="text-[13px] text-foreground leading-relaxed">
-            &ldquo;{cleanExcerpt}{cleanExcerpt.length >= 198 ? "\u2026" : ""}&rdquo;
+            &ldquo;{renderTextWithLinks(cleanExcerpt)}{cleanExcerpt.length >= 198 ? "\u2026" : ""}&rdquo;
           </p>
           <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-muted-foreground/70">
             {example.model && (
