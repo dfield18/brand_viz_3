@@ -107,6 +107,8 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
   const rowHeight = data.length <= 3 ? 64 : data.length <= 5 ? 50 : 38;
   const barHeight = data.length <= 3 ? 28 : data.length <= 5 ? 22 : 18;
   const chartHeight = Math.max(data.length * rowHeight + 20, 220);
+  // Radar height matches bar chart height (with room for heading text)
+  const radarHeight = Math.max(chartHeight, 240);
 
   return (
     <div>
@@ -170,7 +172,7 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
           <p className="text-[11px] text-muted-foreground mb-3">
             Larger area = AI leans more heavily on this narrative for {selectedNarrative.name}
           </p>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={radarHeight}>
             <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
@@ -209,7 +211,7 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
           </ResponsiveContainer>
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground mt-6 leading-relaxed">
+      <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
         Narrative frames are detected using keyword and theme analysis of AI responses mentioning this competitor. Percentages show how frequently each frame appears relative to other frames.
       </p>
     </div>
