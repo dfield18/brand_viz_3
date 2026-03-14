@@ -113,6 +113,19 @@ interface ApiResponse {
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/`/g, "")
+    .replace(/~~/g, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 const MODEL_BORDER_COLORS: Record<string, string> = {
   chatgpt: "border-l-emerald-500",
   gemini: "border-l-sky-500",
@@ -230,7 +243,7 @@ function PromptOpportunitiesSection({
           <p className="text-sm font-semibold mb-3">Recommendations</p>
           <div className="text-sm text-muted-foreground space-y-2">
             {summary.split("\n").filter(Boolean).map((line, i) => (
-              <p key={i}>{line}</p>
+              <p key={i}>{stripMarkdown(line)}</p>
             ))}
           </div>
         </div>
@@ -304,7 +317,7 @@ function PlatformPlaybooksSection({
   if (needsWork.length === 0) return <EmptyState message="Strong performance across all platforms — no recommendations needed." />;
 
   // Collect all tips as recommendations text
-  const tips = needsWork.filter((pb) => pb.platformTip).map((pb) => `**${MODEL_LABELS[pb.model] ?? pb.model}:** ${pb.platformTip}`);
+  const tips = needsWork.filter((pb) => pb.platformTip).map((pb) => `**${MODEL_LABELS[pb.model] ?? pb.model}:** ${stripMarkdown(pb.platformTip)}`);
 
   // Collect total specific gaps
   const totalGaps = needsWork.reduce((sum, pb) => sum + pb.specificGaps.length, 0);
@@ -416,7 +429,7 @@ function NegativeNarrativesSection({
           <p className="text-sm font-semibold mb-3">Recommendations</p>
           <div className="text-sm text-muted-foreground space-y-2">
             {data.narrativeSummary.split("\n").filter(Boolean).map((line, i) => (
-              <p key={i}>{line}</p>
+              <p key={i}>{stripMarkdown(line)}</p>
             ))}
           </div>
         </div>
@@ -666,7 +679,7 @@ function SourceGapsSection({
               </td>
               <td className="py-3 pr-4 font-medium">{sg.totalCitations}</td>
               <td className="py-3 text-muted-foreground italic max-w-[240px]">
-                {sg.suggestion}
+                {stripMarkdown(sg.suggestion)}
               </td>
             </tr>
           ))}
@@ -732,7 +745,7 @@ function TopicGapsSection({
                   </div>
                 </td>
                 <td className="py-3 text-muted-foreground italic max-w-[240px]">
-                  {tg.suggestion}
+                  {stripMarkdown(tg.suggestion)}
                 </td>
               </tr>
             );

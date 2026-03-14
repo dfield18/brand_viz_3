@@ -271,7 +271,6 @@ export async function GET(req: NextRequest) {
 
     const compNames = competitors.map((c) => c.displayName).join(", ");
     const expanded = expandPrompt(run.prompt.text, run);
-    const topic = expanded.length > 80 ? expanded.slice(0, 80) + "..." : expanded;
 
     promptOpportunities.push({
       promptText: expanded,
@@ -279,8 +278,8 @@ export async function GET(req: NextRequest) {
       brandRank,
       topCompetitors: competitors,
       suggestion: competitors.length > 0
-        ? `Create content addressing "${topic}" \u2014 competitors ${compNames} currently dominate this query`
-        : `Create content addressing "${topic}" \u2014 your brand is not visible for this query`,
+        ? `When AI is asked "${expanded}", competitors ${compNames} currently dominate \u2014 create content to improve your ranking for this query`
+        : `When AI is asked "${expanded}", your brand doesn\u2019t appear \u2014 create content to become visible for this query`,
     });
   }
 
@@ -307,10 +306,10 @@ export async function GET(req: NextRequest) {
       `Below are the top prompts where ${brandName} is either absent or poorly ranked in AI responses.\n`,
       ...lines,
       `\nWrite a concise, actionable summary (3-5 bullet points) that a marketing executive can quickly scan. Each bullet should:`,
-      `- Group similar gaps together where possible (e.g. "across product comparison queries" or "in industry expertise questions")`,
+      `- Reference the actual AI prompts/questions from the data (not generic terms like "industry queries")`,
       `- Explain what content ${brandName} should create or improve`,
-      `- Reference specific competitors or prompt themes from the data`,
-      `Use the brand name "${brandName}" (not "you" or "your brand"). Do not use headers or titles. Format each bullet as a line starting with "- " (a hyphen). Keep each bullet to 1-2 sentences.`,
+      `- Reference specific competitors from the data when relevant`,
+      `Use the brand name "${brandName}" (not "you" or "your brand"). Do not use markdown formatting (no **, no #, no []()). Do not use headers or titles. Format each bullet as a line starting with "- " (a hyphen). Keep each bullet to 1-2 sentences.`,
     ].join("\n");
 
     try {
@@ -510,7 +509,7 @@ export async function GET(req: NextRequest) {
       `- Clearly state the perception problem in plain language`,
       `- Note how widespread it is (reference the numbers)`,
       `- Suggest a concrete action to counter the narrative`,
-      `Use the brand name "${brandName}" (not "you" or "your brand"). Do not use headers or titles. Format each bullet as a line starting with "- " (a hyphen). Keep each bullet to 1-2 sentences.`,
+      `Use the brand name "${brandName}" (not "you" or "your brand"). Do not use markdown formatting (no **, no #, no []()). Do not use headers or titles. Format each bullet as a line starting with "- " (a hyphen). Keep each bullet to 1-2 sentences.`,
     ].join("\n");
 
     try {
