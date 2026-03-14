@@ -113,7 +113,7 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
                     />
                   </div>
                   <span className="text-xs tabular-nums text-muted-foreground w-10 text-right shrink-0">
-                    {row.mentionShare}%
+                    {Number(row.mentionShare).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -129,8 +129,8 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
             <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
             <p className="text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">{threat.name}</span> is your biggest competitive threat
-              {" — "}beats you in <span className="font-semibold text-foreground">{threat.lossRate}%</span> of head-to-head comparisons
-              and appears in <span className="font-semibold text-foreground">{threat.mentionRate}%</span> of AI responses
+              {" — "}beats you in <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of head-to-head comparisons
+              and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of AI responses
             </p>
           </div>
         </div>
