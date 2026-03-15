@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
 
   const { brand, job, runs: allRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
   const runs = promptId
     ? allRuns.filter((r) => r.promptId === promptId)
     : cluster && cluster !== "all"
@@ -159,7 +160,7 @@ export async function GET(req: NextRequest) {
     // (same methodology as Visibility tab — based on order of first appearance in text)
     const brandMentionOrderRanks: number[] = [];
     for (const run of runs) {
-      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rank !== null) brandMentionOrderRanks.push(rank);
     }
     const brandComp = competitors.find((c) => c.isBrand);

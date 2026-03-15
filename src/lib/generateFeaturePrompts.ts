@@ -99,6 +99,52 @@ Return ONLY the conversational name, no quotes or other text.`,
 }
 
 /**
+ * Generate alternate names, abbreviations, and common variations for a brand/topic
+ * using GPT-4o-mini. Used for fuzzy mention detection in AI responses.
+ * e.g. "21st Century ROAD to Housing Act" → ["ROAD Housing Act", "ROAD Act", "ROAD Housing Bill"]
+ */
+export async function generateBrandAliases(brandName: string): Promise<string[]> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 200,
+      messages: [
+        {
+          role: "system",
+          content: `Given a brand, company, organization, or topic name, return a JSON array of alternate names, abbreviations, acronyms, and common shorthand variations that people or AI models might use to refer to it.
+
+Rules:
+- Include common abbreviations and acronyms (e.g. "ACLU" for "American Civil Liberties Union")
+- Include shortened forms people commonly use (e.g. "McDonald's" → "McDonalds", "Mickey D's")
+- For legislation/acts, include bill numbers, short titles, and common rewordings (e.g. "ROAD Housing Act", "ROAD Act")
+- For multi-word names, include the key distinctive words that would unambiguously identify it (e.g. "21st Century ROAD to Housing Act" → "ROAD Housing Act")
+- Do NOT include generic words that would match too broadly (e.g. don't include just "Act" or "Housing")
+- Each alias must be at least 2 words or a recognized acronym/abbreviation
+- Return 3-8 aliases, fewer if the name is already short/unambiguous
+- Do NOT include the original name itself
+- Return ONLY a JSON array of strings, no other text`,
+        },
+        { role: "user", content: brandName },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content?.trim();
+    if (!content) return [];
+
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.every((a: unknown) => typeof a === "string")) {
+      // Filter out any alias that's identical to the brand name (case-insensitive)
+      const lowerName = brandName.toLowerCase();
+      return parsed.filter((a: string) => a.toLowerCase() !== lowerName).slice(0, 8);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Classify a brand's industry using GPT-4o-mini.
  * Returns a short, lowercase label like "cars", "fast food", "cloud computing".
  */

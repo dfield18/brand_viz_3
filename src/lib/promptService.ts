@@ -4,6 +4,7 @@ import {
   classifyBrandCategory,
   classifyBrandDisplayName,
   classifyBrandIndustry,
+  generateBrandAliases,
 } from "@/lib/generateFeaturePrompts";
 
 /**
@@ -58,6 +59,12 @@ export async function materializePromptsForBrand(brandId: string) {
       if (!brand.displayName) {
         const displayName = await classifyBrandDisplayName(brand.name);
         await prisma.brand.update({ where: { id: brandId }, data: { displayName } });
+      }
+      if (!brand.aliases || brand.aliases.length === 0) {
+        const aliases = await generateBrandAliases(brand.name);
+        if (aliases.length > 0) {
+          await prisma.brand.update({ where: { id: brandId }, data: { aliases } });
+        }
       }
     }
   } catch (err) {

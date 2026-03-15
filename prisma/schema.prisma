@@ -19,6 +19,7 @@ model Brand {
   slug        String   @unique
   category    String?  // "commercial" | "political_advocacy" — set via GPT classification
   industry    String?  // short industry label e.g. "cars", "fast food" — set via GPT
+  aliases     String[] @default([]) // alternate names/abbreviations for mention detection — set via GPT
   createdAt   DateTime @default(now())
 
   jobs    Job[]

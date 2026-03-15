@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
   const brandName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   // Mode 1: By prompt text
   if (promptText) {
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest) {
     if (minPos !== null) {
       const isNotMentioned = minPos === -1;
       const filtered = runs.filter((r) => {
-        const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson);
+        const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
       });

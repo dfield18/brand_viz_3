@@ -27,18 +27,23 @@ function wordBoundaryIndex(text: string, term: string): number {
 
 /**
  * Check if a brand is mentioned in text using word-boundary matching.
- * Checks both the brand name and its slug.
+ * Checks the brand name, its slug, and any known aliases/variations.
  * Avoids substring false positives (e.g. "nike" won't match "technikers").
  */
 export function isBrandMentioned(
   text: string,
   brandName: string,
   brandSlug: string,
+  aliases?: string[],
 ): boolean {
-  return (
-    wordBoundaryRegex(brandName).test(text) ||
-    wordBoundaryRegex(brandSlug).test(text)
-  );
+  if (wordBoundaryRegex(brandName).test(text)) return true;
+  if (wordBoundaryRegex(brandSlug).test(text)) return true;
+  if (aliases) {
+    for (const alias of aliases) {
+      if (wordBoundaryRegex(alias).test(text)) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -51,11 +56,18 @@ export function computeBrandRank(
   brandName: string,
   brandSlug: string,
   analysisJson: unknown,
+  aliases?: string[],
 ): number | null {
   // Find brand's first position using word-boundary matching
   const namePos = wordBoundaryIndex(responseText, brandName);
   const slugPos = wordBoundaryIndex(responseText, brandSlug);
   const positions = [namePos, slugPos].filter((p) => p >= 0);
+  if (aliases) {
+    for (const alias of aliases) {
+      const aliasPos = wordBoundaryIndex(responseText, alias);
+      if (aliasPos >= 0) positions.push(aliasPos);
+    }
+  }
   if (positions.length === 0) return null; // brand not found
   const brandPos = Math.min(...positions);
 

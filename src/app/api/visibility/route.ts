@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
 
   const { brand, job, runs: allRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   try {
     // Filter to industry-cluster responses only
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
     const seenWinPrompts = new Set<string>();
 
     for (const run of runs) {
-      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug);
+      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
       if (mentioned) totalMentions++;
 
       const cluster = run.prompt.cluster;
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
         if (mentioned) clusterStats[cluster].mentions++;
       }
 
-      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (cluster === "industry") {
         industryRanks.push(rank);
         if (!industryRanksByModel[run.model]) industryRanksByModel[run.model] = [];
@@ -253,8 +254,8 @@ export async function GET(req: NextRequest) {
       const ms = modelBreakdownStats[run.model];
       if (!ms) continue;
       ms.total++;
-      if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug)) ms.mentions++;
-      const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) ms.mentions++;
+      const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) ms.ranks.push(rk);
     }
     const modelBreakdown = modelKeys.map((mk) => {
@@ -279,7 +280,7 @@ export async function GET(req: NextRequest) {
       const intent = run.prompt.intent;
       if (industryIntentStats[intent]) {
         industryIntentStats[intent].runs++;
-        if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug)) {
+        if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) {
           industryIntentStats[intent].mentions++;
         }
       }
@@ -295,7 +296,7 @@ export async function GET(req: NextRequest) {
     // Mention rate: industry-cluster queries only
     const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, brand.name, brand.slug),
+      isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases),
     ).length;
     const overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
@@ -310,12 +311,12 @@ export async function GET(req: NextRequest) {
 
     function computeWeekKpis(weekRuns: VisibilityRun[]) {
       const mentions = weekRuns.filter((r) =>
-        isBrandMentioned(r.rawResponseText, brand.name, brand.slug),
+        isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases),
       ).length;
       const mr = computeMentionRate(mentions, weekRuns.length);
       const wRanks: (number | null)[] = [];
       for (const r of weekRuns) {
-        const rk = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson);
+        const rk = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
         wRanks.push(rk);
       }
       const promScores = weekRuns
@@ -377,7 +378,7 @@ export async function GET(req: NextRequest) {
       const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
       if (seenWorstPrompts.has(promptText)) continue;
       seenWorstPrompts.add(promptText);
-      const brandRank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      const brandRank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       // Include if brand is absent (null) or ranks > 1
       if (brandRank !== null && brandRank <= 1) continue;
       worstPrompts.push({ prompt: promptText, rank: brandRank, competitors: [] });
@@ -528,8 +529,8 @@ export async function GET(req: NextRequest) {
     for (const [date, dateRuns] of dedupedTrendRuns) {
       for (const run of dateRuns) {
         if (run.prompt.cluster !== "industry") continue;
-        const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug);
-        const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+        const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+        const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
         const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
         const runSov = sovByRun.get(run.id) ?? { brandMentions: 0, totalMentions: 0 };
 
@@ -642,9 +643,9 @@ export async function GET(req: NextRequest) {
       }
       const bucket = promptBuckets.get(key)!;
       bucket.total++;
-      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug);
+      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
       if (mentioned) bucket.mentions++;
-      const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) bucket.ranks.push(rk);
 
       // Extract sentiment from narrativeJson
@@ -741,7 +742,7 @@ export async function GET(req: NextRequest) {
     for (const run of runs) {
       if (run.prompt.cluster !== "industry") continue;
       const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
-      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson);
+      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       promptPositions.push({ promptText, model: run.model, position: rank });
     }
 

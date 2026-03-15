@@ -299,10 +299,11 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
     const ticks: number[] = [];
     for (let i = xLo; i <= xHi; i++) ticks.push(i);
 
-    // Y: pad 10% below/above, clamped 0-100, round to nearest 5
+    // Y: pad 10% below/above, round to nearest 5
+    // Allow axis to exceed 100% when points are near the top so labels have room
     const yPad = Math.max((yMax - yMin) * 0.15, 10);
     const yLo = Math.max(0, Math.floor((yMin - yPad) / 5) * 5);
-    const yHi = Math.min(100, Math.ceil((yMax + yPad) / 5) * 5);
+    const yHi = yMax >= 90 ? Math.ceil((yMax + yPad) / 5) * 5 : Math.min(100, Math.ceil((yMax + yPad) / 5) * 5);
     const yStep = Math.max(5, Math.round((yHi - yLo) / 4 / 5) * 5);
     const yt: number[] = [];
     for (let v = yLo; v <= yHi; v += yStep) yt.push(v);

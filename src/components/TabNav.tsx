@@ -13,11 +13,11 @@ const TABS = [
   { label: "Recommendations", segment: "recommendations" },
   { label: "Site Audit", segment: "site-audit" },
   { label: "Reports", segment: "reports" },
-  { label: "Reference", segment: "reference" },
-  { label: "Visibility Old", segment: "visibility" },
 ];
 
-const RIGHT_TABS = [
+const SECONDARY_TABS = [
+  { label: "Reference", segment: "reference" },
+  { label: "Visibility Old", segment: "visibility" },
   { label: "Responses", segment: "responses" },
   { label: "Full Data", segment: "full-data" },
 ];
@@ -48,18 +48,18 @@ function TabNavInner({ slug }: { slug: string }) {
             </Link>
           );
         })}
-        <div className="ml-auto flex gap-0">
-          {RIGHT_TABS.map((tab) => {
+        <div className="ml-auto flex items-center gap-0 border-l border-border/50 pl-2">
+          {SECONDARY_TABS.map((tab) => {
             const href = `/entity/${slug}/${tab.segment}${suffix}`;
             const isActive = pathname === `/entity/${slug}/${tab.segment}`;
             return (
               <Link
                 key={tab.segment}
                 href={href}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-2.5 py-3 text-xs border-b-2 transition-colors ${
                   isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                    ? "border-primary text-foreground font-medium"
+                    : "border-transparent text-muted-foreground/60 hover:text-muted-foreground hover:border-muted"
                 }`}
               >
                 {tab.label}

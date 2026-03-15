@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         await Promise.all(
           runsToBackfill.map(async (run) => {
             const promptText = (promptMap.get(run.promptId) ?? "").replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
-            const analysis = await extractAnalysis(run.rawResponseText, brand.name, promptText);
+            const analysis = await extractAnalysis(run.rawResponseText, brand.name, promptText, brand.category ?? undefined);
             await prisma.run.update({
               where: { id: run.id },
               data: { analysisJson: JSON.parse(JSON.stringify(analysis)) },

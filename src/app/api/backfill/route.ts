@@ -96,7 +96,7 @@ interface WeekTask {
 
 async function processWeek(
   task: WeekTask,
-  brand: { id: string; name: string; slug: string; industry: string | null },
+  brand: { id: string; name: string; slug: string; industry: string | null; category: string | null },
   brandName: string,
   model: string,
   jobRange: number,
@@ -161,6 +161,7 @@ async function processWeek(
             responseText,
             brandName,
             promptText,
+            brand.category ?? undefined,
           );
         }
 

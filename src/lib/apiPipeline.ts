@@ -20,6 +20,7 @@ export interface PipelineBrand {
   displayName: string | null;
   slug: string;
   industry: string | null;
+  aliases: string[];
 }
 
 export interface PipelineJob {
@@ -138,7 +139,7 @@ export async function fetchBrandRuns<R extends { model: string; promptId: string
   // Look up brand
   const brand = await prisma.brand.findUnique({
     where: { slug: brandSlug },
-    select: { id: true, name: true, displayName: true, slug: true, industry: true },
+    select: { id: true, name: true, displayName: true, slug: true, industry: true, aliases: true },
   });
   if (!brand) {
     return {

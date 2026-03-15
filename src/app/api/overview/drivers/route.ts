@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
   const brand = maybeBrand;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   const isAll = model === "all";
   const modelFilter = isAll ? {} : { model };
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
             brand.name,
             brand.slug,
             r.analysisJson,
+            brandAliases,
           ),
           competitorCount: analysis?.competitors?.length ?? 0,
         };

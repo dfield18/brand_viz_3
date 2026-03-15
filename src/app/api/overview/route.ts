@@ -25,6 +25,7 @@ async function getModelOverviewData(
   range: number,
   brandName: string,
   brandSlug: string,
+  aliases?: string[],
 ) {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const allJobs = await prisma.job.findMany({
@@ -86,7 +87,7 @@ async function getModelOverviewData(
 
   // Compute avg rank from latest runs
   const ranks: (number | null)[] = latestRealRunsFull.map((run) =>
-    computeBrandRank(run.rawResponseText, brandName, brandSlug, run.analysisJson),
+    computeBrandRank(run.rawResponseText, brandName, brandSlug, run.analysisJson, aliases),
   );
   const validRanks = ranks.filter((r): r is number => r !== null);
   const avgRank = validRanks.length > 0
@@ -155,6 +156,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
   const brandName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
+  const brandAliases = (brand as unknown as { aliases?: string[] }).aliases?.length ? (brand as unknown as { aliases: string[] }).aliases : undefined;
 
   const modelsToQuery = model === "all" ? VALID_MODELS : [model];
 
@@ -162,7 +164,7 @@ export async function GET(req: NextRequest) {
   const modelResults = await Promise.all(
     modelsToQuery.map(async (m) => ({
       model: m,
-      data: await getModelOverviewData(brand.id, m, range, brand.name, brand.slug),
+      data: await getModelOverviewData(brand.id, m, range, brand.name, brand.slug, brandAliases),
     })),
   );
 
@@ -421,13 +423,13 @@ export async function GET(req: NextRequest) {
 
     // Mention rate
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug),
+      isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
     ).length;
     overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
     // Ranks
     const industryRanks: (number | null)[] = industryRuns.map((r) =>
-      computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson),
+      computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
     );
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
@@ -509,19 +511,19 @@ export async function GET(req: NextRequest) {
         const pwTotalC = results[6] as number;
 
         const twMentions = thisWeekRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug),
+          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
         const pwMentions = priorWeekRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug),
+          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
         const twMR = computeMentionRate(twMentions, thisWeekRuns.length);
         const pwMR = computeMentionRate(pwMentions, priorWeekRuns.length);
 
         const twRanks = thisWeekRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson),
+          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
         const pwRanks = priorWeekRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson),
+          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
 
         kpiDeltas = {

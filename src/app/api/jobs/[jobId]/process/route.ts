@@ -440,7 +440,7 @@ export async function POST(
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    include: { brand: { select: { id: true, slug: true, name: true, displayName: true, industry: true } } },
+    include: { brand: { select: { id: true, slug: true, name: true, displayName: true, industry: true, category: true } } },
   });
 
   if (!job) {
@@ -672,7 +672,7 @@ export async function POST(
     const responses = await Promise.all(
       rawResponses.map(async (r) => {
         if (r.needsAnalysis) {
-          r.analysis = await extractAnalysis(r.responseText, brandDisplayName, r.promptText);
+          r.analysis = await extractAnalysis(r.responseText, brandDisplayName, r.promptText, job.brand.category ?? undefined);
         }
         return { prompt: r.prompt, promptTextHash: r.promptTextHash, responseText: r.responseText, analysis: r.analysis, citations: r.citations };
       }),

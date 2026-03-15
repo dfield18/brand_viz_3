@@ -38,16 +38,31 @@ function MiniSparkline({ points }: { points: number[] }) {
   if (points.length < 2) return null;
   const min = Math.min(...points);
   const max = Math.max(...points);
-  const range = max - min || 1;
+  const range = max - min;
   const w = 48;
   const h = 18;
   const pad = 2;
+  const trending = points[points.length - 1] - points[0];
+  const isFlat = range < 1 && Math.abs(trending) <= 0.5;
+
+  if (isFlat) {
+    // Flat trend: show a dashed line with "Even" label
+    const midY = h / 2;
+    return (
+      <span className="flex items-center gap-1.5">
+        <svg width={w} height={h} className="shrink-0">
+          <line x1={pad} y1={midY} x2={w - pad} y2={midY} stroke="rgb(156 163 175)" strokeWidth={2} strokeLinecap="round" strokeDasharray="4 3" />
+        </svg>
+        <span className="text-[10px] text-muted-foreground font-medium">Even</span>
+      </span>
+    );
+  }
+
   const coords = points.map((v, i) => {
     const x = pad + (i / (points.length - 1)) * (w - pad * 2);
-    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+    const y = pad + (1 - (v - min) / (range || 1)) * (h - pad * 2);
     return `${x},${y}`;
   });
-  const trending = points[points.length - 1] - points[0];
   const color = trending > 0.5 ? "rgb(16 185 129)" : trending < -0.5 ? "rgb(239 68 68)" : "rgb(156 163 175)";
   return (
     <svg width={w} height={h} className="shrink-0">
