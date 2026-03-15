@@ -29,6 +29,7 @@ interface PromptRow {
 interface PromptEditorProps {
   brandSlug: string;
   brandName: string;
+  entityType?: "company" | "cause";
   onStartAnalysis: () => void;
 }
 
@@ -43,7 +44,7 @@ const CLUSTER_LABELS: Record<string, string> = {
 const CLUSTER_OPTIONS = ["direct", "related", "comparative", "network", "industry"];
 const INTENT_OPTIONS = ["informational", "high-intent"];
 
-export function PromptEditor({ brandSlug, brandName, onStartAnalysis }: PromptEditorProps) {
+export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis }: PromptEditorProps) {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,7 +59,9 @@ export function PromptEditor({ brandSlug, brandName, onStartAnalysis }: PromptEd
 
   const fetchPrompts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/prompts?brandSlug=${encodeURIComponent(brandSlug)}`);
+      const params = new URLSearchParams({ brandSlug });
+      if (entityType) params.set("category", entityType === "cause" ? "political_advocacy" : "commercial");
+      const res = await fetch(`/api/prompts?${params.toString()}`);
       if (!res.ok) return;
       const data = await res.json();
       setPrompts(data.prompts);
@@ -68,7 +71,7 @@ export function PromptEditor({ brandSlug, brandName, onStartAnalysis }: PromptEd
     } finally {
       setLoading(false);
     }
-  }, [brandSlug]);
+  }, [brandSlug, entityType]);
 
   useEffect(() => {
     fetchPrompts();

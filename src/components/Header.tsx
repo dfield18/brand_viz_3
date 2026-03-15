@@ -25,6 +25,7 @@ interface ValidationResult {
   canonicalName: string;
   suggestion: string | null;
   category: string;
+  entityType: "company" | "cause";
   alternatives: { name: string; description: string }[];
 }
 
@@ -50,6 +51,7 @@ function HeaderInner() {
   const [closeBlocked, setCloseBlocked] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [entityType, setEntityType] = useState<"company" | "cause">("company");
 
   const range = (Number(searchParams.get("range")) || 90) as 7 | 30 | 90;
   const model = (searchParams.get("model") || "all") as "all" | ModelKey;
@@ -78,10 +80,11 @@ function HeaderInner() {
     setEditPromptsBrandName("");
     setAddError(null);
     setValidation(null);
+    setEntityType("company");
     setAddOpen(true);
   }
 
-  function proceedWithBrand(name: string) {
+  function proceedWithBrand(name: string, type?: "company" | "cause") {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const existing = brands.find((b) => b.slug === slug);
     if (existing) {
@@ -89,10 +92,11 @@ function HeaderInner() {
       return;
     }
 
+    // Also save to localStorage so it's available immediately before analysis completes
     const created = dataClient.createBrand({ name });
     dataClient.setLastViewedBrand(created.slug);
-    invalidateBrands();
-    setEditPromptsSlug(created.slug);
+    if (type) setEntityType(type);
+    setEditPromptsSlug(slug);
     setEditPromptsBrandName(name);
     setValidation(null);
   }
@@ -126,7 +130,7 @@ function HeaderInner() {
         setValidation(result);
       } else if (result.valid) {
         // Brand is valid — use canonical name (properly formatted)
-        proceedWithBrand(result.canonicalName || trimmed);
+        proceedWithBrand(result.canonicalName || trimmed, result.entityType);
       } else {
         // Invalid — show suggestion or error
         setValidation(result);
@@ -142,6 +146,7 @@ function HeaderInner() {
   const handleAnalysisDone = useCallback((slug: string, execModel: string) => {
     setAddOpen(false);
     setRunningSlug(null);
+    invalidateBrands(); // Refetch brand list from server after new analysis completes
     const params = new URLSearchParams(searchParams.toString());
     params.set("model", execModel);
     router.push(`/entity/${slug}/overview?${params.toString()}`);
@@ -258,9 +263,38 @@ function HeaderInner() {
             </div>
           ) : editPromptsSlug ? (
             <div className="mt-2 max-h-[60vh] overflow-y-auto">
+              {/* Entity type indicator with toggle */}
+              <div className="flex items-center gap-2 mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground">Detected as:</span>
+                <div className="flex items-center rounded-md border border-border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setEntityType("company")}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                      entityType === "company"
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    Company
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityType("cause")}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                      entityType === "cause"
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    Cause / Advocacy
+                  </button>
+                </div>
+              </div>
               <PromptEditor
                 brandSlug={editPromptsSlug}
                 brandName={editPromptsBrandName}
+                entityType={entityType}
                 onStartAnalysis={() => {
                   setRunningSlug(editPromptsSlug);
                   setEditPromptsSlug(null);
@@ -301,8 +335,9 @@ function HeaderInner() {
                         key={alt.name}
                         type="button"
                         onClick={() => {
+                          const type = validation.entityType;
                           setValidation(null);
-                          proceedWithBrand(alt.name);
+                          proceedWithBrand(alt.name, type);
                         }}
                         className="flex items-start gap-3 rounded-md border border-blue-200 dark:border-blue-800 bg-white dark:bg-blue-950/20 px-3 py-2 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                       >
@@ -333,8 +368,9 @@ function HeaderInner() {
                           type="button"
                           size="sm"
                           onClick={() => {
+                            const type = validation.entityType;
                             setValidation(null);
-                            proceedWithBrand(validation.canonicalName);
+                            proceedWithBrand(validation.canonicalName, type);
                           }}
                         >
                           Search for &ldquo;{validation.canonicalName}&rdquo;
@@ -345,8 +381,9 @@ function HeaderInner() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
+                          const type = validation.entityType;
                           setValidation(null);
-                          proceedWithBrand(newBrandName.trim());
+                          proceedWithBrand(newBrandName.trim(), type);
                         }}
                       >
                         Use &ldquo;{newBrandName.trim()}&rdquo; anyway

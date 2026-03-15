@@ -20,8 +20,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
 
+  const category = req.nextUrl.searchParams.get("category");
+
   try {
     const brand = await findOrCreateBrand(brandSlug);
+
+    // Pre-set category if provided (before prompt materialization)
+    if (category && ["commercial", "political_advocacy"].includes(category) && !brand.category) {
+      await prisma.brand.update({
+        where: { id: brand.id },
+        data: { category },
+      });
+      brand.category = category;
+    }
 
     const prompts = await getAllBrandPrompts(brand.id);
 

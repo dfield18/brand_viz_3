@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AnalyzeRunner } from "@/components/AnalyzeRunner";
 import { Loader2 } from "lucide-react";
-import { useBrands } from "@/lib/useBrands";
+import { useBrands, invalidateBrands } from "@/lib/useBrands";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   }
 
   const handleDone = useCallback((slug: string, execModel: string) => {
+    invalidateBrands();
     router.push(`/entity/${slug}/overview?range=30&model=${execModel}`);
   }, [router]);
 

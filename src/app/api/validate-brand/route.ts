@@ -38,6 +38,7 @@ Respond ONLY with valid JSON in this exact format:
   "canonicalName": "Properly Formatted Name (best guess)",
   "suggestion": "Did you mean X?" or null,
   "category": "brand" | "company" | "organization" | "product" | "person" | "topic" | "unknown",
+  "entityType": "company" | "cause",
   "alternatives": [
     { "name": "Apple Inc.", "description": "Technology company (iPhone, Mac, etc.)" },
     { "name": "Apple Records", "description": "Record label founded by The Beatles" }
@@ -45,6 +46,9 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 Rules:
+- "entityType" classifies the entity for prompt selection:
+  - "company" — commercial businesses, consumer brands, tech companies, SaaS products, retailers, manufacturers, for-profit entities
+  - "cause" — advocacy organizations, nonprofits, social causes, political organizations, charities, NGOs, public policy topics (e.g. "Gun Control", "Climate Change", "Nuclear Energy"), think tanks, foundations
 - "valid" means it's a real, recognizable entity or topic that someone would want to track AI visibility for.
 - Always fix capitalization: "nike" → "Nike", "PATAGONIA" → "Patagonia", "open ai" → "OpenAI".
 - For topics/issues, valid=true: "nuclear energy" → "Nuclear Energy", "gun control" → "Gun Control".
@@ -87,6 +91,7 @@ Rules:
         canonicalName: trimmed,
         suggestion: null,
         category: "unknown",
+        entityType: "company",
         alternatives: [],
       });
     }
@@ -97,6 +102,7 @@ Rules:
       canonicalName: string;
       suggestion: string | null;
       category: string;
+      entityType?: string;
       alternatives?: { name: string; description: string }[];
     };
 
@@ -108,12 +114,23 @@ Rules:
       return aIsBiz - bIsBiz;
     });
 
+    // Map entityType from GPT response, with fallback heuristic
+    const entityType: "company" | "cause" =
+      result.entityType === "cause"
+        ? "cause"
+        : result.entityType === "company"
+          ? "company"
+          : ["organization", "topic"].includes(result.category)
+            ? "cause"
+            : "company";
+
     return NextResponse.json({
       valid: result.valid,
       ambiguous: result.ambiguous ?? false,
       canonicalName: result.canonicalName,
       suggestion: result.suggestion ?? null,
       category: result.category,
+      entityType,
       alternatives,
     });
   } catch (e) {
@@ -125,6 +142,7 @@ Rules:
       canonicalName: trimmed || "Unknown",
       suggestion: null,
       category: "unknown",
+      entityType: "company",
       alternatives: [],
     });
   }

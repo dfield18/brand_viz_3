@@ -50,12 +50,7 @@ export function BrandSelector({
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            onAddBrand();
-          }}
-        >
+        <DropdownMenuItem onSelect={() => onAddBrand()}>
           + Add Brand
         </DropdownMenuItem>
       </DropdownMenuContent>
