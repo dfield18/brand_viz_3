@@ -173,72 +173,44 @@ function NarrativeInner() {
           />
         </div>
 
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          This tab shows how AI platforms talk about {brandName}. Start with <span className="font-medium text-muted-foreground">Narratives</span> to see which stories and themes AI uses most often when describing {brandName}, then check <span className="font-medium text-muted-foreground">Sentiment</span> to understand whether those stories are casting {brandName} positively or negatively — and how much platforms agree.
-        </p>
-
-        {/* Narrative Summary + Recommendation (merged) */}
+        {/* Narrative Insight — concise summary + optional perception issue */}
         <div id="narrative-insight" className="scroll-mt-24">
-          <div className="rounded-xl bg-card shadow-section overflow-hidden">
-            {/* Summary */}
-            {data.sentimentSplit && data.frames && data.frames.length > 0 && (
-              <div className="px-5 py-4">
-                <p className="text-sm text-foreground/80 leading-relaxed">
+          {data.sentimentSplit && data.frames && data.frames.length > 0 && (
+            <div className="rounded-xl bg-card shadow-section overflow-hidden">
+              <div className="px-5 py-3.5">
+                <p className="text-[13px] text-foreground/70 leading-relaxed">
                   {(() => {
-                    const parts: string[] = [];
                     const topFrame = data.frames![0];
                     const split = data.sentimentSplit!;
+                    let summary = `AI frames ${brandName} as "${topFrame.frame}" (${topFrame.percentage}% of responses). `;
 
-                    parts.push(`AI primarily frames ${brandName} as a "${topFrame.frame}" — this narrative appears in ${topFrame.percentage}% of responses.`);
+                    if (split.positive >= 60) summary += `Sentiment: ${split.positive}% positive.`;
+                    else if (split.negative >= 30) summary += `${split.negative}% negative sentiment — worth monitoring.`;
+                    else if (split.neutral >= 60) summary += `Mostly neutral (${split.neutral}%).`;
+                    else summary += `Mixed: ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`;
 
-                    if (split.positive >= 60) {
-                      parts.push(`Sentiment is strongly positive at ${split.positive}%, with only ${split.negative}% negative responses.`);
-                    } else if (split.positive >= 40) {
-                      parts.push(`Sentiment leans positive (${split.positive}%), though ${split.neutral}% of responses remain neutral.`);
-                    } else if (split.neutral >= 60) {
-                      parts.push(`Most responses (${split.neutral}%) are neutral — AI isn't strongly advocating for or against the brand.`);
-                    } else if (split.negative >= 30) {
-                      parts.push(`Watch the sentiment: ${split.negative}% of responses carry a negative tone, with only ${split.positive}% positive.`);
-                    } else {
-                      parts.push(`Sentiment is mixed — ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`);
-                    }
+                    if (data.polarization === "High") summary += ` Platforms disagree significantly.`;
 
-                    if (data.polarization === "High") {
-                      parts.push(`AI platforms disagree significantly about ${brandName} — different models tell very different stories.`);
-                    } else if (data.polarization === "Low") {
-                      parts.push(`AI platforms largely agree on how they describe ${brandName}.`);
-                    }
-
-                    if (data.hedgingRate != null) {
-                      const conf = 100 - data.hedgingRate;
-                      if (conf < 65) {
-                        parts.push(`AI models frequently hedge when discussing ${brandName}, using cautious language ${data.hedgingRate}% of the time.`);
-                      } else if (conf >= 85) {
-                        parts.push(`AI models speak confidently about ${brandName}, with direct recommendations ${conf}% of the time.`);
-                      }
-                    }
-
-                    return parts.join(" ");
+                    return summary;
                   })()}
                 </p>
               </div>
-            )}
 
-            {/* Recommendation — inline separator */}
-            {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
-              <div className="flex items-start gap-3 px-5 py-3.5 border-t border-border bg-amber-50/20">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-[13px] text-foreground/70 leading-relaxed">
-                  <span className="font-medium text-amber-700 mr-1.5">Perception Issue:</span>
-                  {stripMarkdown(
-                    recsData.negativeNarratives.narrativeSummary
-                      ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
-                      : recsData.negativeNarratives.weaknesses[0].suggestion
-                  )}
-                </p>
-              </div>
-            )}
-          </div>
+              {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
+                <div className="flex items-start gap-3 px-5 py-3 border-t border-border bg-amber-50/20">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-[13px] text-foreground/70 leading-relaxed">
+                    <span className="font-medium text-amber-700 mr-1.5">Perception Issue:</span>
+                    {stripMarkdown(
+                      recsData.negativeNarratives.narrativeSummary
+                        ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
+                        : recsData.negativeNarratives.weaknesses[0].suggestion
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sentiment Trend — right after scorecard for trend visibility */}
