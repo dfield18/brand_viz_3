@@ -68,8 +68,7 @@ function firstWords(s: string, n: number) {
   const trimmed = s.trim();
   const words = trimmed.split(/\s+/);
   const result = words.length <= n ? trimmed : words.slice(0, n).join(" ") + "…";
-  // Cap at 30 chars to reduce label overlap
-  return result.length > 30 ? result.slice(0, 28) + "…" : result;
+  return result.length > 22 ? result.slice(0, 20) + "…" : result;
 }
 
 /** Candidate positions for a label relative to its dot (px offsets). */
@@ -88,8 +87,8 @@ const CANDIDATES = [
   { dx: -16, dy: -36, anchor: "end" },    // far top-left
 ] as const;
 
-const LABEL_W = 130;
-const LABEL_H = 20;
+const LABEL_W = 110;
+const LABEL_H = 22;
 
 type TextAnchor = "start" | "middle" | "end";
 
@@ -114,9 +113,15 @@ function rectsOverlap(a: ReturnType<typeof labelRect>, b: ReturnType<typeof labe
 
 function resolveLabels(
   points: { cx: number; cy: number }[],
+  chartBounds?: { left: number; right: number; top: number; bottom: number },
 ): LabelPos[] {
   const placed: { rect: ReturnType<typeof labelRect> }[] = [];
   const result: LabelPos[] = [];
+
+  // Also treat each dot center as a placed obstacle so labels don't overlap dots
+  const dotObstacles = points.map((pt) => ({
+    rect: { left: pt.cx - 10, right: pt.cx + 10, top: pt.cy - 10, bottom: pt.cy + 10 },
+  }));
 
   for (const pt of points) {
     let bestCandidate: LabelPos = { dx: CANDIDATES[0].dx, dy: CANDIDATES[0].dy, anchor: CANDIDATES[0].anchor, hidden: false };
@@ -126,9 +131,23 @@ function resolveLabels(
       const lx = pt.cx + c.dx;
       const ly = pt.cy + c.dy;
       const rect = labelRect(lx, ly, c.anchor);
+
+      // Check if label would be clipped by chart boundaries
+      if (chartBounds) {
+        if (rect.left < chartBounds.left || rect.right > chartBounds.right ||
+            rect.top < chartBounds.top || rect.bottom > chartBounds.bottom) {
+          continue;
+        }
+      }
+
       let overlaps = 0;
       for (const p of placed) {
         if (rectsOverlap(rect, p.rect)) overlaps++;
+      }
+      // Check overlap with other dots (not our own)
+      for (let j = 0; j < dotObstacles.length; j++) {
+        if (points[j] === pt) continue;
+        if (rectsOverlap(rect, dotObstacles[j].rect)) overlaps++;
       }
       if (overlaps < bestOverlaps) {
         bestOverlaps = overlaps;
@@ -240,7 +259,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       ...d,
       x: SENTIMENT_X[d.sentiment] ?? 2,
       y: d.consistency,
-      label: firstWords(d.prompt, 4),
+      label: firstWords(d.prompt, 3),
       siblingIndex: 0,
       siblingCount: 1,
     }));
@@ -423,7 +442,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       {/* Chart with HTML click overlay */}
       <div className="mt-2 relative" ref={chartContainerRef}>
         <ResponsiveContainer width="100%" height={440}>
-          <ScatterChart margin={{ top: 36, right: 30, bottom: 40, left: 36 }}>
+          <ScatterChart margin={{ top: 36, right: 60, bottom: 40, left: 36 }}>
             <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis
               type="number"
@@ -479,7 +498,11 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
                 renderCountRef.current++;
                 if (renderCountRef.current === chartData.length) {
                   const sorted = [...pixelRef.current].sort((a, b) => a.idx - b.idx);
-                  const resolved = resolveLabels(sorted);
+                  const containerEl = chartContainerRef.current;
+                  const bounds = containerEl
+                    ? { left: 36, right: containerEl.offsetWidth - 60, top: 10, bottom: 440 - 40 }
+                    : undefined;
+                  const resolved = resolveLabels(sorted, bounds);
                   setTimeout(() => {
                     setLabelPositions(resolved);
                     setDotPixels(sorted.map((p, i) => ({
