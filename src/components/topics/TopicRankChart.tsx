@@ -11,7 +11,7 @@ export default function TopicRankChart({ topics }: Props) {
 
   if (ranked.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">Avg Rank by Topic</h3>
         <p className="text-sm text-muted-foreground">No rank data available.</p>
       </div>
@@ -21,7 +21,7 @@ export default function TopicRankChart({ topics }: Props) {
   const maxRank = Math.max(...ranked.map((t) => t.avgRank!), 1);
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Avg Rank by Topic</h3>
       <p className="text-xs text-muted-foreground mb-4">
         Average position when mentioned — lower is better

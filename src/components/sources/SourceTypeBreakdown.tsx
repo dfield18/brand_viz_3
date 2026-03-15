@@ -66,7 +66,7 @@ export default function SourceTypeBreakdown({ topDomains }: Props) {
   const topCategory = breakdown[0];
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Source Types</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
         Distribution of citation sources by category

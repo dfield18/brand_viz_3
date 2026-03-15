@@ -15,7 +15,7 @@ const LABEL_COLOR: Record<string, string> = {
 export default function TopicFragmentation({ fragmentation }: Props) {
   if (fragmentation.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold mb-4">Topic Fragmentation</h2>
         <p className="text-sm text-muted-foreground">No fragmentation data available.</p>
       </section>
@@ -23,7 +23,7 @@ export default function TopicFragmentation({ fragmentation }: Props) {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Topic Fragmentation</h2>
       <p className="text-xs text-muted-foreground mb-4">
         Whether topics are contested by many brands or dominated by one

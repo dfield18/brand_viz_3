@@ -77,7 +77,7 @@ export function AuditSectionCard({
 
   return (
     <div id={id} className="scroll-mt-24">
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-base font-semibold">{title}</h2>
           {score !== undefined && (

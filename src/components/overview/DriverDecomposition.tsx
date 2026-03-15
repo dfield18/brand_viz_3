@@ -194,7 +194,7 @@ function DimensionChart({ drivers, dimension, kpi }: { drivers: Driver[]; dimens
               if (!d) return null;
               const isPositive = isInverse ? d.contribution <= 0 : d.contribution >= 0;
               return (
-                <div className="rounded-lg border border-border bg-card shadow-lg px-4 py-3 min-w-[180px]">
+                <div className="rounded-lg bg-card shadow-lg px-4 py-3 min-w-[180px]">
                   <p className="text-sm font-semibold mb-2">{d.name}</p>
                   <div className="flex items-center gap-2 mb-1">
                     <div className={`w-2.5 h-2.5 rounded-sm ${isPositive ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -266,7 +266,7 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
     return inline ? (
       <div className="animate-pulse">{skeleton}</div>
     ) : (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section animate-pulse">{skeleton}</section>
+      <section className="rounded-xl bg-card p-6 shadow-section animate-pulse">{skeleton}</section>
     );
   }
 
@@ -282,7 +282,7 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
     return inline ? (
       <div>{noDataContent}</div>
     ) : (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">{noDataContent}</section>
+      <section className="rounded-xl bg-card p-6 shadow-section">{noDataContent}</section>
     );
   }
 
@@ -415,6 +415,6 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
   return inline ? (
     <div>{content}</div>
   ) : (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">{content}</section>
+    <section className="rounded-xl bg-card p-6 shadow-section">{content}</section>
   );
 }

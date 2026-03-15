@@ -18,7 +18,7 @@ interface NarrativeRadarProps {
 
 export function NarrativeRadar({ frames }: NarrativeRadarProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-4">Narrative Profile</h2>
       {frames.length === 0 ? (
         <EmptyState message="No frame data available for this model." />

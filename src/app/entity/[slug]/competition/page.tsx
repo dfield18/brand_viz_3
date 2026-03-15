@@ -141,7 +141,7 @@ function CompetitionInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         {/* KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           {brandCompetitor && (
@@ -227,7 +227,7 @@ function CompetitionInner() {
 
         {/* Sentiment Distribution */}
         <div id="sentiment" className="scroll-mt-24">
-          <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+          <section className="rounded-xl bg-card p-6 shadow-section">
             <h2 className="text-base font-semibold">How Positively AI Talks About Each Brand</h2>
             <p className="text-xs text-muted-foreground mt-1 mb-3">
               How positive or negative AI is about each competitor
@@ -268,7 +268,7 @@ function CompetitionInner() {
         {/* Co-Mention Network */}
         {data.coMentions.length > 0 && (
           <div id="co-mention" className="scroll-mt-24">
-            <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+            <section className="rounded-xl bg-card p-6 shadow-section">
               <h2 className="text-base font-semibold">Brand Associations: Who AI Groups Together</h2>
               <p className="text-xs text-muted-foreground mt-1 mb-5">
                 When AI mentions one brand, which others tend to appear in the same response
@@ -314,7 +314,7 @@ function SentimentMapSection({
       : initialCompetitors;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section outline-none [&_*]:focus:outline-none">
+    <section className="rounded-xl bg-card p-6 shadow-section outline-none [&_*]:focus:outline-none">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-base font-semibold">Who Gets Mentioned vs Who Gets Praised</h2>
@@ -380,7 +380,7 @@ function WinLossSection({
       : initialCompetitors;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-semibold">Win Rate: When AI Picks {brandName} Over Competitors</h2>
@@ -489,7 +489,7 @@ function CompetitorPerceptionSection({
       : initialCompetitors;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-6">
         <h2 className="text-base font-semibold">How AI Positions {brandName}&apos;s Competitors</h2>
         <div className="flex items-center gap-2 shrink-0">

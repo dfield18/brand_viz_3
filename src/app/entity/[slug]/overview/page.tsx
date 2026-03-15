@@ -190,7 +190,7 @@ function OverviewInner() {
 
         {/* Key Insights: Executive Summary + Top Recommendation merged */}
         <div id="key-insights" className="scroll-mt-24">
-          <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+          <div className="rounded-xl bg-card shadow-section overflow-hidden">
             {/* Summary */}
             {apiData.visibilityKpis && (
               <div className="px-5 py-4">
@@ -236,7 +236,7 @@ function OverviewInner() {
         {/* Brand Recall Trend */}
         {visData?.visibility?.trend && visData.visibility.trend.length > 0 && (
           <div id="visibility-trend" className="scroll-mt-24">
-            <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+            <section className="rounded-xl bg-card p-6 shadow-section">
               <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} />
             </section>
           </div>
@@ -249,7 +249,7 @@ function OverviewInner() {
         {/* Standout Quotes */}
         {quotesData?.quotes && quotesData.quotes.length > 0 && (
           <div id="standout-quotes" className="scroll-mt-24">
-            <section className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+            <section className="rounded-xl bg-card px-5 py-4 shadow-section">
               <h2 className="text-sm font-semibold mb-2">What AI Models Are Saying</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
             </section>

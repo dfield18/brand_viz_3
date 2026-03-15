@@ -65,7 +65,7 @@ export default function TopicTrendChart({ trend, topics }: Props) {
 
   if (trend.length < 2) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold mb-4">Topic Trend</h2>
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
@@ -83,7 +83,7 @@ export default function TopicTrendChart({ trend, topics }: Props) {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Topic Trend</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
         Mention rate for selected topics over time

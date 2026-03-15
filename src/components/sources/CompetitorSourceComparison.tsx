@@ -280,7 +280,7 @@ export default function CompetitorSourceComparison({
   const hasMore = domainOrder.length > INITIAL_ROWS;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-semibold mb-1">Source Citation Matrix</h2>

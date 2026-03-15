@@ -22,7 +22,7 @@ export function NarrativeStability({ frames }: NarrativeStabilityProps) {
   const { label, color } = getStabilityLabel(sorted);
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-baseline justify-between mb-1">
         <h2 className="text-base font-semibold">Narrative Stability</h2>
         <span className={`text-sm font-semibold ${color}`}>{label}</span>

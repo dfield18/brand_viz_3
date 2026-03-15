@@ -29,7 +29,7 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5 shadow-section animate-pulse">
+      <div className="rounded-xl bg-card p-5 shadow-section animate-pulse">
         <div className="h-4 w-48 bg-muted rounded mb-3" />
         <div className="h-16 bg-muted/40 rounded" />
       </div>
@@ -46,7 +46,7 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
   const movers = [...rising.slice(0, 2), ...falling.slice(0, 1)].slice(0, 3);
 
   return (
-    <section className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+    <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold mb-3">Competitor Movement</h2>
       <div className="space-y-2">
         {movers.map((alert) => {

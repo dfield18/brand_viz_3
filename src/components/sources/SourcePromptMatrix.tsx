@@ -70,7 +70,7 @@ export default function SourcePromptMatrix({ matrix: initialMatrix, prompts: ini
   if (!loading && (matrix.length === 0 || activePrompts.length === 0)) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-base font-semibold mb-1">Which Sources Appear for Which Questions</h2>

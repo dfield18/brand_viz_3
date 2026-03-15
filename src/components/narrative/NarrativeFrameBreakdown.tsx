@@ -77,7 +77,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
   const radarHeight = Math.max(barChartHeight, 240);
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
           <h2 className="text-base font-semibold">Narrative Frame Breakdown</h2>
@@ -132,7 +132,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
                   if (!d) return null;
                   const value = payload[0]?.value;
                   return (
-                    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                    <div className="rounded-lg bg-card px-3 py-2 shadow-md text-xs">
                       <p className="font-medium text-foreground mb-0.5">{d.frame}</p>
                       <p className="text-muted-foreground">{value}% of responses</p>
                     </div>
@@ -182,7 +182,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
                   if (!d) return null;
                   const value = payload[0]?.value;
                   return (
-                    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                    <div className="rounded-lg bg-card px-3 py-2 shadow-md text-xs">
                       <p className="font-medium text-foreground mb-0.5">{d.frame}</p>
                       <p className="text-muted-foreground">{radarLabel}: {value ?? 0}%</p>
                     </div>

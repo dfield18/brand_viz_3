@@ -507,7 +507,7 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
   sections.push({ heading: "What This Means", body: bottomLine });
 
   return (
-    <section className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+    <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold mb-4">AI Readiness Summary</h2>
       <div className="space-y-5">
         {sections.map((sec, i) => (
@@ -621,7 +621,7 @@ function SiteAuditInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         <Header brandName={brandName} url={audit.url} />
 
         {/* URL bar with re-audit option */}
@@ -640,7 +640,7 @@ function SiteAuditInner() {
             />
             <button
               type="submit"
-              className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
+              className="rounded-md bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
             </button>

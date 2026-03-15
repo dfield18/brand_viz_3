@@ -62,7 +62,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
 
   if (data.length === 0) {
     return (
-      <Wrapper className={inline ? "" : "rounded-xl border border-border bg-card p-6 shadow-section"}>
+      <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
         <h2 className={headingClass}>Your Ranking Breakdown</h2>
         <div className="mt-4">
           <EmptyState message="No position data available yet." />
@@ -72,7 +72,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
   }
 
   return (
-    <Wrapper className={inline ? "" : "rounded-xl border border-border bg-card p-6 shadow-section"}>
+    <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
       <div className="flex items-start justify-between mb-1">
         <div>
           <h2 className={headingClass}>Your Ranking Breakdown</h2>

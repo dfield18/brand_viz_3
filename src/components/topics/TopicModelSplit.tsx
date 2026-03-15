@@ -35,7 +35,7 @@ export default function TopicModelSplit({ modelSplit }: Props) {
   }
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-semibold">Topic Performance by Model</h3>
         <div className="flex items-center gap-1.5 text-xs">

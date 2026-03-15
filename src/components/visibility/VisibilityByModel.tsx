@@ -13,7 +13,7 @@ export function VisibilityByModel({ models }: VisibilityByModelProps) {
 
   if (withData.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold">Visibility by Model</h2>
         <div className="mt-4">
           <EmptyState message="No model visibility data available yet." />
@@ -25,7 +25,7 @@ export function VisibilityByModel({ models }: VisibilityByModelProps) {
   const sorted = [...withData].sort((a, b) => (b.mentionRate ?? 0) - (a.mentionRate ?? 0));
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Visibility by Model</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
         Brand mention rate per model in industry responses

@@ -76,7 +76,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {/* AI Visibility */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
+        className="rounded-xl bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("key-insights")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">AI Visibility</p>
@@ -96,7 +96,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
 
       {/* Sentiment */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
+        className="rounded-xl bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("narrative-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Sentiment</p>
@@ -119,7 +119,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
 
       {/* Dominant Narrative */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
+        className="rounded-xl bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("narrative-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Top Narrative</p>
@@ -139,7 +139,7 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
 
       {/* Top Source */}
       <div
-        className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
+        className="rounded-xl bg-card px-4 py-4 shadow-kpi cursor-pointer hover:border-primary/40 transition-colors flex flex-col"
         onClick={() => document.getElementById("sources-trend")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       >
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Top Source</p>

@@ -12,7 +12,7 @@ export default function DomainCitationChart({ topDomains, onDomainClick }: Props
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">Top Cited Domains</h3>
         <p className="text-sm text-muted-foreground">No citation data available.</p>
       </div>
@@ -22,7 +22,7 @@ export default function DomainCitationChart({ topDomains, onDomainClick }: Props
   const maxCitations = Math.max(...rows.map((d) => d.citations), 1);
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Top Cited Domains</h3>
       <p className="text-xs text-muted-foreground mb-4">
         Most frequently cited domains across AI model responses

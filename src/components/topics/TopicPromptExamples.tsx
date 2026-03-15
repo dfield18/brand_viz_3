@@ -50,7 +50,7 @@ export default function TopicPromptExamples({ promptExamples, topics }: Props) {
 
   if (promptExamples.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold mb-4">Example Prompts by Topic</h2>
         <p className="text-sm text-muted-foreground">No prompt examples available.</p>
       </section>
@@ -58,7 +58,7 @@ export default function TopicPromptExamples({ promptExamples, topics }: Props) {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Example Prompts by Topic</h2>
       <p className="text-xs text-muted-foreground mb-4">
         Underlying prompts and outcomes by topic

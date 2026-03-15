@@ -135,7 +135,7 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-semibold mb-1">Top Cited Sources</h2>

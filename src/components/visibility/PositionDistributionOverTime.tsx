@@ -48,7 +48,7 @@ export function PositionDistributionOverTime({ id, data, children }: PositionDis
   }
 
   return (
-    <section id={id} className={`rounded-xl border border-border bg-card p-6 shadow-section${id ? " scroll-mt-24" : ""}`}>
+    <section id={id} className={`rounded-xl bg-card p-6 shadow-section${id ? " scroll-mt-24" : ""}`}>
       <div className="flex items-start justify-between mb-2">
         <div>
           <h3 className="text-sm font-medium text-foreground">Position Distribution Over Time</h3>

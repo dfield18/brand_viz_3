@@ -132,7 +132,7 @@ export function BrandBreakdown({
   const colCount = 6;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>

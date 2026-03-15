@@ -163,7 +163,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
   return (
     <div className="space-y-4">
       {/* Prompt Management */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-section">
+      <div className="rounded-xl bg-card p-5 shadow-section">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold">Prompts</h2>

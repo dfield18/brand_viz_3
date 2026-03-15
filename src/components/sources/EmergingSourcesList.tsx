@@ -56,7 +56,7 @@ export default function EmergingSourcesList({ emerging: initialEmerging, brandSl
 
   if (!loading && emerging.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">Emerging Sources</h3>
         <p className="text-sm text-muted-foreground">
           No emerging sources detected for this selection.
@@ -66,7 +66,7 @@ export default function EmergingSourcesList({ emerging: initialEmerging, brandSl
   }
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold mb-1">Emerging Sources</h3>

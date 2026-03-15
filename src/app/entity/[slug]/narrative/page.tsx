@@ -158,7 +158,7 @@ function NarrativeInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         {/* Metric Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <NarrativeMetricCards
@@ -179,7 +179,7 @@ function NarrativeInner() {
 
         {/* Narrative Summary + Recommendation (merged) */}
         <div id="narrative-insight" className="scroll-mt-24">
-          <div className="rounded-xl border border-border bg-card shadow-section overflow-hidden">
+          <div className="rounded-xl bg-card shadow-section overflow-hidden">
             {/* Summary */}
             {data.sentimentSplit && data.frames && data.frames.length > 0 && (
               <div className="px-5 py-4">
@@ -293,7 +293,7 @@ function NarrativeInner() {
         {((data.strengths && data.strengths.length > 0) ||
           (data.weaknesses && data.weaknesses.length > 0)) && (
           <div id="strengths-weaknesses" className="scroll-mt-24">
-            <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+            <section className="rounded-xl bg-card p-6 shadow-section">
               <h2 className="text-base font-semibold mb-4">Strengths vs Weaknesses</h2>
               <StrengthsWeaknesses
                 strengths={data.strengths ?? []}
@@ -338,7 +338,7 @@ function NarrativeInner() {
         {/* Section: Explore AI Responses by Narrative */}
         {data.examples && data.examples.length > 0 && (
           <div id="evidence-examples" className="scroll-mt-24">
-            <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+            <section className="rounded-xl bg-card p-6 shadow-section">
               <NarrativeExamples examples={data.examples} brandSlug={params.slug} brandName={params.slug.replace(/-/g, " ")} />
             </section>
           </div>

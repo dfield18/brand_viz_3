@@ -110,7 +110,7 @@ export function ThemesChart({ themes: initialThemes, frames: initialFrames, bran
     : null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
           <h2 className="text-base font-semibold">How AI Describes This Brand</h2>

@@ -173,7 +173,7 @@ function VisibilityInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         <Header brandName={brandName} range={range} model={model} />
 
         {/* Data source */}
@@ -208,7 +208,7 @@ function VisibilityInner() {
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-4">Metrics Deep Dive</h2>
 
         {/* Visibility Trend — AI Visibility */}
-        <section id="visibility-trend" className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-section">
+        <section id="visibility-trend" className="scroll-mt-24 rounded-xl bg-card p-6 shadow-section">
           <VisibilityTrendChart trend={filteredTrend} prompts={[...new Set(data.resultsByQuestion.map((r) => r.promptText))]} fixedMetric="visibility" brandName={brandName} />
         </section>
 
@@ -218,7 +218,7 @@ function VisibilityInner() {
         </div>
 
         {/* Visibility Trend — Share of Voice */}
-        <section id="sov-trend" className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-section">
+        <section id="sov-trend" className="scroll-mt-24 rounded-xl bg-card p-6 shadow-section">
           <VisibilityTrendChart trend={filteredTrend} prompts={[...new Set(data.resultsByQuestion.map((r) => r.promptText))]} fixedMetric="sov" brandName={brandName} />
         </section>
 
@@ -228,7 +228,7 @@ function VisibilityInner() {
         </div>
 
         {/* Visibility Trend — Top Result Rate */}
-        <section id="top-result-trend" className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-section">
+        <section id="top-result-trend" className="scroll-mt-24 rounded-xl bg-card p-6 shadow-section">
           <VisibilityTrendChart trend={filteredTrend} prompts={[...new Set(data.resultsByQuestion.map((r) => r.promptText))]} fixedMetric="topResult" />
         </section>
 

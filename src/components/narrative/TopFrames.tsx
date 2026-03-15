@@ -15,7 +15,7 @@ export function TopFrames({ frames }: TopFramesProps) {
   const maxPct = sorted[0].percentage || 1;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Narrative Frames</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
         How AI models frame the brand — top frames highlighted

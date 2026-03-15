@@ -223,7 +223,7 @@ ${runs.map((r) => `
         {filteredRuns.map((run) => (
           <div
             key={run.id}
-            className="rounded-xl border border-border bg-card overflow-hidden shadow-section"
+            className="rounded-xl bg-card overflow-hidden shadow-section"
           >
             {/* Prompt header */}
             <div className="border-b border-border bg-muted/50 px-5 py-3">

@@ -45,7 +45,7 @@ export function NarrativeSection({ frames, brandName = "this brand" }: Narrative
 
   if (frames.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+      <div className="rounded-xl bg-card px-5 py-4 shadow-section">
         <h2 className="text-sm font-semibold mb-2">Narrative Frame Breakdown</h2>
         <EmptyState message="No frame data available for this model." />
       </div>
@@ -76,7 +76,7 @@ export function NarrativeSection({ frames, brandName = "this brand" }: Narrative
     : MODEL_CONFIG.find((m) => m.key === selectedModel)?.name ?? selectedModel;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <h2 className="text-base font-semibold">Narrative Frame Breakdown</h2>
         {hasByModel && activeModels.length > 0 && (

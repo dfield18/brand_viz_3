@@ -81,7 +81,7 @@ export function ResultsByPlatform({ rows, brandName }: ResultsByPlatformProps) {
   if (validRows.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Results by AI Platform</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">

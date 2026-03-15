@@ -218,7 +218,7 @@ function VisibilityV2Inner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
         {/* Scorecard KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SummaryCardsDonut
@@ -246,7 +246,7 @@ function VisibilityV2Inner() {
         </div>
 
         {/* Trend Over Time */}
-        <div id="metric-deep-dive" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
+        <div id="metric-deep-dive" className="scroll-mt-24 rounded-xl bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-4">
             <h3 className="text-base font-semibold">Trend Over Time</h3>
             <select
@@ -335,7 +335,7 @@ function VisibilityV2Inner() {
         )}
 
         {/* Performance: Where AI Ranks You + Performance by Question */}
-        <div id="brand-position" className="scroll-mt-24 rounded-xl border border-border bg-card px-6 pt-5 pb-6 shadow-section">
+        <div id="brand-position" className="scroll-mt-24 rounded-xl bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-6">
             <p className="text-xs text-muted-foreground">How your brand performs across individual AI queries — broken down by platform and question</p>
             <select

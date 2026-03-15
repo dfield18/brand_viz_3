@@ -176,7 +176,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-section animate-pulse">
+      <div className="rounded-xl bg-card p-6 shadow-section animate-pulse">
         <div className="h-4 w-48 bg-muted rounded mb-4" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -202,7 +202,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
   const maxCitations = top5[0]?.citations ?? 1;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Top Sources AI Relies On</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
         The most-cited websites when AI discusses your industry

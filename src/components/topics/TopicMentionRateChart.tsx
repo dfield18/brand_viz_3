@@ -9,7 +9,7 @@ interface Props {
 export default function TopicMentionRateChart({ topics }: Props) {
   if (topics.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">Topic Mention Rate</h3>
         <p className="text-sm text-muted-foreground">No topic data available.</p>
       </div>
@@ -22,7 +22,7 @@ export default function TopicMentionRateChart({ topics }: Props) {
   );
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Topic Mention Rate</h3>
       <p className="text-xs text-muted-foreground mb-2">
         How often your brand appears vs category average and leader

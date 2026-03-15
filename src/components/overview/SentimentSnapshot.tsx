@@ -17,7 +17,7 @@ export function SentimentSnapshot({ positive, neutral, negative }: Props) {
   ].filter((s) => s.pct > 0);
 
   return (
-    <section className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+    <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold mb-3">Sentiment Snapshot</h2>
 
       {/* Stacked bar */}

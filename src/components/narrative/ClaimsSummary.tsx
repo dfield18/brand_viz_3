@@ -22,7 +22,7 @@ export function ClaimsSummary({ strengths, weaknesses, weaknessesAreNeutral }: C
   if (rows.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Most Common Claims</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
         Claims AI models repeat most frequently about this brand

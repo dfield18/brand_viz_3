@@ -78,7 +78,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-semibold mb-1">Official Website Citations</h2>

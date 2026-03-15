@@ -170,7 +170,7 @@ function ReferenceInner() {
       />
 
       {/* Performance by Model Table */}
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold">Performance by Model</h2>
         <p className="text-xs text-muted-foreground mt-1 mb-5">
           Mention rate, average position, and first-mention share per AI model
@@ -205,12 +205,12 @@ function ReferenceInner() {
       {/* Positioning & Hedging Rate (moved from Narrative tab) */}
       {narrativeData?.hasData && narrativeData.narrative && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+          <section className="rounded-xl bg-card p-6 shadow-section">
             <h2 className="text-base font-semibold mb-4">Positioning</h2>
             <PositioningQuadrant points={narrativeData.narrative.positioning} />
           </section>
 
-          <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+          <section className="rounded-xl bg-card p-6 shadow-section">
             <h2 className="text-base font-semibold mb-4">Hedging Rate</h2>
             <HedgingRate rate={narrativeData.narrative.hedgingRate} trend={narrativeData.narrative.hedgingTrend} />
           </section>
@@ -235,7 +235,7 @@ function ReferenceInner() {
 
       {/* How the AI Story Is Shifting (moved from Narrative tab) */}
       {narrativeData?.hasData && narrativeData.narrative?.drift && narrativeData.narrative.drift.length > 0 && (
-        <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <section className="rounded-xl bg-card p-6 shadow-section">
           <NarrativeDriftChart
             drift={narrativeData.narrative.drift}
             title="How the AI Story Is Shifting"
@@ -262,7 +262,7 @@ function ReferenceInner() {
 
       {/* Prominence Share (moved from Competition tab) */}
       {competitionData?.hasData && competitionData.competition && competitionData.competition.prominenceShare.length > 0 && (
-        <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <section className="rounded-xl bg-card p-6 shadow-section">
           <h2 className="text-base font-semibold">Prominence Share</h2>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
             Each brand&apos;s share of total prominence — how substantively AI discusses a brand, not just whether it&apos;s mentioned
@@ -276,7 +276,7 @@ function ReferenceInner() {
 
       {/* Rank Distribution (moved from Competition tab) */}
       {competitionData?.hasData && competitionData.competition && (
-        <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <section className="rounded-xl bg-card p-6 shadow-section">
           <h2 className="text-base font-semibold mb-4">Rank Distribution</h2>
           <CompetitorRankDistribution
             competitors={competitionData.competition.competitors}
@@ -288,7 +288,7 @@ function ReferenceInner() {
 
       {/* Competitive Opportunities (moved from Competition tab) */}
       {competitionData?.hasData && competitionData.competition && competitionData.competition.competitiveOpportunities.length > 0 && (
-        <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <section className="rounded-xl bg-card p-6 shadow-section">
           <h2 className="text-base font-semibold mb-4">Competitive Opportunities</h2>
           <p className="text-xs text-muted-foreground mb-3">
             Prompts where competitors outrank your brand or your brand is absent. Higher impact score = bigger opportunity.
@@ -299,7 +299,7 @@ function ReferenceInner() {
 
       {/* Model Split (moved from Competition tab) */}
       {competitionData?.hasData && competitionData.competition && competitionData.competition.modelSplit.length > 1 && (
-        <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <section className="rounded-xl bg-card p-6 shadow-section">
           <h2 className="text-base font-semibold">How Each AI Platform Sees You vs Competitors</h2>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
             Different AI platforms recommend brands at different rates. This shows your share of voice on each platform compared to competitors.
@@ -316,7 +316,7 @@ function ReferenceInner() {
           entityNames[c.entityId] = c.name;
         }
         return (
-          <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+          <section className="rounded-xl bg-card p-6 shadow-section">
             <h2 className="text-base font-semibold">Response Details by Question</h2>
             <p className="text-xs text-muted-foreground mt-1 mb-4">
               See how each AI platform ranks brands for every question asked

@@ -10,7 +10,7 @@ interface AIVisibilityRankingProps {
 export function AIVisibilityRanking({ ranking }: AIVisibilityRankingProps) {
   if (ranking.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold">AI Visibility Ranking</h2>
         <div className="mt-4">
           <EmptyState message="No visibility ranking data available yet." />
@@ -22,7 +22,7 @@ export function AIVisibilityRanking({ ranking }: AIVisibilityRankingProps) {
   const maxScore = Math.max(...ranking.map((r) => r.score));
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">AI Visibility Ranking</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
         % of industry responses recommending or mentioning each brand

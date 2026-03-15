@@ -385,7 +385,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
   const isLoadingPreviews = previewLoading === selectedPrompt;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
           <h2 className="text-base font-semibold">Which Questions Trigger Positive vs Negative AI Responses</h2>
@@ -654,7 +654,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
               return (
                 <div
-                  className="absolute z-40 w-80 max-h-[340px] overflow-y-auto rounded-xl border border-border bg-card shadow-lg animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute z-40 w-80 max-h-[340px] overflow-y-auto rounded-xl bg-card shadow-lg animate-in fade-in zoom-in-95 duration-150"
                   style={{
                     top: Math.max(8, (dot?.cy ?? 100) - 40),
                     ...(showRight

@@ -23,7 +23,7 @@ export function PageSkeleton({
         {/* KPI card skeletons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi animate-pulse">
+            <div key={i} className="rounded-xl bg-card px-4 py-4 shadow-kpi animate-pulse">
               <div className="flex items-center gap-1.5 mb-2">
                 <div className="h-3 w-3 bg-muted rounded" />
                 <div className="h-3 w-20 bg-muted rounded" />
@@ -34,7 +34,7 @@ export function PageSkeleton({
           ))}
         </div>
         {/* Chart skeleton */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-section animate-pulse">
+        <div className="rounded-xl bg-card p-6 shadow-section animate-pulse">
           <div className="h-4 w-48 bg-muted rounded mb-6" />
           <div className="h-52 bg-muted/40 rounded-lg" />
         </div>

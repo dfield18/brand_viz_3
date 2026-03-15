@@ -308,7 +308,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
   const headingClass = inline ? "text-sm text-muted-foreground" : "text-base font-semibold";
 
   return (
-    <Wrapper className={inline ? "" : "rounded-xl border border-border bg-card p-6 shadow-section"}>
+    <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
       <div className="flex items-start justify-between mb-2">
         <div>
           <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Performance by Question</h2>

@@ -66,7 +66,7 @@ export function ThemeTrendChart({ drift }: ThemeTrendChartProps) {
   if (drift.length < 2 || topThemes.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Theme Trend</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
         How narrative theme prevalence shifts over time

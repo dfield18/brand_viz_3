@@ -40,7 +40,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
   if (wins.length === 0 && opportunities.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-4">Prompt Wins & Opportunities</h2>
       <div className="flex items-center gap-3 mb-4">
         <button

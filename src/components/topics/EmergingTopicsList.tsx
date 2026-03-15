@@ -19,7 +19,7 @@ export default function EmergingTopicsList({ emerging }: Props) {
 
   if (emerging.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">Emerging Topics</h3>
         <p className="text-sm text-muted-foreground">
           No emerging topics detected in this time range.
@@ -38,7 +38,7 @@ export default function EmergingTopicsList({ emerging }: Props) {
   };
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Emerging Topics</h3>
       <p className="text-xs text-muted-foreground mb-4">
         Topics with growing brand mentions (≥25% growth, comparing first vs second half of range)

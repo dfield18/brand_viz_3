@@ -51,7 +51,7 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-section animate-pulse">
+      <div className="rounded-xl bg-card p-6 shadow-section animate-pulse">
         <div className="h-4 w-56 bg-muted rounded mb-4" />
         <div className="h-24 bg-muted/40 rounded" />
       </div>
@@ -71,7 +71,7 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
   const maxShare = Math.max(...ranking.map((r) => r.mentionShare), 1);
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-base font-semibold">Competitive Landscape</h2>
@@ -99,7 +99,7 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
                   {row.avgRank !== null && (
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
                       Avg #{row.avgRank.toFixed(1)}
-                      <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-48 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                      <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-48 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                         Average ranking position in AI responses. #1 means the brand is typically mentioned first.
                       </span>
                     </span>

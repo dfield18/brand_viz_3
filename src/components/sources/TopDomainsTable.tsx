@@ -88,7 +88,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
 
   if (!loading && topDomains.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-section">
+      <div className="rounded-xl bg-card p-6 shadow-section">
         <h3 className="text-sm font-semibold mb-4">All Sources</h3>
         <p className="text-sm text-muted-foreground">No source data available for this selection.</p>
       </div>
@@ -121,7 +121,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
   ];
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold mb-1">All Sources</h3>
@@ -159,7 +159,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
                 <span className="relative group inline-flex items-center gap-1">
                   Type
                   <Info className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span className="absolute top-full left-0 mt-1.5 hidden group-hover:block w-48 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                  <span className="absolute top-full left-0 mt-1.5 hidden group-hover:block w-48 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                     The category of the website (e.g. News, Reviews, E-commerce) based on its primary content type.
                   </span>
                 </span>
@@ -173,7 +173,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
                   <span className="relative group inline-flex items-center gap-1 justify-end">
                     {col.label}{arrow(col.key)}
                     <Info className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                    <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-52 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                    <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-52 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                       {col.tooltip}
                     </span>
                   </span>
@@ -183,7 +183,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
                 <span className="relative group inline-flex items-center gap-1 justify-end">
                   First Seen
                   <Info className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-44 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                  <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-44 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                     The earliest date this source appeared in an AI response.
                   </span>
                 </span>
@@ -192,7 +192,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
                 <span className="relative group inline-flex items-center gap-1 justify-end">
                   Last Seen
                   <Info className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-44 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                  <span className="absolute top-full right-0 mt-1.5 hidden group-hover:block w-44 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                     The most recent date this source appeared in an AI response.
                   </span>
                 </span>
@@ -327,7 +327,7 @@ function DomainExamples({
           {data.examples.map((ex, i) => (
             <div
               key={i}
-              className="rounded-lg border bg-card p-3 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
+              className="rounded-lg bg-card p-3 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 openResponse({ promptText: ex.promptText, model: ex.model });

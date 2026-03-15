@@ -9,7 +9,7 @@ interface Props {
 export default function TopicImportanceChart({ importance }: Props) {
   if (importance.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold mb-4">Topic Importance</h2>
         <p className="text-sm text-muted-foreground">No topic importance data available.</p>
       </section>
@@ -19,7 +19,7 @@ export default function TopicImportanceChart({ importance }: Props) {
   const maxRate = Math.max(...importance.map((t) => t.importanceRate), 1);
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Topic Importance</h2>
       <p className="text-xs text-muted-foreground mb-4">
         Share of prompts in each topic — how much of the category surface each topic covers

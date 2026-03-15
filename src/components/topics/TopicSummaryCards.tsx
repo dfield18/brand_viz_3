@@ -55,7 +55,7 @@ export default function TopicSummaryCards({ scope, topics, emerging }: Props) {
       {cards.map((c) => (
         <div
           key={c.label}
-          className="rounded-xl border bg-card p-4 shadow-kpi space-y-1"
+          className="rounded-xl bg-card p-4 shadow-kpi space-y-1"
         >
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <c.icon className={`h-4 w-4 ${c.color}`} />

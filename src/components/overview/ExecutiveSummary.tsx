@@ -91,7 +91,7 @@ export function ExecutiveSummary({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card px-5 py-4 shadow-section">
+    <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold mb-2">Executive Summary</h2>
       <p className="text-sm text-muted-foreground leading-relaxed">
         {parts.join(" ")}

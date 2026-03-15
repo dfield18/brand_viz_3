@@ -197,7 +197,7 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
   const maxPct = topFrames[0]?.percentage ?? 100;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Top Narratives in AI Responses</h2>
       <p className="text-xs text-muted-foreground mb-5">
         The most common ways AI platforms describe {brandName ?? "this brand"}, with representative quotes

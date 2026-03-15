@@ -113,7 +113,7 @@ export function KpiRow({ kpis }: KpiRowProps) {
         return (
           <div
             key={kpi.label}
-            className="rounded-lg border border-border bg-card px-3 py-4 shadow-kpi"
+            className="rounded-lg bg-card px-3 py-4 shadow-kpi"
           >
             <div className="flex items-center gap-1.5 mb-3">
               {Icon && (

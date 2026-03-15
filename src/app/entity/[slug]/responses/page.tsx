@@ -239,7 +239,7 @@ ${runs.map((r) => `
 
       {/* Cost summary */}
       {costs && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-section">
+        <div className="rounded-xl bg-card p-6 shadow-section">
           <h3 className="text-sm font-medium mb-3">Estimated API Costs</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
@@ -280,7 +280,7 @@ ${runs.map((r) => `
         {filteredRuns.map((run) => (
           <div
             key={run.id}
-            className="rounded-lg border border-border bg-card overflow-hidden"
+            className="rounded-lg bg-card overflow-hidden"
           >
             {/* Prompt header */}
             <div className="border-b border-border bg-muted/50 px-5 py-3">

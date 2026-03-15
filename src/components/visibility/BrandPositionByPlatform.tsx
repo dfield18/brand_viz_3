@@ -112,7 +112,7 @@ export function BrandPositionByPlatform({ promptPositions, modelBreakdown, brand
   const Wrapper = inline ? "div" : "section";
 
   return (
-    <Wrapper className={inline ? "" : "rounded-xl border border-border bg-card p-6 shadow-section mt-6"}>
+    <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section mt-6"}>
       <div className="flex items-start justify-between mb-2">
         <div>
           <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Where AI Ranks You</h2>

@@ -226,7 +226,7 @@ export function SummaryCardsDonut({
         return (
         <div
           key={card.label}
-          className={`rounded-xl border bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${isActive ? "border-primary/50 ring-1 ring-primary/20" : "border-border"} ${isClickable ? "cursor-pointer hover:border-primary/40" : ""}`}
+          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${isActive ? "ring-1 ring-primary/20" : ""} ${isClickable ? "cursor-pointer hover:border-primary/40" : ""}`}
           onClick={() => {
             if (card.metricKey && onCardClick) {
               onCardClick(card.metricKey);

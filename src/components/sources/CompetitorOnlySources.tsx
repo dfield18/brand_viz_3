@@ -86,7 +86,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
   if (rows.length === 0 || chartData.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Sources Not Citing {brandName}</h2>
       <p className="text-xs text-muted-foreground mb-5">
         These sources are cited by AI when recommending competitors but not when mentioning {brandName} — potential opportunities to build presence
@@ -176,7 +176,7 @@ export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName
   if (rows.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Sources Not Citing {brandName} — Full List</h2>
       <p className="text-xs text-muted-foreground mb-5">
         All {rows.length} sources cited for competitors but not for {brandName}

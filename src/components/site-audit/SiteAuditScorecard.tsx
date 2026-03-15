@@ -74,7 +74,7 @@ export function SiteAuditScorecard(props: Props) {
         return (
           <div
             key={card.key}
-            className="rounded-xl border border-border bg-card px-4 py-4 shadow-kpi flex flex-col items-center text-center"
+            className="rounded-xl bg-card px-4 py-4 shadow-kpi flex flex-col items-center text-center"
           >
             <div className="flex items-center gap-1 mb-3">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

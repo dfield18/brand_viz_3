@@ -111,7 +111,7 @@ export function SummaryStats({
         return (
           <div
             key={card.label}
-            className="rounded-lg border border-border bg-card px-3 py-4 shadow-kpi"
+            className="rounded-lg bg-card px-3 py-4 shadow-kpi"
           >
             <div className="flex items-center gap-1.5 mb-3">
               <card.Icon className={`h-3 w-3 shrink-0 ${card.iconColor}`} />

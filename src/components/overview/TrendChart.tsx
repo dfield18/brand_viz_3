@@ -27,7 +27,7 @@ export function TrendChart({ trend }: TrendChartProps) {
   })();
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-4">
         Trend
       </h2>

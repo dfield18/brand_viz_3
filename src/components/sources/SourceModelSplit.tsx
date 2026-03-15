@@ -55,7 +55,7 @@ export default function SourceModelSplit({ modelSplit: initialModelSplit, brandS
   }
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-section">
+    <div className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold mb-1">Which Sources Each AI Platform Prefers</h3>

@@ -12,7 +12,7 @@ export default function TopicProminenceChart({ prominence }: Props) {
 
   if (prominence.length === 0) {
     return (
-      <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+      <section className="rounded-xl bg-card p-6 shadow-section">
         <h2 className="text-base font-semibold mb-4">Prominence by Topic</h2>
         <p className="text-sm text-muted-foreground">No prominence data available.</p>
       </section>
@@ -29,7 +29,7 @@ export default function TopicProminenceChart({ prominence }: Props) {
   );
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-section">
+    <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-base font-semibold">Prominence by Topic</h2>
         <div className="flex items-center gap-1.5 text-xs">
