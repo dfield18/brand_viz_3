@@ -155,11 +155,6 @@ function CompetitionInner() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground/80 leading-relaxed -mt-6">
-          All metrics on this tab are based on general industry prompts only — prompts that mention the brand by name are excluded.
-          Data reflects most recent responses.
-        </p>
-
         {/* ── Metrics Deep Dive ─────────────────────────── */}
         <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
         <p className="text-sm text-muted-foreground leading-relaxed -mt-6">
@@ -180,6 +175,10 @@ function CompetitionInner() {
             />
           </div>
         )}
+
+        <p className="text-xs text-muted-foreground/80 leading-relaxed">
+          All metrics on this tab are based on general industry prompts only — prompts that mention the brand by name are excluded. Data reflects most recent responses.
+        </p>
 
         {/* Brand Breakdown + Rank Distribution */}
         <div id="brand-breakdown" className="scroll-mt-24">

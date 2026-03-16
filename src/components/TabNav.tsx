@@ -8,7 +8,7 @@ const TABS = [
   { label: "Overview", segment: "overview" },
   { label: "Visibility", segment: "visibility-v2" },
   { label: "Narrative", segment: "narrative" },
-  { label: "Competition", segment: "competition" },
+  { label: "Issue Landscape", segment: "competition" },
   { label: "Sources", segment: "sources" },
   { label: "Recommendations", segment: "recommendations" },
   { label: "Site Audit", segment: "site-audit" },
@@ -29,8 +29,8 @@ function TabNavInner({ slug }: { slug: string }) {
   const suffix = qs ? `?${qs}` : "";
 
   return (
-    <nav className="border-b border-border bg-card">
-      <div className="max-w-[1220px] mx-auto flex gap-0 px-6">
+    <nav className="border-b border-border/60 bg-card">
+      <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end">
         {TABS.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
           const isActive = pathname === `/entity/${slug}/${tab.segment}`;
@@ -38,17 +38,17 @@ function TabNavInner({ slug }: { slug: string }) {
             <Link
               key={tab.segment}
               href={href}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3.5 py-2.5 text-[13px] font-medium rounded-t-md transition-all ${
                 isActive
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                  ? "bg-background text-foreground border-b-2 border-primary -mb-px"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
               }`}
             >
               {tab.label}
             </Link>
           );
         })}
-        <div className="ml-auto flex items-center gap-0 border-l border-border/50 pl-2">
+        <div className="ml-auto flex items-end gap-0.5 border-l border-border/40 pl-2 mb-0">
           {SECONDARY_TABS.map((tab) => {
             const href = `/entity/${slug}/${tab.segment}${suffix}`;
             const isActive = pathname === `/entity/${slug}/${tab.segment}`;
@@ -56,10 +56,10 @@ function TabNavInner({ slug }: { slug: string }) {
               <Link
                 key={tab.segment}
                 href={href}
-                className={`px-2.5 py-3 text-xs border-b-2 transition-colors ${
+                className={`px-2.5 py-2.5 text-[11px] rounded-t-md transition-all ${
                   isActive
-                    ? "border-primary text-foreground font-medium"
-                    : "border-transparent text-muted-foreground/60 hover:text-muted-foreground hover:border-muted"
+                    ? "bg-background text-foreground font-medium border-b-2 border-primary -mb-px"
+                    : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-background/40"
                 }`}
               >
                 {tab.label}

@@ -64,6 +64,7 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
   }, [data]);
 
   // Filter to selected model, find top domains, build chart data
+  // Aggregate to weekly buckets when data spans more than 14 days for smoother trends
   const { chartData, topDomains } = useMemo(() => {
     const filtered = data.filter((d) => d.model === selectedModel);
 
@@ -83,8 +84,8 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
       .sort(([, a], [, b]) => b - a);
     const domains = sorted.slice(0, 8).map(([k]) => k);
 
-    // Build chart rows with all top domains
-    const filled = filtered.map((entry) => {
+    // Build daily rows
+    const daily = filtered.map((entry) => {
       const row: Record<string, string | number> = { date: String(entry.date) };
       for (const d of domains) {
         row[d] = Number(entry[d]) || 0;
@@ -92,7 +93,45 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
       return row;
     });
 
-    return { chartData: filled, topDomains: domains };
+    // Determine date span
+    const dates = daily.map((r) => String(r.date));
+    const uniqueDates = [...new Set(dates)].sort();
+    const spanDays = uniqueDates.length >= 2
+      ? (new Date(uniqueDates[uniqueDates.length - 1]).getTime() - new Date(uniqueDates[0]).getTime()) / 86_400_000
+      : 0;
+
+    // Aggregate to weekly buckets if span > 14 days
+    if (spanDays > 14) {
+      const weekMap = new Map<string, Record<string, number>>();
+      for (const row of daily) {
+        const d = new Date(String(row.date));
+        // Week start = Monday
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const weekStart = new Date(d);
+        weekStart.setDate(diff);
+        const weekKey = weekStart.toISOString().slice(0, 10);
+        let bucket = weekMap.get(weekKey);
+        if (!bucket) {
+          bucket = {};
+          for (const dm of domains) bucket[dm] = 0;
+          weekMap.set(weekKey, bucket);
+        }
+        for (const dm of domains) {
+          bucket[dm] += Number(row[dm]) || 0;
+        }
+      }
+      const weekly = [...weekMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([weekStart, counts]) => {
+          const row: Record<string, string | number> = { date: weekStart };
+          for (const dm of domains) row[dm] = counts[dm];
+          return row;
+        });
+      return { chartData: weekly, topDomains: domains };
+    }
+
+    return { chartData: daily, topDomains: domains };
   }, [data, selectedModel]);
 
   if (!loading && data.length === 0 && initialData.length === 0) return null;
@@ -103,7 +142,7 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
         <div>
           <h2 className="text-base font-semibold">Top Source Trends</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How the most-cited sources are trending over time
+            How the most-cited sources are trending over time (all historical data)
           </p>
         </div>
         <div className="flex items-center gap-2">

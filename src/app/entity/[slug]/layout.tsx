@@ -16,7 +16,7 @@ export default function EntityLayout({
     <ResponseViewerProvider>
       <div>
         <TabNav slug={slug} />
-        <div className="max-w-[1060px] mx-auto px-6 py-8">{children}</div>
+        <div className="max-w-[1060px] mx-auto px-6 py-8 animate-fade-in-up">{children}</div>
       </div>
     </ResponseViewerProvider>
   );

@@ -241,7 +241,8 @@ export function SummaryCardsDonut({
         return (
         <div
           key={card.label}
-          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors ${isActive ? "ring-1 ring-primary/20" : ""} ${isClickable ? "cursor-pointer hover:border-primary/40" : ""}`}
+          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors border-l-[3px] ${isActive ? "ring-1 ring-primary/20" : ""} ${isClickable ? "cursor-pointer hover:border-l-primary/60" : ""}`}
+          style={{ borderLeftColor: card.color || "var(--border)" }}
           onClick={() => {
             if (card.metricKey && onCardClick) {
               onCardClick(card.metricKey);

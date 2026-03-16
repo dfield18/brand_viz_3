@@ -213,7 +213,8 @@ export default function SourceSummaryCards({ scope, summary, emerging, topDomain
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-all${card.scrollTarget ? " cursor-pointer hover:border-primary/40 hover:shadow-md" : ""}`}
+          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-all border-l-[3px]${card.scrollTarget ? " cursor-pointer hover:border-l-primary/60 hover:shadow-md" : ""}`}
+          style={{ borderLeftColor: card.donutColor || "var(--border)" }}
           onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
           {/* Header */}

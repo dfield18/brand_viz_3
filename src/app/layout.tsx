@@ -24,7 +24,7 @@ export default function RootLayout({
           }}
         >
           <ClientHeader />
-          <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
+          <main className="min-h-[calc(100vh-3.75rem)]">{children}</main>
         </body>
       </html>
     </ClerkProvider>

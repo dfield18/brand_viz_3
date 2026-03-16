@@ -299,11 +299,10 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
     const ticks: number[] = [];
     for (let i = xLo; i <= xHi; i++) ticks.push(i);
 
-    // Y: pad 10% below/above, round to nearest 5
-    // Allow axis to exceed 100% when points are near the top so labels have room
+    // Y: pad 10% below/above, round to nearest 5, cap at 100% (max possible value)
     const yPad = Math.max((yMax - yMin) * 0.15, 10);
     const yLo = Math.max(0, Math.floor((yMin - yPad) / 5) * 5);
-    const yHi = yMax >= 90 ? Math.ceil((yMax + yPad) / 5) * 5 : Math.min(100, Math.ceil((yMax + yPad) / 5) * 5);
+    const yHi = Math.min(100, Math.ceil((yMax + yPad) / 5) * 5);
     const yStep = Math.max(5, Math.round((yHi - yLo) / 4 / 5) * 5);
     const yt: number[] = [];
     for (let v = yLo; v <= yHi; v += yStep) yt.push(v);
@@ -443,7 +442,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
       {/* Chart with HTML click overlay */}
       <div className="mt-2 relative" ref={chartContainerRef}>
         <ResponsiveContainer width="100%" height={440}>
-          <ScatterChart margin={{ top: 36, right: 60, bottom: 40, left: 36 }}>
+          <ScatterChart margin={{ top: 48, right: 60, bottom: 40, left: 36 }}>
             <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis
               type="number"

@@ -49,13 +49,13 @@
 
 :root {
   --radius: 0.75rem;
-  --background: hsl(0 0% 100%);
+  --background: hsl(220 14% 97%);
   --foreground: hsl(222 47% 11%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222 47% 11%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(222 47% 11%);
-  --primary: hsl(217 91% 60%);
+  --primary: hsl(217 80% 52%);
   --primary-foreground: hsl(0 0% 100%);
   --secondary: hsl(220 20% 95%);
   --secondary-foreground: hsl(222 47% 11%);
@@ -66,8 +66,8 @@
   --destructive: hsl(0 84% 60%);
   --border: hsl(220 13% 91%);
   --input: hsl(220 13% 91%);
-  --ring: hsl(217 91% 60%);
-  --chart-1: hsl(217 91% 60%);
+  --ring: hsl(217 80% 52%);
+  --chart-1: hsl(217 80% 52%);
   --chart-2: hsl(160 84% 39%);
   --chart-3: hsl(239 84% 67%);
   --chart-4: hsl(218 11% 65%);
@@ -89,7 +89,7 @@
   --card-foreground: hsl(220 20% 95%);
   --popover: hsl(222 47% 11%);
   --popover-foreground: hsl(220 20% 95%);
-  --primary: hsl(217 91% 60%);
+  --primary: hsl(217 80% 58%);
   --primary-foreground: hsl(0 0% 100%);
   --secondary: hsl(222 30% 18%);
   --secondary-foreground: hsl(220 20% 95%);
@@ -100,8 +100,8 @@
   --destructive: hsl(0 84% 60%);
   --border: hsl(222 30% 20%);
   --input: hsl(222 30% 22%);
-  --ring: hsl(217 91% 60%);
-  --chart-1: hsl(217 91% 65%);
+  --ring: hsl(217 80% 58%);
+  --chart-1: hsl(217 80% 62%);
   --chart-2: hsl(160 84% 44%);
   --chart-3: hsl(239 84% 72%);
   --chart-4: hsl(218 11% 60%);
@@ -156,6 +156,21 @@
     0 0 0 1px hsl(0 0% 100% / 0.06),
     0 1px 2px 0 hsl(0 0% 0% / 0.2),
     0 3px 10px -4px hsl(0 0% 0% / 0.4);
+}
+
+/* Fade-in animation for sections */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out both;
 }
 
 @layer base {

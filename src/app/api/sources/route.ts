@@ -295,11 +295,31 @@ export async function GET(req: NextRequest) {
     })();
 
     // Top domain citation counts over time (for "Top Source Trends" chart)
-    const domainOverTime = (() => {
-      // Determine the top 8 domains by total citation count
+    // Query ALL historical SourceOccurrences (not just current range) so the
+    // trend chart shows the full picture across all completed jobs.
+    const domainOverTime = await (async () => {
+      const allHistorical = await prisma.sourceOccurrence.findMany({
+        where: {
+          run: {
+            brandId: brand.id,
+            job: { status: "done" },
+            ...modelFilter,
+          },
+          ...clusterPromptFilter,
+        },
+        select: {
+          model: true,
+          createdAt: true,
+          source: { select: { domain: true } },
+          run: { select: { createdAt: true } },
+        },
+      });
+
+      // Determine the top 8 domains by total citation count (across all time)
       const domainTotals = new Map<string, number>();
-      for (const o of occurrences) {
-        domainTotals.set(o.domain, (domainTotals.get(o.domain) ?? 0) + 1);
+      for (const o of allHistorical) {
+        const d = o.source.domain;
+        domainTotals.set(d, (domainTotals.get(d) ?? 0) + 1);
       }
       const topDomainKeys = [...domainTotals.entries()]
         .sort((a, b) => b[1] - a[1])
@@ -309,15 +329,15 @@ export async function GET(req: NextRequest) {
 
       // Build map: `${date}|${model}` → { domain → count }
       const buckets = new Map<string, Map<string, number>>();
-      for (const o of occurrences) {
-        if (!topSet.has(o.domain)) continue;
-        const runDate = runDateMap.get(o.runId);
-        const date = (runDate ?? o.createdAt).toISOString().slice(0, 10);
+      for (const o of allHistorical) {
+        const domain = o.source.domain;
+        if (!topSet.has(domain)) continue;
+        const date = o.run.createdAt.toISOString().slice(0, 10);
         for (const m of ["all", o.model]) {
           const key = `${date}|${m}`;
           let domMap = buckets.get(key);
           if (!domMap) { domMap = new Map(); buckets.set(key, domMap); }
-          domMap.set(o.domain, (domMap.get(o.domain) ?? 0) + 1);
+          domMap.set(domain, (domMap.get(domain) ?? 0) + 1);
         }
       }
 

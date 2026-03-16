@@ -156,17 +156,17 @@ function HeaderInner() {
 
   return (
     <>
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-14 px-6">
+      <header className="border-b border-border/60 bg-card sticky top-0 z-50 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04),0_2px_8px_-2px_hsl(0_0%_0%/0.06)]">
+        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[3.75rem] px-6">
           {/* Left: Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-blue-700 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-700 shadow-sm">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8 2L3 5v6l5 3 5-3V5L8 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
                 <circle cx="8" cy="8" r="2" fill="white" />
               </svg>
             </div>
-            <span className="text-base font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            <span className="text-[15px] font-semibold tracking-tight text-foreground">
               Visibility
             </span>
           </div>
@@ -421,7 +421,7 @@ function HeaderInner() {
 
 export function Header() {
   return (
-    <Suspense fallback={<header className="border-b border-border bg-background h-14" />}>
+    <Suspense fallback={<header className="border-b border-border/60 bg-card h-[3.75rem]" />}>
       <HeaderInner />
     </Suspense>
   );
