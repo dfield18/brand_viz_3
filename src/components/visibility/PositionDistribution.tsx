@@ -16,11 +16,10 @@ interface PositionDistributionProps {
 const BAR_COLOR = "hsl(217, 91%, 50%)";
 
 const POSITION_BANDS = [
-  { label: "Position #1", min: 1, max: 1 },
-  { label: "Position #2", min: 2, max: 2 },
-  { label: "Position #3", min: 3, max: 3 },
-  { label: "Position #4–5", min: 4, max: 5 },
-  { label: "Position #6+", min: 6, max: Infinity },
+  { label: "#1", min: 1, max: 1 },
+  { label: "2–3", min: 2, max: 3 },
+  { label: "4–5", min: 4, max: 5 },
+  { label: "6+", min: 6, max: Infinity },
 ] as const;
 
 export function PositionDistribution({ data, inline, externalModel }: PositionDistributionProps) {
@@ -50,7 +49,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
         count,
         percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
       };
-    }).filter((b) => b.count > 0 || b.label === "Position #1"); // always show #1
+    }).filter((b) => b.count > 0 || b.label === "#1"); // always show #1
   }, [filtered]);
 
   const maxPct = useMemo(
