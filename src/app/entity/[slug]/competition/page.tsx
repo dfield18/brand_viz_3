@@ -129,7 +129,7 @@ function CompetitionInner() {
     { id: "sentiment", label: "Brand Sentiment" },
     { id: "sentiment-trend", label: "Sentiment Over Time" },
     { id: "win-loss", label: "Win Rate", heading: "Head-to-Head" },
-    { id: "competitor-prompts", label: "Where You Lose" },
+    { id: "competitor-prompts", label: `Where ${brandName} Loses` },
     { id: "co-mention", label: "Brand Associations" },
   ];
 

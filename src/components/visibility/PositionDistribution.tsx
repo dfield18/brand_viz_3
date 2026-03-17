@@ -11,6 +11,7 @@ interface PositionDistributionProps {
   inline?: boolean;
   /** Externally controlled model filter — hides the dropdown when set */
   externalModel?: string;
+  brandName?: string;
 }
 
 const POSITION_BANDS = [
@@ -20,7 +21,7 @@ const POSITION_BANDS = [
   { label: "6+", min: 6, max: Infinity, color: "hsl(218, 15%, 82%)" },
 ] as const;
 
-export function PositionDistribution({ data, inline, externalModel }: PositionDistributionProps) {
+export function PositionDistribution({ data, inline, externalModel, brandName = "This Brand" }: PositionDistributionProps) {
   const [internalModel, setInternalModel] = useState("all");
   const selectedModel = externalModel ?? internalModel;
 
@@ -62,7 +63,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
   if (data.length === 0) {
     return (
       <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
-        <h2 className={headingClass}>Your Ranking Breakdown</h2>
+        <h2 className={headingClass}>{brandName}&apos;s Ranking Breakdown</h2>
         <div className="mt-4">
           <EmptyState message="No position data available yet." />
         </div>
@@ -74,9 +75,9 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
     <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className={headingClass}>Your Ranking Breakdown</h2>
+          <h2 className={headingClass}>{brandName}&apos;s Ranking Breakdown</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How often your brand lands in each ranking position when mentioned by AI — based on most recent results
+            How often {brandName} lands in each ranking position when mentioned by AI — based on most recent results
           </p>
         </div>
         {!externalModel && <select

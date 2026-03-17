@@ -126,7 +126,7 @@ function SourcesInner() {
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
-          See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps you identify which content to optimize and which third-party sources are shaping your brand&apos;s AI presence.
+          See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps identify which content to optimize and which third-party sources are shaping {brandName}&apos;s AI presence.
         </p>
 
         {/* ── Source Overview ─────────────────────────── */}
@@ -178,7 +178,7 @@ function SourcesInner() {
 
         {/* Domain Details */}
         <div id="domain-details" className="scroll-mt-24">
-          <TopDomainsTable topDomains={data.topDomains} brandSlug={params.slug} model={model} range={range} pageModel={model} />
+          <TopDomainsTable topDomains={data.topDomains} brandSlug={params.slug} model={model} range={range} pageModel={model} brandName={brandName} />
         </div>
 
         {/* Domain Detail Drawer */}

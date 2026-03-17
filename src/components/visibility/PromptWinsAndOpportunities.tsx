@@ -75,8 +75,8 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
 
       <p className="text-xs text-muted-foreground mb-4">
         {tab === "wins"
-          ? "Prompts where your brand ranks #1"
-          : "Industry prompts where your brand ranks poorly or is absent"}
+          ? `Prompts where ${brandName || "this brand"} ranks #1`
+          : `Industry prompts where ${brandName || "this brand"} ranks poorly or is absent`}
       </p>
 
       <div ref={scrollRef} className="overflow-x-auto max-h-[340px] overflow-y-auto">
@@ -141,8 +141,8 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
               <thead className="sticky top-0 bg-card z-10">
                 <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   <th className="pb-3 pr-4">Prompt</th>
-                  <th className="pb-3 px-4 text-center">Your Rank</th>
-                  <th className="pb-3 pl-4">Competitors Mentioned Before Your Brand</th>
+                  <th className="pb-3 px-4 text-center">{brandName || "Brand"} Rank</th>
+                  <th className="pb-3 pl-4">Competitors Mentioned Before {brandName || "This Brand"}</th>
                 </tr>
               </thead>
               <tbody>

@@ -5,9 +5,10 @@ import type { TopicProminenceRow } from "@/types/api";
 
 interface Props {
   prominence: TopicProminenceRow[];
+  brandName?: string;
 }
 
-export default function TopicProminenceChart({ prominence }: Props) {
+export default function TopicProminenceChart({ prominence, brandName = "this brand" }: Props) {
   const [view, setView] = useState<"avg" | "share">("avg");
 
   if (prominence.length === 0) {
@@ -49,8 +50,8 @@ export default function TopicProminenceChart({ prominence }: Props) {
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         {view === "avg"
-          ? "Average prominence score when your brand is mentioned in each topic"
-          : "Your brand's share of total prominence within each topic"}
+          ? `Average prominence score when ${brandName} is mentioned in each topic`
+          : `${brandName}'s share of total prominence within each topic`}
       </p>
 
       <div className="space-y-3">
@@ -80,7 +81,7 @@ export default function TopicProminenceChart({ prominence }: Props) {
       </div>
 
       <p className="text-[11px] text-muted-foreground mt-3">
-        Prominence measures how central your brand is within responses, not just whether it appears.
+        Prominence measures how central {brandName} is within responses, not just whether it appears.
         Based on {prominence.reduce((s, p) => s + p.nMentions, 0)} total mentions.
       </p>
     </section>

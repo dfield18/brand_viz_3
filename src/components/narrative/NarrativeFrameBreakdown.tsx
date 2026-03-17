@@ -155,7 +155,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className="text-base font-semibold">How AI Describes You</h2>
+          <h2 className="text-base font-semibold">How AI Describes {brandName}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             The key themes and stories AI tells about {brandName}
           </p>

@@ -161,7 +161,7 @@ function VisibilityInner() {
     { id: "top-result-driver-decomposition", label: "What's Driving This" },
     { id: "position-distribution", label: "Ranking Breakdown", heading: "Ranking" },
     { id: "position-over-time", label: "Position Over Time" },
-    { id: "brand-position", label: "Where AI Ranks You", heading: "Performance" },
+    { id: "brand-position", label: `Where AI Ranks ${brandName}`, heading: "Performance" },
     { id: "results-by-prompt", label: "Performance by Question" },
   ];
 
@@ -242,7 +242,7 @@ function VisibilityInner() {
 
         {/* Position Distribution */}
         <div id="position-distribution" className="scroll-mt-24">
-          <PositionDistribution data={data.positionDistribution} />
+          <PositionDistribution data={data.positionDistribution} brandName={brandName} />
         </div>
 
         {/* Position Distribution Over Time */}
@@ -250,6 +250,7 @@ function VisibilityInner() {
           <div id="position-over-time" className="scroll-mt-24">
             <PositionDistributionOverTime
               data={data.positionDistributionOverTime.filter((d) => d.date >= rangeCutoff)}
+              brandName={brandName}
             />
           </div>
         )}

@@ -313,7 +313,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
         <div>
           <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Performance by Question</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How your brand performs across different industry questions — none mention your brand by name
+            How {brandName || "this brand"} performs across different industry questions — none mention {brandName || "this brand"} by name
           </p>
         </div>
         {!externalModel && (

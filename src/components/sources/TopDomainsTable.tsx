@@ -50,6 +50,7 @@ interface Props {
   model: string;
   range: number;
   pageModel: string;
+  brandName?: string;
 }
 
 const COL_COUNT = 8; // domain + type + 4 metrics + first/last seen
@@ -69,7 +70,7 @@ function r1(v: number | null | undefined): string {
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function TopDomainsTable({ topDomains: initialTopDomains, brandSlug, model, range, pageModel }: Props) {
+export default function TopDomainsTable({ topDomains: initialTopDomains, brandSlug, model, range, pageModel, brandName = "this brand" }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("citations");
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
@@ -116,8 +117,8 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
   const columns: { key: SortKey; label: string; tooltip: string }[] = [
     { key: "citations", label: "Citations", tooltip: "The total number of times AI referenced this website across all responses." },
     { key: "responses", label: "Responses", tooltip: "How many unique AI responses included a link to this website. One response can have multiple citations." },
-    { key: "avgRankWhenCited", label: "Avg Rank", tooltip: "Your brand's average ranking position in AI responses that cite this source. Lower is better — 1.0 means you're always listed first." },
-    { key: "rank1RateWhenCited", label: "Top Result Rate", tooltip: "The percentage of times your brand appears as the #1 recommendation in AI responses that cite this source." },
+    { key: "avgRankWhenCited", label: "Avg Rank", tooltip: `${brandName}'s average ranking position in AI responses that cite this source. Lower is better — 1.0 means always listed first.` },
+    { key: "rank1RateWhenCited", label: "Top Result Rate", tooltip: `The percentage of times ${brandName} appears as the #1 recommendation in AI responses that cite this source.` },
   ];
 
   return (
@@ -126,7 +127,7 @@ export default function TopDomainsTable({ topDomains: initialTopDomains, brandSl
         <div>
           <h3 className="text-sm font-semibold mb-1">All Sources</h3>
           <p className="text-xs text-muted-foreground">
-            Every website AI cites, with details on how each source impacts your brand&apos;s visibility
+            Every website AI cites, with details on how each source impacts {brandName}&apos;s visibility
           </p>
         </div>
         <div className="flex items-center gap-2">

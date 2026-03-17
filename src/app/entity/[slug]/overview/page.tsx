@@ -141,7 +141,7 @@ function OverviewInner() {
     { id: "key-insights", label: "Key Insights" },
     { id: "visibility-trend", label: "Brand Recall Trend" },
     { id: "cross-model", label: "By AI Platform" },
-    { id: "narrative-section", label: "How AI Describes You", heading: "Narrative" },
+    { id: "narrative-section", label: `How AI Describes ${brandName}`, heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
     { id: "competitor-snapshot", label: isOrg ? "Landscape" : "Competitive Landscape", heading: "Issue Landscape" },
     { id: "competitor-alerts", label: isOrg ? "Movement" : "Competitor Movement" },
@@ -223,7 +223,7 @@ function OverviewInner() {
                       const rounded = Math.round(kpis.avgRankScore);
                       if (kpis.avgRankScore <= 1.3) parts.push(`Even better, when ${brandName} does come up, it's typically the first name on the list — AI leads with it ${kpis.firstMentionRate}% of the time.`);
                       else if (kpis.avgRankScore <= 2.0) parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it leads the list ${kpis.firstMentionRate}% of the time.`);
-                      else if (kpis.avgRankScore <= 3.0) parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so competitors tend to get named first. Only ${kpis.firstMentionRate}% of the time is ${brandName} the first name mentioned.`);
+                      else if (kpis.avgRankScore <= 3.0) parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so competitors tend to get named first.${kpis.firstMentionRate > 0 ? ` Only ${kpis.firstMentionRate}% of the time is ${brandName} the first name mentioned.` : ` ${brandName} is rarely the first name mentioned.`}`);
                       else parts.push(`When AI does mention ${brandName}, it usually lists ${rounded === 4 ? "three or four" : "several"} ${others} first — ${brandName} tends to show up around the ${ordinal(rounded)} spot. There's an opportunity to move up.`);
                     }
                     const ss = apiData.sentimentSplit;
@@ -254,7 +254,7 @@ function OverviewInner() {
         )}
 
         <div id="cross-model" className="scroll-mt-24">
-          <CrossModelTable models={data.modelComparison} />
+          <CrossModelTable models={data.modelComparison} brandName={brandName} />
         </div>
 
         {/* ── Narrative ──────────────────────────── */}
@@ -281,7 +281,7 @@ function OverviewInner() {
         {quotesData?.quotes && quotesData.quotes.length > 0 && (
           <div id="standout-quotes" className="scroll-mt-24">
             <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-              <h2 className="text-sm font-semibold mb-2">What AI Is Saying About You</h2>
+              <h2 className="text-sm font-semibold mb-2">What AI Is Saying About {brandName}</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
             </section>
           </div>
@@ -291,7 +291,7 @@ function OverviewInner() {
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Issue Landscape</h2>
 
         <div id="competitor-snapshot" className="scroll-mt-24">
-          <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} />
+          <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
         </div>
 
         <div id="competitor-alerts" className="scroll-mt-24">

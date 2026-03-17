@@ -331,10 +331,11 @@ function VisibilityV2Inner() {
           <PositionDistributionOverTime
             id="ranking-breakdown"
             data={data.positionDistributionOverTime.filter((d) => d.date >= rangeCutoff)}
+            brandName={brandName}
           >
             {(selectedModel: string) => (
               <div id="ranking-distribution" className="scroll-mt-24">
-                <PositionDistribution data={data.positionDistribution} inline externalModel={selectedModel} />
+                <PositionDistribution data={data.positionDistribution} inline externalModel={selectedModel} brandName={brandName} />
               </div>
             )}
           </PositionDistributionOverTime>
@@ -343,10 +344,10 @@ function VisibilityV2Inner() {
         {/* ── Performance ──────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Performance</h2>
 
-        {/* Performance: Where AI Ranks You + Performance by Question */}
+        {/* Performance: Where AI Ranks Brand + Performance by Question */}
         <div id="brand-position" className="scroll-mt-24 rounded-xl bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-6">
-            <p className="text-xs text-muted-foreground">How your brand performs across individual AI queries — broken down by platform and question</p>
+            <p className="text-xs text-muted-foreground">How {brandName} performs across individual AI queries — broken down by platform and question</p>
             <select
               value={promptModel}
               onChange={(e) => setPromptModel(e.target.value)}

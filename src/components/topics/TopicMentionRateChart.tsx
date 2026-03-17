@@ -4,9 +4,10 @@ import type { TopicRow } from "@/types/api";
 
 interface Props {
   topics: TopicRow[];
+  brandName?: string;
 }
 
-export default function TopicMentionRateChart({ topics }: Props) {
+export default function TopicMentionRateChart({ topics, brandName = "This Brand" }: Props) {
   if (topics.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
@@ -25,13 +26,13 @@ export default function TopicMentionRateChart({ topics }: Props) {
     <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Topic Mention Rate</h3>
       <p className="text-xs text-muted-foreground mb-2">
-        How often your brand appears vs category average and leader
+        How often {brandName} appears vs category average and leader
       </p>
       {/* Legend */}
       <div className="flex items-center gap-4 text-[11px] text-muted-foreground mb-4">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-[var(--chart-1)]" />
-          Your Rate
+          {brandName} Rate
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-muted-foreground/30" />

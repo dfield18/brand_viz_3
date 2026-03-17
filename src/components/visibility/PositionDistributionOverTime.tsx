@@ -18,6 +18,7 @@ interface PositionDistributionOverTimeProps {
   id?: string;
   data: PositionDistributionOverTimeEntry[];
   children?: React.ReactNode | ((selectedModel: string) => React.ReactNode);
+  brandName?: string;
 }
 
 const POSITION_COLORS = [
@@ -36,7 +37,7 @@ const SERIES = [
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
-export function PositionDistributionOverTime({ id, data, children }: PositionDistributionOverTimeProps) {
+export function PositionDistributionOverTime({ id, data, children, brandName = "this brand" }: PositionDistributionOverTimeProps) {
   const [selectedModel, setSelectedModel] = useState("all");
 
   const models = useMemo(() => {
@@ -59,7 +60,7 @@ export function PositionDistributionOverTime({ id, data, children }: PositionDis
         <div>
           <h3 className="text-sm font-medium text-foreground">Position Distribution Over Time</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            How often your brand appears in each ranking position, and how it&apos;s trending
+            How often {brandName} appears in each ranking position, and how it&apos;s trending
           </p>
         </div>
         <select

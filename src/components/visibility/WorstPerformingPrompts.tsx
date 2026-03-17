@@ -6,9 +6,10 @@ import type { WorstPerformingPrompt } from "@/types/api";
 
 interface WorstPerformingPromptsProps {
   prompts: WorstPerformingPrompt[];
+  brandName?: string;
 }
 
-export function WorstPerformingPrompts({ prompts }: WorstPerformingPromptsProps) {
+export function WorstPerformingPrompts({ prompts, brandName = "This Brand" }: WorstPerformingPromptsProps) {
   const sorted = useMemo(
     () => [...prompts].sort((a, b) => {
       // Absent (null) first, then highest rank number first
@@ -29,15 +30,15 @@ export function WorstPerformingPrompts({ prompts }: WorstPerformingPromptsProps)
         <h2 className="text-base font-semibold">Opportunity Prompts</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Industry prompts where your brand ranks poorly or is absent
+        Industry prompts where {brandName} ranks poorly or is absent
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
               <th className="pb-3 pr-4">Prompt</th>
-              <th className="pb-3 px-4 text-center">Your Rank</th>
-              <th className="pb-3 pl-4">Competitors Present Before Your Brand</th>
+              <th className="pb-3 px-4 text-center">{brandName} Rank</th>
+              <th className="pb-3 pl-4">Competitors Present Before {brandName}</th>
             </tr>
           </thead>
           <tbody>

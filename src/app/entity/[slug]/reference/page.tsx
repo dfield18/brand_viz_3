@@ -291,7 +291,7 @@ function ReferenceInner() {
         <section className="rounded-xl bg-card p-6 shadow-section">
           <h2 className="text-base font-semibold mb-4">Competitive Opportunities</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Prompts where competitors outrank your brand or your brand is absent. Higher impact score = bigger opportunity.
+            Prompts where competitors outrank {brandName} or {brandName} is absent. Higher impact score = bigger opportunity.
           </p>
           <CompetitiveOpportunities opportunities={competitionData.competition.competitiveOpportunities} brandName={params.slug} />
         </section>
@@ -300,9 +300,9 @@ function ReferenceInner() {
       {/* Model Split (moved from Competition tab) */}
       {competitionData?.hasData && competitionData.competition && competitionData.competition.modelSplit.length > 1 && (
         <section className="rounded-xl bg-card p-6 shadow-section">
-          <h2 className="text-base font-semibold">How Each AI Platform Sees You vs Competitors</h2>
+          <h2 className="text-base font-semibold">How Each AI Platform Sees {brandName} vs Competitors</h2>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
-            Different AI platforms recommend brands at different rates. This shows your share of voice on each platform compared to competitors.
+            Different AI platforms recommend brands at different rates. This shows {brandName}&apos;s share of voice on each platform compared to competitors.
           </p>
           <CompetitorModelSplit modelSplit={competitionData.competition.modelSplit} brandEntityId={params.slug} />
         </section>
@@ -346,18 +346,18 @@ function ReferenceInner() {
 
           {/* Topic Mention Rate */}
           {topicsData.topics.topics.length > 0 && (
-            <TopicMentionRateChart topics={topicsData.topics.topics} />
+            <TopicMentionRateChart topics={topicsData.topics.topics} brandName={brandName} />
           )}
 
           {/* Avg Rank by Topic + Topic Ownership */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopicRankChart topics={topicsData.topics.topics} />
-            <TopicOwnershipTable ownership={topicsData.topics.ownership} fragmentation={topicsData.topics.fragmentation} brandSlug={params.slug} />
+            <TopicOwnershipTable ownership={topicsData.topics.ownership} fragmentation={topicsData.topics.fragmentation} brandSlug={params.slug} brandName={brandName} />
           </div>
 
           {/* Topic Prominence */}
           {topicsData.topics.prominence.length > 0 && (
-            <TopicProminenceChart prominence={topicsData.topics.prominence} />
+            <TopicProminenceChart prominence={topicsData.topics.prominence} brandName={brandName} />
           )}
 
           {/* Emerging Topics */}
@@ -370,7 +370,7 @@ function ReferenceInner() {
 
           {/* Topic Prompt Examples */}
           {topicsData.topics.promptExamples.length > 0 && (
-            <TopicPromptExamples promptExamples={topicsData.topics.promptExamples} topics={topicsData.topics.topics} />
+            <TopicPromptExamples promptExamples={topicsData.topics.promptExamples} topics={topicsData.topics.topics} brandName={brandName} />
           )}
 
           {/* Topic Performance by Model */}

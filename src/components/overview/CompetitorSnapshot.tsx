@@ -16,9 +16,10 @@ interface Props {
   model: string;
   range: number;
   brandCategory?: string | null;
+  brandName?: string;
 }
 
-export function CompetitorSnapshot({ brandSlug, model, range, brandCategory }: Props) {
+export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, brandName }: Props) {
   const url = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<CompetitionApiResponse>(url);
 
@@ -79,8 +80,8 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory }: P
           <h2 className="text-base font-semibold">{isOrg ? "Landscape" : "Competitive Landscape"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isOrg
-              ? "Other organizations AI mentions alongside yours in this space"
-              : "How your brand stacks up against top competitors in AI responses"}
+              ? `Other organizations AI mentions alongside ${brandName || "this brand"} in this space`
+              : `How ${brandName || "this brand"} stacks up against top competitors in AI responses`}
           </p>
         </div>
       </div>

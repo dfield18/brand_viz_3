@@ -270,8 +270,8 @@ export async function GET(req: NextRequest) {
       brandRank,
       topCompetitors: competitors,
       suggestion: competitors.length > 0
-        ? `When AI is asked "${expanded}", competitors ${compNames} currently dominate \u2014 create content to improve your ranking for this query`
-        : `When AI is asked "${expanded}", your brand doesn\u2019t appear \u2014 create content to become visible for this query`,
+        ? `When AI is asked "${expanded}", competitors ${compNames} currently dominate \u2014 create content to improve ${brandName}'s ranking for this query`
+        : `When AI is asked "${expanded}", ${brandName} doesn\u2019t appear \u2014 create content to become visible for this query`,
     });
   }
 
@@ -712,7 +712,7 @@ export async function GET(req: NextRequest) {
       category: data.category,
       competitorsCited: competitors.map((e) => resolveEntityName(e, entityDisplayNames)),
       totalCitations: data.total,
-      suggestion: `Get coverage on ${domain}${data.category ? ` (${data.category})` : ""} \u2014 currently cites ${compNames} but not your brand`,
+      suggestion: `Get coverage on ${domain}${data.category ? ` (${data.category})` : ""} \u2014 currently cites ${compNames} but not ${brandName}`,
     });
   }
 

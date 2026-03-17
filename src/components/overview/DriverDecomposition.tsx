@@ -69,11 +69,11 @@ const KPI_TITLE_LABELS: Record<string, string> = {
   shareOfVoice: "Share of Voice",
 };
 
-const KPI_DESCRIPTIONS: Record<string, string> = {
-  mentionRate: "how often AI platforms mention your brand",
-  avgProminence: "how prominently AI platforms feature your brand",
-  firstMentionRate: "how often your brand appears as the top recommendation",
-  avgRank: "where your brand ranks among competitors",
+const KPI_DESCRIPTIONS: Record<string, (name: string) => string> = {
+  mentionRate: (n) => `how often AI platforms mention ${n}`,
+  avgProminence: (n) => `how prominently AI platforms feature ${n}`,
+  firstMentionRate: (n) => `how often ${n} appears as the top recommendation`,
+  avgRank: (n) => `where ${n} ranks among competitors`,
 };
 
 type DimensionTab = "model" | "topic" | "model_topic";

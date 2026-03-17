@@ -378,7 +378,7 @@ function PromptOpportunitiesSection({
             <div className="flex flex-wrap items-center gap-1.5">
               {competitors.length > 0 && (
                 <>
-                  <span className="text-[11px] text-muted-foreground/60 mr-0.5">Beating you:</span>
+                  <span className="text-[11px] text-muted-foreground/60 mr-0.5">Beating {brandName}:</span>
                   {competitors.map((c) => (
                     <span
                       key={c.displayName}
@@ -946,17 +946,19 @@ const METRIC_DISPLAY_NAMES: Record<string, string> = {
   avgRank: "Average Position",
 };
 
-const METRIC_ADVICE: Record<string, string> = {
-  mentionRate: "Focus on content optimization — ensure your brand appears in relevant AI training data and authoritative sources.",
-  avgRank: "Improve positioning by strengthening claims, adding structured data, and targeting prompts where you rank poorly.",
-  rank1Rate: "Increase top-result appearances by building authority signals and targeting high-intent prompts.",
-  avgProminence: "Boost prominence by increasing the depth and specificity of content about your brand.",
+const METRIC_ADVICE: Record<string, (name: string) => string> = {
+  mentionRate: (n) => `Focus on content optimization — ensure ${n} appears in relevant AI training data and authoritative sources.`,
+  avgRank: (n) => `Improve positioning by strengthening claims, adding structured data, and targeting prompts where ${n} ranks poorly.`,
+  rank1Rate: () => "Increase top-result appearances by building authority signals and targeting high-intent prompts.",
+  avgProminence: (n) => `Boost prominence by increasing the depth and specificity of content about ${n}.`,
 };
 
 function DecliningMetricsSection({
   data,
+  brandName = "this brand",
 }: {
   data: ApiResponse["decliningMetrics"];
+  brandName?: string;
 }) {
   const declining = data?.filter((m) => m.direction === "declining") ?? [];
   if (declining.length === 0) return <EmptyState message="No declining metrics — all trends are stable or improving." />;
@@ -1006,7 +1008,7 @@ function DecliningMetricsSection({
               <div className="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 rounded-md px-3 py-2 mt-3">
                 <Lightbulb className="h-3.5 w-3.5 text-amber-500/70 mt-0.5 shrink-0" />
                 <p className="text-[12px] text-muted-foreground leading-relaxed">
-                  {METRIC_ADVICE[m.metric]}
+                  {METRIC_ADVICE[m.metric](brandName)}
                 </p>
               </div>
             )}
@@ -1246,7 +1248,7 @@ function RecommendationsInner() {
             description="Key metrics that are trending downward and may need attention."
             icon={TrendingDown}
           >
-            <DecliningMetricsSection data={apiData.decliningMetrics} />
+            <DecliningMetricsSection data={apiData.decliningMetrics} brandName={brandName} />
           </Section>
         )}
       </div>

@@ -6,6 +6,7 @@ interface Props {
   ownership: TopicOwnershipRow[];
   fragmentation: TopicFragmentationRow[];
   brandSlug: string;
+  brandName?: string;
 }
 
 const LABEL_COLOR: Record<string, string> = {
@@ -14,7 +15,7 @@ const LABEL_COLOR: Record<string, string> = {
   Concentrated: "text-red-500",
 };
 
-export default function TopicOwnershipTable({ ownership, fragmentation, brandSlug }: Props) {
+export default function TopicOwnershipTable({ ownership, fragmentation, brandSlug, brandName = "This Brand" }: Props) {
   if (ownership.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
@@ -49,8 +50,8 @@ export default function TopicOwnershipTable({ ownership, fragmentation, brandSlu
               <th className="text-left py-2 pr-3 font-medium">Topic</th>
               <th className="text-left py-2 px-3 font-medium">Leader</th>
               <th className="text-right py-2 px-3 font-medium">Leader Share</th>
-              <th className="text-right py-2 px-3 font-medium">Your Share</th>
-              <th className="text-right py-2 px-3 font-medium">Your Rank</th>
+              <th className="text-right py-2 px-3 font-medium">{brandName} Share</th>
+              <th className="text-right py-2 px-3 font-medium">{brandName} Rank</th>
               <th className="text-left py-2 px-3 font-medium">Competition</th>
               <th className="text-left py-2 pl-3 font-medium">Leader Share</th>
             </tr>

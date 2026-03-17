@@ -78,7 +78,7 @@ export function ExecutiveSummary({
       );
     } else if (sentimentSplit.negative >= 30) {
       parts.push(
-        `A note of caution: ${sentimentSplit.negative}% of AI responses describe ${brandName} in a negative light. Since people increasingly trust AI recommendations, it's worth understanding what's driving this and whether your messaging can address it.`,
+        `A note of caution: ${sentimentSplit.negative}% of AI responses describe ${brandName} in a negative light. Since people increasingly trust AI recommendations, it's worth understanding what's driving this and whether ${brandName}'s messaging can address it.`,
       );
     }
   }
@@ -86,7 +86,7 @@ export function ExecutiveSummary({
   // Narrative frame — how is AI positioning the brand?
   if (topFrame) {
     parts.push(
-      `The dominant story AI tells about ${brandName} is as a "${topFrame}" — ${sentimentSplit && sentimentSplit.positive >= 50 ? "a strong narrative to reinforce in your marketing" : "it's worth considering whether this matches how you want the brand to be perceived"}.`,
+      `The dominant story AI tells about ${brandName} is as a "${topFrame}" — ${sentimentSplit && sentimentSplit.positive >= 50 ? `a strong narrative to reinforce in ${brandName}'s marketing` : `it's worth considering whether this matches how ${brandName} wants to be perceived`}.`,
     );
   }
 

@@ -10,9 +10,10 @@ const selectClass =
 interface Props {
   promptExamples: TopicPromptExample[];
   topics: TopicRow[];
+  brandName?: string;
 }
 
-export default function TopicPromptExamples({ promptExamples, topics }: Props) {
+export default function TopicPromptExamples({ promptExamples, topics, brandName = "This Brand" }: Props) {
   const defaultTopic = topics[0]?.topicKey ?? "all";
   const [topic, setTopic] = useState(defaultTopic);
   const [modelFilter, setModelFilter] = useState("all");
@@ -114,7 +115,7 @@ export default function TopicPromptExamples({ promptExamples, topics }: Props) {
               </th>
               <th className="py-2 px-2 text-left font-medium text-muted-foreground w-20">Topic</th>
               <th className="py-2 px-2 text-center font-medium text-muted-foreground w-20">Model</th>
-              <th className="py-2 px-2 text-center font-medium text-muted-foreground w-16">Your Rank</th>
+              <th className="py-2 px-2 text-center font-medium text-muted-foreground w-16">{brandName} Rank</th>
               <th className="py-2 px-2 text-left font-medium text-muted-foreground w-28">Top Competitor</th>
               <th className="py-2 px-2 text-left font-medium text-muted-foreground w-20">Cluster</th>
             </tr>

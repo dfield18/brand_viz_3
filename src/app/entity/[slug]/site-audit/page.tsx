@@ -40,7 +40,7 @@ const LLM_BOT_LABELS: Record<string, string> = {
 
 /* ─── Section Builders ─────────────────────────────────────────────── */
 
-function buildLlmChecks(audit: SiteAuditResult): CheckItem[] {
+function buildLlmChecks(audit: SiteAuditResult, brandName: string): CheckItem[] {
   const checks: CheckItem[] = [];
 
   checks.push({
@@ -55,7 +55,7 @@ function buildLlmChecks(audit: SiteAuditResult): CheckItem[] {
     checks.push({
       label: "Blocks all bots",
       status: "fail",
-      detail: "Your robots.txt blocks all crawlers with Disallow: /. No AI model can index your content.",
+      detail: `The robots.txt blocks all crawlers with Disallow: /. No AI model can index ${brandName}'s content.`,
     });
   }
 
@@ -67,8 +67,8 @@ function buildLlmChecks(audit: SiteAuditResult): CheckItem[] {
       status: rule.allowed ? "pass" : "fail",
       value: rule.allowed ? "Allowed" : "Blocked",
       detail: rule.allowed
-        ? "This AI crawler can access your site."
-        : "This AI crawler is blocked from accessing your site content.",
+        ? "This AI crawler can access the site."
+        : "This AI crawler is blocked from accessing the site content.",
     });
   }
 
@@ -79,7 +79,7 @@ function buildLlmChecks(audit: SiteAuditResult): CheckItem[] {
       status: audit.robotsTxt.blocksAll ? "fail" : "pass",
       detail: audit.robotsTxt.blocksAll
         ? "All bots are blocked, including AI crawlers."
-        : "No AI crawlers are specifically blocked. They can access your site.",
+        : "No AI crawlers are specifically blocked. They can access the site.",
     });
   }
 
@@ -90,14 +90,14 @@ function buildLlmChecks(audit: SiteAuditResult): CheckItem[] {
       ? `${audit.sitemap.urlCount ?? "?"} URLs (${audit.sitemap.format})`
       : "Not found",
     detail: audit.sitemap.exists
-      ? "AI crawlers can discover all your pages via the sitemap."
-      : "No sitemap.xml found at the root. A sitemap helps AI crawlers discover and index your content.",
+      ? "AI crawlers can discover all pages via the sitemap."
+      : `No sitemap.xml found at the root. A sitemap helps AI crawlers discover and index ${brandName}'s content.`,
   });
 
   return checks;
 }
 
-function buildMetaChecks(audit: SiteAuditResult): CheckItem[] {
+function buildMetaChecks(audit: SiteAuditResult, brandName: string): CheckItem[] {
   const checks: CheckItem[] = [];
   const m = audit.metaTags;
 
@@ -161,7 +161,7 @@ function buildMetaChecks(audit: SiteAuditResult): CheckItem[] {
   return checks;
 }
 
-function buildStructuredDataChecks(audit: SiteAuditResult): CheckItem[] {
+function buildStructuredDataChecks(audit: SiteAuditResult, brandName: string): CheckItem[] {
   const checks: CheckItem[] = [];
   const sd = audit.structuredData;
 
@@ -170,7 +170,7 @@ function buildStructuredDataChecks(audit: SiteAuditResult): CheckItem[] {
     status: sd.hasJsonLd ? "pass" : "fail",
     value: sd.hasJsonLd ? `${sd.jsonLdCount} block${sd.jsonLdCount !== 1 ? "s" : ""}` : "None found",
     detail: sd.hasJsonLd
-      ? "AI models can read structured data about your business."
+      ? `AI models can read structured data about ${brandName}'s business.`
       : "No JSON-LD structured data found. This is the most effective way to communicate facts to AI models.",
   });
 
@@ -187,8 +187,8 @@ function buildStructuredDataChecks(audit: SiteAuditResult): CheckItem[] {
       label: "Organization Schema",
       status: hasOrg ? "pass" : "warn",
       detail: hasOrg
-        ? "AI models can identify your business entity, name, and details."
-        : "Consider adding Organization or Corporation schema to establish your brand identity for AI.",
+        ? `AI models can identify ${brandName}'s business entity, name, and details.`
+        : `Consider adding Organization or Corporation schema to establish ${brandName}'s brand identity for AI.`,
     });
 
     const hasFaq = sd.schemaTypes.includes("FAQPage");
@@ -196,8 +196,8 @@ function buildStructuredDataChecks(audit: SiteAuditResult): CheckItem[] {
       label: "FAQ Schema",
       status: hasFaq ? "pass" : "info",
       detail: hasFaq
-        ? "FAQ markup helps AI models directly answer questions about your brand."
-        : "No FAQ schema. Adding FAQPage markup can help AI models reference your answers directly.",
+        ? `FAQ markup helps AI models directly answer questions about ${brandName}.`
+        : `No FAQ schema. Adding FAQPage markup can help AI models reference ${brandName}'s answers directly.`,
     });
   } else if (sd.hasJsonLd) {
     checks.push({
@@ -223,7 +223,7 @@ function buildStructuredDataChecks(audit: SiteAuditResult): CheckItem[] {
   return checks;
 }
 
-function buildContentChecks(audit: SiteAuditResult): CheckItem[] {
+function buildContentChecks(audit: SiteAuditResult, brandName: string): CheckItem[] {
   const checks: CheckItem[] = [];
   const h = audit.headings;
   const c = audit.content;
@@ -254,7 +254,7 @@ function buildContentChecks(audit: SiteAuditResult): CheckItem[] {
     value: `~${c.wordCount.toLocaleString()} words`,
     detail: c.wordCount >= 300
       ? "Sufficient content for AI models to extract meaningful information."
-      : "Thin content may not provide enough context for AI models to accurately represent your brand.",
+      : `Thin content may not provide enough context for AI models to accurately represent ${brandName}.`,
   });
 
   const altRatio = c.imageCount > 0 ? c.imagesWithAlt / c.imageCount : 0;
@@ -390,7 +390,7 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
   } else {
     crawlBody = `The site doesn't have a robots.txt file, which is the standard way websites communicate with AI crawlers about what they can and can't access. While this means AI crawlers aren't blocked, adding a robots.txt is a best practice — it signals a well-maintained site and lets ${brandName} explicitly invite AI crawlers to index the content.`;
   }
-  sections.push({ heading: "Can AI Platforms Read Your Site?", body: crawlBody });
+  sections.push({ heading: `Can AI Platforms Read ${brandName}'s Site?`, body: crawlBody });
 
   // --- Structured Data ---
   // "This is how your website introduces itself to AI in a language it natively understands"
@@ -406,11 +406,11 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
     if (!hasOrg) sdBody += ` One recommendation: add Organization or Corporation markup. This tells AI "here is our company name, what we do, our logo, and our website" in a structured format — think of it as a digital business card that AI can read instantly.`;
     if (!hasFaq) sdBody += " Consider adding FAQ markup as well — it lets AI models directly quote ${brandName}'s answers to common questions, rather than paraphrasing from third-party sites.";
   } else if (sd.hasJsonLd) {
-    sdBody = `The site has some structured data markup, but it's not fully configured. Structured data is like a machine-readable summary of your business — it tells AI platforms exactly what ${brandName} is, what it does, and key facts, in a format they can instantly parse. The current markup needs @type labels (like Organization, Product, or FAQPage) to be useful. Ask your web team to review and complete the structured data.`;
+    sdBody = `The site has some structured data markup, but it's not fully configured. Structured data is like a machine-readable summary of the business — it tells AI platforms exactly what ${brandName} is, what it does, and key facts, in a format they can instantly parse. The current markup needs @type labels (like Organization, Product, or FAQPage) to be useful.`;
   } else {
     sdBody = `The site has no structured data, which is a significant missed opportunity. Structured data is the single most effective way to tell AI platforms exactly who ${brandName} is and what it does — it's like providing AI with a pre-written, accurate summary of the business. Without it, AI models have to guess based on page content, which often leads to incomplete or inaccurate descriptions. Adding Organization schema (company name, description, logo, URL) and FAQ markup should be a top priority.`;
   }
-  sections.push({ heading: "Does AI Understand Who You Are?", body: sdBody });
+  sections.push({ heading: `Does AI Understand Who ${brandName} Is?`, body: sdBody });
 
   // --- Meta Tags ---
   const metaIssues: string[] = [];
@@ -666,20 +666,20 @@ function SiteAuditInner() {
           <AuditSectionCard
             id="llm-access"
             title="LLM Accessibility"
-            subtitle="Can AI crawlers access and index your website content?"
+            subtitle={`Can AI crawlers access and index ${brandName}'s website content?`}
             score={audit.scores.llmAccessibility}
           >
-            <CheckList items={buildLlmChecks(audit)} />
+            <CheckList items={buildLlmChecks(audit, brandName)} />
           </AuditSectionCard>
 
           {/* Meta Tags */}
           <AuditSectionCard
             id="meta-tags"
             title="Meta Tag Quality"
-            subtitle="HTML meta tags that help AI models understand your content."
+            subtitle={`HTML meta tags that help AI models understand ${brandName}'s content.`}
             score={audit.scores.metaQuality}
           >
-            <CheckList items={buildMetaChecks(audit)} />
+            <CheckList items={buildMetaChecks(audit, brandName)} />
           </AuditSectionCard>
 
           {/* Structured Data */}
@@ -689,17 +689,17 @@ function SiteAuditInner() {
             subtitle="JSON-LD and schema.org markup that provides machine-readable context."
             score={audit.scores.structuredData}
           >
-            <CheckList items={buildStructuredDataChecks(audit)} />
+            <CheckList items={buildStructuredDataChecks(audit, brandName)} />
           </AuditSectionCard>
 
           {/* Content Structure */}
           <AuditSectionCard
             id="content-structure"
             title="Content Structure"
-            subtitle="How well your content is organized for AI comprehension."
+            subtitle={`How well ${brandName}'s content is organized for AI comprehension.`}
             score={audit.scores.contentStructure}
           >
-            <CheckList items={buildContentChecks(audit)} />
+            <CheckList items={buildContentChecks(audit, brandName)} />
           </AuditSectionCard>
 
           {/* Technical Health */}
