@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
-import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
+import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { openai } from "@/lib/openai";
 
 // ---------------------------------------------------------------------------
@@ -152,14 +153,6 @@ function parseNarrative(raw: unknown): NarrativeJson | null {
   if (!Array.isArray(n.themes)) return null;
   if (!Array.isArray(n.claims)) return null;
   return raw as NarrativeJson;
-}
-
-function weekKey(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().slice(0, 10);
 }
 
 // ---------------------------------------------------------------------------
@@ -591,31 +584,16 @@ export async function GET(req: NextRequest) {
   // -----------------------------------------------------------------------
   // 5. competitorAlerts
   // -----------------------------------------------------------------------
-  const entityWeeklyMentions: Record<string, Record<string, number>> = {};
-  const entityWeeklyTotal: Record<string, Record<string, number>> = {};
+  // The deduped `runs` set only contains the latest run per model+prompt,
+  // so all runs share the same date and week-over-week comparison fails.
+  // Fetch ALL historical runs (un-deduped) grouped by job date to compare
+  // earlier vs recent periods properly.
+  const alertJobs = await prisma.job.findMany({
+    where: { brandId: brand.id, status: "done", finishedAt: { not: null } },
+    orderBy: { finishedAt: "asc" },
+    select: { id: true, finishedAt: true },
+  });
 
-  for (const run of runs) {
-    const wk = weekKey(run.createdAt);
-    for (const metric of run.prominenceMetrics) {
-      if (metric.entityId === brand.slug) continue;
-      if (!entityWeeklyMentions[metric.entityId]) entityWeeklyMentions[metric.entityId] = {};
-      entityWeeklyMentions[metric.entityId][wk] = (entityWeeklyMentions[metric.entityId][wk] ?? 0) + 1;
-    }
-    // Track total runs per week for rate calculation
-    const wkKey = wk;
-    for (const eid of Object.keys(entityWeeklyMentions)) {
-      if (!entityWeeklyTotal[eid]) entityWeeklyTotal[eid] = {};
-    }
-  }
-
-  // Simpler: track per entity per week
-  const weeklyRunCount: Record<string, number> = {};
-  for (const run of runs) {
-    const wk = weekKey(run.createdAt);
-    weeklyRunCount[wk] = (weeklyRunCount[wk] ?? 0) + 1;
-  }
-
-  const allWeeks = Object.keys(weeklyRunCount).sort();
   const competitorAlerts: {
     entityId: string;
     displayName: string;
@@ -625,23 +603,59 @@ export async function GET(req: NextRequest) {
     direction: "rising" | "falling" | "stable";
   }[] = [];
 
-  if (allWeeks.length >= 2) {
-    const midpoint = Math.floor(allWeeks.length / 2);
-    const recentWeeks = allWeeks.slice(midpoint);
-    const earlierWeeks = allWeeks.slice(0, midpoint);
+  if (alertJobs.length >= 2) {
+    const jobDates = alertJobs.map((j) => j.finishedAt!.toISOString().slice(0, 10));
+    const uniqueDates = [...new Set(jobDates)].sort();
+    const midpoint = Math.floor(uniqueDates.length / 2);
+    const recentDates = new Set(uniqueDates.slice(midpoint));
+    const earlierDates = new Set(uniqueDates.slice(0, midpoint));
 
-    for (const [entityId, weekData] of Object.entries(entityWeeklyMentions)) {
-      const recentMentions = recentWeeks.reduce((s, w) => s + (weekData[w] ?? 0), 0);
-      const recentTotal = recentWeeks.reduce((s, w) => s + (weeklyRunCount[w] ?? 0), 0);
-      const earlierMentions = earlierWeeks.reduce((s, w) => s + (weekData[w] ?? 0), 0);
-      const earlierTotal = earlierWeeks.reduce((s, w) => s + (weeklyRunCount[w] ?? 0), 0);
+    const recentJobIds = alertJobs.filter((j) => recentDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
+    const earlierJobIds = alertJobs.filter((j) => earlierDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
 
-      const recentRate = recentTotal > 0 ? recentMentions / recentTotal : 0;
-      const previousRate = earlierTotal > 0 ? earlierMentions / earlierTotal : 0;
-      const change = recentRate - previousRate;
+    // Fetch prominence metrics for both halves
+    const [recentMetrics, earlierMetrics] = await Promise.all([
+      recentJobIds.length > 0
+        ? prisma.entityResponseMetric.findMany({
+            where: { run: { jobId: { in: recentJobIds } }, prominenceScore: { gt: 0 } },
+            select: { entityId: true, runId: true },
+          })
+        : Promise.resolve([]),
+      earlierJobIds.length > 0
+        ? prisma.entityResponseMetric.findMany({
+            where: { run: { jobId: { in: earlierJobIds } }, prominenceScore: { gt: 0 } },
+            select: { entityId: true, runId: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-      // Convert fractions to percentage points for display
-      const changePts = change * 100;
+    // Count runs per period for rate denominator
+    const [recentRunCount, earlierRunCount] = await Promise.all([
+      recentJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: recentJobIds } } }) : Promise.resolve(0),
+      earlierJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: earlierJobIds } } }) : Promise.resolve(0),
+    ]);
+
+    // Count distinct runs per entity in each period
+    const recentEntityRuns = new Map<string, Set<string>>();
+    for (const m of recentMetrics) {
+      if (m.entityId === brand.slug) continue;
+      if (!recentEntityRuns.has(m.entityId)) recentEntityRuns.set(m.entityId, new Set());
+      recentEntityRuns.get(m.entityId)!.add(m.runId);
+    }
+    const earlierEntityRuns = new Map<string, Set<string>>();
+    for (const m of earlierMetrics) {
+      if (m.entityId === brand.slug) continue;
+      if (!earlierEntityRuns.has(m.entityId)) earlierEntityRuns.set(m.entityId, new Set());
+      earlierEntityRuns.get(m.entityId)!.add(m.runId);
+    }
+
+    const allEntityIds = new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()]);
+    for (const entityId of allEntityIds) {
+      const recentMentions = recentEntityRuns.get(entityId)?.size ?? 0;
+      const earlierMentions = earlierEntityRuns.get(entityId)?.size ?? 0;
+      const recentRate = recentRunCount > 0 ? recentMentions / recentRunCount : 0;
+      const previousRate = earlierRunCount > 0 ? earlierMentions / earlierRunCount : 0;
+      const changePts = (recentRate - previousRate) * 100;
       const recentPct = Math.round(recentRate * 100);
       const previousPct = Math.round(previousRate * 100);
 
