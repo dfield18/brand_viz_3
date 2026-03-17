@@ -10,6 +10,7 @@ interface PromptWinsAndOpportunitiesProps {
   opportunities: WorstPerformingPrompt[];
   brandSlug?: string;
   brandName?: string;
+  isOrg?: boolean;
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
@@ -20,7 +21,7 @@ const CLUSTER_LABELS: Record<string, string> = {
   industry: "Industry",
 };
 
-export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, brandName }: PromptWinsAndOpportunitiesProps) {
+export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, brandName, isOrg }: PromptWinsAndOpportunitiesProps) {
   const [tab, setTab] = useState<"wins" | "opportunities">("wins");
   const { openResponse } = useResponseDetail(brandSlug ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,7 +84,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
         {tab === "wins" ? (
           wins.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No #1 rankings yet. Run more prompts to find your wins.
+              No #1 rankings yet. Run more prompts to find {brandName ? `${brandName}'s` : "your"} wins.
             </p>
           ) : (
             <table className="w-full text-sm table-fixed">
@@ -142,7 +143,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
                 <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   <th className="pb-3 pr-4">Prompt</th>
                   <th className="pb-3 px-4 text-center">{brandName || "Brand"} Rank</th>
-                  <th className="pb-3 pl-4">Competitors Mentioned Before {brandName || "This Brand"}</th>
+                  <th className="pb-3 pl-4">{isOrg ? "Organizations" : "Competitors"} Mentioned Before {brandName || "This Brand"}</th>
                 </tr>
               </thead>
               <tbody>

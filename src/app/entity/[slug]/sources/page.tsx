@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
-import { useBrandName } from "@/lib/useBrandName";
+import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 import type { SourcesResponse } from "@/types/api";
 import SourceSummaryCards from "@/components/sources/SourceSummaryCards";
 import TopDomainsTable from "@/components/sources/TopDomainsTable";
@@ -35,6 +35,8 @@ function SourcesInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
+  const brandCategory = useBrandCategory(params.slug);
+  const isOrg = brandCategory === "political_advocacy";
 
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
@@ -105,7 +107,7 @@ function SourcesInner() {
     { id: "top-cited", label: "Top Cited Sources", heading: "Source Overview" },
     { id: "source-types-over-time", label: "Top Source Trends" },
     { id: "official-sites", label: "Official Sites" },
-    { id: "competitor-only", label: "Competitor-Only Sources" },
+    { id: "competitor-only", label: isOrg ? "Uncited Sources" : "Competitor-Only Sources" },
     { id: "competitor-sources", label: "Source Citation Matrix", heading: "Source Breakout" },
     { id: "emerging-sources", label: "Emerging Sources" },
     { id: "domain-details", label: "All Sources", heading: "Deep Dive" },
@@ -134,7 +136,7 @@ function SourcesInner() {
 
         {/* Top Cited Sources */}
         <div id="top-cited" className="scroll-mt-24">
-          <TopCitedSources topDomains={data.topDomains} modelSplit={data.modelSplit} onDomainClick={setSelectedDomain} brandSlug={params.slug} range={range} pageModel={model} />
+          <TopCitedSources topDomains={data.topDomains} modelSplit={data.modelSplit} onDomainClick={setSelectedDomain} brandSlug={params.slug} range={range} pageModel={model} brandName={brandName} />
         </div>
 
         {/* Top Source Trends */}
@@ -154,7 +156,7 @@ function SourcesInner() {
         {/* Competitor-Only Sources */}
         {data.crossCitation && data.crossCitation.length > 0 && (
           <div id="competitor-only" className="scroll-mt-24">
-            <CompetitorOnlySources crossCitation={data.crossCitation} brandSlug={params.slug} brandName={brandName} entityNames={apiData.entityNames} />
+            <CompetitorOnlySources crossCitation={data.crossCitation} brandSlug={params.slug} brandName={brandName} entityNames={apiData.entityNames} isOrg={isOrg} />
           </div>
         )}
 

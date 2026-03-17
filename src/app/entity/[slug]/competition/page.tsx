@@ -19,7 +19,7 @@ import { CompetitiveSentimentTrend } from "@/components/competition/CompetitiveS
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
-import { useBrandName } from "@/lib/useBrandName";
+import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
 interface ApiResponse {
@@ -35,6 +35,8 @@ function CompetitionInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
+  const brandCategory = useBrandCategory(params.slug);
+  const isOrg = brandCategory === "political_advocacy";
 
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
@@ -124,7 +126,7 @@ function CompetitionInner() {
     { id: "kpi-summary", label: "Scorecard" },
     { id: "visibility-trend", label: "AI Mentions Over Time", heading: "Metrics Deep Dive" },
     { id: "brand-breakdown", label: "Competitive Leaderboard" },
-    { id: "competitor-frames", label: "Competitor Positioning", heading: "Perception", subheading: "Narratives" },
+    { id: "competitor-frames", label: isOrg ? "Organization Positioning" : "Competitor Positioning", heading: "Perception", subheading: "Narratives" },
     { id: "visibility-sentiment", label: "Mentioned vs Praised", subheading: "Sentiment" },
     { id: "sentiment", label: "Brand Sentiment" },
     { id: "sentiment-trend", label: "Sentiment Over Time" },
@@ -158,7 +160,7 @@ function CompetitionInner() {
         {/* ── Metrics Deep Dive ─────────────────────────── */}
         <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
         <p className="text-sm text-muted-foreground leading-relaxed -mt-6">
-          This tab shows how {compBrandName} stacks up against competitors in AI responses. See who AI mentions most often, track how competitive positioning is shifting over time, and identify where {compBrandName} is winning or losing when both brands appear in the same AI answer.
+          This tab shows how {compBrandName} stacks up against {isOrg ? "other organizations" : "competitors"} in AI responses. See who AI mentions most often, track how positioning is shifting over time, and identify where {compBrandName} is winning or losing when {isOrg ? "multiple organizations" : "both brands"} appear in the same AI answer.
         </p>
 
         {/* Visibility Trend */}

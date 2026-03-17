@@ -16,6 +16,7 @@ interface ResultsByQuestionProps {
   inline?: boolean;
   /** Externally controlled model filter — hides the dropdown when set */
   externalModel?: string;
+  isOrg?: boolean;
 }
 
 type RowStatus = "win" | "competitive" | "missing";
@@ -91,7 +92,7 @@ interface PreviewResponse {
   analysis: unknown;
 }
 
-export function ResultsByQuestion({ results, wins, opportunities, brandSlug, brandName, inline, externalModel }: ResultsByQuestionProps) {
+export function ResultsByQuestion({ results, wins, opportunities, brandSlug, brandName, inline, externalModel, isOrg }: ResultsByQuestionProps) {
   const [internalModel, setInternalModel] = useState("all");
   const selectedModel = externalModel ?? internalModel;
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -428,7 +429,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                       </div>
                       {row.competitors.length > 0 && (
                         <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                          Competitors: {row.competitors.join(" · ")}
+                          {isOrg ? "Other organizations" : "Competitors"}: {row.competitors.join(" · ")}
                         </p>
                       )}
                     </td>

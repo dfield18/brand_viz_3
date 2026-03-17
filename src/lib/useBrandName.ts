@@ -18,3 +18,13 @@ export function useBrandName(slug: string): string {
   );
   return data?.displayName ?? titleCase(slug);
 }
+
+/**
+ * Returns true if the brand is a cause/advocacy organization (political_advocacy category).
+ */
+export function useBrandCategory(slug: string): string | null {
+  const { data } = useCachedFetch<BrandInfo>(
+    `/api/brand-info?brandSlug=${encodeURIComponent(slug)}`,
+  );
+  return data?.category ?? null;
+}

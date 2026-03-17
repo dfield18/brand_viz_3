@@ -9,6 +9,7 @@ interface Props {
   structuredData: number;
   contentStructure: number;
   technicalHealth: number;
+  brandName?: string;
 }
 
 function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percentage: number; color: string; size?: number; strokeWidth?: number }) {
@@ -43,16 +44,19 @@ function getColor(score: number): string {
   return "hsl(0, 70%, 50%)";
 }
 
-const TOOLTIPS: Record<string, string> = {
-  overall: "Weighted average of all category scores. Higher is better.",
-  llmAccessibility: "Can AI crawlers (GPTBot, ClaudeBot, etc.) access your site? Checks robots.txt rules and sitemap availability.",
-  metaQuality: "Quality of HTML meta tags (title, description, Open Graph) that help AI models understand your content.",
-  structuredData: "Presence of JSON-LD/Schema.org markup that provides machine-readable context about your business.",
-  contentStructure: "How well your content is organized with headings, alt text, and logical hierarchy.",
-  technicalHealth: "HTTPS, sitemap, canonical URLs, and page load performance.",
-};
+function getTooltips(name: string): Record<string, string> {
+  return {
+    overall: "Weighted average of all category scores. Higher is better.",
+    llmAccessibility: `Can AI crawlers (GPTBot, ClaudeBot, etc.) access ${name}'s site? Checks robots.txt rules and sitemap availability.`,
+    metaQuality: `Quality of HTML meta tags (title, description, Open Graph) that help AI models understand ${name}'s content.`,
+    structuredData: `Presence of JSON-LD/Schema.org markup that provides machine-readable context about ${name}.`,
+    contentStructure: `How well ${name}'s content is organized with headings, alt text, and logical hierarchy.`,
+    technicalHealth: "HTTPS, sitemap, canonical URLs, and page load performance.",
+  };
+}
 
 export function SiteAuditScorecard(props: Props) {
+  const TOOLTIPS = getTooltips(props.brandName || "this site");
   const cards: {
     key: string;
     label: string;

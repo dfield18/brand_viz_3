@@ -138,7 +138,7 @@ function formatSegmentLabel(segment: string, dimension: string): string {
 /* Sub-chart for one dimension                                                 */
 /* -------------------------------------------------------------------------- */
 
-function DimensionChart({ drivers, dimension, kpi }: { drivers: Driver[]; dimension: DimensionTab; kpi: string }) {
+function DimensionChart({ drivers, dimension, kpi, brandName }: { drivers: Driver[]; dimension: DimensionTab; kpi: string; brandName?: string }) {
   // For avgRank, lower is better, so negative contribution = helped
   const isInverse = kpi === "avgRank";
   const chartData = useMemo(() => {
@@ -198,7 +198,7 @@ function DimensionChart({ drivers, dimension, kpi }: { drivers: Driver[]; dimens
                   <p className="text-sm font-semibold mb-2">{d.name}</p>
                   <div className="flex items-center gap-2 mb-1">
                     <div className={`w-2.5 h-2.5 rounded-sm ${isPositive ? "bg-emerald-500" : "bg-red-500"}`} />
-                    <span className="text-xs text-muted-foreground">{d.impactLabel} your score</span>
+                    <span className="text-xs text-muted-foreground">{d.impactLabel} {brandName ? `${brandName}'s` : "the"} score</span>
                   </div>
                   <p className={`text-lg font-bold tabular-nums ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
                     {isPositive ? "+" : ""}{d.contribution.toFixed(1)}
@@ -241,9 +241,11 @@ interface Props {
   inline?: boolean;
   /** Strip header, description, and footer for a minimal look */
   compact?: boolean;
+  /** True for cause/advocacy organizations — adjusts terminology */
+  isOrg?: boolean;
 }
 
-export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandName, inline, compact }: Props) {
+export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandName, inline, compact, isOrg }: Props) {
   const [internalKpi, setInternalKpi] = useState(fixedKpi ?? "mentionRate");
   const selectedKpi = fixedKpi ?? internalKpi;
   const [activeTab, setActiveTab] = useState<DimensionTab>("model");
@@ -337,7 +339,7 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
 
       {!compact && (
         <p className="text-xs text-muted-foreground -mt-1 mb-4">
-          Shows which AI platforms and topics are responsible for recent changes in your score. Longer bars = bigger impact.
+          Shows which AI platforms and topics are responsible for recent changes in {brandName ? `${brandName}'s` : "the"} score. Longer bars = bigger impact.
         </p>
       )}
 
@@ -383,12 +385,12 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
             ))}
           </div>
 
-          <DimensionChart drivers={decomp.drivers} dimension={activeTab} kpi={selectedKpi} />
+          <DimensionChart drivers={decomp.drivers} dimension={activeTab} kpi={selectedKpi} brandName={brandName} />
           <p className="text-[11px] text-muted-foreground mt-3">Comparing {getComparisonLabel(apiData?.periodCurrent, apiData?.periodPrevious)}.</p>
         </div>
       ) : (
         <div className="text-center py-6">
-          <p className="text-sm text-muted-foreground">Your score held steady — no significant changes to break down.</p>
+          <p className="text-sm text-muted-foreground">{brandName ? `${brandName}'s` : "The"} score held steady — no significant changes to break down.</p>
         </div>
       )}
 

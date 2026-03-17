@@ -17,7 +17,7 @@ import { DriverDecomposition } from "@/components/overview/DriverDecomposition";
 import { RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
-import { useBrandName } from "@/lib/useBrandName";
+import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { PageSkeleton } from "@/components/PageSkeleton";
 // DUMMY DATA — remove this import and the override block below to revert to real API calls
@@ -57,7 +57,7 @@ function getMetricTitle(tab: MetricTab, name: string): string {
 function getMetricDescription(tab: MetricTab, name: string): string {
   switch (tab) {
     case "visibility": return `How often AI platforms mention ${name} when answering general industry questions.`;
-    case "sov": return `${name}\u2019s share of all brand mentions in AI responses \u2014 how much of the conversation you own.`;
+    case "sov": return `${name}\u2019s share of all brand mentions in AI responses \u2014 how much of the conversation ${name} owns.`;
     case "topResult": return `How often ${name} is the first brand mentioned in AI responses across all industry queries.`;
   }
 }
@@ -66,6 +66,8 @@ function VisibilityV2Inner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
+  const brandCategory = useBrandCategory(params.slug);
+  const isOrg = brandCategory === "political_advocacy";
 
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
@@ -239,7 +241,7 @@ function VisibilityV2Inner() {
 
         <div className="px-5 py-4 mt-2">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            When someone asks AI about your industry, does {brandName} come up? These metrics track how often AI platforms recommend {brandName} unprompted — no brand name in the query, just pure organic visibility.
+            When someone asks AI about this space, does {brandName} come up? These metrics track how often AI platforms mention {brandName} unprompted — no name in the query, just pure organic visibility.
           </p>
           {data.resultsByQuestion?.[0]?.promptText && (
             <p className="text-[13px] text-muted-foreground/60 italic mt-2">
@@ -365,7 +367,7 @@ function VisibilityV2Inner() {
           <BrandPositionByPlatform promptPositions={data.promptPositions} modelBreakdown={data.modelBreakdown} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} />
 
           <div id="results-by-prompt" className="scroll-mt-24 border-t border-border/40 mt-10 pt-8">
-            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} />
+            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} isOrg={isOrg} />
           </div>
         </div>
       </div>

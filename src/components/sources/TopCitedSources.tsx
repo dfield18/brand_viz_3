@@ -63,11 +63,12 @@ interface Props {
   brandSlug: string;
   range: number;
   pageModel: string;
+  brandName?: string;
 }
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function TopCitedSources({ topDomains: initialTopDomains, modelSplit: initialModelSplit, onDomainClick, brandSlug, range, pageModel }: Props) {
+export default function TopCitedSources({ topDomains: initialTopDomains, modelSplit: initialModelSplit, onDomainClick, brandSlug, range, pageModel, brandName }: Props) {
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
@@ -140,7 +141,7 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
         <div>
           <h2 className="text-base font-semibold mb-1">Top Cited Sources</h2>
           <p className="text-xs text-muted-foreground">
-            The websites AI references most often when discussing your industry
+            The websites AI references most often when discussing {brandName || "this industry"}
           </p>
         </div>
         <div className="flex items-center gap-2">

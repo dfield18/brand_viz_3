@@ -11,6 +11,7 @@ interface Props {
   brandName: string;
   onDomainClick?: (domain: string) => void;
   entityNames?: Record<string, string>;
+  isOrg?: boolean;
 }
 
 function resolveEntity(id: string, names?: Record<string, string>): string {
@@ -51,7 +52,7 @@ function useCompetitorOnlyRows(crossCitation: CompetitorCrossCitation[], brandSl
 }
 
 /** Chart-only view — stays in Source Overview */
-export default function CompetitorOnlySources({ crossCitation, brandSlug, brandName, entityNames }: Props) {
+export default function CompetitorOnlySources({ crossCitation, brandSlug, brandName, entityNames, isOrg }: Props) {
   const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
 
   const top = rows.slice(0, 15);
@@ -77,7 +78,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Sources Not Citing {brandName}</h2>
       <p className="text-xs text-muted-foreground mb-5">
-        These websites are cited by AI when talking about competitors, but never when mentioning {brandName}. Getting featured on these sites could improve your AI visibility.
+        These websites are cited by AI when talking about {isOrg ? "other organizations" : "competitors"}, but never when mentioning {brandName}. Getting featured on these sites could improve {brandName}&apos;s AI visibility.
       </p>
 
       <div className="space-y-3">
@@ -139,7 +140,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
 }
 
 /** Table-only view — for the reference / deep dive section */
-export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName, onDomainClick, entityNames }: Props) {
+export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName, onDomainClick, entityNames, isOrg }: Props) {
   const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
 
   if (rows.length === 0) return null;
@@ -148,7 +149,7 @@ export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Sources Not Citing {brandName} — Full List</h2>
       <p className="text-xs text-muted-foreground mb-5">
-        All {rows.length} sources cited for competitors but not for {brandName}
+        All {rows.length} sources cited for {isOrg ? "other organizations" : "competitors"} but not for {brandName}
       </p>
 
       <div className={`space-y-1.5 ${rows.length > 10 ? "max-h-[400px] overflow-y-auto" : ""}`}>

@@ -131,7 +131,7 @@ const PLATFORM_TIPS: Record<string, string> = {
   chatgpt:
     "ChatGPT favors structured comparison content, authoritative sources, and clear factual claims. Create detailed comparison pages and ensure presence on review aggregator sites.",
   gemini:
-    "Gemini relies heavily on Google-indexed content and tutorial sites. Prioritize SEO-optimized content, how-to guides, and ensure your Google Business profile is complete.",
+    "Gemini relies heavily on Google-indexed content and tutorial sites. Prioritize SEO-optimized content, how-to guides, and ensure the Google Business profile is complete.",
   claude:
     "Claude emphasizes nuanced, balanced analysis with web search verification. Publish detailed thought leadership content and ensure claims are backed by credible sources.",
   perplexity:
@@ -198,6 +198,8 @@ export async function GET(req: NextRequest) {
 
   const { brand, runs } = result;
   const brandName = brand.displayName || brand.name;
+  const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
+  const competitorWord = isOrg ? "other organizations" : "competitors";
   const entityDisplayNames = buildEntityDisplayNames(runs);
 
   /** Expand {brand}, {industry}, and {competitor} placeholders in prompt text */
@@ -270,7 +272,7 @@ export async function GET(req: NextRequest) {
       brandRank,
       topCompetitors: competitors,
       suggestion: competitors.length > 0
-        ? `When AI is asked "${expanded}", competitors ${compNames} currently dominate \u2014 create content to improve ${brandName}'s ranking for this query`
+        ? `When AI is asked "${expanded}", ${competitorWord} ${compNames} currently dominate \u2014 create content to improve ${brandName}'s ranking for this query`
         : `When AI is asked "${expanded}", ${brandName} doesn\u2019t appear \u2014 create content to become visible for this query`,
     });
   }
@@ -287,8 +289,8 @@ export async function GET(req: NextRequest) {
     const lines = promptOpportunities.map((po) => {
       const rankStr = po.brandRank === null ? "not mentioned" : `ranked #${po.brandRank}`;
       const compStr = po.topCompetitors.length > 0
-        ? `Competitors ahead: ${po.topCompetitors.map((c) => `${c.displayName} (#${c.rank})`).join(", ")}`
-        : "No competitors ranked";
+        ? `${isOrg ? "Organizations" : "Competitors"} ahead: ${po.topCompetitors.map((c) => `${c.displayName} (#${c.rank})`).join(", ")}`
+        : `No ${competitorWord} ranked`;
       return `- Prompt: "${po.promptText}" — ${brandName} is ${rankStr}. ${compStr}`;
     });
 

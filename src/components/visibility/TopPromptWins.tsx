@@ -20,7 +20,7 @@ export function TopPromptWins({ wins }: TopPromptWinsProps) {
     return (
       <div className="rounded-lg border border-dashed border-border p-6 text-center">
         <p className="text-sm text-muted-foreground">
-          No #1 rankings yet. Run more prompts to find your wins.
+          No #1 rankings yet. Run more prompts to find wins.
         </p>
       </div>
     );

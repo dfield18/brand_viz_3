@@ -179,7 +179,7 @@ export default function SourceSummaryCards({ scope, summary, emerging, topDomain
   if (topType) {
     cards.push({
       label: "MOST CITED SOURCE TYPE",
-      tooltip: "The kind of website AI platforms reference most often (e.g., news sites, review sites, official brand pages). This shows what type of content AI trusts most in your industry.",
+      tooltip: "The kind of website AI platforms reference most often (e.g., news sites, review sites, official brand pages). This shows what type of content AI trusts most in this space.",
       description: `The category of website AI references most`,
       badge: { text: topType.label, color: "text-blue-700 bg-blue-50 border-blue-200" },
       donutPct: topType.pct,

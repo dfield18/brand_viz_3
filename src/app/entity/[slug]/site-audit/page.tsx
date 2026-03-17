@@ -47,7 +47,7 @@ function buildLlmChecks(audit: SiteAuditResult, brandName: string): CheckItem[] 
     label: "robots.txt exists",
     status: audit.robotsTxt.exists ? "pass" : "fail",
     detail: audit.robotsTxt.exists
-      ? "Search engines and AI crawlers can find your crawling rules."
+      ? `Search engines and AI crawlers can find ${brandName}'s crawling rules.`
       : "No robots.txt found. AI crawlers have no explicit guidance on what they can access.",
   });
 
@@ -107,7 +107,7 @@ function buildMetaChecks(audit: SiteAuditResult, brandName: string): CheckItem[]
     value: m.title ? `"${m.title}" (${m.titleLength} chars)` : "Missing",
     detail: m.title
       ? m.titleLength < 10 ? "Title is very short. Aim for 30-60 characters." : m.titleLength > 70 ? "Title is long and may be truncated." : "Good length for search and AI context."
-      : "No <title> tag found. This is critical for AI models to understand your page.",
+      : `No <title> tag found. This is critical for AI models to understand ${brandName}'s page.`,
   });
 
   checks.push({
@@ -116,7 +116,7 @@ function buildMetaChecks(audit: SiteAuditResult, brandName: string): CheckItem[]
     value: m.description ? `${m.descriptionLength} chars` : "Missing",
     detail: m.description
       ? m.descriptionLength < 50 ? "Description is short. Aim for 120-155 characters." : m.descriptionLength > 160 ? "May be truncated in search results." : "Good length for AI and search."
-      : "No meta description. AI models use this to summarize your page.",
+      : `No meta description. AI models use this to summarize ${brandName}'s page.`,
   });
 
   checks.push({
@@ -124,7 +124,7 @@ function buildMetaChecks(audit: SiteAuditResult, brandName: string): CheckItem[]
     status: m.ogTitle ? "pass" : "warn",
     value: m.ogTitle ?? "Missing",
     detail: m.ogTitle
-      ? "Social and AI platforms can display your preferred title."
+      ? `Social and AI platforms can display ${brandName}'s preferred title.`
       : "No og:title tag. Adding one helps AI models that use Open Graph metadata.",
   });
 
@@ -155,7 +155,7 @@ function buildMetaChecks(audit: SiteAuditResult, brandName: string): CheckItem[]
     value: m.lang ?? "Not set",
     detail: m.lang
       ? "Helps AI models understand the content language."
-      : "No lang attribute on <html>. Helps AI models serve your content correctly.",
+      : `No lang attribute on <html>. Helps AI models serve ${brandName}'s content correctly.`,
   });
 
   return checks;
@@ -179,7 +179,7 @@ function buildStructuredDataChecks(audit: SiteAuditResult, brandName: string): C
       label: "Schema Types",
       status: "pass",
       value: sd.schemaTypes.join(", "),
-      detail: "These schema types provide rich context about your content.",
+      detail: `These schema types provide rich context about ${brandName}'s content.`,
     });
 
     const hasOrg = sd.schemaTypes.includes("Organization") || sd.schemaTypes.includes("Corporation") || sd.schemaTypes.includes("LocalBusiness");
@@ -244,7 +244,7 @@ function buildContentChecks(audit: SiteAuditResult, brandName: string): CheckIte
     status: h.hasLogicalHierarchy ? "pass" : "warn",
     value: `H1: ${h.h1Count}, H2: ${h.h2Count}, H3: ${h.h3Count}`,
     detail: h.hasLogicalHierarchy
-      ? "Well-structured headings help AI parse your content into meaningful sections."
+      ? `Well-structured headings help AI parse ${brandName}'s content into meaningful sections.`
       : "Heading hierarchy could be improved. Use H1 > H2 > H3 for clear content structure.",
   });
 
@@ -271,7 +271,7 @@ function buildContentChecks(audit: SiteAuditResult, brandName: string): CheckIte
     label: "Navigation Element",
     status: c.hasNavigation ? "pass" : "info",
     value: c.hasNavigation ? "Found" : "Not found",
-    detail: "Semantic <nav> elements help AI crawlers understand your site structure.",
+    detail: `Semantic <nav> elements help AI crawlers understand ${brandName}'s site structure.`,
   });
 
   checks.push({
@@ -287,7 +287,7 @@ function buildContentChecks(audit: SiteAuditResult, brandName: string): CheckIte
     label: "Internal Links",
     status: c.internalLinks >= 5 ? "pass" : c.internalLinks >= 1 ? "warn" : "fail",
     value: `${c.internalLinks} internal, ${c.externalLinks} external`,
-    detail: "Internal links help AI crawlers discover and associate your content pages.",
+    detail: `Internal links help AI crawlers discover and associate ${brandName}'s content pages.`,
   });
 
   return checks;
@@ -649,7 +649,7 @@ function SiteAuditInner() {
 
         {/* ── Scorecard & Summary ─────────────────────────────────── */}
         <div id="scorecard" className="scroll-mt-24 space-y-6">
-          <SiteAuditScorecard {...audit.scores} />
+          <SiteAuditScorecard {...audit.scores} brandName={brandName} />
           <AuditSummary audit={audit} brandName={brandName} />
         </div>
 

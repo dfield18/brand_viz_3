@@ -239,7 +239,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
         <div>
           <h2 className="text-base font-semibold">Top Sources AI Relies On</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            The most-cited websites when AI discusses your industry
+            The most-cited websites when AI discusses this space
           </p>
         </div>
         <select
