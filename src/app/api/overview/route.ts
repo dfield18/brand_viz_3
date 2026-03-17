@@ -13,7 +13,7 @@ import {
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
-import { synthesizeFramesFromResponses } from "@/lib/narrative/synthesizeFrames";
+import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -261,6 +261,22 @@ export async function GET(req: NextRequest) {
     if (filtered.length > 0) {
       overview.topFrames = await synthesizeFramesFromResponses(filtered, brandName, "all");
     }
+  }
+
+  // Ensure at least 5 frames — pad with GPT-generated frames if needed
+  {
+    const latestJobIdsForPad = withData.map((w) => w.data!.latestJob.id);
+    const padRuns = await prisma.run.findMany({
+      where: { jobId: { in: latestJobIdsForPad } },
+      select: { rawResponseText: true, model: true },
+      take: 20,
+    });
+    const padFiltered = padRuns.filter((r) => !r.rawResponseText.startsWith("[stub:"));
+    overview.topFrames = await ensureMinimumFrames(
+      overview.topFrames,
+      brandName,
+      padFiltered.length > 0 ? padFiltered : undefined,
+    );
   }
 
   // Override Visibility Score and Mention Rate KPIs with industry-only data

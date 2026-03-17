@@ -7,7 +7,7 @@ import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
-import { synthesizeFramesFromResponses } from "@/lib/narrative/synthesizeFrames";
+import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { expandPromptPlaceholders } from "@/lib/utils";
 
 // Static fallback labels for older runs with keyword-based themes
@@ -116,6 +116,13 @@ export async function GET(req: NextRequest) {
       isAll ? "all" : model,
     );
   }
+
+  // Ensure at least 5 frames — pad with GPT-generated frames if needed
+  narrativeBase.frames = await ensureMinimumFrames(
+    narrativeBase.frames,
+    brandName,
+    runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+  );
 
   // --- Aggregate narrativeJson data ---
   const narratives = runs
