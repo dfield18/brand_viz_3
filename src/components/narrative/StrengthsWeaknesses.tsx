@@ -264,9 +264,24 @@ function ClaimList({
     );
   }
 
+  // Filter out claims that produce no meaningful content
+  const meaningful = items.filter((claim) => {
+    const { title, body } = deriveTitle(claim.text);
+    return (title && title.length > 2) || (body && body.length > 2);
+  });
+
+  if (meaningful.length === 0) {
+    const label = variant === "strength" ? "strengths" : variant === "neutral" ? "neutral mentions" : "weaknesses";
+    return (
+      <p className="text-sm text-muted-foreground italic py-4 text-center">
+        No {label} detected.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {items.slice(0, 3).map((claim, i) => (
+      {meaningful.slice(0, 3).map((claim, i) => (
         <ClaimCard key={i} claim={claim} variant={variant} brandName={brandName} />
       ))}
     </div>

@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 const TABS = [
-  { label: "Prompts", segment: "prompts" },
   { label: "Overview", segment: "overview" },
   { label: "Visibility", segment: "visibility-v2" },
   { label: "Narrative", segment: "narrative" },
@@ -21,6 +20,7 @@ const SECONDARY_TABS = [
   { label: "Visibility Old", segment: "visibility" },
   { label: "Responses", segment: "responses" },
   { label: "Full Data", segment: "full-data" },
+  { label: "Prompts", segment: "prompts" },
 ];
 
 function TabNavInner({ slug }: { slug: string }) {
@@ -30,7 +30,7 @@ function TabNavInner({ slug }: { slug: string }) {
   const suffix = qs ? `?${qs}` : "";
 
   return (
-    <nav className="border-b border-border/60 bg-card">
+    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card">
       <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end">
         {TABS.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;

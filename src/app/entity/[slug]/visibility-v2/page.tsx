@@ -219,6 +219,9 @@ function VisibilityV2Inner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+        {/* ── Visibility ─────────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
+
         {/* Scorecard KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SummaryCardsDonut
@@ -320,6 +323,9 @@ function VisibilityV2Inner() {
           </div>
         </div>
 
+        {/* ── Ranking ──────────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Ranking</h2>
+
         {/* Ranking: Position Distribution Over Time + Breakdown */}
         {data.positionDistributionOverTime && data.positionDistributionOverTime.length > 0 && (
           <PositionDistributionOverTime
@@ -333,6 +339,9 @@ function VisibilityV2Inner() {
             )}
           </PositionDistributionOverTime>
         )}
+
+        {/* ── Performance ──────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Performance</h2>
 
         {/* Performance: Where AI Ranks You + Performance by Question */}
         <div id="brand-position" className="scroll-mt-24 rounded-xl bg-card px-6 pt-5 pb-6 shadow-section">

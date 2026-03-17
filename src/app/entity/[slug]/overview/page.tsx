@@ -5,7 +5,7 @@ import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { OverviewResponse, KpiDeltas, VisibilityTrendPoint } from "@/types/api";
 import { OverviewScorecard } from "@/components/overview/OverviewScorecard";
-import { NarrativeSection } from "@/components/overview/NarrativeSection";
+import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
 import { CrossModelTable } from "@/components/overview/CrossModelTable";
 import { StandoutQuotes } from "@/components/visibility/StandoutQuotes";
 import { CompetitorSnapshot } from "@/components/overview/CompetitorSnapshot";
@@ -249,7 +249,20 @@ function OverviewInner() {
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Narrative</h2>
 
         <div id="narrative-section" className="scroll-mt-24">
-          <NarrativeSection frames={data.topFrames} brandName={brandName} />
+          <NarrativeFrameBreakdown
+            frames={data.topFrames.map((f) => ({
+              frame: f.frame,
+              percentage: f.percentage,
+              byModel: {
+                chatgpt: f.byModel?.chatgpt ?? 0,
+                gemini: f.byModel?.gemini ?? 0,
+                claude: f.byModel?.claude ?? 0,
+                perplexity: f.byModel?.perplexity ?? 0,
+                google: f.byModel?.google ?? 0,
+              },
+            }))}
+            brandName={brandName}
+          />
         </div>
 
         {/* Standout Quotes */}
