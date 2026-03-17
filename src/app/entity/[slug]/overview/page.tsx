@@ -22,6 +22,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 interface ApiResponse {
   hasData: boolean;
   brandCategory?: string | null;
+  brandIndustry?: string | null;
   reason?: string;
   hint?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
@@ -202,6 +203,9 @@ function OverviewInner() {
                     const others = isOrg ? "other organizations" : "other brands";
                     const names = isOrg ? "organization names" : "brand names";
                     const nameNoun = isOrg ? "organization" : "brand";
+                    const industry = apiData.brandIndustry;
+                    const spaceLabel = industry ? `${industry}` : "this space";
+                    const noMentionNote = ` These results are based on general ${spaceLabel} questions — prompts that don't explicitly mention ${brandName} by name — so they reflect organic AI awareness.`;
                     const ordinal = (n: number) => {
                       const s = ["th", "st", "nd", "rd"];
                       const v = n % 100;
@@ -209,15 +213,15 @@ function OverviewInner() {
                     };
                     const parts: string[] = [];
                     if (kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5) {
-                      parts.push(`Great news — when someone asks an AI tool about this space, ${brandName} comes up ${kpis.overallMentionRate}% of the time, and it's usually the very first name mentioned. That's a strong position.`);
+                      parts.push(`Great news — when someone asks an AI tool about ${spaceLabel}, ${brandName} comes up ${kpis.overallMentionRate}% of the time, and it's usually the very first name mentioned. That's a strong position.${noMentionNote}`);
                     } else if (kpis.overallMentionRate >= 60) {
-                      parts.push(`${brandName} is showing up well — it's mentioned in ${kpis.overallMentionRate}% of AI answers about this space and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up. That's solid visibility.`);
+                      parts.push(`${brandName} is showing up well — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up. That's solid visibility.${noMentionNote}`);
                     } else if (kpis.overallMentionRate >= 30) {
-                      parts.push(`Right now, when someone asks an AI tool about this space, ${brandName} comes up about ${kpis.overallMentionRate}% of the time. That means in roughly ${100 - kpis.overallMentionRate}% of those conversations, people are hearing about ${others} instead. ${brandName} makes up ${kpis.shareOfVoice}% of all the ${names} mentioned.`);
+                      parts.push(`Right now, when someone asks an AI tool about ${spaceLabel} without mentioning ${brandName} by name, ${brandName} comes up about ${kpis.overallMentionRate}% of the time. That means in roughly ${100 - kpis.overallMentionRate}% of those conversations, people are hearing about ${others} instead. ${brandName} makes up ${kpis.shareOfVoice}% of all the ${names} mentioned.`);
                     } else if (kpis.overallMentionRate > 0) {
-                      parts.push(`Here's something to pay attention to: ${brandName} only comes up in ${kpis.overallMentionRate}% of AI answers about this space. That means most people asking AI for recommendations in this area won't hear about ${brandName} at all.`);
+                      parts.push(`Here's something to pay attention to: when people ask AI tools about ${spaceLabel} without mentioning ${brandName} by name, ${brandName} only comes up ${kpis.overallMentionRate}% of the time. That means most people asking AI for recommendations in this area won't hear about ${brandName} at all.`);
                     } else {
-                      parts.push(`${brandName} isn't showing up in AI answers about this space yet. More and more people are turning to AI tools like ChatGPT and Google to get recommendations — and right now, they won't find ${brandName} in those results.`);
+                      parts.push(`${brandName} isn't showing up in AI answers about ${spaceLabel} yet. When people ask AI tools like ChatGPT and Google about ${spaceLabel} without mentioning ${brandName} by name, they won't find it in the results.`);
                     }
                     if (kpis.avgRankScore > 0) {
                       const rounded = Math.round(kpis.avgRankScore);

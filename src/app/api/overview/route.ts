@@ -614,6 +614,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     hasData: true,
     brandCategory: (brand as unknown as { category?: string | null }).category ?? null,
+    brandIndustry: (brand as unknown as { industry?: string | null }).industry ?? null,
     job: {
       id: withData[0].data!.latestJob.id,
       model: model === "all" ? "all" : model,

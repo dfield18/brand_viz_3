@@ -75,7 +75,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
       key: "sentiment",
       render: (v) => {
         const { text, className } = getSentimentLabel(v ?? 0);
-        return <span className={`text-xs font-medium ${className}`}>{text}</span>;
+        return <span className={`text-sm font-medium ${className}`}>{text}</span>;
       },
     },
     {
@@ -93,7 +93,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
       key: "narrativeStability",
       render: (v) => {
         const { text, className } = getStabilityLabel(v ?? 0);
-        return <span className={`text-xs font-medium ${className}`}>{text}</span>;
+        return <span className={`text-sm font-medium ${className}`}>{text}</span>;
       },
     },
   ];

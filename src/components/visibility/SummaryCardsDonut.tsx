@@ -222,7 +222,7 @@ export function SummaryCardsDonut({
       percentage: avgRankScore ? Math.max(0, 100 - (avgRankScore - 1) * 25) : 0,
       color: "var(--chart-2)",
       badge: positionBadge,
-      description: `Where ${brandName} typically ranks among competitors`,
+      description: <>{`Where ${brandName} typically ranks among competitors`}<br /><span className="text-muted-foreground/60">Only counted when {brandName} is mentioned</span></>,
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name. Lower is better — 1st means mentioned before competitors.",
       isPosition: true,
       delta: kpiDeltas?.avgRank ?? null,
