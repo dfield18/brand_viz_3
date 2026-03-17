@@ -640,16 +640,21 @@ export async function GET(req: NextRequest) {
       const previousRate = earlierTotal > 0 ? earlierMentions / earlierTotal : 0;
       const change = recentRate - previousRate;
 
-      if (Math.abs(change) > 0.1 || recentMentions > 0) {
+      // Convert fractions to percentage points for display
+      const changePts = change * 100;
+      const recentPct = Math.round(recentRate * 100);
+      const previousPct = Math.round(previousRate * 100);
+
+      if (Math.abs(changePts) > 1 || recentMentions > 0) {
         const direction: "rising" | "falling" | "stable" =
-          change > 0.1 ? "rising" : change < -0.1 ? "falling" : "stable";
+          changePts > 2 ? "rising" : changePts < -2 ? "falling" : "stable";
 
         competitorAlerts.push({
           entityId,
           displayName: resolveEntityName(entityId, entityDisplayNames),
-          mentionRateChange: Math.round(change * 1000) / 1000,
-          recentMentionRate: Math.round(recentRate * 1000) / 1000,
-          previousMentionRate: Math.round(previousRate * 1000) / 1000,
+          mentionRateChange: Math.round(changePts * 10) / 10,
+          recentMentionRate: recentPct,
+          previousMentionRate: previousPct,
           direction,
         });
       }

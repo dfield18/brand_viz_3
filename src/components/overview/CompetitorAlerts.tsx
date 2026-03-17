@@ -36,14 +36,21 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
     );
   }
 
-  const alerts = data?.competitorAlerts?.filter((a) => a.direction !== "stable") ?? [];
-  if (alerts.length === 0) return null;
+  const allAlerts = data?.competitorAlerts ?? [];
+  if (allAlerts.length === 0) return null;
 
-  const rising = alerts.filter((a) => a.direction === "rising").sort((a, b) => b.mentionRateChange - a.mentionRateChange);
-  const falling = alerts.filter((a) => a.direction === "falling").sort((a, b) => a.mentionRateChange - b.mentionRateChange);
+  const rising = allAlerts.filter((a) => a.direction === "rising").sort((a, b) => b.mentionRateChange - a.mentionRateChange);
+  const falling = allAlerts.filter((a) => a.direction === "falling").sort((a, b) => a.mentionRateChange - b.mentionRateChange);
 
-  // Show top 3 movers
-  const movers = [...rising.slice(0, 2), ...falling.slice(0, 1)].slice(0, 3);
+  // Show top 3 movers; fall back to top entities by mention rate if no clear movers
+  let movers = [...rising.slice(0, 2), ...falling.slice(0, 1)].slice(0, 3);
+  if (movers.length === 0) {
+    movers = allAlerts
+      .filter((a) => a.recentMentionRate > 0)
+      .sort((a, b) => b.recentMentionRate - a.recentMentionRate)
+      .slice(0, 3);
+  }
+  if (movers.length === 0) return null;
 
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
@@ -51,20 +58,26 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
       <div className="space-y-2">
         {movers.map((alert) => {
           const isRising = alert.direction === "rising";
+          const isFalling = alert.direction === "falling";
+          const isStable = alert.direction === "stable";
           return (
             <div key={alert.entityId} className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 {isRising ? (
                   <TrendingUp className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                ) : (
+                ) : isFalling ? (
                   <TrendingDown className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 )}
                 <span className="text-sm font-medium truncate">{alert.displayName}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs font-medium tabular-nums ${isRising ? "text-red-600" : "text-emerald-600"}`}>
-                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
-                </span>
+                {!isStable && (
+                  <span className={`text-xs font-medium tabular-nums ${isRising ? "text-red-600" : "text-emerald-600"}`}>
+                    {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
+                  </span>
+                )}
                 <span className="text-[10px] text-muted-foreground tabular-nums">
                   {alert.recentMentionRate}%
                 </span>
