@@ -226,13 +226,12 @@ function CompetitionInner() {
 
         {/* Sentiment Distribution */}
         <div id="sentiment" className="scroll-mt-24">
-          <section className="rounded-xl bg-card p-6 shadow-section">
-            <h2 className="text-base font-semibold">How Positively AI Talks About Each Brand</h2>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">
-              How positive or negative AI is about each competitor
-            </p>
-            <SentimentDistribution competitors={data.competitors} />
-          </section>
+          <SentimentDistributionSection
+            competitors={data.competitors}
+            brandSlug={params.slug}
+            range={range}
+            pageModel={model}
+          />
         </div>
 
         {/* Sentiment Trend */}
@@ -340,6 +339,63 @@ function SentimentMapSection({
         </div>
       ) : (
         <CompetitorSentimentMap competitors={competitors} brandEntityId={brandEntityId} />
+      )}
+    </section>
+  );
+}
+
+function SentimentDistributionSection({
+  competitors: initialCompetitors,
+  brandSlug,
+  range,
+  pageModel,
+}: {
+  competitors: CompetitorRow[];
+  brandSlug: string;
+  range: number;
+  pageModel: string;
+}) {
+  const [model, setModel] = useState(pageModel);
+
+  const url =
+    model !== pageModel
+      ? `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`
+      : null;
+  const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
+
+  const competitors =
+    model !== pageModel && apiData?.competition
+      ? apiData.competition.competitors
+      : initialCompetitors;
+
+  return (
+    <section className="rounded-xl bg-card p-6 shadow-section">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h2 className="text-base font-semibold">How Positively AI Talks About Each Brand</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            How positive or negative AI is about each competitor
+          </p>
+        </div>
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0"
+        >
+          <option value="all">All Models</option>
+          {VALID_MODELS.map((m) => (
+            <option key={m} value={m}>
+              {MODEL_LABELS[m] ?? m}
+            </option>
+          ))}
+        </select>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      ) : (
+        <SentimentDistribution competitors={competitors} />
       )}
     </section>
   );

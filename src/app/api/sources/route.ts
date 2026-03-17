@@ -298,12 +298,15 @@ export async function GET(req: NextRequest) {
     // Top domain citation counts over time (for "Top Source Trends" chart)
     // Query ALL historical SourceOccurrences (not just current range) so the
     // trend chart shows the full picture across all completed jobs.
+    // Group by job.finishedAt (not run.createdAt) so each analysis batch gets
+    // its own date bucket — runs within a single batch share createdAt but
+    // different jobs have distinct finishedAt dates.
     const domainOverTime = await (async () => {
       const allHistorical = await prisma.sourceOccurrence.findMany({
         where: {
           run: {
             brandId: brand.id,
-            job: { status: "done" },
+            job: { status: "done", finishedAt: { not: null } },
             ...modelFilter,
           },
           ...clusterPromptFilter,
@@ -312,7 +315,7 @@ export async function GET(req: NextRequest) {
           model: true,
           createdAt: true,
           source: { select: { domain: true } },
-          run: { select: { createdAt: true } },
+          run: { select: { job: { select: { finishedAt: true } } } },
         },
       });
 
@@ -333,7 +336,9 @@ export async function GET(req: NextRequest) {
       for (const o of allHistorical) {
         const domain = o.source.domain;
         if (!topSet.has(domain)) continue;
-        const date = o.run.createdAt.toISOString().slice(0, 10);
+        const jobDate = o.run.job.finishedAt;
+        if (!jobDate) continue;
+        const date = jobDate.toISOString().slice(0, 10);
         for (const m of ["all", o.model]) {
           const key = `${date}|${m}`;
           let domMap = buckets.get(key);

@@ -9,10 +9,10 @@ interface CompetitorRankDistributionProps {
 }
 
 const RANK_COLORS: Record<string, string> = {
-  "1": "bg-indigo-500",
-  "2": "bg-sky-400",
-  "3": "bg-slate-400",
-  other: "bg-slate-200 dark:bg-slate-600",
+  "1": "bg-violet-600",
+  "2": "bg-sky-500",
+  "3": "bg-amber-400",
+  other: "bg-slate-300 dark:bg-slate-600",
 };
 
 const RANK_LABELS: Record<string, string> = {

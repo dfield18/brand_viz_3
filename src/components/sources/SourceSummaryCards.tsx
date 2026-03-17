@@ -195,10 +195,11 @@ export default function SourceSummaryCards({ scope, summary, emerging, topDomain
     : null;
   if (topEmerging) {
     const growthPct = Math.min(topEmerging.growthRate, 100);
+    const halfRange = Math.round(range / 2);
     cards.push({
       label: "FASTEST GROWING SOURCE",
       tooltip: "The website that AI platforms are citing much more often than before. This could mean new content is gaining trust with AI, or that AI training data is shifting.",
-      description: `${topEmerging.domain} is being cited much more often recently`,
+      description: `${topEmerging.domain} is being cited much more often in the last ${halfRange} days vs the prior ${halfRange} days`,
       badge: getEmergingBadge(topEmerging.growthRate),
       donutPct: growthPct,
       donutColor: "hsl(160, 60%, 45%)",

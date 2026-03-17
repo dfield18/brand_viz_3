@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Lightbulb } from "lucide-react";
-import { NarrativeResponse, TopicsResponse, NarrativeDeltas } from "@/types/api";
+import { NarrativeResponse, NarrativeFrame, TopicsResponse, NarrativeDeltas, OverviewResponse } from "@/types/api";
 import { NarrativeMetricCards } from "@/components/narrative/NarrativeMetricCards";
 
 import { StrengthsWeaknesses } from "@/components/narrative/StrengthsWeaknesses";
@@ -41,6 +41,11 @@ interface TopicsApiResponse {
 interface RecsApiResponse {
   hasData: boolean;
   negativeNarratives?: { weaknesses: { weakness: string; suggestion: string }[]; narrativeSummary?: string };
+}
+
+interface OverviewApiResponse {
+  hasData: boolean;
+  overview?: OverviewResponse;
 }
 
 function stripMarkdown(text: string): string {
@@ -81,6 +86,12 @@ function NarrativeInner() {
     ? `/api/recommendations?brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`
     : null;
   const { data: recsData } = useCachedFetch<RecsApiResponse>(recsUrl);
+
+  // Fetch overview frames so "How AI Describes You" matches the overview tab exactly
+  const overviewUrl = validModel
+    ? `/api/overview?brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`
+    : null;
+  const { data: overviewData } = useCachedFetch<OverviewApiResponse>(overviewUrl);
 
   // Loading
   if (loading) {
@@ -136,6 +147,21 @@ function NarrativeInner() {
   if (!apiData?.narrative) return null;
   const data = apiData.narrative;
 
+  // Use overview frames when available so "How AI Describes You" matches the overview tab
+  const frames: NarrativeFrame[] = overviewData?.overview?.topFrames
+    ? overviewData.overview.topFrames.map((f) => ({
+        frame: f.frame,
+        percentage: f.percentage,
+        byModel: {
+          chatgpt: f.byModel?.chatgpt ?? 0,
+          gemini: f.byModel?.gemini ?? 0,
+          claude: f.byModel?.claude ?? 0,
+          perplexity: f.byModel?.perplexity ?? 0,
+          google: f.byModel?.google ?? 0,
+        },
+      }))
+    : data.frames ?? [];
+
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
     { id: "narrative-insight", label: "Key Insights" },
@@ -166,7 +192,7 @@ function NarrativeInner() {
             trustRate={data.trustRate}
             weaknessRate={data.weaknessRate}
             polarization={data.polarization}
-            frames={data.frames}
+            frames={frames}
             hedgingRate={data.hedgingRate}
             sentimentTrend={data.sentimentTrend}
             narrativeDeltas={apiData.narrativeDeltas}
@@ -175,12 +201,12 @@ function NarrativeInner() {
 
         {/* Narrative Insight — concise summary + optional perception issue */}
         <div id="narrative-insight" className="scroll-mt-24">
-          {data.sentimentSplit && data.frames && data.frames.length > 0 && (
+          {data.sentimentSplit && frames.length > 0 && (
             <div className="rounded-xl bg-card shadow-section overflow-hidden">
               <div className="px-5 py-3.5">
                 <p className="text-[13px] text-foreground/70 leading-relaxed">
                   {(() => {
-                    const topFrame = data.frames![0];
+                    const topFrame = frames[0];
                     const split = data.sentimentSplit!;
                     let summary = `AI frames ${brandName} as "${topFrame.frame}" (${topFrame.percentage}% of responses). `;
 
@@ -229,17 +255,17 @@ function NarrativeInner() {
         <h2 className="text-lg font-semibold border-b border-border pb-2">Narratives</h2>
 
         {/* Narrative Frame Breakdown */}
-        {data.frames && data.frames.length > 0 && (
+        {frames.length > 0 && (
           <div id="narrative-frames" className="scroll-mt-24">
-            <NarrativeFrameBreakdown frames={data.frames} brandName={brandName} />
+            <NarrativeFrameBreakdown frames={frames} brandName={brandName} />
           </div>
         )}
 
         {/* Top Narratives with Quotes */}
-        {data.frames && data.frames.length > 0 && data.examples && data.examples.length > 0 && (
+        {frames.length > 0 && data.examples && data.examples.length > 0 && (
           <div id="top-narratives" className="scroll-mt-24">
             <TopNarrativeQuotes
-              frames={data.frames}
+              frames={frames}
               examples={data.examples}
               brandName={brandName}
               frameTrend={data.frameTrend}

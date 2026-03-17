@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
+import { parseAnalysis } from "@/lib/aggregateAnalysis";
 import {
   computeMentionShare,
   computeAvgRank,
@@ -22,7 +23,7 @@ import {
   TRUST_SIGNALS,
   WEAKNESS_SIGNALS,
 } from "@/lib/narrative/signalLexicons";
-import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
+
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
 import { normalizeEntityIds, mergeEntityMetrics } from "@/lib/competition/normalizeEntities";
 import { validateCompetitors } from "@/lib/validateCompetitors";
@@ -712,19 +713,37 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // --- Competitor Narratives: aggregate from stored competitorNarrativesJson ---
-    const THEME_LABEL_MAP: Record<string, string> = {};
-    for (const t of THEME_TAXONOMY) THEME_LABEL_MAP[t.key] = t.label;
+    // --- Competitor Narratives: use dynamic frames from analysisJson (same as overview/narrative tabs) ---
+    const STRENGTH_THRESHOLD = 20;
 
+    // Build runId → parsed frames map
+    const runAnalysisMap = new Map<string, { name: string; strength: number }[]>();
+    for (const run of runs) {
+      const parsed = parseAnalysis(run.analysisJson);
+      if (parsed && parsed.frames.length > 0) {
+        runAnalysisMap.set(run.id, parsed.frames);
+      }
+    }
+
+    // Build entityId → set of runIds where entity appears
+    const entityRunIds = new Map<string, Set<string>>();
+    for (const m of metrics) {
+      if (m.prominenceScore <= 0) continue;
+      const entityId = aliasMap.get(m.entityId) ?? m.entityId;
+      if (!trackedSet.has(entityId) || entityId === brand.slug) continue;
+      const set = entityRunIds.get(entityId) ?? new Set<string>();
+      set.add(m.runId);
+      entityRunIds.set(entityId, set);
+    }
+
+    // Also aggregate claims/descriptors from competitorNarrativesJson (kept for strengths/weaknesses)
     const compNarrativesByEntity = new Map<string, NarrativeExtractionResult[]>();
     for (const run of runs) {
       const json = run.competitorNarrativesJson as Record<string, NarrativeExtractionResult> | null;
       if (!json) continue;
       for (const [rawEntityId, narrative] of Object.entries(json)) {
-        // Normalize the entity ID from stored narratives
         const entityId = aliasMap.get(rawEntityId) ?? rawEntityId;
-        if (!trackedSet.has(entityId)) continue;
-        if (entityId === brand.slug) continue;
+        if (!trackedSet.has(entityId) || entityId === brand.slug) continue;
         const arr = compNarrativesByEntity.get(entityId) ?? [];
         arr.push(narrative);
         compNarrativesByEntity.set(entityId, arr);
@@ -732,30 +751,39 @@ export async function GET(req: NextRequest) {
     }
 
     const competitorNarratives: CompetitorNarrative[] = [];
-    for (const [entityId, narratives] of compNarrativesByEntity) {
-      if (narratives.length === 0) continue;
+    for (const entityId of trackedIds) {
+      if (entityId === brand.slug) continue;
       const comp = competitors.find((c) => c.entityId === entityId);
       if (!comp) continue;
 
-      // Aggregate themes
-      const themeCounts: Record<string, number> = {};
-      for (const n of narratives) {
-        for (const theme of n.themes) {
-          themeCounts[theme.key] = (themeCounts[theme.key] || 0) + 1;
+      // Dynamic frames: count frame frequencies across runs where this entity appears
+      const eRunIds = entityRunIds.get(entityId);
+      const frameCounts: Record<string, number> = {};
+      let entityRunCount = 0;
+      if (eRunIds) {
+        for (const runId of eRunIds) {
+          const frames = runAnalysisMap.get(runId);
+          if (!frames) continue;
+          entityRunCount++;
+          for (const f of frames) {
+            if (f.strength >= STRENGTH_THRESHOLD) {
+              frameCounts[f.name] = (frameCounts[f.name] ?? 0) + 1;
+            }
+          }
         }
       }
-      const totalThemeHits = Object.values(themeCounts).reduce((s, v) => s + v, 0);
-      const themes = Object.entries(themeCounts)
-        .map(([key, count]) => ({
-          key,
-          label: THEME_LABEL_MAP[key] ?? key,
+      const themes = Object.entries(frameCounts)
+        .map(([name, count]) => ({
+          key: name,
+          label: name,
           count,
-          pct: totalThemeHits > 0 ? Math.round((count / totalThemeHits) * 100) : 0,
+          pct: entityRunCount > 0 ? Math.round((count / entityRunCount) * 100) : 0,
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // Aggregate claims (strengths + weaknesses)
+      // Strengths, weaknesses, descriptors from competitorNarrativesJson
+      const narratives = compNarrativesByEntity.get(entityId) ?? [];
       const strengthMap: Record<string, number> = {};
       const weaknessMap: Record<string, number> = {};
       for (const n of narratives) {
@@ -777,7 +805,6 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // Aggregate descriptors
       const descCounts: Record<string, { polarity: "positive" | "negative" | "neutral"; count: number }> = {};
       for (const n of narratives) {
         for (const desc of n.descriptors) {
@@ -791,6 +818,8 @@ export async function GET(req: NextRequest) {
         .map(([word, { polarity, count }]) => ({ word, polarity, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
+
+      if (themes.length === 0 && strengths.length === 0 && weaknesses.length === 0) continue;
 
       competitorNarratives.push({
         entityId,
