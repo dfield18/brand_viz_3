@@ -298,15 +298,15 @@ export function SummaryCardsDonut({
 
           {/* WoW Delta */}
           {card.delta !== null && card.delta !== 0 && (() => {
-            const isPositive = card.delta! > 0;
+            const isGood = card.invertDelta ? card.delta! < 0 : card.delta! > 0;
             return (
               <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-border/50">
-                {isPositive ? (
+                {isGood ? (
                   <TrendingUp className="h-3 w-3 text-emerald-600" />
                 ) : (
                   <TrendingDown className="h-3 w-3 text-red-500" />
                 )}
-                <span className={`text-[11px] font-medium tabular-nums ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
+                <span className={`text-[11px] font-medium tabular-nums ${isGood ? "text-emerald-600" : "text-red-500"}`}>
                   {card.deltaFormat(card.delta!)}
                 </span>
               </div>

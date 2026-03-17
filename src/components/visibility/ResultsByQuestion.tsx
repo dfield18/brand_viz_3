@@ -58,7 +58,7 @@ function ColumnHeader({ label, sublabel, tooltip, column, sortKey, sortDir, onSo
   onSort: (key: SortKey) => void;
 }) {
   return (
-    <th className="px-4 cursor-pointer select-none text-center align-bottom pb-4 relative" onClick={() => onSort(column)}>
+    <th className="px-3 cursor-pointer select-none text-center align-bottom pb-3 relative" onClick={() => onSort(column)}>
       <div className="font-medium">{label}</div>
       {sublabel && (
         <div className="text-[10px] text-muted-foreground font-normal normal-case tracking-normal mt-0.5">
@@ -376,22 +376,22 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
       </div>
 
       <div className="overflow-x-auto max-h-[680px] overflow-y-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-[13px]">
           <thead className="sticky top-0 bg-card z-10">
             <tr className="border-b border-border/60 text-[11px] text-muted-foreground uppercase tracking-wider">
-              <th className="pb-3 pr-6 text-left font-medium cursor-pointer select-none align-bottom" onClick={() => handleSort("promptText")}>
+              <th className="pb-3 pr-4 pl-1 text-left font-medium cursor-pointer select-none align-bottom" onClick={() => handleSort("promptText")}>
                 <div className="inline-flex items-center gap-1">
                   Question
                   <SortIcon column="promptText" sortKey={sortKey} sortDir={sortDir} />
                 </div>
               </th>
-              <th className="pb-4 px-4 cursor-pointer select-none text-center align-bottom" onClick={() => handleSort("model")}>
+              <th className="pb-3 px-3 cursor-pointer select-none text-center align-bottom" onClick={() => handleSort("model")}>
                 <div className="inline-flex items-center gap-1 justify-center">
                   <span className="font-medium">AI Platform</span>
                   <SortIcon column="model" sortKey={sortKey} sortDir={sortDir} />
                 </div>
               </th>
-              <th className="pb-4 px-4 cursor-pointer select-none text-center align-bottom" onClick={() => handleSort("status")}>
+              <th className="pb-3 px-3 cursor-pointer select-none text-center align-bottom" onClick={() => handleSort("status")}>
                 <div className="inline-flex items-center gap-1 justify-center">
                   <span className="font-medium">Status</span>
                   <SortIcon column="status" sortKey={sortKey} sortDir={sortDir} />
@@ -418,21 +418,21 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                     className={`border-b border-border/30 ${isExpanded ? "border-b-0 bg-muted/10" : ""} ${idx % 2 === 1 && !isExpanded ? "bg-muted/15" : ""} ${brandSlug ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}`}
                     onClick={brandSlug ? () => handleRowClick(row.promptText, row.models) : undefined}
                   >
-                    <td className="py-5 pr-6 max-w-xs">
-                      <div className="flex items-center gap-1.5">
+                    <td className="py-3 pr-4 pl-1 max-w-sm">
+                      <div className="flex items-start gap-1.5">
                         {brandSlug && hasMultipleModels && (
-                          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform mt-0.5 ${isExpanded ? "rotate-90" : ""}`} />
                         )}
-                        <span className="text-foreground">{row.promptText}</span>
-                        {brandSlug && !hasMultipleModels && <ExternalLink className="h-3 w-3 text-muted-foreground/40 shrink-0" />}
+                        <span className="text-foreground leading-relaxed">{row.promptText}</span>
+                        {brandSlug && !hasMultipleModels && <ExternalLink className="h-3 w-3 text-muted-foreground/40 shrink-0 mt-0.5" />}
                       </div>
                       {row.competitors.length > 0 && (
-                        <p className="text-[11px] text-muted-foreground mt-1">
+                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                           Competitors: {row.competitors.join(" · ")}
                         </p>
                       )}
                     </td>
-                    <td className="py-5 px-4 text-center">
+                    <td className="py-3 px-3 text-center">
                       <div className="flex flex-wrap justify-center gap-1">
                         {row.models.length > 0 ? row.models.map((m) => (
                           <span key={m} className="inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground whitespace-nowrap">
@@ -443,29 +443,29 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                         )}
                       </div>
                     </td>
-                    <td className="py-5 px-4 text-center">
+                    <td className="py-3 px-3 text-center">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${badge.className}`}>
                         {row.status === "win" && <Trophy className="h-3 w-3" />}
                         {badge.label}
                       </span>
                     </td>
-                    <td className="py-5 px-4 text-center tabular-nums">
+                    <td className="py-3 px-3 text-center tabular-nums">
                       {row.aiVisibility}%
                     </td>
-                    <td className="py-5 px-4 text-center tabular-nums">
+                    <td className="py-3 px-3 text-center tabular-nums">
                       <span className={row.shareOfVoice >= 20 ? "text-amber-600 font-medium" : ""}>
                         {row.shareOfVoice}%
                       </span>
                     </td>
-                    <td className="py-5 px-4 text-center tabular-nums">
+                    <td className="py-3 px-3 text-center tabular-nums">
                       <span className={row.firstPosition >= 50 ? "text-amber-600 font-medium" : ""}>
                         {row.firstPosition}%
                       </span>
                     </td>
-                    <td className="py-5 px-4 text-center tabular-nums font-medium">
+                    <td className="py-3 px-3 text-center tabular-nums font-medium">
                       {row.avgPosition !== null ? `#${row.avgPosition}` : "\u2014"}
                     </td>
-                    <td className="py-5 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
                       <span className={SENTIMENT_STYLES[row.avgSentiment] ?? ""}>
                         {row.avgSentiment}
                       </span>

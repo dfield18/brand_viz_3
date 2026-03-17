@@ -345,16 +345,16 @@ export function NarrativeMetricCards({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-all border-l-[3px]${card.scrollTarget ? " cursor-pointer hover:border-l-primary/60 hover:shadow-md" : ""}`}
+          className={`rounded-xl bg-card px-5 py-6 shadow-kpi flex flex-col transition-all border-l-[3px]${card.scrollTarget ? " cursor-pointer hover:border-l-primary/60 hover:shadow-md" : ""}`}
           style={{ borderLeftColor: card.donutColor || "var(--border)" }}
           onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
               {card.label}
             </span>
@@ -365,7 +365,7 @@ export function NarrativeMetricCards({
           {card.custom ? (
             card.custom
           ) : (
-            <div className="flex items-center justify-center mb-4 h-[90px]">
+            <div className="flex items-center justify-center mb-5 h-[90px]">
               <div className="relative">
                 <DonutRing percentage={card.donutPct} color={card.donutColor} size={84} />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -376,7 +376,7 @@ export function NarrativeMetricCards({
           )}
 
           {/* Badge(s) + Sparkline */}
-          <div className="flex flex-wrap justify-center items-center gap-1.5 mb-3">
+          <div className="flex flex-wrap justify-center items-center gap-1.5 mb-4">
             {card.badge.slice(0, 2).map((b, i) => (
               <span key={i} className={`text-[11px] font-medium rounded-full border text-center px-2.5 py-0.5 ${b.color}`}>
                 {b.text}
@@ -415,7 +415,7 @@ export function NarrativeMetricCards({
 
           {/* Delta footer */}
           {card.delta != null && card.delta !== 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-1.5">
+            <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-center gap-1.5">
               {card.delta > 0 ? (
                 <TrendingUp className="h-3 w-3 text-emerald-500" />
               ) : (

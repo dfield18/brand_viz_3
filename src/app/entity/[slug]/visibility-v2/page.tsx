@@ -237,7 +237,7 @@ function VisibilityV2Inner() {
           />
         </div>
 
-        <div className="rounded-lg border border-border/40 bg-muted/20 px-5 py-4 mt-2">
+        <div className="px-5 py-4 mt-2">
           <p className="text-sm text-muted-foreground leading-relaxed">
             When someone asks AI about your industry, does {brandName} come up? These metrics track how often AI platforms recommend {brandName} unprompted — no brand name in the query, just pure organic visibility.
           </p>
