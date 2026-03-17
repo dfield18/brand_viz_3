@@ -209,10 +209,10 @@ function OverviewInner() {
                       parts.push(`${brandName} doesn't appear in AI-generated answers yet. A growing number of people are using AI to find recommendations — and they won't hear about ${brandName}.`);
                     }
                     if (kpis.avgRankScore > 0) {
-                      if (kpis.avgRankScore <= 1.3) parts.push(`When AI does mention ${brandName}, it's typically the very first recommendation — it leads the list ${kpis.firstMentionRate}% of the time.`);
-                      else if (kpis.avgRankScore <= 2.0) parts.push(`When it appears, ${brandName} is usually near the top of the list (averaging the #${kpis.avgRankScore.toFixed(1)} position), and it's the first name ${kpis.firstMentionRate}% of the time.`);
-                      else if (kpis.avgRankScore <= 3.0) parts.push(`However, when it does appear, ${brandName} is typically listed in the middle of the pack (around #${kpis.avgRankScore.toFixed(1)}) — competitors are getting named first in ${100 - kpis.firstMentionRate}% of answers.`);
-                      else parts.push(`When mentioned, ${brandName} tends to appear lower in the list (around #${kpis.avgRankScore.toFixed(1)}) — AI is positioning several competitors as stronger options.`);
+                      if (kpis.avgRankScore <= 1.3) parts.push(`When AI does mention ${brandName}, it's typically the very first brand recommended — it leads the list ${kpis.firstMentionRate}% of the time.`);
+                      else if (kpis.avgRankScore <= 2.0) parts.push(`When it appears, ${brandName} is usually near the top of the list (on average, the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} brand mentioned), and it's the first name ${kpis.firstMentionRate}% of the time.`);
+                      else if (kpis.avgRankScore <= 3.0) parts.push(`However, when it does appear, ${brandName} is typically the ${Math.round(kpis.avgRankScore)}${Math.round(kpis.avgRankScore) === 2 ? "nd" : "rd"} brand listed — meaning ${100 - kpis.firstMentionRate}% of the time, competitors are named before ${brandName}.`);
+                      else parts.push(`When mentioned, ${brandName} tends to appear around the ${Math.round(kpis.avgRankScore)}th brand listed — AI typically recommends several competitors before getting to ${brandName}.`);
                     }
                     const ss = apiData.sentimentSplit;
                     if (ss) {
