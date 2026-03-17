@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { titleCase } from "@/lib/utils";
+import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import {
   computeMentionShare,
@@ -25,6 +25,7 @@ import {
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
 import { normalizeEntityIds, mergeEntityMetrics } from "@/lib/competition/normalizeEntities";
+import { validateCompetitors } from "@/lib/validateCompetitors";
 import type {
   CompetitorRow,
   CompetitorNarrative,
@@ -74,6 +75,9 @@ export async function GET(req: NextRequest) {
       : allRuns.filter((r) => r.prompt.cluster === "industry");
 
   try {
+    // Build display name map from original GPT-extracted competitor names
+    const entityDisplayNames = buildEntityDisplayNames(runs);
+
     const runIds = runs.map((r) => r.id);
     const totalResponses = runIds.length;
 
@@ -126,7 +130,18 @@ export async function GET(req: NextRequest) {
       }
     }
     cooccurrence.sort((a, b) => b.count - a.count);
-    const topCompetitorIds = cooccurrence.slice(0, TOP_COMPETITORS).map((c) => c.entityId);
+    // Take extra candidates so we still have enough after filtering unrelated ones
+    const candidateIds = cooccurrence.slice(0, TOP_COMPETITORS * 2).map((c) => c.entityId);
+
+    // Validate that candidates are in the same industry/category as the brand
+    const relatedSet = await validateCompetitors(
+      candidateIds.map((id) => resolveEntityName(id, entityDisplayNames)),
+      brandName,
+    );
+    const relatedLower = new Set([...relatedSet].map((n) => n.toLowerCase()));
+    const topCompetitorIds = candidateIds
+      .filter((id) => relatedLower.has(id.toLowerCase()) || relatedSet.has(resolveEntityName(id, entityDisplayNames)))
+      .slice(0, TOP_COMPETITORS);
 
     // Tracked set = brand + top competitors
     const trackedIds = [brand.slug, ...topCompetitorIds];
@@ -145,7 +160,7 @@ export async function GET(req: NextRequest) {
       const ranks = ms.map((m) => m.rankPosition);
       return {
         entityId,
-        name: entityId === brand.slug ? brand.name : titleCase(entityId),
+        name: entityId === brand.slug ? brandName : resolveEntityName(entityId, entityDisplayNames),
         isBrand: entityId === brand.slug,
         mentionShare: computeMentionShare(appearances, totalAppearances),
         mentionRate: computeMentionRate(appearances, totalResponses),
@@ -323,7 +338,7 @@ export async function GET(req: NextRequest) {
               intent: prompt.intent,
               yourRank: bm.rankPosition,
               yourProminence: Math.round(bm.prominenceScore * 100) / 100,
-              competitorName: titleCase(competitorId),
+              competitorName: resolveEntityName(competitorId, entityDisplayNames),
               competitorRank: cm.rankPosition,
               competitorProminence: Math.round(cm.prominenceScore * 100) / 100,
             });
@@ -342,7 +357,7 @@ export async function GET(req: NextRequest) {
         const total = wl.wins + wl.losses;
         return {
           entityId: id,
-          name: titleCase(id),
+          name: resolveEntityName(id, entityDisplayNames),
           wins: wl.wins,
           losses: wl.losses,
           lossRate: total > 0 ? Math.round((wl.losses / total) * 100) : 0,
@@ -436,7 +451,7 @@ export async function GET(req: NextRequest) {
         intent: row.intent,
         model: row.model,
         brandRank: brandCell?.rank ?? null,
-        topCompetitor: titleCase(topCompId),
+        topCompetitor: resolveEntityName(topCompId, entityDisplayNames),
         topCompetitorRank: topCompRank,
         impactScore: rawScore,
       });

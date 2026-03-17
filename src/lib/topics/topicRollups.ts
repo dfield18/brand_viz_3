@@ -14,7 +14,7 @@ import type {
   TopicFragmentationRow,
 } from "@/types/api";
 import { TOPIC_TAXONOMY } from "./topicTaxonomy";
-import { titleCase } from "@/lib/utils";
+import { titleCase, resolveEntityName } from "@/lib/utils";
 
 export interface TopicMetricInput {
   runId: string;
@@ -72,6 +72,7 @@ export function computeTopicRows(
   metrics: TopicMetricInput[],
   brandEntityId: string,
   totalResponsesByTopic: Map<string, number>,
+  entityDisplayNames?: Map<string, string>,
 ): TopicRow[] {
   const brandMetrics = metrics.filter(
     (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
@@ -127,7 +128,7 @@ export function computeTopicRows(
       const rate = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
       if (rate > leaderRate) {
         leaderRate = rate;
-        leaderName = titleCase(entityId);
+        leaderName = resolveEntityName(entityId, entityDisplayNames ?? new Map());
       }
     }
 
@@ -164,6 +165,7 @@ export function computeTopicRows(
 export function computeTopicOwnership(
   metrics: TopicMetricInput[],
   brandEntityId: string,
+  entityDisplayNames?: Map<string, string>,
 ): TopicOwnershipRow[] {
   const byTopic = new Map<string, TopicMetricInput[]>();
   for (const m of metrics) {
@@ -199,7 +201,7 @@ export function computeTopicOwnership(
       topicKey: key,
       topicLabel: topicLabel(key),
       leaderEntityId: leaderId,
-      leaderName: titleCase(leaderId),
+      leaderName: resolveEntityName(leaderId, entityDisplayNames ?? new Map()),
       leaderMentionShare: totalAppearances > 0
         ? Math.round((leaderCount / totalAppearances) * 10000) / 100
         : 0,
@@ -400,6 +402,7 @@ export function computeTopicPromptExamples(
   metrics: TopicMetricInput[],
   brandEntityId: string,
   runPromptInfo: RunPromptInfo[],
+  entityDisplayNames?: Map<string, string>,
 ): TopicPromptExample[] {
   // Build a map: runId → metrics for that run
   const metricsByRun = new Map<string, TopicMetricInput[]>();
@@ -438,7 +441,7 @@ export function computeTopicPromptExamples(
       model: info.model,
       brandRank: brandMetric?.rankPosition ?? null,
       brandProminence: brandMetric?.prominenceScore ?? 0,
-      topCompetitor: topComp ? titleCase(topComp.entityId) : null,
+      topCompetitor: topComp ? resolveEntityName(topComp.entityId, entityDisplayNames ?? new Map()) : null,
       topCompetitorRank: topComp?.rankPosition ?? null,
       cluster: info.cluster,
     });
@@ -453,6 +456,7 @@ export function computeTopicPromptExamples(
 
 export function computeTopicFragmentation(
   metrics: TopicMetricInput[],
+  entityDisplayNames?: Map<string, string>,
 ): TopicFragmentationRow[] {
   // Group by topic, count entity appearances
   const byTopic = new Map<string, Map<string, number>>();
@@ -474,7 +478,7 @@ export function computeTopicFragmentation(
     for (const [entityId, count] of entityMap) {
       if (count > leaderCount) {
         leaderCount = count;
-        leaderName = titleCase(entityId);
+        leaderName = resolveEntityName(entityId, entityDisplayNames ?? new Map());
       }
     }
 

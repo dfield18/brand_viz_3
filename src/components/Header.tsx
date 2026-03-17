@@ -41,7 +41,7 @@ function HeaderInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const brands = useBrands();
+  const { brands } = useBrands();
   const [addOpen, setAddOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [runningSlug, setRunningSlug] = useState<string | null>(null);

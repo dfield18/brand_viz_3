@@ -17,10 +17,12 @@ export function invalidateBrands() {
 }
 
 /** Reactive hook — fetches brands from the server (all brands with completed jobs). */
-export function useBrands(): Brand[] {
+export function useBrands(): { brands: Brand[]; loading: boolean } {
   const [brands, setBrands] = useState<Brand[]>(cachedBrands ?? []);
+  const [loading, setLoading] = useState(!cachedBrands);
 
   const fetchBrands = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/brands");
       if (res.ok) {
@@ -31,6 +33,8 @@ export function useBrands(): Brand[] {
       }
     } catch {
       // Silently fail — keep existing state
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -48,5 +52,5 @@ export function useBrands(): Brand[] {
     return () => { listeners.delete(handler); };
   }, [fetchBrands]);
 
-  return brands;
+  return { brands, loading };
 }

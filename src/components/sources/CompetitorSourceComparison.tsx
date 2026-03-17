@@ -24,6 +24,7 @@ interface Props {
   matrix?: SourcePromptMatrixRow[];
   prompts?: SourceMatrixPrompt[];
   modelSplit?: SourceModelSplitRow[];
+  entityNames?: Record<string, string>;
 }
 
 type ViewMode = "brands" | "questions" | "platforms";
@@ -35,10 +36,10 @@ const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-ca
 const SOURCE_COL_W = "w-[200px] min-w-[200px]";
 const DATA_COL_W = "w-[130px] min-w-[130px]";
 
-function titleCase(s: string): string {
-  return s
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+import { titleCase } from "@/lib/utils";
+
+function resolveEntity(id: string, names?: Record<string, string>): string {
+  return names?.[id] ?? names?.[id.toLowerCase()] ?? titleCase(id);
 }
 
 const VIEW_DESCRIPTIONS: Record<ViewMode, string> = {
@@ -56,8 +57,9 @@ export default function CompetitorSourceComparison({
   matrix: initialMatrix,
   prompts: initialPrompts,
   modelSplit: initialModelSplit,
+  entityNames,
 }: Props) {
-  const brandName = titleCase(brandSlug);
+  const brandName = resolveEntity(brandSlug, entityNames);
 
   // Build a function that expands {brand} and {competitor} placeholders in prompt text
   const expandPromptText = useMemo(() => {
@@ -68,7 +70,7 @@ export default function CompetitorSourceComparison({
       for (const id of Object.keys(row.entityCounts)) {
         if (id !== brandSlug && !seen.has(id)) {
           seen.add(id);
-          compNames.push(titleCase(id));
+          compNames.push(resolveEntity(id, entityNames));
         }
       }
     }
@@ -355,7 +357,7 @@ export default function CompetitorSourceComparison({
                     key={id}
                     className={`py-2.5 px-3 text-center font-medium text-xs whitespace-nowrap ${DATA_COL_W} ${id === brandSlug ? "text-primary" : "text-muted-foreground"}`}
                   >
-                    {id === brandSlug ? `${titleCase(id)} (You)` : titleCase(id)}
+                    {id === brandSlug ? `${resolveEntity(id, entityNames)} (You)` : resolveEntity(id, entityNames)}
                   </th>
                 ))}
                 {hasOther && (

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { SourcesResponse, TopDomainRow } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { MODEL_LABELS } from "@/lib/constants";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reviews: "Reviews",
@@ -170,8 +171,18 @@ interface Props {
   range: number;
 }
 
+const MODEL_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All Models" },
+  { value: "chatgpt", label: "ChatGPT" },
+  { value: "gemini", label: "Gemini" },
+  { value: "claude", label: "Claude" },
+  { value: "perplexity", label: "Perplexity" },
+  { value: "google", label: "Google" },
+];
+
 export function TopSourcesList({ brandSlug, model, range }: Props) {
-  const url = `/api/sources?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
+  const [localModel, setLocalModel] = useState(model);
+  const url = `/api/sources?brandSlug=${encodeURIComponent(brandSlug)}&model=${localModel}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<SourcesApiResponse>(url);
 
   if (loading) {
@@ -203,10 +214,23 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
-      <h2 className="text-base font-semibold">Top Sources AI Relies On</h2>
-      <p className="text-xs text-muted-foreground mt-1 mb-4">
-        The most-cited websites when AI discusses your industry
-      </p>
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h2 className="text-base font-semibold">Top Sources AI Relies On</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            The most-cited websites when AI discusses your industry
+          </p>
+        </div>
+        <select
+          value={localModel}
+          onChange={(e) => setLocalModel(e.target.value)}
+          className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0"
+        >
+          {MODEL_OPTIONS.map((m) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex gap-6">
         {/* Left: top source bars (55%) */}

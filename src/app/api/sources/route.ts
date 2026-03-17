@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
+import { buildEntityDisplayNames } from "@/lib/utils";
 import {
   computeSourceSummary,
   computeTopDomains,
@@ -22,12 +23,12 @@ export async function GET(req: NextRequest) {
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
   const cluster = req.nextUrl.searchParams.get("cluster") ?? "";
 
-  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date };
+  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown };
   const result = await fetchBrandRuns<MinimalRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true } },
   });
   if (!result.ok) return result.response;
   const { brand, job, runs, rangeCutoff } = result;
@@ -386,6 +387,11 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.citations - a.citations)
       .slice(0, 20);
 
+    // Build entity display names for proper casing in client components
+    const entityDisplayNames = buildEntityDisplayNames(runs);
+    const entityNames: Record<string, string> = {};
+    for (const [id, name] of entityDisplayNames) entityNames[id] = name;
+
     return NextResponse.json({
       hasData: true,
       job: formatJobMeta(job!),
@@ -408,6 +414,7 @@ export async function GET(req: NextRequest) {
         categoryOverTime,
         domainOverTime,
       },
+      entityNames,
       totals: { totalRuns: totalResponses },
     }, {
       headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },

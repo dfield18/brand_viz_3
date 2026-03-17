@@ -138,15 +138,15 @@ function OverviewInner() {
   const data = apiData.overview;
 
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard", heading: "Summary" },
+    { id: "kpi-summary", label: "Scorecard", heading: "Visibility" },
     { id: "key-insights", label: "Key Insights" },
     { id: "visibility-trend", label: "Brand Recall Trend" },
+    { id: "cross-model", label: "Cross-Model Comparison" },
     { id: "narrative-section", label: "Top Narratives", heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
-    { id: "competitor-snapshot", label: "Competitive Landscape", heading: "Competition" },
+    { id: "competitor-snapshot", label: "Competitive Landscape", heading: "Issue Landscape" },
     { id: "competitor-alerts", label: "Competitor Movement" },
-    { id: "cross-model", label: "Cross-Model Comparison" },
-    { id: "sources-trend", label: "Top Sources", heading: "More" },
+    { id: "sources-trend", label: "Top Sources", heading: "Sources" },
     { id: "prompt-manager", label: "Run Prompts" },
   ];
 
@@ -176,6 +176,9 @@ function OverviewInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+        {/* ── Visibility ─────────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
+
         {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {scorecardData && (
@@ -199,30 +202,30 @@ function OverviewInner() {
                     const kpis = apiData.visibilityKpis!;
                     const parts: string[] = [];
                     if (kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5) {
-                      parts.push(`${brandName} dominates the AI conversation — surfacing in ${kpis.overallMentionRate}% of industry queries and consistently landing as the #1 recommendation.`);
+                      parts.push(`When people ask ChatGPT, Gemini, or other AI tools about this space, ${brandName} comes up almost every time (${kpis.overallMentionRate}% of questions) — and it's usually the first name mentioned.`);
                     } else if (kpis.overallMentionRate >= 60) {
-                      parts.push(`${brandName} is well-established in AI responses, appearing in ${kpis.overallMentionRate}% of industry queries and capturing ${kpis.shareOfVoice}% of all brand mentions.`);
+                      parts.push(`${brandName} has strong AI visibility. When people ask AI assistants general questions about this space, ${brandName} comes up ${kpis.overallMentionRate}% of the time and makes up ${kpis.shareOfVoice}% of all brand mentions in those answers.`);
                     } else if (kpis.overallMentionRate >= 30) {
-                      parts.push(`AI models are aware of ${brandName}, but there's room to grow — the brand shows up in ${kpis.overallMentionRate}% of industry queries with a ${kpis.shareOfVoice}% share of voice.`);
+                      parts.push(`When people ask AI assistants about this space, ${brandName} comes up in about ${kpis.overallMentionRate}% of answers — that means roughly ${100 - kpis.overallMentionRate}% of the time, AI is recommending others without mentioning ${brandName}. It accounts for ${kpis.shareOfVoice}% of all brand mentions.`);
                     } else if (kpis.overallMentionRate > 0) {
-                      parts.push(`${brandName} is flying under the AI radar, appearing in just ${kpis.overallMentionRate}% of industry queries. There's significant untapped opportunity here.`);
+                      parts.push(`${brandName} rarely comes up when people ask AI assistants about this space — only ${kpis.overallMentionRate}% of the time. Most potential customers using AI for research won't see ${brandName} at all.`);
                     } else {
-                      parts.push(`${brandName} isn't showing up in AI-generated responses yet — this is a blank canvas to build visibility from the ground up.`);
+                      parts.push(`${brandName} doesn't appear in AI-generated answers yet. When people ask AI tools about this space, they won't hear about ${brandName} — a growing channel is sending people elsewhere.`);
                     }
                     if (kpis.avgRankScore > 0) {
-                      if (kpis.avgRankScore <= 1.3) parts.push(`When mentioned, it's almost always the first name out of the gate — ${kpis.firstMentionRate}% top-result rate.`);
-                      else if (kpis.avgRankScore <= 2.0) parts.push(`It typically ranks near the top (avg position ${kpis.avgRankScore.toFixed(1)}), earning the #1 spot ${kpis.firstMentionRate}% of the time.`);
-                      else if (kpis.avgRankScore <= 3.0) parts.push(`Positioning is mid-tier at avg #${kpis.avgRankScore.toFixed(1)} — competitors are edging ahead in ${100 - kpis.firstMentionRate}% of responses.`);
-                      else parts.push(`AI models tend to mention ${brandName} after several competitors (avg #${kpis.avgRankScore.toFixed(1)}).`);
+                      if (kpis.avgRankScore <= 1.3) parts.push(`When AI does mention ${brandName}, it's typically the very first recommendation — it leads the list ${kpis.firstMentionRate}% of the time.`);
+                      else if (kpis.avgRankScore <= 2.0) parts.push(`When it appears, ${brandName} is usually near the top of the list (averaging the #${kpis.avgRankScore.toFixed(1)} position), and it's the first name ${kpis.firstMentionRate}% of the time.`);
+                      else if (kpis.avgRankScore <= 3.0) parts.push(`However, when it does appear, ${brandName} is typically listed in the middle of the pack (around #${kpis.avgRankScore.toFixed(1)}) — competitors are getting named first in ${100 - kpis.firstMentionRate}% of answers.`);
+                      else parts.push(`When mentioned, ${brandName} tends to appear lower in the list (around #${kpis.avgRankScore.toFixed(1)}) — AI is positioning several competitors as stronger options.`);
                     }
                     const ss = apiData.sentimentSplit;
                     if (ss) {
-                      if (ss.positive >= 70) parts.push(`The tone is overwhelmingly positive — ${ss.positive}% of responses paint the brand favorably.`);
-                      else if (ss.positive >= 50) parts.push(`Sentiment leans positive (${ss.positive}%)${ss.negative > 0 ? `, though ${ss.negative}% flag concerns worth monitoring` : ""}.`);
-                      else if (ss.negative >= 30) parts.push(`Watch the sentiment: ${ss.negative}% of AI responses carry a critical tone.`);
+                      if (ss.positive >= 70) parts.push(`The good news: when AI does talk about ${brandName}, the tone is very positive — ${ss.positive}% of responses describe it favorably.`);
+                      else if (ss.positive >= 50) parts.push(`When AI discusses ${brandName}, the tone is generally positive (${ss.positive}% favorable)${ss.negative > 0 ? `, though ${ss.negative}% of responses raise concerns worth keeping an eye on` : ""}.`);
+                      else if (ss.negative >= 30) parts.push(`A note of caution: ${ss.negative}% of AI responses describe ${brandName} in a negative light — it's worth understanding what's driving this.`);
                     }
                     const topFrame = data.topFrames[0]?.frame;
-                    if (topFrame) parts.push(`AI primarily frames ${brandName} as a "${topFrame}."`);
+                    if (topFrame) parts.push(`The dominant story AI tells about ${brandName} is as a "${topFrame}."`);
                     return parts.join(" ");
                   })()}
                 </p>
@@ -242,6 +245,13 @@ function OverviewInner() {
           </div>
         )}
 
+        <div id="cross-model" className="scroll-mt-24">
+          <CrossModelTable models={data.modelComparison} />
+        </div>
+
+        {/* ── Narrative ──────────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Narrative</h2>
+
         <div id="narrative-section" className="scroll-mt-24">
           <NarrativeSection frames={data.topFrames} brandName={brandName} />
         </div>
@@ -256,6 +266,9 @@ function OverviewInner() {
           </div>
         )}
 
+        {/* ── Issue Landscape ────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Issue Landscape</h2>
+
         <div id="competitor-snapshot" className="scroll-mt-24">
           <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} />
         </div>
@@ -264,9 +277,8 @@ function OverviewInner() {
           <CompetitorAlerts brandSlug={params.slug} model={model} range={range} />
         </div>
 
-        <div id="cross-model" className="scroll-mt-24">
-          <CrossModelTable models={data.modelComparison} />
-        </div>
+        {/* ── Sources ────────────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Sources</h2>
 
         <div id="sources-trend" className="scroll-mt-24">
           <TopSourcesList brandSlug={params.slug} model={model} range={range} />

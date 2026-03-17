@@ -11,7 +11,7 @@ import { useBrands, invalidateBrands } from "@/lib/useBrands";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const brands = useBrands();
+  const { brands, loading: brandsLoading } = useBrands();
   const [name, setName] = useState("");
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
 
@@ -36,10 +36,10 @@ export default function DashboardPage() {
     router.push(`/entity/${slug}/overview?range=30&model=${execModel}`);
   }, [router]);
 
-  // Still loading / redirecting
-  if (brands.length > 0) {
+  // Still loading brands from server or redirecting
+  if (brandsLoading || brands.length > 0) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100vh-3.75rem)]">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );

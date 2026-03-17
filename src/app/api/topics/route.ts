@@ -15,6 +15,7 @@ import {
 } from "@/lib/topics/topicRollups";
 import { TOPIC_TAXONOMY } from "@/lib/topics/topicTaxonomy";
 import type { TopicModelSplitRow } from "@/types/api";
+import { buildEntityDisplayNames } from "@/lib/utils";
 
 const TOPIC_LABEL_MAP: Record<string, string> = {};
 for (const t of TOPIC_TAXONOMY) {
@@ -33,12 +34,12 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 
-  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date };
+  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown };
   const result = await fetchBrandRuns<MinimalRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true } },
   });
   if (!result.ok) return result.response;
   const { brand, job, runs, rangeCutoff } = result;
@@ -127,9 +128,12 @@ export async function GET(req: NextRequest) {
       topicKey: promptTopicMap.get(r.promptId)!,
     }));
 
+    // Build display name map from original GPT-extracted competitor names
+    const entityDisplayNames = buildEntityDisplayNames(runs);
+
     // Compute all rollups
-    const topics = computeTopicRows(topicMetrics, brand.slug, totalResponsesByTopic);
-    const ownership = computeTopicOwnership(topicMetrics, brand.slug);
+    const topics = computeTopicRows(topicMetrics, brand.slug, totalResponsesByTopic, entityDisplayNames);
+    const ownership = computeTopicOwnership(topicMetrics, brand.slug, entityDisplayNames);
 
     // Emerging: split at midpoint
     const midpoint = new Date(
@@ -141,8 +145,8 @@ export async function GET(req: NextRequest) {
     const importance = computeTopicImportance(totalResponsesByTopic, totalResponses);
     const trend = computeTopicTrend(topicMetrics, brand.slug, totalResponsesByTopic, runDateStrings);
     const prominence = computeTopicProminence(topicMetrics, brand.slug);
-    const promptExamples = computeTopicPromptExamples(topicMetrics, brand.slug, runPromptInfos);
-    const fragmentation = computeTopicFragmentation(topicMetrics);
+    const promptExamples = computeTopicPromptExamples(topicMetrics, brand.slug, runPromptInfos, entityDisplayNames);
+    const fragmentation = computeTopicFragmentation(topicMetrics, entityDisplayNames);
 
     // Model Split
     const modelsIncluded = [...new Set(runs.map((r) => r.model))];

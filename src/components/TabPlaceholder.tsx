@@ -5,7 +5,7 @@ import { useBrands } from "@/lib/useBrands";
 
 export function TabPlaceholder({ tabName }: { tabName: string }) {
   const params = useParams<{ slug: string }>();
-  const brands = useBrands();
+  const { brands } = useBrands();
   const brandName = brands.find((b) => b.slug === params.slug)?.name ?? params.slug;
 
   return (

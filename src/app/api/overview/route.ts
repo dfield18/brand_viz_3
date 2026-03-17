@@ -12,6 +12,7 @@ import {
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import type { RunAnalysis } from "@/lib/analysisSchema";
+import { validateFrames } from "@/lib/validateFrames";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -243,6 +244,9 @@ export async function GET(req: NextRequest) {
   );
 
   const overview = aggregateOverview(mergedLatestAnalyses, brandName, mergedTrendData);
+
+  // Validate frames: filter out generic jargon, replace with specific issues
+  overview.topFrames = await validateFrames(overview.topFrames, brandName);
 
   // Override Visibility Score and Mention Rate KPIs with industry-only data
   if (mergedIndustryLatest.length > 0) {

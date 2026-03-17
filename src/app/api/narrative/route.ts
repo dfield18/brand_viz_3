@@ -6,6 +6,7 @@ import { parseAnalysis, aggregateNarrative } from "@/lib/aggregateAnalysis";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
+import { validateFrames } from "@/lib/validateFrames";
 
 const THEME_LABEL_MAP: Record<string, string> = {};
 for (const t of THEME_TAXONOMY) {
@@ -100,6 +101,9 @@ export async function GET(req: NextRequest) {
       };
     }
   }
+
+  // Validate frames: filter out generic jargon, replace with specific issues
+  narrativeBase.frames = await validateFrames(narrativeBase.frames, brandName);
 
   // --- Aggregate narrativeJson data ---
   const narratives = runs

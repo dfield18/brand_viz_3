@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
-import { titleCase } from "@/lib/utils";
+import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import {
   computeAvgRank,
   computeRank1RateAll,
@@ -46,6 +46,9 @@ export async function GET(req: NextRequest) {
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   try {
+    // Build display name map from original GPT-extracted competitor names
+    const entityDisplayNames = buildEntityDisplayNames(allRuns);
+
     // Filter to industry-cluster responses only
     const runs = allRuns.filter((r) => r.prompt.cluster === "industry");
     const totalRuns = runs.length;
@@ -166,7 +169,7 @@ export async function GET(req: NextRequest) {
       visibilityRanking = Array.from(entityRunSets.entries())
         .map(([entityId, runSet]) => ({
           entityId,
-          name: entityId === brand.slug ? brand.name : titleCase(entityId),
+          name: entityId === brand.slug ? brand.name : resolveEntityName(entityId, entityDisplayNames),
           score: Math.round((runSet.size / totalIndustryRuns) * 100),
           isBrand: entityId === brand.slug,
         }))
@@ -199,7 +202,7 @@ export async function GET(req: NextRequest) {
         if (!promptText || seenPromptTexts.has(promptText)) continue;
         seenPromptTexts.add(promptText);
         const competitors = [...new Set(competitorEntities)].map((id) =>
-          id === brand.slug ? brand.name : titleCase(id),
+          id === brand.slug ? brand.name : resolveEntityName(id, entityDisplayNames),
         );
         opportunityPrompts.push({ prompt: promptText, competitorCount: competitors.length, competitors });
       }
@@ -410,7 +413,7 @@ export async function GET(req: NextRequest) {
             wp.competitors = entries
               .sort((a, b) => b.score - a.score)
               .slice(0, 5)
-              .map((e) => titleCase(e.entityId));
+              .map((e) => resolveEntityName(e.entityId, entityDisplayNames));
           }
         }
       }

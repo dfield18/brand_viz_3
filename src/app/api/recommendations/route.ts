@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
-import { titleCase } from "@/lib/utils";
+import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { openai } from "@/lib/openai";
 
 // ---------------------------------------------------------------------------
@@ -207,6 +207,7 @@ export async function GET(req: NextRequest) {
 
   const { brand, runs } = result;
   const brandName = brand.displayName || brand.name;
+  const entityDisplayNames = buildEntityDisplayNames(runs);
 
   /** Expand {brand}, {industry}, and {competitor} placeholders in prompt text */
   const expandPrompt = (text: string, run?: RecommendationRun) => {
@@ -218,7 +219,7 @@ export async function GET(req: NextRequest) {
         .filter((m) => m.entityId !== brand.slug && m.rankPosition !== null)
         .sort((a, b) => (a.rankPosition ?? 999) - (b.rankPosition ?? 999))[0];
       const compName = topCompetitor
-        ? titleCase(topCompetitor.entityId)
+        ? resolveEntityName(topCompetitor.entityId, entityDisplayNames)
         : "competitor";
       expanded = expanded.replace(/\{competitor\}/g, compName);
     }
@@ -265,7 +266,7 @@ export async function GET(req: NextRequest) {
       .slice(0, 3)
       .map((m) => ({
         entityId: m.entityId,
-        displayName: titleCase(m.entityId),
+        displayName: resolveEntityName(m.entityId, entityDisplayNames),
         rank: m.rankPosition!,
       }));
 
@@ -579,7 +580,7 @@ export async function GET(req: NextRequest) {
 
       return {
         entityId,
-        displayName: titleCase(entityId),
+        displayName: resolveEntityName(entityId, entityDisplayNames),
         promptsWhereCompetitorOutranks: data.promptCount,
         outranksPercent: runs.length > 0 ? Math.round((data.promptCount / runs.length) * 1000) / 10 : 0,
         gaps,
@@ -645,7 +646,7 @@ export async function GET(req: NextRequest) {
 
         competitorAlerts.push({
           entityId,
-          displayName: titleCase(entityId),
+          displayName: resolveEntityName(entityId, entityDisplayNames),
           mentionRateChange: Math.round(change * 1000) / 1000,
           recentMentionRate: Math.round(recentRate * 1000) / 1000,
           previousMentionRate: Math.round(previousRate * 1000) / 1000,
@@ -687,11 +688,11 @@ export async function GET(req: NextRequest) {
     const competitors = [...data.entities].filter((e) => e !== brand.slug);
     if (competitors.length === 0) continue;
 
-    const compNames = competitors.slice(0, 5).map((e) => titleCase(e)).join(", ");
+    const compNames = competitors.slice(0, 5).map((e) => resolveEntityName(e, entityDisplayNames)).join(", ");
     sourceGapOpportunities.push({
       domain,
       category: data.category,
-      competitorsCited: competitors.map((e) => titleCase(e)),
+      competitorsCited: competitors.map((e) => resolveEntityName(e, entityDisplayNames)),
       totalCitations: data.total,
       suggestion: `Get coverage on ${domain}${data.category ? ` (${data.category})` : ""} \u2014 currently cites ${compNames} but not your brand`,
     });
@@ -750,7 +751,7 @@ export async function GET(req: NextRequest) {
         .slice(0, 3)
         .map(([entityId, rank1Count]) => ({
           entityId,
-          displayName: titleCase(entityId),
+          displayName: resolveEntityName(entityId, entityDisplayNames),
           rank1Count,
         }));
 

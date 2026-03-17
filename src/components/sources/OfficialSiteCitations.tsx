@@ -21,10 +21,10 @@ const MODEL_COLORS: Record<string, string> = {
   google: "bg-teal-100 text-teal-800",
 };
 
-function titleCase(s: string): string {
-  return s
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+import { titleCase } from "@/lib/utils";
+
+function resolveEntity(id: string, names?: Record<string, string>): string {
+  return names?.[id] ?? names?.[id.toLowerCase()] ?? titleCase(id);
 }
 
 function pagePath(url: string): string {
@@ -47,11 +47,12 @@ interface Props {
   brandSlug: string;
   range: number;
   pageModel: string;
+  entityNames?: Record<string, string>;
 }
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function OfficialSiteCitations({ officialSites: initialSites, brandSlug, range, pageModel }: Props) {
+export default function OfficialSiteCitations({ officialSites: initialSites, brandSlug, range, pageModel, entityNames }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
@@ -131,7 +132,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
                       <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                     )}
                     <span className={`text-sm truncate ${site.isBrand ? "font-semibold" : "font-medium"}`}>
-                      {titleCase(site.entityId)}&apos;s website
+                      {resolveEntity(site.entityId, entityNames)}&apos;s website
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 ml-auto">

@@ -94,6 +94,58 @@ export function titleCase(input: string): string {
 }
 
 /**
+ * Build a map from lowercased entityId → properly cased display name
+ * by extracting original competitor names from analysisJson across runs.
+ * Picks the most frequently seen casing for each entity.
+ */
+export function buildEntityDisplayNames(
+  runs: { analysisJson: unknown }[],
+): Map<string, string> {
+  const freq = new Map<string, Map<string, number>>();
+
+  for (const run of runs) {
+    if (!run.analysisJson || typeof run.analysisJson !== "object") continue;
+    const analysis = run.analysisJson as Record<string, unknown>;
+    if (!Array.isArray(analysis.competitors)) continue;
+    for (const comp of analysis.competitors) {
+      if (comp && typeof comp === "object" && "name" in comp) {
+        const name = String((comp as { name: string }).name);
+        const id = name.toLowerCase();
+        if (!freq.has(id)) freq.set(id, new Map());
+        const nameFreq = freq.get(id)!;
+        nameFreq.set(name, (nameFreq.get(name) ?? 0) + 1);
+      }
+    }
+  }
+
+  const result = new Map<string, string>();
+  for (const [id, nameFreq] of freq) {
+    // Pick the most frequent casing
+    let bestName = "";
+    let bestCount = 0;
+    for (const [name, count] of nameFreq) {
+      if (count > bestCount || (count === bestCount && name > bestName)) {
+        bestName = name;
+        bestCount = count;
+      }
+    }
+    if (bestName) result.set(id, bestName);
+  }
+  return result;
+}
+
+/**
+ * Resolve an entity's display name: check the extracted name map first,
+ * then fall back to the KNOWN_NAMES / titleCase logic.
+ */
+export function resolveEntityName(
+  entityId: string,
+  displayNames: Map<string, string>,
+): string {
+  return displayNames.get(entityId) ?? displayNames.get(entityId.toLowerCase()) ?? titleCase(entityId);
+}
+
+/**
  * Compute the date cutoff for a time range (in days).
  * Validates against allowed ranges [7, 30, 90], defaulting to 90.
  */

@@ -11,15 +11,18 @@ import {
 } from "recharts";
 import type { CompetitorCrossCitation } from "@/types/api";
 
+import { titleCase } from "@/lib/utils";
+
 interface Props {
   crossCitation: CompetitorCrossCitation[];
   brandSlug: string;
   brandName: string;
   onDomainClick?: (domain: string) => void;
+  entityNames?: Record<string, string>;
 }
 
-function titleCase(s: string): string {
-  return s.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function resolveEntity(id: string, names?: Record<string, string>): string {
+  return names?.[id] ?? names?.[id.toLowerCase()] ?? titleCase(id);
 }
 
 // Muted, professional palette for stacked competitor segments
@@ -56,7 +59,7 @@ function useCompetitorOnlyRows(crossCitation: CompetitorCrossCitation[], brandSl
 }
 
 /** Chart-only view — stays in Source Overview */
-export default function CompetitorOnlySources({ crossCitation, brandSlug, brandName }: Props) {
+export default function CompetitorOnlySources({ crossCitation, brandSlug, brandName, entityNames }: Props) {
   const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
 
   const { chartData, competitorKeys, colorMap } = useMemo(() => {
@@ -104,7 +107,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
               className="inline-block h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: colorMap[key] }}
             />
-            {titleCase(key)}
+            {resolveEntity(key, entityNames)}
           </span>
         ))}
       </div>
@@ -146,7 +149,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
                         className="inline-block h-2 w-2 rounded-sm"
                         style={{ backgroundColor: p.color }}
                       />
-                      {titleCase(p.dataKey as string)}: <span className="font-medium text-foreground">{p.value}</span>
+                      {resolveEntity(p.dataKey as string, entityNames)}: <span className="font-medium text-foreground">{p.value}</span>
                     </p>
                   ))}
                 </div>
@@ -170,7 +173,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
 }
 
 /** Table-only view — for the reference / deep dive section */
-export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName, onDomainClick }: Props) {
+export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName, onDomainClick, entityNames }: Props) {
   const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
 
   if (rows.length === 0) return null;
@@ -205,7 +208,7 @@ export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName
                   key={entityId}
                   className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
                 >
-                  {titleCase(entityId)}
+                  {resolveEntity(entityId, entityNames)}
                   <span className="text-foreground tabular-nums">{count}</span>
                 </span>
               ))}

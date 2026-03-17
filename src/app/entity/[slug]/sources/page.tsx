@@ -27,6 +27,7 @@ interface ApiResponse {
   hint?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
   sources?: SourcesResponse;
+  entityNames?: Record<string, string>;
   totals?: { totalRuns: number };
 }
 
@@ -146,14 +147,14 @@ function SourcesInner() {
         {/* Official Sites */}
         {data.officialSites && data.officialSites.length > 0 && (
           <div id="official-sites" className="scroll-mt-24">
-            <OfficialSiteCitations officialSites={data.officialSites} brandSlug={params.slug} range={range} pageModel={model} />
+            <OfficialSiteCitations officialSites={data.officialSites} brandSlug={params.slug} range={range} pageModel={model} entityNames={apiData.entityNames} />
           </div>
         )}
 
         {/* Competitor-Only Sources */}
         {data.crossCitation && data.crossCitation.length > 0 && (
           <div id="competitor-only" className="scroll-mt-24">
-            <CompetitorOnlySources crossCitation={data.crossCitation} brandSlug={params.slug} brandName={brandName} />
+            <CompetitorOnlySources crossCitation={data.crossCitation} brandSlug={params.slug} brandName={brandName} entityNames={apiData.entityNames} />
           </div>
         )}
 
@@ -163,7 +164,7 @@ function SourcesInner() {
         {/* Competitor Source Comparison */}
         {data.crossCitation && data.crossCitation.length > 0 && (
           <div id="competitor-sources" className="scroll-mt-24">
-            <CompetitorSourceComparison crossCitation={data.crossCitation} topDomains={data.topDomains} brandSlug={params.slug} range={range} pageModel={model} matrix={data.sourcePromptMatrix} prompts={data.matrixPrompts} modelSplit={data.modelSplit} />
+            <CompetitorSourceComparison crossCitation={data.crossCitation} topDomains={data.topDomains} brandSlug={params.slug} range={range} pageModel={model} matrix={data.sourcePromptMatrix} prompts={data.matrixPrompts} modelSplit={data.modelSplit} entityNames={apiData.entityNames} />
           </div>
         )}
 
