@@ -140,14 +140,18 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
               {isOrg ? (
                 <>
                   <span className="font-semibold text-foreground">{threat.name}</span> has the strongest AI visibility in this space
-                  {" — "}when both organizations appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
-                  and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  {" — "}it appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  {threat.lossRate > 0 && (
+                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
+                  )}
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-foreground">{threat.name}</span> is your biggest competitive threat
-                  {" — "}when both brands appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
-                  and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  <span className="font-semibold text-foreground">{threat.name}</span> is {brandName}&apos;s biggest competitive threat
+                  {" — "}it appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  {threat.lossRate > 0 && (
+                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
+                  )}
                 </>
               )}
             </p>
