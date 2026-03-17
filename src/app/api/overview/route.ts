@@ -345,6 +345,7 @@ export async function GET(req: NextRequest) {
         gemini: modelPcts["gemini"]?.[frame.frame] ?? 0,
         claude: modelPcts["claude"]?.[frame.frame] ?? 0,
         perplexity: modelPcts["perplexity"]?.[frame.frame] ?? 0,
+        google: modelPcts["google"]?.[frame.frame] ?? 0,
       };
     }
   }
