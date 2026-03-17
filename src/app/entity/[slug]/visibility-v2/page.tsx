@@ -218,7 +218,7 @@ function VisibilityV2Inner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         {/* ── Visibility ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
 
@@ -237,12 +237,12 @@ function VisibilityV2Inner() {
           />
         </div>
 
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border/40 bg-muted/20 px-5 py-4 mt-2">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             When someone asks AI about your industry, does {brandName} come up? These metrics track how often AI platforms recommend {brandName} unprompted — no brand name in the query, just pure organic visibility.
           </p>
           {data.resultsByQuestion?.[0]?.promptText && (
-            <p className="text-sm text-muted-foreground/70 italic">
+            <p className="text-[13px] text-muted-foreground/60 italic mt-2">
               e.g. &ldquo;{expandPrompt(data.resultsByQuestion[0].promptText)}&rdquo;
             </p>
           )}
