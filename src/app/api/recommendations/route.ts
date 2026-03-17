@@ -67,22 +67,20 @@ function parseWeakness(raw: string): { narrative: string; sources: string[] } {
 }
 
 /** Build a readable weakness suggestion with the actual issue and cited sources. */
-function buildWeaknessSuggestion(raw: string, count: number): string {
+function buildWeaknessSuggestion(raw: string): string {
   const { narrative, sources } = parseWeakness(raw);
 
-  const countLabel = `${count} AI response${count > 1 ? "s" : ""}`;
   const sourceLabel = sources.length > 0
-    ? `, citing ${sources.join(" and ")}`
+    ? ` (cited from ${sources.join(" and ")})`
     : "";
 
   if (!narrative) {
-    // Entire claim was just a URL
     return sources.length > 0
-      ? `${countLabel} reference a negative narrative from ${sources.join(" and ")}. Review and consider publishing a response or counter-narrative.`
-      : `A negative perception was mentioned in ${countLabel}. Consider publishing case studies or data that counter this narrative.`;
+      ? `AI is surfacing a negative narrative from ${sources.join(" and ")}. Review and consider publishing a response or counter-narrative.`
+      : `A negative perception is appearing in AI responses. Consider publishing case studies or data that counter this narrative.`;
   }
 
-  return `"${narrative}" \u2014 mentioned in ${countLabel}${sourceLabel}. Consider publishing content that directly addresses this perception.`;
+  return `"${narrative}"${sourceLabel} \u2014 consider publishing content that directly addresses this perception.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,7 +465,7 @@ export async function GET(req: NextRequest) {
       weakness,
       count,
       responses: (weaknessResponses[weakness] ?? []).slice(0, 10),
-      suggestion: buildWeaknessSuggestion(weakness, count),
+      suggestion: buildWeaknessSuggestion(weakness),
     }));
 
   const negativeThemes = Object.entries(themesBySentiment)

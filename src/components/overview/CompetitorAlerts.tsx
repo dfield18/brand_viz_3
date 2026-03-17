@@ -83,8 +83,8 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
         })}
       </div>
       <p className="text-[10px] text-muted-foreground/70 mt-3 pt-2.5 border-t border-border/50 leading-relaxed">
-        &ldquo;pts&rdquo; = percentage-point change in how often a competitor is mentioned vs. the prior period.{" "}
-        The % shows their current mention rate across AI responses.
+        &ldquo;pts&rdquo; = percentage-point change in the % of AI responses that mention this competitor vs. the prior period.{" "}
+        The % shows how often they currently appear across all AI responses.
       </p>
     </section>
   );
