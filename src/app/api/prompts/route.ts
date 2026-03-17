@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAllBrandPrompts } from "@/lib/promptService";
-import { classifyPromptTopic } from "@/lib/topics/extractTopic";
+import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   try {
     const brand = await findOrCreateBrand(brandSlug);
 
-    const { topicKey } = classifyPromptTopic(text.trim());
+    const { topicKey } = await classifyPromptTopicDynamic(text.trim(), brand.name);
     const prompt = await prisma.prompt.create({
       data: {
         brandId: brand.id,

@@ -40,6 +40,81 @@ const MODEL_CONFIG = [
   { key: "google", name: "Google AI Overview", color: "hsl(4, 80%, 56%)" },
 ] as const;
 
+function wrapLabel(text: string, maxChars = 18): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && (current + " " + word).length > maxChars) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? current + " " + word : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function RadarTickLabel(props: {
+  x?: number; y?: number; payload?: { value: string };
+  cx?: number; cy?: number;
+}) {
+  const { x = 0, y = 0, payload, cx = 0, cy = 0 } = props;
+  const label = payload?.value ?? "";
+  const lines = wrapLabel(label, 14);
+  const dx = x - cx;
+  const dy = y - cy;
+  const anchor = dx > 5 ? "start" : dx < -5 ? "end" : "middle";
+  // Push labels outward from center to avoid overlapping the chart
+  const nudgeX = dx > 5 ? 6 : dx < -5 ? -6 : 0;
+  const nudgeY = dy > 5 ? 6 : dy < -5 ? -6 : 0;
+
+  return (
+    <g transform={`translate(${x + nudgeX},${y + nudgeY})`}>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={0}
+          y={i * 12}
+          dy={y < cy ? -((lines.length - 1) * 12) + 4 : 4}
+          textAnchor={anchor}
+          fontSize={10}
+          fill="var(--muted-foreground)"
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/** Custom Y-axis tick for bar chart — wraps long labels into multiple lines */
+function BarYAxisTick(props: {
+  x?: number; y?: number; payload?: { value: string };
+}) {
+  const { x = 0, y = 0, payload } = props;
+  const label = payload?.value ?? "";
+  const lines = wrapLabel(label, 16);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={-4}
+          y={0}
+          dy={i * 13 - ((lines.length - 1) * 13) / 2}
+          textAnchor="end"
+          fontSize={11}
+          fill="var(--muted-foreground)"
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Props) {
   const [selectedModel, setSelectedModel] = useState<string>("all");
 
@@ -120,9 +195,9 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
               <YAxis
                 type="category"
                 dataKey="frame"
-                width={130}
-                fontSize={11}
+                width={150}
                 tickLine={false}
+                tick={(props: object) => <BarYAxisTick {...props as Parameters<typeof BarYAxisTick>[0]} />}
               />
               <Tooltip
                 cursor={{ fill: "var(--muted)", opacity: 0.3 }}
@@ -163,12 +238,11 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
             Larger area = more AI responses use this narrative
           </p>
           <ResponsiveContainer width="100%" height={radarHeight}>
-            <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
+            <RadarChart cx="50%" cy="50%" outerRadius="42%" data={data}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
                 dataKey="frame"
-                fontSize={10}
-                tick={{ fill: "var(--muted-foreground)" }}
+                tick={(props: object) => <RadarTickLabel {...props as Parameters<typeof RadarTickLabel>[0]} />}
               />
               <PolarRadiusAxis
                 domain={[0, "auto"]}

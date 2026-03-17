@@ -40,6 +40,54 @@ const BAR_COLORS = [
   "var(--chart-5)",
 ];
 
+/** Split label into lines of roughly maxChars, breaking at word boundaries */
+function wrapLabel(text: string, maxChars = 18): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && (current + " " + word).length > maxChars) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? current + " " + word : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function RadarTickLabel(props: {
+  x?: number; y?: number; payload?: { value: string };
+  cx?: number; cy?: number;
+}) {
+  const { x = 0, y = 0, payload, cx = 0, cy = 0 } = props;
+  const label = payload?.value ?? "";
+  const lines = wrapLabel(label, 18);
+
+  // Determine text-anchor based on position relative to center
+  const dx = x - cx;
+  const anchor = dx > 5 ? "start" : dx < -5 ? "end" : "middle";
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={0}
+          y={i * 12}
+          dy={y < cy ? -((lines.length - 1) * 12) + 4 : 4}
+          textAnchor={anchor}
+          fontSize={10}
+          fill="var(--muted-foreground)"
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 export function NarrativeSection({ frames, brandName = "this brand" }: NarrativeSectionProps) {
   const [selectedModel, setSelectedModel] = useState<string>("all");
 
@@ -159,13 +207,12 @@ export function NarrativeSection({ frames, brandName = "this brand" }: Narrative
           </p>
           <div className="flex-1 flex items-center">
             <div className="w-full">
-              <ResponsiveContainer width="100%" height={300}>
-                <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
+              <ResponsiveContainer width="100%" height={320}>
+                <RadarChart cx="50%" cy="50%" outerRadius="50%" data={data}>
                   <PolarGrid stroke="var(--border)" />
                   <PolarAngleAxis
                     dataKey="frame"
-                    fontSize={10}
-                    tick={{ fill: "var(--muted-foreground)" }}
+                    tick={(props: object) => <RadarTickLabel {...props as Parameters<typeof RadarTickLabel>[0]} />}
                   />
                   <PolarRadiusAxis domain={[0, "auto"]} tick={false} axisLine={false} />
                   <Tooltip

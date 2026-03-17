@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 const TABS = [
+  { label: "Prompts", segment: "prompts" },
   { label: "Overview", segment: "overview" },
   { label: "Visibility", segment: "visibility-v2" },
   { label: "Narrative", segment: "narrative" },

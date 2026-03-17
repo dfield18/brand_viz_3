@@ -14,8 +14,9 @@ import {
   type RunPromptInfo,
 } from "@/lib/topics/topicRollups";
 import { TOPIC_TAXONOMY } from "@/lib/topics/topicTaxonomy";
+import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import type { TopicModelSplitRow } from "@/types/api";
-import { buildEntityDisplayNames } from "@/lib/utils";
+import { buildEntityDisplayNames, expandPromptPlaceholders } from "@/lib/utils";
 
 const TOPIC_LABEL_MAP: Record<string, string> = {};
 for (const t of TOPIC_TAXONOMY) {
@@ -23,7 +24,12 @@ for (const t of TOPIC_TAXONOMY) {
 }
 
 function topicLabel(key: string): string {
-  return TOPIC_LABEL_MAP[key] ?? key;
+  if (TOPIC_LABEL_MAP[key]) return TOPIC_LABEL_MAP[key];
+  // Title-case dynamic snake_case keys
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export async function GET(req: NextRequest) {
@@ -55,13 +61,52 @@ export async function GET(req: NextRequest) {
     // Get prompt topicKey mapping + text + cluster (industry prompts only)
     const promptIds = [...new Set(runs.map((r) => r.promptId))];
     const prompts = await prisma.prompt.findMany({
-      where: { id: { in: promptIds }, topicKey: { not: null }, cluster: "industry" },
+      where: { id: { in: promptIds }, cluster: "industry" },
       select: { id: true, topicKey: true, text: true, cluster: true },
     });
-    const promptTopicMap = new Map(prompts.map((p) => [p.id, p.topicKey!]));
-    const promptTextMap = new Map(prompts.map((p) => [p.id, p.text]));
-    const promptClusterMap = new Map(prompts.map((p) => [p.id, p.cluster ?? ""]));
-    const classifiedPromptIds = new Set(prompts.map((p) => p.id));
+
+    // Classify prompts that have no topicKey yet
+    const unclassified = prompts.filter((p) => !p.topicKey);
+    if (unclassified.length > 0) {
+      await Promise.all(
+        unclassified.map(async (p) => {
+          try {
+            const { topicKey } = await classifyPromptTopicDynamic(p.text, brand.name);
+            await prisma.prompt.update({ where: { id: p.id }, data: { topicKey } });
+            p.topicKey = topicKey;
+          } catch { /* leave null */ }
+        }),
+      );
+    }
+    // Reclassify prompts stuck on "other" using GPT dynamic classification
+    const otherPrompts = prompts.filter((p) => p.topicKey === "other");
+    if (otherPrompts.length > 0) {
+      const reclassified = await Promise.all(
+        otherPrompts.map(async (p) => {
+          try {
+            const { topicKey } = await classifyPromptTopicDynamic(p.text, brand.name);
+            if (topicKey !== "other") {
+              await prisma.prompt.update({ where: { id: p.id }, data: { topicKey } });
+              return { id: p.id, topicKey };
+            }
+          } catch { /* keep existing */ }
+          return null;
+        }),
+      );
+      for (const r of reclassified) {
+        if (r) {
+          const prompt = prompts.find((p) => p.id === r.id);
+          if (prompt) prompt.topicKey = r.topicKey;
+        }
+      }
+    }
+
+    const classifiedPrompts = prompts.filter((p) => p.topicKey);
+    const promptTopicMap = new Map(classifiedPrompts.map((p) => [p.id, p.topicKey!]));
+    const brandName = brand.displayName || brand.name;
+    const promptTextMap = new Map(classifiedPrompts.map((p) => [p.id, expandPromptPlaceholders(p.text, { brandName, industry: brand.industry })]));
+    const promptClusterMap = new Map(classifiedPrompts.map((p) => [p.id, p.cluster ?? ""]));
+    const classifiedPromptIds = new Set(classifiedPrompts.map((p) => p.id));
 
     // Filter to runs with classified prompts
     const classifiedRuns = runs.filter((r) => classifiedPromptIds.has(r.promptId));

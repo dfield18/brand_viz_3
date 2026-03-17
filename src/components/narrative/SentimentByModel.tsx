@@ -60,11 +60,6 @@ export function SentimentByModel({ trend, brandName = "the Brand" }: SentimentBy
               {label}
             </span>
             <div className="flex-1 h-7 rounded bg-muted/40 overflow-hidden relative">
-              {/* Neutral reference line at 50% */}
-              <div
-                className="absolute top-0 bottom-0 w-px bg-border z-10"
-                style={{ left: "50%" }}
-              />
               <div
                 className={`h-full rounded transition-all duration-300 flex items-center ${barColor(score)}`}
                 style={{ width: `${score}%` }}

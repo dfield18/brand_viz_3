@@ -37,8 +37,18 @@ export interface RunPromptInfo {
   topicKey: string;
 }
 
-function topicLabel(key: string): string {
-  return TOPIC_TAXONOMY.find((t) => t.key === key)?.label ?? key;
+/** Resolve a topic key to a human label — supports both static taxonomy and dynamic GPT-generated keys */
+function topicLabel(key: string, dynamicLabels?: Map<string, string>): string {
+  // Check dynamic labels first (from prompt-level storage)
+  if (dynamicLabels?.has(key)) return dynamicLabels.get(key)!;
+  // Then static taxonomy
+  const found = TOPIC_TAXONOMY.find((t) => t.key === key);
+  if (found) return found.label;
+  // Fall back to title-casing the snake_case key
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 // ---------------------------------------------------------------------------

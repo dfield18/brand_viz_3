@@ -202,11 +202,11 @@ function VisibilityV2Inner() {
   };
 
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard" },
+    { id: "kpi-summary", label: "Scorecard", heading: "Visibility" },
     { id: "metric-deep-dive", label: "Trend Over Time" },
-    { id: "ranking-breakdown", label: "Position Over Time" },
+    { id: "ranking-breakdown", label: "Position Over Time", heading: "Ranking" },
     { id: "ranking-distribution", label: "Position Distribution" },
-    { id: "brand-position", label: `Where AI Ranks ${brandName}` },
+    { id: "brand-position", label: `Where AI Ranks ${brandName}`, heading: "Performance" },
     { id: "results-by-prompt", label: "Performance by Question" },
   ];
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { classifyPromptTopic } from "@/lib/topics/extractTopic";
+import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import {
   classifyBrandCategory,
   classifyBrandDisplayName,
@@ -77,9 +77,11 @@ export async function materializePromptsForBrand(brandId: string) {
     select: { id: true, text: true },
   });
   if (unclassified.length > 0) {
+    const brandForName = await prisma.brand.findUnique({ where: { id: brandId }, select: { name: true } });
+    const bName = brandForName?.name;
     await Promise.all(
-      unclassified.map((p) => {
-        const { topicKey } = classifyPromptTopic(p.text);
+      unclassified.map(async (p) => {
+        const { topicKey } = await classifyPromptTopicDynamic(p.text, bName ?? undefined);
         return prisma.prompt.update({
           where: { id: p.id },
           data: { topicKey },

@@ -20,6 +20,21 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  reviews: "product & service ratings",
+  news_media: "journalism & media outlets",
+  video: "video platforms",
+  ecommerce: "online retailers",
+  reference: "encyclopedias & data portals",
+  social_media: "forums & discussion sites",
+  government: "government agency sites",
+  academic: "research & journals",
+  blog_forum: "blogs & indie publishers",
+  brand_official: "brand's own website",
+  technology: "developer tools & platforms",
+  other: "uncategorized sites",
+};
+
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
   reviews: "bg-sky-100 text-sky-700",
   news_media: "bg-indigo-100 text-indigo-700",
@@ -132,6 +147,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
             <>
               <span className="text-base font-bold">{Math.round(hoveredSlice.pct)}%</span>
               <span className="text-[10px] font-medium text-foreground">{hoveredSlice.label}</span>
+              <span className="text-[8px] text-muted-foreground/70 leading-tight text-center px-1">{CATEGORY_DESCRIPTIONS[hoveredSlice.category] ?? ""}</span>
               <span className="text-[9px] text-muted-foreground">{hoveredSlice.citations} citations</span>
             </>
           ) : (
@@ -142,7 +158,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
           )}
         </div>
       </div>
-      <div className="mt-2.5 space-y-0.5 mx-auto" style={{ maxWidth: 160 }}>
+      <div className="mt-2.5 space-y-1 mx-auto" style={{ maxWidth: 220 }}>
         {breakdown.slices.slice(0, 5).map((b) => (
           <div
             key={b.category}
@@ -151,8 +167,13 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
             onMouseLeave={() => setHovered(null)}
           >
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-            <span className="text-[11px] text-muted-foreground flex-1 truncate">{b.label}</span>
-            <span className="text-[11px] font-medium tabular-nums">{Math.round(b.pct)}%</span>
+            <span className="text-[11px] text-muted-foreground flex-1 min-w-0">
+              <span className="truncate">{b.label}</span>
+              {CATEGORY_DESCRIPTIONS[b.category] && (
+                <span className="text-[9px] text-muted-foreground/60"> ({CATEGORY_DESCRIPTIONS[b.category]})</span>
+              )}
+            </span>
+            <span className="text-[11px] font-medium tabular-nums shrink-0">{Math.round(b.pct)}%</span>
           </div>
         ))}
       </div>
@@ -246,7 +267,10 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-sm font-medium truncate">{d.domain}</span>
-                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_BADGE_COLORS[cat] || CATEGORY_BADGE_COLORS.other}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_BADGE_COLORS[cat] || CATEGORY_BADGE_COLORS.other}`}
+                      title={CATEGORY_DESCRIPTIONS[cat] || ""}
+                    >
                       {CATEGORY_LABELS[cat] || "Other"}
                     </span>
                   </div>

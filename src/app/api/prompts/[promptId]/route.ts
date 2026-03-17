@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { classifyPromptTopic } from "@/lib/topics/extractTopic";
+import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -56,7 +56,8 @@ export async function PATCH(
 
   // Recompute topic classification when text changes
   if (typeof data.text === "string") {
-    const { topicKey } = classifyPromptTopic(data.text as string);
+    const brand = await prisma.brand.findUnique({ where: { id: prompt.brandId! }, select: { name: true } });
+    const { topicKey } = await classifyPromptTopicDynamic(data.text as string, brand?.name);
     data.topicKey = topicKey;
   }
 

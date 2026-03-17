@@ -8,6 +8,7 @@ import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses } from "@/lib/narrative/synthesizeFrames";
+import { expandPromptPlaceholders } from "@/lib/utils";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -155,7 +156,7 @@ export async function GET(req: NextRequest) {
   const themeCounts: Record<string, number> = {};
   const themePromptCounts: Record<string, Map<string, number>> = {};
   for (const { parsed, run } of narratives) {
-    const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+    const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     for (const theme of parsed.themes) {
       // Prefer the stored label (from GPT extraction) over static fallback
       if (theme.label && !dynamicThemeLabels[theme.key]) {
@@ -221,7 +222,7 @@ export async function GET(req: NextRequest) {
   const weaknessMap: Record<string, ClaimEntry> = {};
   const neutralMap: Record<string, ClaimEntry> = {};
   for (const { parsed, run } of narratives) {
-    const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+    const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     for (const claim of parsed.claims) {
       const map = claim.type === "strength" ? strengthMap
         : claim.type === "weakness" ? weaknessMap
@@ -402,7 +403,7 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.parsed.themes.length - a.parsed.themes.length)
     .slice(0, 20)
     .map(({ parsed, run }) => ({
-      prompt: run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`),
+      prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
       excerpt: run.rawResponseText
         .replace(/\*\*/g, "")           // remove bold markdown
         .replace(/\*/g, "")             // remove italic markdown
@@ -421,7 +422,7 @@ export async function GET(req: NextRequest) {
   // Sentiment by Question: group by prompt, compute count + dominant sentiment
   const promptSentimentMap = new Map<string, { mentions: number; scores: number[] }>();
   for (const { parsed, run } of narratives) {
-    const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+    const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     if (!promptSentimentMap.has(promptText)) {
       promptSentimentMap.set(promptText, { mentions: 0, scores: [] });
     }

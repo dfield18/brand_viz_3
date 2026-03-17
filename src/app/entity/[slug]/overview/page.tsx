@@ -12,7 +12,6 @@ import { CompetitorSnapshot } from "@/components/overview/CompetitorSnapshot";
 import { TopSourcesList } from "@/components/overview/TopSourcesList";
 import { TopRecommendation } from "@/components/overview/TopRecommendation";
 import { CompetitorAlerts } from "@/components/overview/CompetitorAlerts";
-import { PromptManager } from "@/components/PromptManager";
 import { VisibilityTrendChart } from "@/components/visibility/VisibilityTrendChart";
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
@@ -98,7 +97,6 @@ function OverviewInner() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">
           {error}
         </div>
-        <PromptManager brandSlug={params.slug} model={model} range={range} />
       </div>
     );
   }
@@ -120,15 +118,14 @@ function OverviewInner() {
           <p className="text-sm text-muted-foreground">
             Use the{" "}
             <Link
-              href={`/entity/${params.slug}/overview?${qs}`}
+              href={`/entity/${params.slug}/prompts?${qs}`}
               className="underline underline-offset-2 hover:text-foreground transition-colors"
             >
-              Run prompts
+              Prompts
             </Link>
-            {" "}panel below to generate data.
+            {" "}tab to generate data.
           </p>
         </div>
-        <PromptManager brandSlug={params.slug} model={model} range={range} />
       </div>
     );
   }
@@ -147,7 +144,6 @@ function OverviewInner() {
     { id: "competitor-snapshot", label: "Competitive Landscape", heading: "Issue Landscape" },
     { id: "competitor-alerts", label: "Competitor Movement" },
     { id: "sources-trend", label: "Top Sources", heading: "Sources" },
-    { id: "prompt-manager", label: "Run Prompts" },
   ];
 
   // Compute scorecard values
@@ -282,10 +278,6 @@ function OverviewInner() {
 
         <div id="sources-trend" className="scroll-mt-24">
           <TopSourcesList brandSlug={params.slug} model={model} range={range} />
-        </div>
-
-        <div id="prompt-manager" className="scroll-mt-24">
-          <PromptManager brandSlug={params.slug} model={model} range={range} />
         </div>
       </div>
     </div>

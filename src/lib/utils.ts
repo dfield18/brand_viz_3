@@ -146,6 +146,23 @@ export function resolveEntityName(
 }
 
 /**
+ * Replace prompt template placeholders ({brand}, {industry}, {competitor})
+ * with actual values for display purposes.
+ */
+export function expandPromptPlaceholders(
+  text: string,
+  opts: { brandName: string; industry?: string | null; competitor?: string | null },
+): string {
+  let expanded = text
+    .replace(/\{brand\}/gi, opts.brandName)
+    .replace(/\{industry\}/gi, opts.industry || `${opts.brandName}'s industry`);
+  if (expanded.includes("{competitor}")) {
+    expanded = expanded.replace(/\{competitor\}/gi, opts.competitor || "competitors");
+  }
+  return expanded;
+}
+
+/**
  * Compute the date cutoff for a time range (in days).
  * Validates against allowed ranges [7, 30, 90], defaulting to 90.
  */
