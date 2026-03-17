@@ -21,9 +21,10 @@ interface Props {
   brandSlug: string;
   model: string;
   range: number;
+  brandCategory?: string | null;
 }
 
-export function CompetitorAlerts({ brandSlug, model, range }: Props) {
+export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Props) {
   const url = `/api/recommendations?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data, loading } = useCachedFetch<RecsApiResponse>(url);
 
@@ -52,9 +53,15 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
   }
   if (movers.length === 0) return null;
 
+  const isOrg = brandCategory === "political_advocacy";
+  const entityWord = isOrg ? "organization" : "competitor";
+
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-      <h2 className="text-sm font-semibold mb-3">Competitor Movement</h2>
+      <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
+      <p className="text-[10px] text-muted-foreground mt-1 mb-3">
+        The % shows how often each {entityWord} currently appears across all AI responses.
+      </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
           const isRising = alert.direction === "rising";
@@ -63,28 +70,27 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
           return (
             <div key={alert.entityId} className="flex items-center gap-3">
               {isRising ? (
-                <TrendingUp className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                <TrendingUp className={`h-3.5 w-3.5 ${isOrg ? "text-blue-500" : "text-red-500"} shrink-0`} />
               ) : isFalling ? (
-                <TrendingDown className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                <TrendingDown className={`h-3.5 w-3.5 ${isOrg ? "text-muted-foreground" : "text-emerald-500"} shrink-0`} />
               ) : (
                 <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
               {!isStable && (
-                <span className={`text-xs font-medium tabular-nums ${isRising ? "text-red-600" : "text-emerald-600"}`}>
+                <span className={`text-xs font-medium tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : (isOrg ? "text-muted-foreground" : "text-emerald-600")}`}>
                   {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
                 </span>
               )}
               <span className="text-[10px] text-muted-foreground tabular-nums">
-                now {alert.recentMentionRate}% of AI responses
+                {alert.recentMentionRate}%
               </span>
             </div>
           );
         })}
       </div>
       <p className="text-[10px] text-muted-foreground/70 mt-3 pt-2.5 border-t border-border/50 leading-relaxed">
-        &ldquo;pts&rdquo; = percentage-point change in the % of AI responses that mention this competitor vs. the prior period.{" "}
-        The % shows how often they currently appear across all AI responses.
+        &ldquo;pts&rdquo; = percentage-point change in the % of AI responses that mention this {entityWord} vs. the prior period.
       </p>
     </section>
   );

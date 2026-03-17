@@ -15,9 +15,10 @@ interface Props {
   brandSlug: string;
   model: string;
   range: number;
+  brandCategory?: string | null;
 }
 
-export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
+export function CompetitorSnapshot({ brandSlug, model, range, brandCategory }: Props) {
   const url = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<CompetitionApiResponse>(url);
 
@@ -69,14 +70,17 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
   ].sort((a, b) => b.mentionShare - a.mentionShare);
 
   const maxShare = Math.max(...ranking.map((r) => r.mentionShare), 1);
+  const isOrg = brandCategory === "political_advocacy";
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-base font-semibold">Competitive Landscape</h2>
+          <h2 className="text-base font-semibold">{isOrg ? "Landscape" : "Competitive Landscape"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How your brand stacks up against top competitors in AI responses
+            {isOrg
+              ? "Other organizations AI mentions alongside yours in this space"
+              : "How your brand stacks up against top competitors in AI responses"}
           </p>
         </div>
       </div>
@@ -100,7 +104,7 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
                       Avg #{row.avgRank.toFixed(1)}
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-48 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
-                        Average ranking position in AI responses. #1 means the brand is typically mentioned first.
+                        Average ranking position in AI responses. #1 means {isOrg ? "the organization" : "the brand"} is typically mentioned first.
                       </span>
                     </span>
                   )}
@@ -122,15 +126,29 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
         })}
       </div>
 
-      {/* Threat callout */}
+      {/* Threat / top peer callout */}
       {threat && (
         <div className="mt-4 pt-4 border-t border-border">
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+            {isOrg ? (
+              <Trophy className="h-4 w-4 text-blue-500 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+            )}
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{threat.name}</span> is your biggest competitive threat
-              {" — "}when both brands appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
-              and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+              {isOrg ? (
+                <>
+                  <span className="font-semibold text-foreground">{threat.name}</span> has the strongest AI visibility in this space
+                  {" — "}when both organizations appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
+                  and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">{threat.name}</span> is your biggest competitive threat
+                  {" — "}when both brands appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
+                  and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                </>
+              )}
             </p>
           </div>
         </div>
