@@ -198,15 +198,15 @@ function OverviewInner() {
                     const kpis = apiData.visibilityKpis!;
                     const parts: string[] = [];
                     if (kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5) {
-                      parts.push(`When people ask ChatGPT, Gemini, or other AI tools about this space, ${brandName} comes up almost every time (${kpis.overallMentionRate}% of questions) — and it's usually the first name mentioned.`);
+                      parts.push(`${brandName} appears in ${kpis.overallMentionRate}% of AI responses about this space — and it's usually the first name mentioned.`);
                     } else if (kpis.overallMentionRate >= 60) {
-                      parts.push(`${brandName} has strong AI visibility. When people ask AI models general questions about this space, ${brandName} comes up ${kpis.overallMentionRate}% of the time and makes up ${kpis.shareOfVoice}% of all brand mentions in those answers.`);
+                      parts.push(`${brandName} appears in ${kpis.overallMentionRate}% of AI responses about this space and makes up ${kpis.shareOfVoice}% of all brand mentions in those answers.`);
                     } else if (kpis.overallMentionRate >= 30) {
-                      parts.push(`When people ask AI models about this space, ${brandName} comes up in about ${kpis.overallMentionRate}% of answers — that means roughly ${100 - kpis.overallMentionRate}% of the time, AI is recommending others without mentioning ${brandName}. It accounts for ${kpis.shareOfVoice}% of all brand mentions.`);
+                      parts.push(`${brandName} appears in about ${kpis.overallMentionRate}% of AI responses about this space — that means roughly ${100 - kpis.overallMentionRate}% of the time, other brands are recommended without mentioning ${brandName}. It accounts for ${kpis.shareOfVoice}% of all brand mentions.`);
                     } else if (kpis.overallMentionRate > 0) {
-                      parts.push(`${brandName} rarely comes up when people ask AI models about this space — only ${kpis.overallMentionRate}% of the time. Most potential customers using AI for research won't see ${brandName} at all.`);
+                      parts.push(`${brandName} only appears in ${kpis.overallMentionRate}% of AI responses about this space. Most people using AI for research won't see ${brandName} at all.`);
                     } else {
-                      parts.push(`${brandName} doesn't appear in AI-generated answers yet. A growing number of people are using AI to find recommendations — and they won't hear about ${brandName}.`);
+                      parts.push(`${brandName} doesn't appear in AI responses about this space yet. A growing number of people are using AI to find recommendations — and they won't hear about ${brandName}.`);
                     }
                     if (kpis.avgRankScore > 0) {
                       if (kpis.avgRankScore <= 1.3) parts.push(`When AI does mention ${brandName}, it's typically the very first brand recommended — it leads the list ${kpis.firstMentionRate}% of the time.`);
