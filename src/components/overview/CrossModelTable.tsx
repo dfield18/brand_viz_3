@@ -49,7 +49,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
   if (models.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
-        <h2 className="text-base font-semibold mb-4">How Each AI Platform Sees {brandName}</h2>
+        <h2 className="text-sm font-semibold mb-4">How Each AI Platform Sees {brandName}</h2>
         <EmptyState message="Select multiple models or use 'All' to compare across AI platforms." />
       </div>
     );
@@ -116,7 +116,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
 
   return (
     <div className="rounded-xl bg-card p-6 shadow-section">
-      <h2 className="text-base font-semibold mb-4">How Each AI Platform Sees {brandName}</h2>
+      <h2 className="text-sm font-semibold mb-4">How Each AI Platform Sees {brandName}</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

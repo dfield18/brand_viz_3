@@ -59,7 +59,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
-      <p className="text-[10px] text-muted-foreground mt-1 mb-3">
+      <p className="text-xs text-muted-foreground mt-1 mb-3">
         The % shows how often each {entityWord} currently appears across all AI responses.
       </p>
       <div className="space-y-2.5">

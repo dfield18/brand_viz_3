@@ -51,7 +51,7 @@ function MiniSparkline({ points }: { points: number[] }) {
     return (
       <span className="flex items-center gap-1.5">
         <svg width={w} height={h} className="shrink-0">
-          <line x1={pad} y1={midY} x2={w - pad} y2={midY} stroke="rgb(156 163 175)" strokeWidth={2} strokeLinecap="round" strokeDasharray="4 3" />
+          <line x1={pad} y1={midY} x2={w - pad} y2={midY} stroke="rgb(156 163 175)" strokeWidth={2} strokeLinecap="round" strokeDasharray="5 4" />
         </svg>
         <span className="text-[10px] text-muted-foreground font-medium">Even</span>
       </span>
