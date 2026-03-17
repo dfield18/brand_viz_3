@@ -613,26 +613,27 @@ export async function GET(req: NextRequest) {
     const recentJobIds = alertJobs.filter((j) => recentDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
     const earlierJobIds = alertJobs.filter((j) => earlierDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
 
-    // Fetch prominence metrics for both halves
+    // Fetch prominence metrics for both halves — industry-cluster runs only
+    // so we only track competitors in the same competitive space
     const [recentMetrics, earlierMetrics] = await Promise.all([
       recentJobIds.length > 0
         ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: recentJobIds } }, prominenceScore: { gt: 0 } },
+            where: { run: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } }, prominenceScore: { gt: 0 } },
             select: { entityId: true, runId: true },
           })
         : Promise.resolve([]),
       earlierJobIds.length > 0
         ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: earlierJobIds } }, prominenceScore: { gt: 0 } },
+            where: { run: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } }, prominenceScore: { gt: 0 } },
             select: { entityId: true, runId: true },
           })
         : Promise.resolve([]),
     ]);
 
-    // Count runs per period for rate denominator
+    // Count industry-cluster runs per period for rate denominator
     const [recentRunCount, earlierRunCount] = await Promise.all([
-      recentJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: recentJobIds } } }) : Promise.resolve(0),
-      earlierJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: earlierJobIds } } }) : Promise.resolve(0),
+      recentJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } } }) : Promise.resolve(0),
+      earlierJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } } }) : Promise.resolve(0),
     ]);
 
     // Count distinct runs per entity in each period

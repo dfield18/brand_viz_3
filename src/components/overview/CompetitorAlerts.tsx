@@ -55,42 +55,37 @@ export function CompetitorAlerts({ brandSlug, model, range }: Props) {
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold mb-3">Competitor Movement</h2>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {movers.map((alert) => {
           const isRising = alert.direction === "rising";
           const isFalling = alert.direction === "falling";
           const isStable = alert.direction === "stable";
           return (
-            <div key={alert.entityId} className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                {isRising ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                ) : isFalling ? (
-                  <TrendingDown className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                ) : (
-                  <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                )}
-                <span className="text-sm font-medium truncate">{alert.displayName}</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {!isStable && (
-                  <span className={`text-xs font-medium tabular-nums ${isRising ? "text-red-600" : "text-emerald-600"}`}>
-                    {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
-                  </span>
-                )}
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {alert.recentMentionRate}%
+            <div key={alert.entityId} className="flex items-center gap-3">
+              {isRising ? (
+                <TrendingUp className="h-3.5 w-3.5 text-red-500 shrink-0" />
+              ) : isFalling ? (
+                <TrendingDown className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              ) : (
+                <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              )}
+              <span className="text-sm font-medium truncate">{alert.displayName}</span>
+              {!isStable && (
+                <span className={`text-xs font-medium tabular-nums ${isRising ? "text-red-600" : "text-emerald-600"}`}>
+                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
                 </span>
-              </div>
+              )}
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                now {alert.recentMentionRate}% of AI responses
+              </span>
             </div>
           );
         })}
       </div>
-      {rising.length > 0 && (
-        <p className="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border/50">
-          {rising.length} competitor{rising.length > 1 ? "s" : ""} gaining traction in AI responses
-        </p>
-      )}
+      <p className="text-[10px] text-muted-foreground/70 mt-3 pt-2.5 border-t border-border/50 leading-relaxed">
+        &ldquo;pts&rdquo; = percentage-point change in how often a competitor is mentioned vs. the prior period.{" "}
+        The % shows their current mention rate across AI responses.
+      </p>
     </section>
   );
 }

@@ -53,6 +53,19 @@ const SOURCE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const SOURCE_DESCRIPTIONS: Record<string, string> = {
+  news_media: "newspapers, TV, wire services",
+  reviews: "product & service review sites",
+  ecommerce: "online marketplaces & retailers",
+  reference: "Wikipedia, encyclopedias, directories",
+  video: "YouTube, streaming platforms",
+  social_media: "Reddit, X, LinkedIn, etc.",
+  blog_forum: "independent writers, community boards",
+  brand_official: "company websites & press releases",
+  academic: "research papers, university sites",
+  government: "federal, state & regulatory agencies",
+};
+
 const SOURCE_COLORS: Record<string, string> = {
   news_media: "bg-blue-500",
   reviews: "bg-amber-500",
@@ -70,6 +83,7 @@ const SOURCE_COLORS: Record<string, string> = {
 export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFrame, topSourceType }: Props) {
   const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
   const sourceLabel = topSourceType ? (SOURCE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
+  const sourceDesc = topSourceType ? (SOURCE_DESCRIPTIONS[topSourceType.category] ?? null) : null;
   const sourceBarColor = topSourceType ? (SOURCE_COLORS[topSourceType.category] ?? "bg-gray-400") : "";
 
   return (
@@ -149,6 +163,9 @@ export function OverviewScorecard({ visibilityScore, sentimentScore, dominantFra
         <p className="text-[11px] font-medium text-muted-foreground mb-3">Top Source</p>
         <p className="text-sm font-semibold leading-tight">
           {sourceLabel ?? "\u2014"}
+          {sourceDesc && (
+            <span className="text-[10px] font-normal text-muted-foreground block mt-0.5">({sourceDesc})</span>
+          )}
         </p>
         {topSourceType && (
           <div className="flex items-center gap-2 mt-2">
