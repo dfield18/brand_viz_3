@@ -170,8 +170,8 @@ export function CompetitionSummaryCards({
     },
     {
       label: "WIN RATE",
-      tooltip: `Percentage of head-to-head matchups where ${brandName} ranks higher than a competitor in the same response.`,
-      description: `A "win" is when AI ranks ${brandName} above a competitor in the same response`,
+      tooltip: `When ${brandName} and a competitor both appear in the same AI response, how often ${brandName} is ranked higher.`,
+      description: `A "win" is when AI lists ${brandName} above a competitor in the same response`,
       badge: getWinRateBadge(winRate),
       donutPct: winRate,
       donutColor: "var(--chart-4)",

@@ -69,11 +69,10 @@ export function BiggestThreat({ competitors, winLoss, brandName }: BiggestThreat
           {brandName}&apos;s Top AI Competitor: {threat.name}
         </h3>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          {threat.name} beats {brandName} in{" "}
-          <span className="font-semibold text-foreground">{threat.lossRate}%</span> of
-          head-to-head matchups
+          When both appear in the same AI response, {threat.name} ranks higher than {brandName}{" "}
+          <span className="font-semibold text-foreground">{threat.lossRate}%</span> of the time
           {totalMatchups > 0 && (
-            <span> ({threat.losses} of {totalMatchups})</span>
+            <span> ({threat.losses} of {totalMatchups} responses)</span>
           )}
           {" · "}Appears in{" "}
           <span className="font-semibold text-foreground">{threat.mentionRate}%</span> of

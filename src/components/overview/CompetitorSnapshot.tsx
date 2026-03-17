@@ -129,8 +129,8 @@ export function CompetitorSnapshot({ brandSlug, model, range }: Props) {
             <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
             <p className="text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">{threat.name}</span> is your biggest competitive threat
-              {" — "}beats you in <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of head-to-head comparisons
-              and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of AI responses
+              {" — "}when both brands appear in the same AI response, {threat.name} is ranked higher <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time
+              and appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
             </p>
           </div>
         </div>

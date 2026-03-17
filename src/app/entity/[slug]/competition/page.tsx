@@ -158,7 +158,7 @@ function CompetitionInner() {
         {/* ── Metrics Deep Dive ─────────────────────────── */}
         <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
         <p className="text-sm text-muted-foreground leading-relaxed -mt-6">
-          This tab shows how {compBrandName} stacks up against competitors in AI responses. See who AI mentions most often, track how competitive positioning is shifting over time, and identify where {compBrandName} is winning or losing head-to-head matchups.
+          This tab shows how {compBrandName} stacks up against competitors in AI responses. See who AI mentions most often, track how competitive positioning is shifting over time, and identify where {compBrandName} is winning or losing when both brands appear in the same AI answer.
         </p>
 
         {/* Visibility Trend */}
