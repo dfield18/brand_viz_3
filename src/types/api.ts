@@ -295,8 +295,7 @@ export interface PositionDistributionOverTimeEntry {
   date: string;        // "YYYY-MM-DD"
   model: string;       // "all" | "chatgpt" | "gemini" | "claude" | "perplexity"
   pos1: number;        // percentage 0–100
-  pos2: number;
-  pos3: number;
+  pos2_3: number;
   pos4_5: number;
   pos6plus: number;
 }

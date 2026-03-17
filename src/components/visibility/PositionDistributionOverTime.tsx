@@ -20,12 +20,18 @@ interface PositionDistributionOverTimeProps {
   children?: React.ReactNode | ((selectedModel: string) => React.ReactNode);
 }
 
+const POSITION_COLORS = [
+  "hsl(217, 91%, 50%)",  // #1
+  "hsl(217, 70%, 62%)",  // 2–3
+  "hsl(217, 45%, 72%)",  // 4–5
+  "hsl(218, 15%, 82%)",  // 6+
+] as const;
+
 const SERIES = [
-  { key: "pos1", label: "Position #1", color: "hsl(217, 91%, 50%)" },
-  { key: "pos2", label: "Position #2", color: "hsl(217, 70%, 62%)" },
-  { key: "pos3", label: "Position #3", color: "hsl(217, 45%, 72%)" },
-  { key: "pos4_5", label: "Position #4–5", color: "hsl(218, 20%, 78%)" },
-  { key: "pos6plus", label: "Position #6+", color: "hsl(218, 11%, 85%)" },
+  { key: "pos1", label: "#1", color: POSITION_COLORS[0] },
+  { key: "pos2_3", label: "2–3", color: POSITION_COLORS[1] },
+  { key: "pos4_5", label: "4–5", color: POSITION_COLORS[2] },
+  { key: "pos6plus", label: "6+", color: POSITION_COLORS[3] },
 ] as const;
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;

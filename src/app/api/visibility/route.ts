@@ -769,7 +769,7 @@ export async function GET(req: NextRequest) {
         visibilityRanking,
         positionDistribution,
         positionDistributionOverTime: (() => {
-          const entries: { date: string; model: string; pos1: number; pos2: number; pos3: number; pos4_5: number; pos6plus: number }[] = [];
+          const entries: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
           for (const [key, bucket] of Object.entries(trendByDateModel)) {
             const [date, m, prompt] = key.split("||");
             if (prompt !== "all") continue; // only aggregate buckets
@@ -777,16 +777,14 @@ export async function GET(req: NextRequest) {
             if (validRanks.length === 0) continue;
             const total = validRanks.length;
             const p1 = validRanks.filter((r) => r === 1).length;
-            const p2 = validRanks.filter((r) => r === 2).length;
-            const p3 = validRanks.filter((r) => r === 3).length;
+            const p23 = validRanks.filter((r) => r >= 2 && r <= 3).length;
             const p45 = validRanks.filter((r) => r >= 4 && r <= 5).length;
             const p6 = validRanks.filter((r) => r >= 6).length;
             entries.push({
               date,
               model: m,
               pos1: Math.round((p1 / total) * 100),
-              pos2: Math.round((p2 / total) * 100),
-              pos3: Math.round((p3 / total) * 100),
+              pos2_3: Math.round((p23 / total) * 100),
               pos4_5: Math.round((p45 / total) * 100),
               pos6plus: Math.round((p6 / total) * 100),
             });

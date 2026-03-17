@@ -197,7 +197,7 @@ export const PATAGONIA_DUMMY_VISIBILITY: VisibilityResponse = {
   ],
 
   positionDistributionOverTime: (() => {
-    const rows: { date: string; model: string; pos1: number; pos2: number; pos3: number; pos4_5: number; pos6plus: number }[] = [];
+    const rows: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
     const WEEKS = 16;
     const now = new Date();
     const base = new Date(now);
@@ -213,15 +213,13 @@ export const PATAGONIA_DUMMY_VISIBILITY: VisibilityResponse = {
         const off = modelOffsets[m];
         const noise = Math.sin(i * 0.9 + off) * 2;
         const p1 = Math.round(30 + t * 22 + off * 0.5 + noise);       // 30→52%
-        const p2 = Math.round(25 - t * 5 + noise * 0.5);              // 25→20%
-        const p3 = Math.round(20 - t * 7 - noise * 0.3);              // 20→13%
+        const p23 = Math.round(45 - t * 12 + noise * 0.5);            // 45→33%
         const p45 = Math.round(15 - t * 5 + Math.sin(i) * 1.5);      // 15→10%
-        const raw6 = 100 - p1 - p2 - p3 - p45;                       // remainder
+        const raw6 = 100 - p1 - p23 - p45;                            // remainder
         rows.push({
           date, model: m,
           pos1: Math.max(0, Math.min(100, p1)),
-          pos2: Math.max(0, Math.min(100, p2)),
-          pos3: Math.max(0, Math.min(100, p3)),
+          pos2_3: Math.max(0, Math.min(100, p23)),
           pos4_5: Math.max(0, Math.min(100, p45)),
           pos6plus: Math.max(0, Math.min(100, raw6)),
         });
@@ -505,7 +503,7 @@ export const NUCLEAR_ENERGY_DUMMY_VISIBILITY: VisibilityResponse = {
   ],
 
   positionDistributionOverTime: (() => {
-    const rows: { date: string; model: string; pos1: number; pos2: number; pos3: number; pos4_5: number; pos6plus: number }[] = [];
+    const rows: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
     const WEEKS = 20;
     const now = new Date();
     const base = new Date(now);
@@ -521,15 +519,13 @@ export const NUCLEAR_ENERGY_DUMMY_VISIBILITY: VisibilityResponse = {
         const off = modelOffsets[m];
         const noise = Math.sin(i * 0.8 + off) * 2;
         const p1 = Math.round(35 + t * 17 + off * 0.4 + noise);
-        const p2 = Math.round(26 - t * 4 + noise * 0.4);
-        const p3 = Math.round(18 - t * 5 - noise * 0.3);
+        const p23 = Math.round(44 - t * 9 + noise * 0.4);
         const p45 = Math.round(13 - t * 4 + Math.sin(i) * 1.2);
-        const raw6 = 100 - p1 - p2 - p3 - p45;
+        const raw6 = 100 - p1 - p23 - p45;
         rows.push({
           date, model: m,
           pos1: Math.max(0, Math.min(100, p1)),
-          pos2: Math.max(0, Math.min(100, p2)),
-          pos3: Math.max(0, Math.min(100, p3)),
+          pos2_3: Math.max(0, Math.min(100, p23)),
           pos4_5: Math.max(0, Math.min(100, p45)),
           pos6plus: Math.max(0, Math.min(100, raw6)),
         });

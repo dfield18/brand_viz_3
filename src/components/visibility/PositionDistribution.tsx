@@ -13,13 +13,11 @@ interface PositionDistributionProps {
   externalModel?: string;
 }
 
-const BAR_COLOR = "hsl(217, 91%, 50%)";
-
 const POSITION_BANDS = [
-  { label: "#1", min: 1, max: 1 },
-  { label: "2–3", min: 2, max: 3 },
-  { label: "4–5", min: 4, max: 5 },
-  { label: "6+", min: 6, max: Infinity },
+  { label: "#1", min: 1, max: 1, color: "hsl(217, 91%, 50%)" },
+  { label: "2–3", min: 2, max: 3, color: "hsl(217, 70%, 62%)" },
+  { label: "4–5", min: 4, max: 5, color: "hsl(217, 45%, 72%)" },
+  { label: "6+", min: 6, max: Infinity, color: "hsl(218, 15%, 82%)" },
 ] as const;
 
 export function PositionDistribution({ data, inline, externalModel }: PositionDistributionProps) {
@@ -46,6 +44,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
         .reduce((s, d) => s + d.count, 0);
       return {
         label: band.label,
+        color: band.color,
         count,
         percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
       };
@@ -100,7 +99,7 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
             <div className="flex-1 h-7 rounded overflow-hidden">
               <div
                 className="h-full rounded transition-all duration-300"
-                style={{ width: `${(entry.percentage / maxPct) * 100}%`, backgroundColor: BAR_COLOR }}
+                style={{ width: `${(entry.percentage / maxPct) * 100}%`, backgroundColor: entry.color }}
               />
             </div>
             <span className="text-sm font-semibold tabular-nums w-10 text-right">
