@@ -13,12 +13,14 @@ interface PositionDistributionProps {
   externalModel?: string;
 }
 
+const BAR_COLOR = "hsl(217, 91%, 50%)";
+
 const POSITION_BANDS = [
-  { label: "Position #1", min: 1, max: 1, color: "hsl(217, 91%, 50%)" },
-  { label: "Position #2", min: 2, max: 2, color: "hsl(217, 70%, 62%)" },
-  { label: "Position #3", min: 3, max: 3, color: "hsl(217, 45%, 72%)" },
-  { label: "Position #4–5", min: 4, max: 5, color: "hsl(218, 20%, 78%)" },
-  { label: "Position #6+", min: 6, max: Infinity, color: "hsl(218, 11%, 85%)" },
+  { label: "Position #1", min: 1, max: 1 },
+  { label: "Position #2", min: 2, max: 2 },
+  { label: "Position #3", min: 3, max: 3 },
+  { label: "Position #4–5", min: 4, max: 5 },
+  { label: "Position #6+", min: 6, max: Infinity },
 ] as const;
 
 export function PositionDistribution({ data, inline, externalModel }: PositionDistributionProps) {
@@ -45,7 +47,6 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
         .reduce((s, d) => s + d.count, 0);
       return {
         label: band.label,
-        color: band.color,
         count,
         percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
       };
@@ -97,10 +98,10 @@ export function PositionDistribution({ data, inline, externalModel }: PositionDi
             <span className="text-sm w-28 shrink-0 text-muted-foreground">
               {entry.label}
             </span>
-            <div className="flex-1 h-7 rounded bg-muted/50 overflow-hidden">
+            <div className="flex-1 h-7 rounded overflow-hidden">
               <div
                 className="h-full rounded transition-all duration-300"
-                style={{ width: `${(entry.percentage / maxPct) * 100}%`, backgroundColor: entry.color }}
+                style={{ width: `${(entry.percentage / maxPct) * 100}%`, backgroundColor: BAR_COLOR }}
               />
             </div>
             <span className="text-sm font-semibold tabular-nums w-10 text-right">

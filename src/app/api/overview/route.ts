@@ -13,6 +13,7 @@ import {
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
+import { synthesizeFramesFromResponses } from "@/lib/narrative/synthesizeFrames";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -46,7 +47,7 @@ async function getModelOverviewData(
 
   const allRuns = await prisma.run.findMany({
     where: { jobId: { in: allJobs.map((j) => j.id) } },
-    select: { jobId: true, analysisJson: true, rawResponseText: true, prompt: { select: { cluster: true } } },
+    select: { jobId: true, model: true, analysisJson: true, rawResponseText: true, prompt: { select: { cluster: true } } },
   });
 
   // Filter out stub/dummy runs
@@ -247,6 +248,20 @@ export async function GET(req: NextRequest) {
 
   // Validate frames: filter out generic jargon, replace with specific issues
   overview.topFrames = await validateFrames(overview.topFrames, brandName);
+
+  // Fallback: if frames are empty, synthesize from raw responses using GPT
+  if (overview.topFrames.length === 0) {
+    const latestJobIds = withData.map((w) => w.data!.latestJob.id);
+    const fallbackRuns = await prisma.run.findMany({
+      where: { jobId: { in: latestJobIds } },
+      select: { rawResponseText: true, model: true },
+      take: 20,
+    });
+    const filtered = fallbackRuns.filter((r) => !r.rawResponseText.startsWith("[stub:"));
+    if (filtered.length > 0) {
+      overview.topFrames = await synthesizeFramesFromResponses(filtered, brandName, "all");
+    }
+  }
 
   // Override Visibility Score and Mention Rate KPIs with industry-only data
   if (mergedIndustryLatest.length > 0) {

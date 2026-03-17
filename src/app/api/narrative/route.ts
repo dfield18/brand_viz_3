@@ -7,6 +7,7 @@ import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
+import { synthesizeFramesFromResponses } from "@/lib/narrative/synthesizeFrames";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -105,6 +106,15 @@ export async function GET(req: NextRequest) {
 
   // Validate frames: filter out generic jargon, replace with specific issues
   narrativeBase.frames = await validateFrames(narrativeBase.frames, brandName);
+
+  // Fallback: if frames are empty after aggregation + validation, synthesize from raw responses
+  if (narrativeBase.frames.length === 0 && runs.length > 0) {
+    narrativeBase.frames = await synthesizeFramesFromResponses(
+      runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+      brandName,
+      isAll ? "all" : model,
+    );
+  }
 
   // --- Aggregate narrativeJson data ---
   const narratives = runs
