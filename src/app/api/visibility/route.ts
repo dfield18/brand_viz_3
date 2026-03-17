@@ -571,6 +571,7 @@ export async function GET(req: NextRequest) {
       }
     }
     const trendPoints = Object.entries(trendByDateModel)
+      .filter(([, bucket]) => bucket.total > 0) // skip dates with no industry-cluster data
       .map(([key, bucket]) => {
         const [date, m, ...promptParts] = key.split("||");
         const prompt = promptParts.join("||"); // rejoin in case prompt contains ||
