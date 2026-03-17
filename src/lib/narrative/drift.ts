@@ -65,16 +65,17 @@ export function jsd(p: number[], q: number[]): number {
 // Drift computation
 // ---------------------------------------------------------------------------
 
-const THEME_LABEL_MAP: Record<string, string> = {};
+const STATIC_THEME_LABELS: Record<string, string> = {};
 for (const t of THEME_TAXONOMY) {
-  THEME_LABEL_MAP[t.key] = t.label;
+  STATIC_THEME_LABELS[t.key] = t.label;
 }
 
 /**
  * Compute narrative drift across time buckets.
  * Each bucket has theme counts aggregated from runs in that period.
+ * @param labelMap Optional dynamic label map (from GPT-extracted themes). Falls back to static taxonomy.
  */
-export function computeDrift(buckets: DriftBucket[]): DriftPoint[] {
+export function computeDrift(buckets: DriftBucket[], labelMap?: Record<string, string>): DriftPoint[] {
   if (buckets.length === 0) return [];
 
   // Collect all theme keys appearing across all buckets
@@ -111,7 +112,7 @@ export function computeDrift(buckets: DriftBucket[]): DriftPoint[] {
     const topThemes = themeKeys
       .map((key, idx) => ({
         key,
-        label: THEME_LABEL_MAP[key] ?? key,
+        label: (labelMap?.[key] ?? STATIC_THEME_LABELS[key]) ?? key,
         pct: totalCount > 0 ? Math.round((dist[idx] / totalCount) * 100) : 0,
       }))
       .filter((t) => t.pct > 0)
@@ -135,7 +136,7 @@ export function computeDrift(buckets: DriftBucket[]): DriftPoint[] {
         const prevPct = prevTotal > 0 ? prevDist[k] / prevTotal : 0;
         const currPct = totalCount > 0 ? dist[k] / totalCount : 0;
         const diff = currPct - prevPct;
-        const label = THEME_LABEL_MAP[themeKeys[k]] ?? themeKeys[k];
+        const label = labelMap?.[themeKeys[k]] ?? STATIC_THEME_LABELS[themeKeys[k]] ?? themeKeys[k];
 
         // Per-theme JSD: compare [pct, 1-pct] distributions
         const themJsd = jsd([prevPct, 1 - prevPct], [currPct, 1 - currPct]);

@@ -34,6 +34,15 @@ export function CompetitorRankDistribution({
     return <p className="text-sm text-muted-foreground">No rank distribution data available.</p>;
   }
 
+  // Find the max total across all entities so bars scale proportionally
+  const maxTotal = Math.max(
+    ...sorted.map((c) => {
+      const dist = rankDistribution[c.entityId] ?? {};
+      return Object.values(dist).reduce((s, v) => s + v, 0);
+    }),
+    1,
+  );
+
   return (
     <div className="space-y-4">
       {/* Legend */}
@@ -65,6 +74,9 @@ export function CompetitorRankDistribution({
             { key: "other", count: rankOther, color: RANK_COLORS.other },
           ].filter((s) => s.count > 0);
 
+          // Bar width proportional to total citations relative to the max
+          const barWidthPct = (total / maxTotal) * 100;
+
           return (
             <div key={c.entityId} className="flex items-center gap-3">
               <span
@@ -72,27 +84,32 @@ export function CompetitorRankDistribution({
                 title={c.name}
               >
                 {c.name}
-                              </span>
-              <div className="flex-1 h-7 rounded bg-muted/50 overflow-hidden flex">
-                {segments.map((seg) => {
-                  const pct = (seg.count / total) * 100;
-                  return (
-                    <div
-                      key={seg.key}
-                      className={`h-full ${seg.color} transition-all duration-300 flex items-center justify-center`}
-                      style={{ width: `${pct}%` }}
-                      title={`${RANK_LABELS[seg.key]}: ${Math.round(pct)}%`}
-                    >
-                      {pct >= 15 && (
-                        <span className={`text-[10px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
-                          {Math.round(pct)}%
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="h-7 rounded overflow-hidden flex transition-all duration-300"
+                  style={{ width: `${barWidthPct}%` }}
+                >
+                  {segments.map((seg) => {
+                    const pct = (seg.count / total) * 100;
+                    return (
+                      <div
+                        key={seg.key}
+                        className={`h-full ${seg.color} transition-all duration-300 flex items-center justify-center`}
+                        style={{ width: `${pct}%` }}
+                        title={`${RANK_LABELS[seg.key]}: ${seg.count}`}
+                      >
+                        {pct >= 18 && (
+                          <span className={`text-[10px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
+                            {seg.count}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <span className="text-[11px] tabular-nums w-20 text-right text-muted-foreground">
+              <span className="text-[11px] tabular-nums w-20 text-right text-muted-foreground shrink-0">
                 {total} response{total !== 1 ? "s" : ""}
               </span>
             </div>

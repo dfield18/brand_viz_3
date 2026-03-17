@@ -21,6 +21,80 @@ import {
 import { openai } from "@/lib/openai";
 
 // ---------------------------------------------------------------------------
+// LLM-based theme extraction (dynamic, context-aware)
+// ---------------------------------------------------------------------------
+
+const THEME_EXTRACT_MODEL = "gpt-4o-mini";
+const THEME_EXTRACT_TIMEOUT_MS = 8_000;
+
+const THEME_EXTRACT_SYSTEM = `You identify the key narrative themes in text about a specific brand or organization.
+Return themes that are specific and relevant to the type of entity being discussed. Avoid generic business jargon — use themes that capture what is actually being said about this specific entity.
+
+Examples by entity type:
+- Civil rights org: "Anti-Discrimination Advocacy", "Legal Impact", "Coalition Building", "Policy Influence"
+- Tech company: "AI Innovation", "Data Privacy", "Developer Ecosystem", "Platform Reliability"
+- Restaurant chain: "Menu Quality", "Franchise Expansion", "Health & Nutrition", "Customer Service"
+- Nonprofit: "Fundraising Effectiveness", "Community Programs", "Transparency & Governance"
+- University: "Research Excellence", "Student Experience", "Endowment & Funding", "Campus Safety"
+
+Rules:
+- Return 3-5 themes that actually appear in the text
+- Each theme should be a short, descriptive phrase (2-4 words)
+- Use snake_case for the key (e.g., "anti_discrimination")
+- Score reflects prominence: 1.0 = dominant theme, 0.3 = minor mention
+- Include a brief evidence snippet (1 sentence, max 150 chars)
+
+Return ONLY a valid JSON array:
+[{"key": "snake_case", "label": "Human Label", "score": 0.3, "evidence": ["snippet"]}]`;
+
+async function extractThemesWithLLM(
+  contextSentences: string[],
+  brandName: string,
+): Promise<{ key: string; label: string; score: number; evidence: string[] }[]> {
+  const contextText = contextSentences.join(" ").slice(0, 2000);
+  if (contextText.length < 30) throw new Error("Too little context for LLM");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), THEME_EXTRACT_TIMEOUT_MS);
+
+  try {
+    const response = await openai.responses.create(
+      {
+        model: THEME_EXTRACT_MODEL,
+        input: [
+          { role: "system", content: THEME_EXTRACT_SYSTEM },
+          { role: "user", content: `Brand/Organization: "${brandName}"\n\nText:\n${contextText}` },
+        ],
+        max_output_tokens: 500,
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+
+    const raw = (response.output_text ?? "")
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+    const parsed = JSON.parse(raw) as { key: string; label: string; score: number; evidence: string[] }[];
+
+    return parsed
+      .filter((t) => t.key && t.label && typeof t.score === "number")
+      .map((t) => ({
+        key: t.key.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""),
+        label: t.label,
+        score: Math.min(1, Math.max(0, t.score)),
+        evidence: Array.isArray(t.evidence) ? t.evidence.slice(0, 2).map((e) => String(e).slice(0, 200)) : [],
+      }))
+      .filter((t) => t.score >= 0.2)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  } catch {
+    clearTimeout(timer);
+    throw new Error("LLM theme extraction failed");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -78,8 +152,8 @@ export async function extractNarrativeForRun(
   const trustCount = countSignalHits(contextText, TRUST_SIGNALS);
   const weaknessCount = countSignalHits(contextText, WEAKNESS_SIGNALS);
 
-  // --- Themes ---
-  const themes = extractThemes(contextSentences);
+  // --- Themes (dynamic, context-aware) ---
+  const themes = await extractThemesDynamic(contextSentences, brandName);
 
   // --- Descriptors ---
   const descriptors = extractDescriptors(contextSentences, brandName, brandSlug);
@@ -144,7 +218,7 @@ export async function extractCompetitorNarratives(
     const trustCount = countSignalHits(contextText, TRUST_SIGNALS);
     const weaknessCount = countSignalHits(contextText, WEAKNESS_SIGNALS);
 
-    const themes = extractThemes(contextSentences);
+    const themes = extractThemesKeyword(contextSentences);
     const descriptors = extractDescriptors(contextSentences, comp.name, entityId);
     const claims = extractClaimsKeyword(contextSentences, comp.name, entityId);
 
@@ -170,10 +244,22 @@ export async function extractCompetitorNarratives(
 }
 
 // ---------------------------------------------------------------------------
-// Theme extraction
+// Theme extraction (dynamic LLM with keyword fallback)
 // ---------------------------------------------------------------------------
 
-function extractThemes(
+async function extractThemesDynamic(
+  contextSentences: string[],
+  brandName: string,
+): Promise<{ key: string; label: string; score: number; evidence: string[] }[]> {
+  try {
+    return await extractThemesWithLLM(contextSentences, brandName);
+  } catch {
+    // Fallback to keyword matching
+    return extractThemesKeyword(contextSentences);
+  }
+}
+
+function extractThemesKeyword(
   contextSentences: string[],
 ): { key: string; label: string; score: number; evidence: string[] }[] {
   const contextText = contextSentences.join(" ").toLowerCase();

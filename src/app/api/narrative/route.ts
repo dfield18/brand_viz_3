@@ -8,9 +8,10 @@ import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
 
-const THEME_LABEL_MAP: Record<string, string> = {};
+// Static fallback labels for older runs with keyword-based themes
+const STATIC_THEME_LABELS: Record<string, string> = {};
 for (const t of THEME_TAXONOMY) {
-  THEME_LABEL_MAP[t.key] = t.label;
+  STATIC_THEME_LABELS[t.key] = t.label;
 }
 
 function parseNarrative(json: unknown): NarrativeExtractionResult | null {
@@ -139,17 +140,25 @@ export async function GET(req: NextRequest) {
     : undefined;
 
   // Themes: merge + sum counts across runs, track contributing prompts with counts
+  // Build dynamic label map from stored narrative data (GPT-extracted labels)
+  const dynamicThemeLabels: Record<string, string> = {};
   const themeCounts: Record<string, number> = {};
   const themePromptCounts: Record<string, Map<string, number>> = {};
   for (const { parsed, run } of narratives) {
     const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
     for (const theme of parsed.themes) {
+      // Prefer the stored label (from GPT extraction) over static fallback
+      if (theme.label && !dynamicThemeLabels[theme.key]) {
+        dynamicThemeLabels[theme.key] = theme.label;
+      }
       themeCounts[theme.key] = (themeCounts[theme.key] || 0) + 1;
       if (!themePromptCounts[theme.key]) themePromptCounts[theme.key] = new Map();
       const pm = themePromptCounts[theme.key];
       pm.set(promptText, (pm.get(promptText) ?? 0) + 1);
     }
   }
+  // Merge: dynamic labels take priority, static taxonomy as fallback
+  const themeLabels = { ...STATIC_THEME_LABELS, ...dynamicThemeLabels };
   const totalThemeHits = Object.values(themeCounts).reduce((s, v) => s + v, 0);
   const themes = Object.entries(themeCounts)
     .map(([key, count]) => {
@@ -159,7 +168,7 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.pct - a.pct);
       return {
         key,
-        label: THEME_LABEL_MAP[key] ?? key,
+        label: themeLabels[key] ?? key,
         count,
         pct: totalThemeHits > 0 ? Math.round((count / totalThemeHits) * 100) : 0,
         prompts,
@@ -270,7 +279,7 @@ export async function GET(req: NextRequest) {
   const driftBuckets: DriftBucket[] = Object.entries(weekBuckets)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, themeCounts]) => ({ date, themeCounts }));
-  const drift = computeDrift(driftBuckets);
+  const drift = computeDrift(driftBuckets, themeLabels);
 
   // Sentiment trend: group by (week, model) → average sentiment score scaled to 0-100
   // Uses allTrendRuns so older runs without narrativeJson still contribute via analysisJson fallback

@@ -110,7 +110,7 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
           <ResponsiveContainer width="100%" height={320}>
             <LineChart
               data={filteredData}
-              margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+              margin={{ top: 16, right: 20, bottom: 5, left: 0 }}
             >
               <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
               <XAxis
@@ -161,6 +161,26 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
                   activeDot={{ r: 4 }}
                   name={name}
                   connectNulls
+                  label={(props: { x?: string | number; y?: string | number; index?: number }) => {
+                    if (props.index !== 0) return <g key={`label-skip-${name}-${props.index}`} />;
+                    const x = Number(props.x ?? 0) + 4;
+                    const y = Number(props.y ?? 0) - 8;
+                    const isActive = !effectiveHighlight || effectiveHighlight === name;
+                    return (
+                      <text
+                        key={`label-${name}`}
+                        x={x}
+                        y={y}
+                        fontSize={11}
+                        fontWeight={500}
+                        fill={colorMap[name]}
+                        opacity={isActive ? 1 : 0.25}
+                        dominantBaseline="auto"
+                      >
+                        {name}
+                      </text>
+                    );
+                  }}
                 />
               ))}
             </LineChart>

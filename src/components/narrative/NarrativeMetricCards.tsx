@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { Info, TrendingUp, TrendingDown } from "lucide-react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { Info, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
 import type { NarrativeSentimentSplit, NarrativeFrame, SentimentTrendPoint, NarrativeDeltas } from "@/types/api";
 
 interface NarrativeMetricCardsProps {
@@ -165,6 +165,62 @@ const POLARIZATION_COLOR: Record<string, string> = {
   High: "hsl(0, 72%, 55%)",
 };
 
+/* ── Info popover with optional "Show more" formula ────────────────── */
+
+function InfoPopover({ tooltip, formula }: { tooltip: string; formula?: string }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setExpanded(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); setExpanded(false); }}
+        className="flex items-center justify-center"
+      >
+        <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
+          <p className="leading-relaxed">{tooltip}</p>
+          {formula && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+                className="mt-2 flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                {expanded ? "Show less" : "Show more"}
+                <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+              </button>
+              {expanded && (
+                <div className="mt-2 pt-2 border-t border-border/50">
+                  <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground font-sans">
+                    {formula}
+                  </pre>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main component ────────────────────────────────────────────────── */
 
 export function NarrativeMetricCards({
@@ -196,6 +252,7 @@ export function NarrativeMetricCards({
   interface CardConfig {
     label: string;
     tooltip: string;
+    formula?: string;
     description: string;
     badge: { text: string; color: string; pct?: number }[];
     donutPct: number;
@@ -258,6 +315,7 @@ export function NarrativeMetricCards({
   cards.push({
     label: "PLATFORM CONSISTENCY",
     tooltip: "Whether AI platforms tell a consistent story about the brand. Low consistency means different platforms describe the brand very differently.",
+    formula: "Consistency is derived from the polarization of sentiment across AI responses.\n\n1. Compute the % of responses labeled Positive and Negative\n2. Take the minority side: min(positive%, negative%)\n3. Classify:\n   • High consistency (Consensus): minority < 5%\n   • Moderate: minority 5–15%\n   • Low consistency (Divided): minority ≥ 15%\n\nA low minority percentage means platforms largely agree on sentiment, indicating a consistent narrative.",
     description: "AI description consistency across different platforms",
     badge: [polarization ? getPolarizationBadge(polarization) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
     donutPct: consistencyPct,
@@ -274,6 +332,7 @@ export function NarrativeMetricCards({
     cards.push({
       label: "MODEL CONFIDENCE",
       tooltip: "Measures how directly AI recommends the brand. Higher confidence means AI gives clear endorsements rather than cautious language like \"it depends,\" \"some people prefer,\" or \"you might want to consider.\"",
+      formula: `Model Confidence = 100 − Hedging Rate\n\nHedging Rate measures caution in AI responses:\n1. For each response, count authority signals (e.g., "leader", "top", "best", "go-to") and trust signals (e.g., "trusted", "reliable", "proven")\n2. A response is "hedged" if it contains zero authority and zero trust signals\n3. Hedging Rate = (hedged responses ÷ total responses) × 100\n\nCurrent: ${confidence}% confidence (${hedgingRate}% hedging rate)\n\nClassification:\n• ≥ 85%: Direct & confident\n• 65–84%: Some hedging\n• < 65%: Heavily hedged`,
       description: "How often AI gives a clear recommendation vs hedging with cautious language",
       badge: [getConfidenceBadge(confidence)],
       donutPct: confidence,
@@ -299,12 +358,7 @@ export function NarrativeMetricCards({
             <span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
               {card.label}
             </span>
-            <div className="relative group/tip shrink-0">
-              <Info className="h-3 w-3 text-muted-foreground/40 cursor-default" />
-              <div className="absolute right-0 top-full mt-1.5 z-50 hidden group-hover/tip:block w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
-                {card.tooltip}
-              </div>
-            </div>
+            <InfoPopover tooltip={card.tooltip} formula={card.formula} />
           </div>
 
           {/* Donut or Custom Visual */}
