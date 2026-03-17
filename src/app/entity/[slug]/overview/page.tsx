@@ -138,8 +138,8 @@ function OverviewInner() {
     { id: "kpi-summary", label: "Scorecard", heading: "Visibility" },
     { id: "key-insights", label: "Key Insights" },
     { id: "visibility-trend", label: "Brand Recall Trend" },
-    { id: "cross-model", label: "Cross-Model Comparison" },
-    { id: "narrative-section", label: "Top Narratives", heading: "Narrative" },
+    { id: "cross-model", label: "By AI Platform" },
+    { id: "narrative-section", label: "How AI Describes You", heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
     { id: "competitor-snapshot", label: "Competitive Landscape", heading: "Issue Landscape" },
     { id: "competitor-alerts", label: "Competitor Movement" },
@@ -206,7 +206,7 @@ function OverviewInner() {
                     } else if (kpis.overallMentionRate > 0) {
                       parts.push(`${brandName} rarely comes up when people ask AI assistants about this space — only ${kpis.overallMentionRate}% of the time. Most potential customers using AI for research won't see ${brandName} at all.`);
                     } else {
-                      parts.push(`${brandName} doesn't appear in AI-generated answers yet. When people ask AI tools about this space, they won't hear about ${brandName} — a growing channel is sending people elsewhere.`);
+                      parts.push(`${brandName} doesn't appear in AI-generated answers yet. A growing number of people are using AI to find recommendations — and they won't hear about ${brandName}.`);
                     }
                     if (kpis.avgRankScore > 0) {
                       if (kpis.avgRankScore <= 1.3) parts.push(`When AI does mention ${brandName}, it's typically the very first recommendation — it leads the list ${kpis.firstMentionRate}% of the time.`);
@@ -221,7 +221,7 @@ function OverviewInner() {
                       else if (ss.negative >= 30) parts.push(`A note of caution: ${ss.negative}% of AI responses describe ${brandName} in a negative light — it's worth understanding what's driving this.`);
                     }
                     const topFrame = data.topFrames[0]?.frame;
-                    if (topFrame) parts.push(`The dominant story AI tells about ${brandName} is as a "${topFrame}."`);
+                    if (topFrame) parts.push(`The #1 theme AI associates with ${brandName} is "${topFrame}."`);
                     return parts.join(" ");
                   })()}
                 </p>
@@ -269,7 +269,7 @@ function OverviewInner() {
         {quotesData?.quotes && quotesData.quotes.length > 0 && (
           <div id="standout-quotes" className="scroll-mt-24">
             <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-              <h2 className="text-sm font-semibold mb-2">What AI Models Are Saying</h2>
+              <h2 className="text-sm font-semibold mb-2">What AI Is Saying About You</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
             </section>
           </div>

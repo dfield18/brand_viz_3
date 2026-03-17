@@ -155,9 +155,9 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className="text-base font-semibold">Narrative Frame Breakdown</h2>
+          <h2 className="text-base font-semibold">How AI Describes You</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How AI models frame {brandName}, and how each model&apos;s framing differs
+            The key themes and stories AI tells about {brandName}
           </p>
         </div>
         <select
@@ -276,7 +276,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-        AI responses are classified into narrative frames (e.g., &quot;Reliability,&quot; &quot;Innovation&quot;) using keyword and theme analysis. Percentages show how frequently each frame appears in responses from the selected model.
+        Each bar represents a recurring theme in how AI describes you (e.g., &quot;Reliability,&quot; &quot;Innovation&quot;). Percentages show how often each theme appears in AI responses from the selected platform.
       </p>
     </section>
   );

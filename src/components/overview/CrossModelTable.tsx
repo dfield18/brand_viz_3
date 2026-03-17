@@ -48,8 +48,8 @@ export function CrossModelTable({ models }: CrossModelTableProps) {
   if (models.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
-        <h2 className="text-base font-semibold mb-4">Cross-LLM Comparison</h2>
-        <EmptyState message="Select multiple models or use 'All' to see cross-model comparison." />
+        <h2 className="text-base font-semibold mb-4">How Each AI Platform Sees You</h2>
+        <EmptyState message="Select multiple models or use 'All' to compare across AI platforms." />
       </div>
     );
   }
@@ -88,7 +88,7 @@ export function CrossModelTable({ models }: CrossModelTableProps) {
       lowerIsBetter: true,
     },
 {
-      label: "Narrative Stability",
+      label: "Message Consistency",
       key: "narrativeStability",
       render: (v) => {
         const { text, className } = getStabilityLabel(v ?? 0);
