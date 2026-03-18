@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
 import { parseAnalysis, aggregateOverview, computeStability } from "@/lib/aggregateAnalysis";
@@ -88,14 +87,12 @@ async function getModelOverviewData(
     clusterStats.set(cluster, entry);
   }
 
-  // Compute avg rank from latest runs
-  const ranks: (number | null)[] = latestRealRunsFull.map((run) =>
+  // Compute avg rank from industry-cluster runs only (matches visibility tab)
+  const industryLatestRuns = latestRealRunsFull.filter((r) => r.prompt.cluster === "industry");
+  const ranks: (number | null)[] = industryLatestRuns.map((run) =>
     computeBrandRank(run.rawResponseText, brandName, brandSlug, run.analysisJson, aliases),
   );
-  const validRanks = ranks.filter((r): r is number => r !== null);
-  const avgRank = validRanks.length > 0
-    ? Math.round((validRanks.reduce((s, r) => s + r, 0) / validRanks.length) * 100) / 100
-    : null;
+  const avgRank = computeAvgRank(ranks);
 
   const rangeCutoff = new Date(Date.now() - range * 24 * 60 * 60 * 1000);
   const eligibleJobs = allJobs.filter(
@@ -247,6 +244,37 @@ export async function GET(req: NextRequest) {
 
   const overview = aggregateOverview(mergedLatestAnalyses, brandName, mergedTrendData);
 
+  // Compute per-model frame percentages BEFORE validation (same order as narrative tab)
+  {
+    const STRENGTH_THRESHOLD = 20;
+    const modelPcts: Record<string, Record<string, number>> = {};
+    for (const { model: m, data } of withData) {
+      if (!data) continue;
+      const totalRuns = data.latestAnalyses.length;
+      const frameCounts: Record<string, number> = {};
+      for (const a of data.latestAnalyses) {
+        for (const f of a.frames) {
+          if (f.strength >= STRENGTH_THRESHOLD) {
+            frameCounts[f.name] = (frameCounts[f.name] ?? 0) + 1;
+          }
+        }
+      }
+      modelPcts[m] = {};
+      for (const [name, count] of Object.entries(frameCounts)) {
+        modelPcts[m][name] = totalRuns > 0 ? Math.round((count / totalRuns) * 100) : 0;
+      }
+    }
+    for (const frame of overview.topFrames) {
+      frame.byModel = {
+        chatgpt: modelPcts["chatgpt"]?.[frame.frame] ?? 0,
+        gemini: modelPcts["gemini"]?.[frame.frame] ?? 0,
+        claude: modelPcts["claude"]?.[frame.frame] ?? 0,
+        perplexity: modelPcts["perplexity"]?.[frame.frame] ?? 0,
+        google: modelPcts["google"]?.[frame.frame] ?? 0,
+      };
+    }
+  }
+
   // Validate frames: filter out generic jargon, replace with specific issues
   overview.topFrames = await validateFrames(overview.topFrames, brandName);
 
@@ -320,37 +348,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Compute per-model frame percentages using frequency (same as narrative tab)
-  {
-    const STRENGTH_THRESHOLD = 20;
-    const modelPcts: Record<string, Record<string, number>> = {};
-    for (const { model: m, data } of withData) {
-      if (!data) continue;
-      const totalRuns = data.latestAnalyses.length;
-      const frameCounts: Record<string, number> = {};
-      for (const a of data.latestAnalyses) {
-        for (const f of a.frames) {
-          if (f.strength >= STRENGTH_THRESHOLD) {
-            frameCounts[f.name] = (frameCounts[f.name] ?? 0) + 1;
-          }
-        }
-      }
-      modelPcts[m] = {};
-      for (const [name, count] of Object.entries(frameCounts)) {
-        modelPcts[m][name] = totalRuns > 0 ? Math.round((count / totalRuns) * 100) : 0;
-      }
-    }
-    for (const frame of overview.topFrames) {
-      frame.byModel = {
-        chatgpt: modelPcts["chatgpt"]?.[frame.frame] ?? 0,
-        gemini: modelPcts["gemini"]?.[frame.frame] ?? 0,
-        claude: modelPcts["claude"]?.[frame.frame] ?? 0,
-        perplexity: modelPcts["perplexity"]?.[frame.frame] ?? 0,
-        google: modelPcts["google"]?.[frame.frame] ?? 0,
-      };
-    }
-  }
-
   // Merge cluster stats across models
   const mergedClusters = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
   for (const { data } of withData) {
@@ -409,23 +406,18 @@ export async function GET(req: NextRequest) {
     createdAt: Date;
     rawResponseText: string;
     analysisJson: unknown;
+    narrativeJson: unknown;
     prompt: { text: string; cluster: string; intent: string };
   };
 
   const latestJobIds = withData.map((w) => w.data!.latestJob.id);
 
-  // Single fetchBrandRuns call — reused for both KPIs and competitive rank
+  // Single fetchBrandRuns call — reused for KPIs, competitive rank, and sentiment
   const visResultPromise = fetchBrandRuns<OverviewVisRun>({
     brandSlug: brand.slug,
     model: model === "all" ? "all" : model,
     viewRange: range,
     runQuery: { include: { prompt: true } },
-  });
-
-  // Sentiment split query
-  const sentimentPromise = prisma.run.findMany({
-    where: { jobId: { in: latestJobIds }, narrativeJson: { not: Prisma.DbNull } },
-    select: { narrativeJson: true },
   });
 
   // Top source type: get run IDs + source categories in one query
@@ -435,9 +427,8 @@ export async function GET(req: NextRequest) {
   });
 
   // Await all in parallel
-  const [visResult, narrativeRuns, sourceCats] = await Promise.all([
+  const [visResult, sourceCats] = await Promise.all([
     visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; }),
-    sentimentPromise.catch((e) => { console.error("Sentiment error:", e); return [] as { narrativeJson: unknown }[]; }),
     sourcePromise.catch((e) => { console.error("Source type error:", e); return [] as { source: { category: string | null } }[]; }),
   ]);
 
@@ -543,16 +534,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Sentiment split ---
+  // --- Sentiment split (from deduplicated fetchBrandRuns, matching narrative tab) ---
   let sentimentSplit: { positive: number; neutral: number; negative: number } | null = null;
-  if (narrativeRuns.length > 0) {
+  if (visResult && visResult.ok) {
+    const { runs: visRuns } = visResult;
     let pos = 0, neu = 0, neg = 0;
-    for (const r of narrativeRuns) {
+    for (const r of visRuns) {
       const nj = r.narrativeJson as Record<string, unknown> | null;
       if (!nj) continue;
       const sent = nj.sentiment as { label?: string } | undefined;
-      if (sent?.label === "POS") pos++;
-      else if (sent?.label === "NEG") neg++;
+      if (!sent?.label) continue;
+      if (sent.label === "POS") pos++;
+      else if (sent.label === "NEG") neg++;
       else neu++;
     }
     const total = pos + neu + neg;
