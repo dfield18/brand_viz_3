@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { OverviewResponse, KpiDeltas, VisibilityTrendPoint } from "@/types/api";
-import { OverviewScorecard } from "@/components/overview/OverviewScorecard";
+import { SummaryCardsDonut } from "@/components/visibility/SummaryCardsDonut";
 import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
 import { CrossModelTable } from "@/components/overview/CrossModelTable";
 import { StandoutQuotes } from "@/components/visibility/StandoutQuotes";
@@ -150,22 +150,8 @@ function OverviewInner() {
     { id: "sources-trend", label: "Top Sources", heading: "Sources" },
   ];
 
-  // Compute scorecard values
-  const scorecardData = apiData.visibilityKpis ? (() => {
-    const kpis = apiData.visibilityKpis!;
-    const rankScore = kpis.avgRankScore > 0 ? Math.max(0, 100 - (kpis.avgRankScore - 1) * 25) : 0;
-    const visibilityScore = Math.round(
-      kpis.overallMentionRate * 0.3 +
-      kpis.shareOfVoice * 0.2 +
-      rankScore * 0.25 +
-      kpis.firstMentionRate * 0.25,
-    );
-    const ss = apiData.sentimentSplit;
-    const sentimentScore = ss ? Math.round(ss.positive + ss.neutral * 0.5) : 50;
-    const topFrame = data.topFrames[0];
-    const dominantFrame = topFrame ? { name: topFrame.frame, percentage: topFrame.percentage } : null;
-    return { visibilityScore, sentimentScore, dominantFrame };
-  })() : null;
+  // Use the same 4 KPIs as the visibility tab
+  const kpis = apiData.visibilityKpis;
 
   return (
     <div className="flex gap-8 xl:-ml-52">
@@ -179,14 +165,16 @@ function OverviewInner() {
         {/* ── Visibility ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
 
-        {/* Scorecard */}
+        {/* Scorecard — same 4 KPIs as visibility tab */}
         <div id="kpi-summary" className="scroll-mt-24">
-          {scorecardData && (
-            <OverviewScorecard
-              visibilityScore={scorecardData.visibilityScore}
-              sentimentScore={scorecardData.sentimentScore}
-              dominantFrame={scorecardData.dominantFrame}
-              topSourceType={apiData.topSourceType ?? null}
+          {kpis && (
+            <SummaryCardsDonut
+              overallMentionRate={kpis.overallMentionRate}
+              shareOfVoice={kpis.shareOfVoice}
+              avgRankScore={kpis.avgRankScore}
+              firstMentionRate={kpis.firstMentionRate}
+              kpiDeltas={apiData.kpiDeltas ?? null}
+              brandName={brandName}
             />
           )}
         </div>
