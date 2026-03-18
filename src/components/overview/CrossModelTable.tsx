@@ -57,14 +57,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
 
   const metrics: MetricDef[] = [
     {
-      label: "Visibility",
-      key: "visibility",
-      render: (v, isBest) => (
-        <span className={isBest ? "text-primary font-semibold" : ""}>{v}</span>
-      ),
-    },
-    {
-      label: "Mention Rate",
+      label: "Brand Recall",
       key: "mentionRate",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>{v}%</span>

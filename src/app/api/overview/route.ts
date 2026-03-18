@@ -388,9 +388,6 @@ export async function GET(req: NextRequest) {
     const indAnalyses = data!.industryLatestAnalyses;
     return {
       model: m,
-      visibility: indAnalyses.length > 0
-        ? Math.round(avgArr(indAnalyses.map((a) => a.brandMentionStrength)))
-        : 0,
       mentionRate: data!.industryMentionRate,
       controversy: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.controversy))),
       authority: parseFloat(avgArr(allAnalyses.map((a) => a.authorityScore)).toFixed(2)),

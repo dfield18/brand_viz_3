@@ -44,7 +44,6 @@ export interface ClusterVisibility {
 
 export interface ModelComparison {
   model: string;
-  visibility: number;
   mentionRate: number;
   controversy: number;
   authority: number;
