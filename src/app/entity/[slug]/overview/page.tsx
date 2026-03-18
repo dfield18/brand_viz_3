@@ -172,10 +172,10 @@ function OverviewInner() {
             <OverviewScorecard
               overallMentionRate={kpis.overallMentionRate}
               avgRankScore={kpis.avgRankScore}
-              firstMentionRate={kpis.firstMentionRate}
               kpiDeltas={apiData.kpiDeltas ?? null}
               brandName={brandName}
               dominantFrame={dominantFrame}
+              sentimentSplit={apiData.sentimentSplit ?? null}
             />
           )}
         </div>

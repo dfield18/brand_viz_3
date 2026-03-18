@@ -7,10 +7,10 @@ import type { KpiDeltas } from "@/types/api";
 interface OverviewScorecardProps {
   overallMentionRate: number;
   avgRankScore: number;
-  firstMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
   dominantFrame: { name: string; percentage: number } | null;
+  sentimentSplit: { positive: number; neutral: number; negative: number } | null;
 }
 
 function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percentage: number; color: string; size?: number; strokeWidth?: number }) {
@@ -63,10 +63,43 @@ function getVisibilityBadge(rate: number): { text: string; color: string } {
   return { text: "Very Low", color: "text-red-700 bg-red-50 border-red-200" };
 }
 
-function getTopResultBadge(rate: number): { text: string; color: string } {
-  if (rate >= 50) return { text: "Strong", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (rate >= 25) return { text: "Moderate", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { text: "Weak", color: "text-orange-700 bg-orange-50 border-orange-200" };
+function getSentimentBadge(split: { positive: number; neutral: number; negative: number }): { text: string; color: string } {
+  if (split.positive >= 60) return { text: "Strongly positive", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  if (split.positive >= 40) return { text: "Mostly positive", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  if (split.negative >= 40) return { text: "Mostly negative", color: "text-red-700 bg-red-50 border-red-200" };
+  return { text: "Mixed sentiment", color: "text-amber-700 bg-amber-50 border-amber-200" };
+}
+
+function SentimentBar({ split }: { split: { positive: number; neutral: number; negative: number } }) {
+  return (
+    <div className="w-full space-y-1.5">
+      <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-muted/50">
+        {split.positive > 0 && (
+          <div className="bg-emerald-500 transition-all duration-300" style={{ width: `${split.positive}%` }} />
+        )}
+        {split.neutral > 0 && (
+          <div className="bg-gray-400 transition-all duration-300" style={{ width: `${split.neutral}%` }} />
+        )}
+        {split.negative > 0 && (
+          <div className="bg-red-400 transition-all duration-300" style={{ width: `${split.negative}%` }} />
+        )}
+      </div>
+      <div className="flex justify-between text-[10px] px-0.5">
+        <div className="flex flex-col items-center">
+          <span className="text-emerald-600 font-medium">{split.positive}%</span>
+          <span className="text-muted-foreground">Positive</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-gray-400 font-medium">{split.neutral}%</span>
+          <span className="text-muted-foreground">Neutral</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-red-500 font-medium">{split.negative}%</span>
+          <span className="text-muted-foreground">Negative</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function getPositionBadge(rank: number): { text: string; color: string } {
@@ -89,6 +122,8 @@ interface CardConfig {
   deltaFormat: (v: number) => string;
   isPosition?: boolean;
   isNarrative?: boolean;
+  isSentiment?: boolean;
+  sentimentData?: { positive: number; neutral: number; negative: number };
   narrativeName?: string;
   scrollTarget?: string;
 }
@@ -96,10 +131,10 @@ interface CardConfig {
 export function OverviewScorecard({
   overallMentionRate,
   avgRankScore,
-  firstMentionRate,
   kpiDeltas,
   brandName = "Brand",
   dominantFrame,
+  sentimentSplit,
 }: OverviewScorecardProps) {
   const cards: CardConfig[] = [
     {
@@ -130,15 +165,20 @@ export function OverviewScorecard({
       scrollTarget: "narrative-section",
     },
     {
-      label: "TOP RESULT RATE",
-      value: `${Number(firstMentionRate.toFixed(1))}%`,
-      percentage: firstMentionRate,
-      color: "var(--chart-2)",
-      badge: getTopResultBadge(firstMentionRate),
-      description: `% of responses where ${brandName} is the first recommendation`,
-      tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
-      delta: kpiDeltas?.firstMentionRate ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
+      label: "SENTIMENT",
+      value: sentimentSplit ? `${sentimentSplit.positive}%` : "\u2014",
+      percentage: sentimentSplit?.positive ?? 0,
+      color: "hsl(160, 60%, 45%)",
+      badge: sentimentSplit
+        ? getSentimentBadge(sentimentSplit)
+        : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
+      description: "How positively AI talks about you",
+      tooltip: "Breakdown of how AI models frame the brand — positive, neutral, or negative — based on authority and trust signals in responses.",
+      isSentiment: true,
+      sentimentData: sentimentSplit ?? undefined,
+      delta: null,
+      deltaFormat: () => "",
+      scrollTarget: "narrative-section",
     },
     {
       label: "AVG. POSITION",
@@ -181,12 +221,10 @@ export function OverviewScorecard({
           <div className="flex items-center justify-center mb-4 h-[90px]">
             {card.isPosition ? (
               <PositionScale avgRank={avgRankScore || 0} />
-            ) : card.isNarrative ? (
-              <div className="relative">
-                <DonutRing percentage={card.percentage} color={card.color} size={84} strokeWidth={8} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold tabular-nums">{card.value}</span>
-                </div>
+            ) : card.isSentiment && card.sentimentData ? (
+              <div className="w-full px-2 flex flex-col items-center justify-center gap-2">
+                <span className="text-2xl font-bold tabular-nums">{card.sentimentData.positive}%</span>
+                <SentimentBar split={card.sentimentData} />
               </div>
             ) : (
               <div className="relative">
