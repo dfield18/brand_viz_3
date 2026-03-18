@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
+import { Lightbulb } from "lucide-react";
 import { OverviewResponse, KpiDeltas, VisibilityTrendPoint } from "@/types/api";
 import { OverviewScorecard } from "@/components/overview/OverviewScorecard";
 import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
@@ -188,8 +189,10 @@ function OverviewInner() {
           <div className="rounded-xl bg-card shadow-section overflow-hidden">
             {/* 1-sentence AI insight */}
             {apiData.aiSummary && (
-              <div className="px-5 py-3.5">
-                <p className="text-[13px] text-foreground/80 leading-relaxed">
+              <div className="flex items-start gap-3 px-5 py-3.5">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-foreground/70 leading-relaxed">
+                  <span className="font-medium text-amber-700 mr-1.5">Key Insight:</span>
                   {apiData.aiSummary}
                 </p>
               </div>
