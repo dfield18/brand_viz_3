@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
-import { openai } from "@/lib/openai";
+import { openai, getOpenAIDefault } from "@/lib/openai";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -676,6 +676,49 @@ export async function GET(req: NextRequest) {
 
   competitorAlerts.sort((a, b) => Math.abs(b.mentionRateChange) - Math.abs(a.mentionRateChange));
   competitorAlerts.splice(15);
+
+  // ── GPT-based relevance filter: keep only same-industry competitors ────
+  if (competitorAlerts.length > 0) {
+    const industryLabel = brand.industry || `${brandName}'s industry`;
+    const candidateNames = competitorAlerts.map((c) => c.displayName);
+    try {
+      const client = getOpenAIDefault();
+      const filterResp = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        max_tokens: 300,
+        messages: [
+          {
+            role: "system",
+            content: `You are a competitive-intelligence filter. Given a brand and its industry, decide which candidate names are direct competitors, peers, or organizations in the SAME industry or sector. Return ONLY a JSON array of the names that belong. Exclude names from unrelated industries. If unsure, include the name.`,
+          },
+          {
+            role: "user",
+            content: `Brand: "${brandName}"\nIndustry: "${industryLabel}"\n${isOrg ? "This is a political/advocacy organization. Include other political parties, PACs, advocacy groups, and political organizations. Exclude commercial brands unless they are politically active.\n" : ""}Candidates: ${JSON.stringify(candidateNames)}`,
+          },
+        ],
+      });
+      const raw = filterResp.choices[0]?.message?.content?.trim() ?? "[]";
+      // Parse the JSON array — strip markdown fences if present
+      const cleaned = raw.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+      const keepSet = new Set<string>(JSON.parse(cleaned) as string[]);
+      // Remove alerts whose displayName was not in the keep list
+      const before = competitorAlerts.length;
+      for (let i = competitorAlerts.length - 1; i >= 0; i--) {
+        if (!keepSet.has(competitorAlerts[i].displayName)) {
+          competitorAlerts.splice(i, 1);
+        }
+      }
+      if (before !== competitorAlerts.length) {
+        // eslint-disable-next-line no-console
+        console.log(`[competitorAlerts] GPT filter: ${before} → ${competitorAlerts.length} (removed ${before - competitorAlerts.length} irrelevant)`);
+      }
+    } catch (err) {
+      // If GPT call fails, keep all alerts (graceful degradation)
+      // eslint-disable-next-line no-console
+      console.warn("[competitorAlerts] GPT filter failed, keeping all:", err);
+    }
+  }
 
   // -----------------------------------------------------------------------
   // 6. sourceGapOpportunities

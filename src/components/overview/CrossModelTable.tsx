@@ -137,7 +137,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
           <tbody>
             {models.map((m) => (
               <tr key={m.model} className="border-b border-border last:border-b-0">
-                <td className="py-3 pr-4 font-medium">
+                <td className="py-3 pr-4 text-sm text-muted-foreground">
                   {MODEL_LABELS[m.model] ?? m.model.toUpperCase()}
                 </td>
                 {metrics.map((metric) => {
