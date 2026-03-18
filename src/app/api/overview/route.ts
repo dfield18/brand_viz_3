@@ -366,13 +366,19 @@ export async function GET(req: NextRequest) {
   // Await fetchBrandRuns first — we need deduped run IDs for source type query
   const visResult = await visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; });
 
-  // Top source type: use deduped run IDs (matches visibility tab)
-  const dedupedRunIds = visResult && visResult.ok ? visResult.runs.map((r) => r.id) : [];
-  const sourceCats = dedupedRunIds.length > 0
+  // Top source type: query ALL runs in range (matching sources tab, not just deduped)
+  const sourceOccurrences = visResult && visResult.ok
     ? await prisma.sourceOccurrence.findMany({
-        where: { runId: { in: dedupedRunIds } },
-        select: { source: { select: { category: true } } },
-      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { category: string | null } }[]; })
+        where: {
+          run: {
+            brandId: brand.id,
+            createdAt: { gte: new Date(Date.now() - range * 86_400_000) },
+            job: { status: "done" },
+            ...(model !== "all" ? { model } : {}),
+          },
+        },
+        select: { source: { select: { domain: true, category: true } } },
+      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { domain: string; category: string | null } }[]; })
     : [];
 
   // --- Visibility KPIs + Competitive Rank (from single visResult) ---
@@ -596,19 +602,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Top cited source type ---
+  // --- Top cited source type (matches sources tab: group by domain, sum citations by category) ---
   let topSourceType: { category: string; count: number; totalSources: number } | null = null;
-  if (sourceCats.length > 0) {
-    const catCounts: Record<string, number> = {};
-    for (const s of sourceCats) {
-      const cat = s.source.category ?? "other";
-      catCounts[cat] = (catCounts[cat] ?? 0) + 1;
+  if (sourceOccurrences.length > 0) {
+    // Group by domain → count citations per domain
+    const domainCitations = new Map<string, { category: string; count: number }>();
+    for (const s of sourceOccurrences) {
+      const domain = s.source.domain;
+      const existing = domainCitations.get(domain);
+      if (existing) {
+        existing.count++;
+      } else {
+        domainCitations.set(domain, { category: s.source.category ?? "other", count: 1 });
+      }
     }
-    const sorted = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
-    const total = sorted.reduce((s, [, c]) => s + c, 0);
+    // Aggregate citations by category (same as SourceSummaryCards)
+    const catCitations: Record<string, number> = {};
+    let totalCitations = 0;
+    for (const { category, count } of domainCitations.values()) {
+      catCitations[category] = (catCitations[category] ?? 0) + count;
+      totalCitations += count;
+    }
+    const sorted = Object.entries(catCitations).sort((a, b) => b[1] - a[1]);
     const top = sorted.find(([cat]) => cat !== "other") ?? sorted[0];
     if (top) {
-      topSourceType = { category: top[0], count: top[1], totalSources: total };
+      topSourceType = { category: top[0], count: top[1], totalSources: totalCitations };
     }
   }
 
