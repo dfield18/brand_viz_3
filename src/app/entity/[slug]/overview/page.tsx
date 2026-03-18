@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { OverviewResponse, KpiDeltas, VisibilityTrendPoint } from "@/types/api";
-import { SummaryCardsDonut } from "@/components/visibility/SummaryCardsDonut";
+import { OverviewScorecard } from "@/components/overview/OverviewScorecard";
 import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
 import { CrossModelTable } from "@/components/overview/CrossModelTable";
 import { StandoutQuotes } from "@/components/visibility/StandoutQuotes";
@@ -150,8 +150,9 @@ function OverviewInner() {
     { id: "sources-trend", label: "Top Sources", heading: "Sources" },
   ];
 
-  // Use the same 4 KPIs as the visibility tab
   const kpis = apiData.visibilityKpis;
+  const topFrame = data.topFrames[0];
+  const dominantFrame = topFrame ? { name: topFrame.frame, percentage: topFrame.percentage } : null;
 
   return (
     <div className="flex gap-8 xl:-ml-52">
@@ -165,16 +166,16 @@ function OverviewInner() {
         {/* ── Visibility ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
 
-        {/* Scorecard — same 4 KPIs as visibility tab */}
+        {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {kpis && (
-            <SummaryCardsDonut
+            <OverviewScorecard
               overallMentionRate={kpis.overallMentionRate}
-              shareOfVoice={kpis.shareOfVoice}
               avgRankScore={kpis.avgRankScore}
               firstMentionRate={kpis.firstMentionRate}
               kpiDeltas={apiData.kpiDeltas ?? null}
               brandName={brandName}
+              dominantFrame={dominantFrame}
             />
           )}
         </div>

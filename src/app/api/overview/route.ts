@@ -602,19 +602,19 @@ export async function GET(req: NextRequest) {
           content: `You write concise executive summaries (3-5 sentences) for a brand visibility dashboard. The summary explains how a brand/organization appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity, Google AI).
 
 Rules:
-- Write in plain, conversational English for a marketing professional. No jargon.
+- Write in plain, conversational English for a marketing executive who needs to grasp the situation in seconds. No jargon, no filler.
 - Reference specific numbers from the data provided. Every percentage you cite MUST exactly match the data — do not compute or infer new percentages.
-- "Brand Recall" (overallMentionRate) = % of all AI responses that mention the brand. This is based on general industry questions that do NOT explicitly name the brand.
+- "Brand Recall" (overallMentionRate) = % of AI responses to general industry questions that mention the brand. These questions do NOT name the brand — so this measures organic AI awareness.
 - "Share of Voice" (shareOfVoice) = brand mentions as a % of ALL entity mentions across responses.
 - "Top Result Rate" (firstMentionRate) = % of ALL AI responses where the brand is the #1 result. This is an overall rate — do NOT divide it by mention rate or recompute it.
-- "Avg Position" (avgRankScore) = average rank when mentioned (1 = first, higher = worse).
-- Do NOT contradict yourself — e.g., don't say "usually first" if firstMentionRate is low.
-- If the brand is rarely mentioned (<30%), the overall tone should reflect that challenge — don't overemphasize small bright spots.
+- "Avg Position" (avgRankScore) = the average ranking position ONLY in responses where the brand is actually mentioned (1 = listed first, higher = worse). IMPORTANT: always clarify this is "when mentioned" — e.g., "When it does appear, it averages position X." Do NOT present this as an overall stat — a position of 1 with a 6% mention rate means it ranks first in the few responses that mention it, not that it dominates.
+- Do NOT contradict yourself — e.g., don't say "usually first" if firstMentionRate is low. If mention rate is low but position is high, frame it as: "It's rarely mentioned, but when it is, it tends to rank well."
+- If the brand is rarely mentioned (<30%), the overall tone should reflect that challenge — don't overemphasize small bright spots. Lead with the visibility gap.
 - If the brand is frequently mentioned (>=60%), lead with the positive.
 - Mention the top narrative frame/theme if provided.
-- Note that these results are from general industry questions that don't explicitly mention the brand by name.
 - ${isOrg ? 'This is a cause/advocacy organization — say "other organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
-- Do NOT use markdown, bullet points, or headers. Just plain paragraph text.`,
+- Do NOT use markdown, bullet points, or headers. Just plain paragraph text.
+- Keep it to 3-4 sentences max. Every sentence should give the reader a clear takeaway.`,
         },
         {
           role: "user",
