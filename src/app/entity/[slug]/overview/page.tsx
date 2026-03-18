@@ -151,8 +151,11 @@ function OverviewInner() {
   ];
 
   const kpis = apiData.visibilityKpis;
-  const topFrame = data.topFrames[0];
-  const dominantFrame = topFrame ? { name: topFrame.frame, percentage: topFrame.percentage } : null;
+  // Collect all frames tied at the top percentage
+  const topPct = data.topFrames[0]?.percentage ?? 0;
+  const dominantFrames = data.topFrames
+    .filter((f) => f.percentage === topPct)
+    .map((f) => ({ name: f.frame, percentage: f.percentage }));
 
   return (
     <div className="flex gap-8 xl:-ml-52">
@@ -174,7 +177,7 @@ function OverviewInner() {
               avgRankScore={kpis.avgRankScore}
               kpiDeltas={apiData.kpiDeltas ?? null}
               brandName={brandName}
-              dominantFrame={dominantFrame}
+              dominantFrames={dominantFrames}
               sentimentSplit={apiData.sentimentSplit ?? null}
             />
           )}

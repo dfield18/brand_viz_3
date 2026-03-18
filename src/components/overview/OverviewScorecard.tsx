@@ -9,7 +9,7 @@ interface OverviewScorecardProps {
   avgRankScore: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
-  dominantFrame: { name: string; percentage: number } | null;
+  dominantFrames: { name: string; percentage: number }[];
   sentimentSplit: { positive: number; neutral: number; negative: number } | null;
 }
 
@@ -124,7 +124,7 @@ interface CardConfig {
   isNarrative?: boolean;
   isSentiment?: boolean;
   sentimentData?: { positive: number; neutral: number; negative: number };
-  narrativeName?: string;
+  narrativeFrames?: { name: string; percentage: number }[];
   scrollTarget?: string;
 }
 
@@ -133,9 +133,10 @@ export function OverviewScorecard({
   avgRankScore,
   kpiDeltas,
   brandName = "Brand",
-  dominantFrame,
+  dominantFrames,
   sentimentSplit,
 }: OverviewScorecardProps) {
+  const topFrame = dominantFrames[0] ?? null;
   const cards: CardConfig[] = [
     {
       label: "BRAND RECALL",
@@ -149,17 +150,19 @@ export function OverviewScorecard({
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },
     {
-      label: "DOMINANT NARRATIVE",
-      value: dominantFrame ? `${dominantFrame.percentage}%` : "\u2014",
-      percentage: dominantFrame?.percentage ?? 0,
+      label: dominantFrames.length > 1 ? "DOMINANT NARRATIVES" : "DOMINANT NARRATIVE",
+      value: topFrame ? `${topFrame.percentage}%` : "\u2014",
+      percentage: topFrame?.percentage ?? 0,
       color: "hsl(263, 70%, 55%)",
-      badge: dominantFrame
-        ? { text: dominantFrame.name, color: "text-violet-700 bg-violet-50 border-violet-200" }
+      badge: topFrame
+        ? { text: topFrame.name, color: "text-violet-700 bg-violet-50 border-violet-200" }
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: "The main theme AI uses to describe you",
+      description: dominantFrames.length > 1
+        ? `${dominantFrames.length} themes tied at ${topFrame?.percentage}% of responses`
+        : "The main theme AI uses to describe you",
       tooltip: "The most common narrative frame AI models use when discussing this brand, based on structured analysis of AI responses.",
       isNarrative: true,
-      narrativeName: dominantFrame?.name ?? null as unknown as string,
+      narrativeFrames: dominantFrames.length > 0 ? dominantFrames : undefined,
       delta: null,
       deltaFormat: () => "",
       scrollTarget: "narrative-section",
@@ -237,10 +240,32 @@ export function OverviewScorecard({
           </div>
 
           {/* Badge */}
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${card.badge.color} ${card.isNarrative ? "max-w-full truncate" : ""}`}>
-              {card.badge.text}
-            </span>
+          <div className="flex flex-col items-center gap-1.5 mb-3">
+            {card.isNarrative && card.narrativeFrames && card.narrativeFrames.length > 1 ? (
+              <div className="relative group flex flex-col items-center gap-1">
+                {card.narrativeFrames.slice(0, 2).map((f) => (
+                  <span key={f.name} className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border text-center leading-snug ${card.badge.color}`}>
+                    {f.name}
+                  </span>
+                ))}
+                {card.narrativeFrames.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground">+{card.narrativeFrames.length - 2} more</span>
+                )}
+                {/* Hover tooltip with all frames */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 hidden group-hover:block w-56 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
+                  <p className="font-medium mb-1.5">Tied narratives ({card.narrativeFrames[0].percentage}% each):</p>
+                  <ul className="space-y-1">
+                    {card.narrativeFrames.map((f) => (
+                      <li key={f.name} className="text-muted-foreground">{f.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border text-center leading-snug ${card.badge.color} ${card.isNarrative ? "" : ""}`}>
+                {card.badge.text}
+              </span>
+            )}
           </div>
 
           {/* Description */}
