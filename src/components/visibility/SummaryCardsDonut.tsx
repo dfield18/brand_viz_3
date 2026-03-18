@@ -16,6 +16,7 @@ interface SummaryCardsDonutProps {
   onCardClick?: (metric: MetricTab) => void;
   activeMetric?: MetricTab;
   sparklines?: { visibility: number[]; sov: number[]; topResult: number[] };
+  topSourceType?: { category: string; count: number; totalSources: number } | null;
 }
 
 interface DonutCardConfig {
@@ -105,34 +106,6 @@ function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percenta
   );
 }
 
-function PositionScale({ avgRank }: { avgRank: number }) {
-  const rounded = Math.round(avgRank);
-  const positions = [1, 2, 3, 4, 5];
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-3xl font-bold tabular-nums">
-        {avgRank.toFixed(1)}
-      </span>
-      <div className="flex items-center gap-1">
-        <span className="text-[10px] text-muted-foreground mr-0.5">Best</span>
-        {positions.map((pos) => (
-          <div
-            key={pos}
-            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium ${
-              pos === rounded
-                ? "bg-foreground text-background"
-                : "bg-muted/50 text-muted-foreground"
-            }`}
-          >
-            {pos}
-          </div>
-        ))}
-        <span className="text-[10px] text-muted-foreground ml-0.5">Worst</span>
-      </div>
-    </div>
-  );
-}
 
 function getVisibilityBadge(rate: number): { text: string; color: string } {
   if (rate >= 80) return { text: "High", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
@@ -153,12 +126,20 @@ function getTopResultBadge(rate: number): { text: string; color: string } {
   return { text: "Weak", color: "text-orange-700 bg-orange-50 border-orange-200" };
 }
 
-function getPositionBadge(rank: number): { text: string; color: string } {
-  if (rank <= 1.5) return { text: "Leading", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (rank <= 2.5) return { text: "Competitive", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  if (rank <= 3.5) return { text: "Mid-Pack", color: "text-orange-700 bg-orange-50 border-orange-200" };
-  return { text: "Trailing", color: "text-red-700 bg-red-50 border-red-200" };
-}
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  news_media: "News & Media",
+  reviews: "Reviews",
+  ecommerce: "E-Commerce",
+  reference: "Reference",
+  video: "Video",
+  social_media: "Social Media",
+  blog_forum: "Blogs & Forums",
+  brand_official: "Brand Official",
+  academic: "Academic",
+  government: "Government",
+  technology: "Technology",
+  other: "Other",
+};
 
 export function SummaryCardsDonut({
   overallMentionRate,
@@ -170,13 +151,15 @@ export function SummaryCardsDonut({
   onCardClick,
   activeMetric,
   sparklines,
+  topSourceType,
 }: SummaryCardsDonutProps) {
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
-  const positionBadge = getPositionBadge(avgRankScore);
+  const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
+  const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
 
-  const cards: (DonutCardConfig & { isPosition?: boolean })[] = [
+  const cards: DonutCardConfig[] = [
     {
       label: "BRAND RECALL",
       value: `${Math.round(overallMentionRate)}%`,
@@ -217,18 +200,17 @@ export function SummaryCardsDonut({
       sparkKey: "topResult",
     },
     {
-      label: "AVG. POSITION",
-      value: avgRankScore ? avgRankScore.toFixed(1) : "\u2014",
-      percentage: avgRankScore ? Math.max(0, 100 - (avgRankScore - 1) * 25) : 0,
-      color: "var(--chart-2)",
-      badge: positionBadge,
-      description: <>{`Where ${brandName} typically ranks among competitors`}<br /><span className="text-muted-foreground/60">Only counted when {brandName} is mentioned</span></>,
-      tooltip: "Based on general industry questions — prompts that don't mention the brand by name. Lower is better — 1st means mentioned before competitors.",
-      isPosition: true,
-      delta: kpiDeltas?.avgRank ?? null,
-      invertDelta: true,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} pos vs prior month`,
-      scrollTarget: "ranking-breakdown",
+      label: "MOST CITED SOURCE TYPE",
+      value: topSourceType ? `${sourcePct}%` : "\u2014",
+      percentage: sourcePct,
+      color: "var(--chart-4)",
+      badge: sourceLabel
+        ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
+        : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
+      description: "The category of website AI references most",
+      tooltip: "The kind of website AI platforms reference most often (e.g., news sites, review sites, official brand pages). This shows what type of content AI trusts most in this space.",
+      delta: null,
+      deltaFormat: () => "",
     },
   ];
 
@@ -264,18 +246,14 @@ export function SummaryCardsDonut({
             </div>
           </div>
 
-          {/* Donut / Position Scale */}
+          {/* Donut */}
           <div className="flex items-center justify-center mb-4 h-[90px]">
-            {card.isPosition ? (
-              <PositionScale avgRank={avgRankScore || 0} />
-            ) : (
-              <div className="relative">
-                <DonutRing percentage={card.percentage} color={card.color} size={84} strokeWidth={8} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold tabular-nums">{card.value}</span>
-                </div>
+            <div className="relative">
+              <DonutRing percentage={card.percentage} color={card.color} size={84} strokeWidth={8} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-bold tabular-nums">{card.value}</span>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Badge + Sparkline */}

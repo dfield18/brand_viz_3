@@ -679,10 +679,34 @@ export async function GET(req: NextRequest) {
       promptPositions.push({ promptText, model: run.model, position: rank });
     }
 
+    // Top cited source type (same logic as overview route)
+    let topSourceType: { category: string; count: number; totalSources: number } | null = null;
+    {
+      const runIds = allRuns.map((r) => r.id);
+      const sourceCats = await prisma.sourceOccurrence.findMany({
+        where: { runId: { in: runIds } },
+        select: { source: { select: { category: true } } },
+      });
+      if (sourceCats.length > 0) {
+        const catCounts: Record<string, number> = {};
+        for (const s of sourceCats) {
+          const cat = s.source.category ?? "other";
+          catCounts[cat] = (catCounts[cat] ?? 0) + 1;
+        }
+        const sorted = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+        const total = sorted.reduce((s, [, c]) => s + c, 0);
+        const top = sorted.find(([cat]) => cat !== "other") ?? sorted[0];
+        if (top) {
+          topSourceType = { category: top[0], count: top[1], totalSources: total };
+        }
+      }
+    }
+
     return NextResponse.json({
       hasData: true,
       brandIndustry: brand.industry,
       job: formatJobMeta(job!),
+      topSourceType,
       visibility: {
         clusters,
         clusterBreakdown,

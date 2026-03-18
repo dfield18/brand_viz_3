@@ -28,6 +28,7 @@ interface ApiResponse {
   reason?: string;
   brandIndustry?: string | null;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
+  topSourceType?: { category: string; count: number; totalSources: number } | null;
   visibility?: VisibilityResponse;
   totals?: { totalRuns: number; totalMentions: number };
 }
@@ -196,6 +197,7 @@ function VisibilityInner() {
             firstMentionRate={data.firstMentionRate}
             kpiDeltas={data.kpiDeltas}
             brandName={brandName}
+            topSourceType={apiData?.topSourceType ?? null}
           />
         </div>
 
