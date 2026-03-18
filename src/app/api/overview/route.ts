@@ -116,6 +116,14 @@ async function getModelOverviewData(
       analyses: industryAnalysesByJob.get(j.id)!,
     }));
 
+  // Compute industry mention rate using isBrandMentioned (matches visibility tab)
+  const industryMentionCount = industryLatestRuns.filter((r) =>
+    isBrandMentioned(r.rawResponseText, brandName, brandSlug, aliases),
+  ).length;
+  const industryMentionRate = industryLatestRuns.length > 0
+    ? Math.round((industryMentionCount / industryLatestRuns.length) * 100)
+    : 0;
+
   return {
     latestJob,
     latestAnalyses,
@@ -126,6 +134,7 @@ async function getModelOverviewData(
     analyzedRuns: latestAnalyses.length,
     clusterStats,
     avgRank,
+    industryMentionRate,
   };
 }
 
@@ -382,9 +391,7 @@ export async function GET(req: NextRequest) {
       visibility: indAnalyses.length > 0
         ? Math.round(avgArr(indAnalyses.map((a) => a.brandMentionStrength)))
         : 0,
-      mentionRate: indAnalyses.length > 0
-        ? Math.round((indAnalyses.filter((a) => a.brandMentioned).length / indAnalyses.length) * 100)
-        : 0,
+      mentionRate: data!.industryMentionRate,
       controversy: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.controversy))),
       authority: parseFloat(avgArr(allAnalyses.map((a) => a.authorityScore)).toFixed(2)),
       sentiment: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.legitimacy))),
