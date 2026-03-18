@@ -253,69 +253,8 @@ export async function GET(req: NextRequest) {
 
   const overview = aggregateOverview(mergedLatestAnalyses, brandName, mergedTrendData);
 
-  // Compute per-model frame percentages BEFORE validation (same order as narrative tab)
-  {
-    const STRENGTH_THRESHOLD = 20;
-    const modelPcts: Record<string, Record<string, number>> = {};
-    for (const { model: m, data } of withData) {
-      if (!data) continue;
-      const totalRuns = data.latestAnalyses.length;
-      const frameCounts: Record<string, number> = {};
-      for (const a of data.latestAnalyses) {
-        for (const f of a.frames) {
-          if (f.strength >= STRENGTH_THRESHOLD) {
-            frameCounts[f.name] = (frameCounts[f.name] ?? 0) + 1;
-          }
-        }
-      }
-      modelPcts[m] = {};
-      for (const [name, count] of Object.entries(frameCounts)) {
-        modelPcts[m][name] = totalRuns > 0 ? Math.round((count / totalRuns) * 100) : 0;
-      }
-    }
-    for (const frame of overview.topFrames) {
-      frame.byModel = {
-        chatgpt: modelPcts["chatgpt"]?.[frame.frame] ?? 0,
-        gemini: modelPcts["gemini"]?.[frame.frame] ?? 0,
-        claude: modelPcts["claude"]?.[frame.frame] ?? 0,
-        perplexity: modelPcts["perplexity"]?.[frame.frame] ?? 0,
-        google: modelPcts["google"]?.[frame.frame] ?? 0,
-      };
-    }
-  }
-
-  // Validate frames: filter out generic jargon, replace with specific issues
-  overview.topFrames = await validateFrames(overview.topFrames, brandName);
-
-  // Fallback: if frames are empty, synthesize from raw responses using GPT
-  if (overview.topFrames.length === 0) {
-    const latestJobIds = withData.map((w) => w.data!.latestJob.id);
-    const fallbackRuns = await prisma.run.findMany({
-      where: { jobId: { in: latestJobIds } },
-      select: { rawResponseText: true, model: true },
-      take: 20,
-    });
-    const filtered = fallbackRuns.filter((r) => !r.rawResponseText.startsWith("[stub:"));
-    if (filtered.length > 0) {
-      overview.topFrames = await synthesizeFramesFromResponses(filtered, brandName, "all");
-    }
-  }
-
-  // Ensure at least 5 frames — pad with GPT-generated frames if needed
-  {
-    const latestJobIdsForPad = withData.map((w) => w.data!.latestJob.id);
-    const padRuns = await prisma.run.findMany({
-      where: { jobId: { in: latestJobIdsForPad } },
-      select: { rawResponseText: true, model: true },
-      take: 20,
-    });
-    const padFiltered = padRuns.filter((r) => !r.rawResponseText.startsWith("[stub:"));
-    overview.topFrames = await ensureMinimumFrames(
-      overview.topFrames,
-      brandName,
-      padFiltered.length > 0 ? padFiltered : undefined,
-    );
-  }
+  // NOTE: Frame computation deferred until after fetchBrandRuns resolves,
+  // so we use the same deduped runs as the narrative tab. See below.
 
   // Override Visibility Score and Mention Rate KPIs with industry-only data
   if (mergedIndustryLatest.length > 0) {
@@ -424,17 +363,17 @@ export async function GET(req: NextRequest) {
     runQuery: { include: { prompt: true } },
   });
 
-  // Top source type: get run IDs + source categories in one query
-  const sourcePromise = prisma.sourceOccurrence.findMany({
-    where: { run: { jobId: { in: latestJobIds } } },
-    select: { source: { select: { category: true } } },
-  });
+  // Await fetchBrandRuns first — we need deduped run IDs for source type query
+  const visResult = await visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; });
 
-  // Await all in parallel
-  const [visResult, sourceCats] = await Promise.all([
-    visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; }),
-    sourcePromise.catch((e) => { console.error("Source type error:", e); return [] as { source: { category: string | null } }[]; }),
-  ]);
+  // Top source type: use deduped run IDs (matches visibility tab)
+  const dedupedRunIds = visResult && visResult.ok ? visResult.runs.map((r) => r.id) : [];
+  const sourceCats = dedupedRunIds.length > 0
+    ? await prisma.sourceOccurrence.findMany({
+        where: { runId: { in: dedupedRunIds } },
+        select: { source: { select: { category: true } } },
+      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { category: string | null } }[]; })
+    : [];
 
   // --- Visibility KPIs + Competitive Rank (from single visResult) ---
   let overallMentionRate = 0;
@@ -559,6 +498,101 @@ export async function GET(req: NextRequest) {
         neutral: Math.round((neu / total) * 100),
         negative: Math.round((neg / total) * 100),
       };
+    }
+  }
+
+  // --- Recompute frames & model comparison from deduped runs (matches narrative tab exactly) ---
+  if (visResult && visResult.ok) {
+    const { runs: visRuns, isAll } = visResult;
+
+    // Parse all deduped analyses
+    const dedupedAnalyses = visRuns
+      .map((r) => parseAnalysis(r.analysisJson))
+      .filter((a): a is NonNullable<typeof a> => a !== null);
+
+    // Group by model for per-model breakdowns
+    const dedupedByModel = new Map<string, RunAnalysis[]>();
+    for (const r of visRuns) {
+      const parsed = parseAnalysis(r.analysisJson);
+      if (!parsed) continue;
+      const list = dedupedByModel.get(r.model) ?? [];
+      list.push(parsed);
+      dedupedByModel.set(r.model, list);
+    }
+
+    // Recompute frame list + overall percentages from deduped data (same as aggregateNarrative)
+    if (dedupedAnalyses.length > 0) {
+      const STRENGTH_THRESHOLD = 20;
+      const frameBuckets: Record<string, number> = {};
+      for (const a of dedupedAnalyses) {
+        for (const f of a.frames) {
+          if (f.strength >= STRENGTH_THRESHOLD) {
+            frameBuckets[f.name] = (frameBuckets[f.name] ?? 0) + 1;
+          }
+        }
+      }
+      const totalResponses = dedupedAnalyses.length;
+      overview.topFrames = Object.entries(frameBuckets)
+        .map(([frame, count]) => ({
+          frame,
+          percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
+          byModel: { chatgpt: 0, gemini: 0, claude: 0, perplexity: 0, google: 0 },
+        }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 8);
+
+      // Compute per-model frame percentages (same as narrative tab)
+      const modelRunCounts: Record<string, number> = {};
+      const modelFrameCounts: Record<string, Record<string, number>> = {};
+      for (const r of visRuns) {
+        const a = parseAnalysis(r.analysisJson);
+        if (!a) continue;
+        modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
+        if (!modelFrameCounts[r.model]) modelFrameCounts[r.model] = {};
+        for (const f of a.frames) {
+          if (f.strength >= STRENGTH_THRESHOLD) {
+            modelFrameCounts[r.model][f.name] = (modelFrameCounts[r.model][f.name] ?? 0) + 1;
+          }
+        }
+      }
+      for (const frame of overview.topFrames) {
+        frame.byModel = {
+          chatgpt: modelRunCounts["chatgpt"] ? Math.round(((modelFrameCounts["chatgpt"]?.[frame.frame] ?? 0) / modelRunCounts["chatgpt"]) * 100) : 0,
+          gemini: modelRunCounts["gemini"] ? Math.round(((modelFrameCounts["gemini"]?.[frame.frame] ?? 0) / modelRunCounts["gemini"]) * 100) : 0,
+          claude: modelRunCounts["claude"] ? Math.round(((modelFrameCounts["claude"]?.[frame.frame] ?? 0) / modelRunCounts["claude"]) * 100) : 0,
+          perplexity: modelRunCounts["perplexity"] ? Math.round(((modelFrameCounts["perplexity"]?.[frame.frame] ?? 0) / modelRunCounts["perplexity"]) * 100) : 0,
+          google: modelRunCounts["google"] ? Math.round(((modelFrameCounts["google"]?.[frame.frame] ?? 0) / modelRunCounts["google"]) * 100) : 0,
+        };
+      }
+
+      // Validate frames (same as narrative tab)
+      overview.topFrames = await validateFrames(overview.topFrames, brandName);
+
+      // Fallback: synthesize from raw responses if empty
+      if (overview.topFrames.length === 0 && visRuns.length > 0) {
+        overview.topFrames = await synthesizeFramesFromResponses(
+          visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+          brandName,
+          isAll ? "all" : model,
+        );
+      }
+
+      // Ensure at least 5 frames
+      overview.topFrames = await ensureMinimumFrames(
+        overview.topFrames,
+        brandName,
+        visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+      );
+    }
+
+    // Recompute model comparison sentiment/authority/stability from deduped data
+    for (const mc of overview.modelComparison) {
+      const analyses = dedupedByModel.get(mc.model);
+      if (!analyses || analyses.length === 0) continue;
+      mc.controversy = Math.round(avgArr(analyses.map((a) => a.sentiment.controversy)));
+      mc.authority = parseFloat(avgArr(analyses.map((a) => a.authorityScore)).toFixed(2));
+      mc.sentiment = Math.round(avgArr(analyses.map((a) => a.sentiment.legitimacy)));
+      mc.narrativeStability = computeStability(analyses);
     }
   }
 

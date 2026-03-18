@@ -78,7 +78,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
               {!isStable && (
-                <span className={`text-xs font-medium tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : (isOrg ? "text-muted-foreground" : "text-emerald-600")}`}>
+                <span className={`text-xs font-medium tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-red-400"}`}>
                   {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
                 </span>
               )}
