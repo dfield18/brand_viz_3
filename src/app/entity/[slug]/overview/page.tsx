@@ -175,11 +175,11 @@ function OverviewInner() {
           {kpis && (
             <OverviewScorecard
               overallMentionRate={kpis.overallMentionRate}
-              avgRankScore={kpis.avgRankScore}
               kpiDeltas={apiData.kpiDeltas ?? null}
               brandName={brandName}
               dominantFrames={dominantFrames}
               sentimentSplit={apiData.sentimentSplit ?? null}
+              topSourceType={apiData.topSourceType ?? null}
             />
           )}
         </div>
@@ -190,9 +190,9 @@ function OverviewInner() {
             {/* 1-sentence AI insight */}
             {apiData.aiSummary && (
               <div className="flex items-start gap-3 px-5 py-3.5">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <Lightbulb className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-[13px] text-foreground/70 leading-relaxed">
-                  <span className="font-medium text-amber-700 mr-1.5">Key Insight:</span>
+                  <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
                   {apiData.aiSummary}
                 </p>
               </div>

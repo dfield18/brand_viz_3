@@ -6,11 +6,11 @@ import type { KpiDeltas } from "@/types/api";
 
 interface OverviewScorecardProps {
   overallMentionRate: number;
-  avgRankScore: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
   dominantFrames: { name: string; percentage: number }[];
   sentimentSplit: { positive: number; neutral: number; negative: number } | null;
+  topSourceType?: { category: string; count: number; totalSources: number } | null;
 }
 
 function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percentage: number; color: string; size?: number; strokeWidth?: number }) {
@@ -31,30 +31,6 @@ function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percenta
   );
 }
 
-function PositionScale({ avgRank }: { avgRank: number }) {
-  const rounded = Math.round(avgRank);
-  const positions = [1, 2, 3, 4, 5];
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-3xl font-bold tabular-nums">{avgRank.toFixed(1)}</span>
-      <div className="flex items-center gap-1">
-        <span className="text-[10px] text-muted-foreground mr-0.5">Best</span>
-        {positions.map((pos) => (
-          <div
-            key={pos}
-            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium ${
-              pos === rounded ? "bg-foreground text-background" : "bg-muted/50 text-muted-foreground"
-            }`}
-          >
-            {pos}
-          </div>
-        ))}
-        <span className="text-[10px] text-muted-foreground ml-0.5">Worst</span>
-      </div>
-    </div>
-  );
-}
 
 function getVisibilityBadge(rate: number): { text: string; color: string } {
   if (rate >= 80) return { text: "High", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
@@ -102,12 +78,6 @@ function SentimentBar({ split }: { split: { positive: number; neutral: number; n
   );
 }
 
-function getPositionBadge(rank: number): { text: string; color: string } {
-  if (rank <= 1.5) return { text: "Leading", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (rank <= 2.5) return { text: "Competitive", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  if (rank <= 3.5) return { text: "Mid-Pack", color: "text-orange-700 bg-orange-50 border-orange-200" };
-  return { text: "Trailing", color: "text-red-700 bg-red-50 border-red-200" };
-}
 
 interface CardConfig {
   label: string;
@@ -120,7 +90,6 @@ interface CardConfig {
   delta: number | null;
   invertDelta?: boolean;
   deltaFormat: (v: number) => string;
-  isPosition?: boolean;
   isNarrative?: boolean;
   isSentiment?: boolean;
   sentimentData?: { positive: number; neutral: number; negative: number };
@@ -128,13 +97,28 @@ interface CardConfig {
   scrollTarget?: string;
 }
 
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  news_media: "News & Media",
+  reviews: "Reviews",
+  ecommerce: "E-Commerce",
+  reference: "Reference",
+  video: "Video",
+  social_media: "Social Media",
+  blog_forum: "Blogs & Forums",
+  brand_official: "Brand Official",
+  academic: "Academic",
+  government: "Government",
+  technology: "Technology",
+  other: "Other",
+};
+
 export function OverviewScorecard({
   overallMentionRate,
-  avgRankScore,
   kpiDeltas,
   brandName = "Brand",
   dominantFrames,
   sentimentSplit,
+  topSourceType,
 }: OverviewScorecardProps) {
   const topFrame = dominantFrames[0] ?? null;
   const cards: CardConfig[] = [
@@ -149,19 +133,26 @@ export function OverviewScorecard({
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },
-    {
-      label: "AVG. POSITION",
-      value: avgRankScore ? avgRankScore.toFixed(1) : "\u2014",
-      percentage: avgRankScore ? Math.max(0, 100 - (avgRankScore - 1) * 25) : 0,
-      color: "var(--chart-2)",
-      badge: getPositionBadge(avgRankScore),
-      description: <>{`Where ${brandName} typically ranks among competitors`}<br /><span className="text-muted-foreground/60">Only counted when {brandName} is mentioned</span></>,
-      tooltip: "Based on general industry questions — prompts that don't mention the brand by name. Lower is better — 1st means mentioned before competitors.",
-      isPosition: true,
-      delta: kpiDeltas?.avgRank ?? null,
-      invertDelta: true,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} pos vs prior month`,
-    },
+    (() => {
+      const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
+      const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
+      return {
+        label: "MOST CITED SOURCE TYPE",
+        value: topSourceType ? `${sourcePct}%` : "\u2014",
+        percentage: sourcePct,
+        color: "var(--chart-4)",
+        badge: sourceLabel
+          ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
+          : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
+        description: topSourceType
+          ? `${sourceLabel} sources make up ${sourcePct}% of all citations`
+          : "The most common type of source AI cites",
+        tooltip: "The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this brand.",
+        delta: null,
+        deltaFormat: () => "",
+        scrollTarget: "sources-trend",
+      };
+    })(),
     {
       label: dominantFrames.length > 1 ? "DOMINANT NARRATIVES" : "DOMINANT NARRATIVE",
       value: topFrame ? `${topFrame.percentage}%` : "\u2014",
@@ -222,9 +213,7 @@ export function OverviewScorecard({
 
           {/* Visual */}
           <div className="flex items-center justify-center mb-4 h-[90px]">
-            {card.isPosition ? (
-              <PositionScale avgRank={avgRankScore || 0} />
-            ) : card.isSentiment && card.sentimentData ? (
+            {card.isSentiment && card.sentimentData ? (
               <div className="w-full px-2 flex flex-col items-center justify-center gap-2">
                 <span className="text-2xl font-bold tabular-nums">{card.sentimentData.positive}%</span>
                 <SentimentBar split={card.sentimentData} />
