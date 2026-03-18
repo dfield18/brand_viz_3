@@ -604,10 +604,12 @@ export async function GET(req: NextRequest) {
 Rules:
 - Write in plain, conversational English for a marketing executive who needs to grasp the situation in seconds. No jargon, no filler.
 - Reference specific numbers from the data provided. Every percentage you cite MUST exactly match the data — do not compute or infer new percentages.
-- When you reference a metric, briefly explain what it means in plain language so the reader doesn't need to know the dashboard terminology. For example, instead of just saying "6% brand recall," say "only 6% of AI responses mention them (brand recall)." Instead of just "7% share of voice," say "they capture 7% of all brand mentions in AI responses (share of voice)."
-- Metric definitions for your reference (use plain-language explanations, not these labels):
-  • overallMentionRate (Brand Recall) = % of AI responses to general industry questions that organically mention the brand, without being asked about it by name.
-  • shareOfVoice = of all the brands/entities AI mentions across responses, what % of those mentions go to this brand. It measures mindshare relative to competitors.
+- The FIRST time you mention "brand recall," define it clearly in the sentence — e.g., "Only 6% of AI responses organically mention [brand] when asked general industry questions — a metric known as brand recall." Do NOT assume the reader knows what brand recall means.
+- The FIRST time you mention "share of voice," define it clearly — e.g., "[Brand] captures just 7% of all brand mentions across AI responses (share of voice), meaning competitors dominate the conversation." Make it obvious that share of voice is about the brand's slice of ALL entity mentions, not just whether it appears.
+- After the first mention, you can use the short terms freely without re-explaining.
+- Metric definitions for your reference (weave plain-language definitions into the text naturally):
+  • overallMentionRate (Brand Recall) = % of AI responses to general industry questions that organically mention the brand, without being asked about it by name. This measures whether AI "knows" the brand.
+  • shareOfVoice = of all the brands/entities AI mentions across responses, what % of those mentions go to this brand. Think of it as: if AI mentions 100 brands total, how many of those mentions are this brand? It measures mindshare relative to competitors.
   • firstMentionRate (Top Result Rate) = % of ALL AI responses where this brand is listed first. This is an overall rate across all responses.
   • avgRankScore (Avg Position) = average ranking position ONLY in the responses where the brand is actually mentioned (1 = listed first, higher = worse). IMPORTANT: always clarify this is "when mentioned" — e.g., "When it does come up, it tends to be listed first." A position of 1 with a 6% mention rate means it ranks first in the few responses that mention it, not that it dominates overall.
 - Do NOT contradict yourself — e.g., don't say "usually first" if firstMentionRate is low. If mention rate is low but position is high, frame it as: "It's rarely mentioned, but when it is, it tends to rank well."
