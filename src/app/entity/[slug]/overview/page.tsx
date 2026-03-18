@@ -238,28 +238,30 @@ function OverviewInner() {
                     }
 
                     // ── Paragraph 2: Position (where the brand ranks when it does appear) ──
-                    // Skip if P1 already made a position claim
+                    // Skip if P1 already made a position claim.
+                    // All percentages here use the OVERALL firstMentionRate (matching the KPI card)
+                    // to avoid confusion between "% of all queries" vs "% of mentions."
                     if (kpis.avgRankScore > 0 && !p1IncludesPosition) {
                       const rounded = Math.round(kpis.avgRankScore);
                       const isLowVisibility = kpis.overallMentionRate < 30;
                       if (kpis.avgRankScore <= 1.3 && firstWhenMentioned >= 60) {
                         // Strong first-position: brand is #1 in most of its appearances
                         if (isLowVisibility) {
-                          parts.push(`One bright spot: when ${brandName} does come up, it's usually the first name on the list (${firstWhenMentioned}% of the time it's mentioned). The challenge is getting mentioned more often.`);
+                          parts.push(`One bright spot: when ${brandName} does come up, it's usually the first name on the list. Overall, ${brandName} is the top result in ${kpis.firstMentionRate}% of all AI responses — the challenge is getting mentioned more often.`);
                         } else {
-                          parts.push(`When ${brandName} comes up, it's typically the first name on the list — it leads ${firstWhenMentioned}% of the time it's mentioned.`);
+                          parts.push(`When ${brandName} comes up, it's typically the first name on the list — it's the top result in ${kpis.firstMentionRate}% of all AI responses.`);
                         }
                       } else if (kpis.avgRankScore <= 2.0 && firstWhenMentioned >= 30) {
-                        parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it leads the list ${firstWhenMentioned}% of the time it appears.`);
+                        parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it's the top result in ${kpis.firstMentionRate}% of all responses.`);
                       } else if (rounded <= 2) {
                         // Moderate position but low first-mention rate, or very few mentions
                         if (isLowVisibility) {
                           parts.push(`When it does come up, ${brandName} tends to appear near the top of the list. The main challenge is getting mentioned more often.`);
                         } else {
-                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list, though it only leads as the first name in ${firstWhenMentioned}% of its appearances.`);
+                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list, though it's the #1 result in only ${kpis.firstMentionRate}% of all responses.`);
                         }
                       } else if (kpis.avgRankScore <= 3.0) {
-                        parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so ${isOrg ? "other organizations" : "competitors"} tend to get named first.${kpis.firstMentionRate > 0 ? ` Only ${firstWhenMentioned}% of the time it's mentioned is ${brandName} the first name.` : ` ${brandName} is rarely the first name mentioned.`}`);
+                        parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so ${isOrg ? "other organizations" : "competitors"} tend to get named first.${kpis.firstMentionRate > 0 ? ` It's the top result in only ${kpis.firstMentionRate}% of all responses.` : ` ${brandName} is rarely the first name mentioned.`}`);
                       } else {
                         parts.push(`When AI does mention ${brandName}, it usually lists ${rounded === 4 ? "three or four" : "several"} ${others} first — ${brandName} tends to show up around the ${ordinal(rounded)} spot. There's an opportunity to move up.`);
                       }
