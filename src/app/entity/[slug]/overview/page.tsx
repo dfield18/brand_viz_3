@@ -21,6 +21,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 
 interface ApiResponse {
   hasData: boolean;
+  aiSummary?: string | null;
   brandCategory?: string | null;
   brandIndustry?: string | null;
   reason?: string;
@@ -193,89 +194,11 @@ function OverviewInner() {
         {/* Key Insights: Executive Summary + Top Recommendation merged */}
         <div id="key-insights" className="scroll-mt-24">
           <div className="rounded-xl bg-card shadow-section overflow-hidden">
-            {/* Summary */}
-            {apiData.visibilityKpis && (
+            {/* AI Summary */}
+            {apiData.aiSummary && (
               <div className="px-5 py-4">
                 <p className="text-sm text-foreground/80 leading-relaxed">
-                  {(() => {
-                    const kpis = apiData.visibilityKpis!;
-                    const isOrg = apiData.brandCategory === "political_advocacy";
-                    const others = isOrg ? "other organizations" : "other brands";
-                    const names = isOrg ? "organization names" : "brand names";
-                    const nameNoun = isOrg ? "organization" : "brand";
-                    const industry = apiData.brandIndustry;
-                    const spaceLabel = industry ? `${industry}` : "this space";
-                    const noMentionNote = ` These results are based on general ${spaceLabel} questions — prompts that don't explicitly mention ${brandName} by name — so they reflect organic AI awareness.`;
-                    const ordinal = (n: number) => {
-                      const s = ["th", "st", "nd", "rd"];
-                      const v = n % 100;
-                      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-                    };
-                    const parts: string[] = [];
-                    // Compute % of mentions where brand is #1 (conditional rate, not overall rate)
-                    const firstWhenMentioned = kpis.overallMentionRate > 0
-                      ? Math.round((kpis.firstMentionRate / kpis.overallMentionRate) * 100)
-                      : 0;
-
-                    // ── Paragraph 1: Visibility (how often the brand appears) ──
-                    // Also include position claim when mentionRate >= 80 to avoid redundancy with P2
-                    const p1IncludesPosition = kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5 && firstWhenMentioned >= 60;
-                    if (p1IncludesPosition) {
-                      parts.push(`Great news — when someone asks an AI tool about ${spaceLabel}, ${brandName} comes up ${kpis.overallMentionRate}% of the time, and it's usually the very first name mentioned. That's a strong position.${noMentionNote}`);
-                    } else if (kpis.overallMentionRate >= 80) {
-                      parts.push(`${brandName} has strong visibility — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up.${noMentionNote}`);
-                    } else if (kpis.overallMentionRate >= 60) {
-                      const sovComment = kpis.shareOfVoice >= 15
-                        ? `That's solid visibility.`
-                        : `That's decent frequency, though ${brandName} captures only ${kpis.shareOfVoice}% of all ${names} — there's room to grow its share.`;
-                      parts.push(`${brandName} is showing up well — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up. ${sovComment}${noMentionNote}`);
-                    } else if (kpis.overallMentionRate >= 30) {
-                      parts.push(`Right now, when someone asks an AI tool about ${spaceLabel} without mentioning ${brandName} by name, ${brandName} comes up about ${kpis.overallMentionRate}% of the time. That means in roughly ${100 - kpis.overallMentionRate}% of those conversations, people are hearing about ${others} instead. ${brandName} makes up ${kpis.shareOfVoice}% of all the ${names} mentioned.`);
-                    } else if (kpis.overallMentionRate > 0) {
-                      parts.push(`Here's something to pay attention to: when people ask AI tools about ${spaceLabel} without mentioning ${brandName} by name, ${brandName} only comes up ${kpis.overallMentionRate}% of the time and captures just ${kpis.shareOfVoice}% of all ${names} mentioned. That means most people asking AI for recommendations in this area won't hear about ${brandName} at all.`);
-                    } else {
-                      parts.push(`${brandName} isn't showing up in AI answers about ${spaceLabel} yet. When people ask AI tools like ChatGPT and Google about ${spaceLabel} without mentioning ${brandName} by name, they won't find it in the results.`);
-                    }
-
-                    // ── Paragraph 2: Position (where the brand ranks when it does appear) ──
-                    // Skip if P1 already made a position claim.
-                    // All percentages here use the OVERALL firstMentionRate (matching the KPI card)
-                    // to avoid confusion between "% of all queries" vs "% of mentions."
-                    if (kpis.avgRankScore > 0 && !p1IncludesPosition) {
-                      const rounded = Math.round(kpis.avgRankScore);
-                      const isLowVisibility = kpis.overallMentionRate < 30;
-                      if (kpis.avgRankScore <= 1.3 && firstWhenMentioned >= 60) {
-                        // Strong first-position: brand is #1 in most of its appearances
-                        if (isLowVisibility) {
-                          parts.push(`One bright spot: when ${brandName} does come up, it's usually the first name on the list. Overall, ${brandName} is the top result in ${kpis.firstMentionRate}% of all AI responses — the challenge is getting mentioned more often.`);
-                        } else {
-                          parts.push(`When ${brandName} comes up, it's typically the first name on the list — it's the top result in ${kpis.firstMentionRate}% of all AI responses.`);
-                        }
-                      } else if (kpis.avgRankScore <= 2.0 && firstWhenMentioned >= 30) {
-                        parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it's the top result in ${kpis.firstMentionRate}% of all responses.`);
-                      } else if (rounded <= 2) {
-                        // Moderate position but low first-mention rate, or very few mentions
-                        if (isLowVisibility) {
-                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list. The main challenge is getting mentioned more often.`);
-                        } else {
-                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list, though it's the #1 result in only ${kpis.firstMentionRate}% of all responses.`);
-                        }
-                      } else if (kpis.avgRankScore <= 3.0) {
-                        parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so ${isOrg ? "other organizations" : "competitors"} tend to get named first.${kpis.firstMentionRate > 0 ? ` It's the top result in only ${kpis.firstMentionRate}% of all responses.` : ` ${brandName} is rarely the first name mentioned.`}`);
-                      } else {
-                        parts.push(`When AI does mention ${brandName}, it usually lists ${rounded === 4 ? "three or four" : "several"} ${others} first — ${brandName} tends to show up around the ${ordinal(rounded)} spot. There's an opportunity to move up.`);
-                      }
-                    }
-                    const ss = apiData.sentimentSplit;
-                    if (ss) {
-                      if (ss.positive >= 70) parts.push(`On the bright side, when AI talks about ${brandName}, it's overwhelmingly positive — ${ss.positive}% of what it says is favorable.`);
-                      else if (ss.positive >= 50) parts.push(`When AI does talk about ${brandName}, the tone is mostly positive (${ss.positive}% favorable)${ss.negative > 0 ? `, but ${ss.negative}% of the time it raises some concerns worth looking into` : ""}.`);
-                      else if (ss.negative >= 30) parts.push(`Something to keep an eye on: ${ss.negative}% of the time, AI describes ${brandName} in a negative way. It's worth digging into what's behind that.`);
-                    }
-                    const topFrame = data.topFrames[0]?.frame;
-                    if (topFrame) parts.push(`The biggest theme AI connects with ${brandName}? "${topFrame}."`);
-                    return parts.join(" ");
-                  })()}
+                  {apiData.aiSummary}
                 </p>
               </div>
             )}

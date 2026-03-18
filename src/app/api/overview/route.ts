@@ -14,6 +14,7 @@ import { fetchBrandRuns } from "@/lib/apiPipeline";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
+import { getOpenAIDefault } from "@/lib/openai";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -580,8 +581,63 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Generate AI summary using GPT-4o-mini ──
+  const isOrg = ((brand as unknown as { category?: string | null }).category ?? null) === "political_advocacy";
+  const industry = (brand as unknown as { industry?: string | null }).industry ?? null;
+  let aiSummary: string | null = null;
+  try {
+    const summaryData = {
+      brandName: brandName,
+      isOrganization: isOrg,
+      industry: industry ?? "this space",
+      overallMentionRate,
+      shareOfVoice,
+      firstMentionRate,
+      avgRankScore,
+      sentimentSplit,
+      topFrame: overview.topFrames[0]?.frame ?? null,
+      competitiveRank,
+    };
+    const oai = getOpenAIDefault();
+    const completion = await oai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+      max_tokens: 350,
+      messages: [
+        {
+          role: "system",
+          content: `You write concise executive summaries (3-5 sentences) for a brand visibility dashboard. The summary explains how a brand/organization appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity, Google AI).
+
+Rules:
+- Write in plain, conversational English for a marketing professional. No jargon.
+- Reference specific numbers from the data provided. Every percentage you cite MUST exactly match the data — do not compute or infer new percentages.
+- "Brand Recall" (overallMentionRate) = % of all AI responses that mention the brand. This is based on general industry questions that do NOT explicitly name the brand.
+- "Share of Voice" (shareOfVoice) = brand mentions as a % of ALL entity mentions across responses.
+- "Top Result Rate" (firstMentionRate) = % of ALL AI responses where the brand is the #1 result. This is an overall rate — do NOT divide it by mention rate or recompute it.
+- "Avg Position" (avgRankScore) = average rank when mentioned (1 = first, higher = worse).
+- Do NOT contradict yourself — e.g., don't say "usually first" if firstMentionRate is low.
+- If the brand is rarely mentioned (<30%), the overall tone should reflect that challenge — don't overemphasize small bright spots.
+- If the brand is frequently mentioned (>=60%), lead with the positive.
+- Mention the top narrative frame/theme if provided.
+- Note that these results are from general industry questions that don't explicitly mention the brand by name.
+- ${isOrg ? 'This is a cause/advocacy organization — say "other organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
+- Do NOT use markdown, bullet points, or headers. Just plain paragraph text.`,
+        },
+        {
+          role: "user",
+          content: `Generate a summary for: ${JSON.stringify(summaryData)}`,
+        },
+      ],
+    });
+    aiSummary = completion.choices[0]?.message?.content?.trim() ?? null;
+  } catch (e) {
+    console.error("AI summary generation failed:", e instanceof Error ? e.message : e);
+    // Fallback: aiSummary stays null, client can show nothing or a simple fallback
+  }
+
   return NextResponse.json({
     hasData: true,
+    aiSummary,
     brandCategory: (brand as unknown as { category?: string | null }).category ?? null,
     brandIndustry: (brand as unknown as { industry?: string | null }).industry ?? null,
     job: {
