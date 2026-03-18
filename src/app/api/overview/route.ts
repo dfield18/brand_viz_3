@@ -595,32 +595,20 @@ export async function GET(req: NextRequest) {
     const completion = await oai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.4,
-      max_tokens: 350,
+      max_tokens: 120,
       messages: [
         {
           role: "system",
-          content: `You write concise executive summaries (3-5 sentences) for a brand visibility dashboard. The summary explains how a brand/organization appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity, Google AI).
+          content: `You write a single-sentence executive insight for a brand visibility dashboard. The sentence explains the most important takeaway about how a brand/organization appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity, Google AI).
 
 Rules:
-- Write in plain, conversational English for a marketing executive who needs to grasp the situation in seconds. No jargon, no filler.
-- Reference specific numbers from the data provided. Every percentage you cite MUST exactly match the data — do not compute or infer new percentages.
-- The FIRST time you mention "brand recall," define it clearly in the sentence — e.g., "Only 6% of AI responses organically mention [name] when asked general industry questions — a metric we call brand recall." Do NOT assume the reader knows what brand recall means.
-- The FIRST time you mention "share of voice," define it clearly — e.g., "Of all the names AI mentions in its responses, only 7% are [name] (share of voice), meaning other players dominate the conversation." Make it obvious this is about the brand's slice of ALL entity mentions.
-- After the first mention, you can use the short terms freely without re-explaining.
-- Metric definitions for your reference (weave plain-language definitions into the text naturally — NEVER say "rank score of X" or "average rank score"):
-  • overallMentionRate (Brand Recall) = % of AI responses to general industry questions that organically mention the brand, without being asked about it by name. This measures whether AI "knows" the brand.
-  • shareOfVoice = of all the names/entities AI mentions across responses, what % of those mentions go to this brand. Think of it as: if AI mentions 100 names total, how many are this brand?
-  • firstMentionRate (Top Result Rate) = % of ALL AI responses where this brand is listed first.
-  • avgRankScore (Avg Position) = average ranking position ONLY in responses where the brand is actually mentioned (1 = listed first). Always express this in natural language like "tends to be listed first" or "usually appears second or third" — NEVER say "rank score of 1" or "average rank score of 1."
-- Do NOT contradict yourself. If mention rate is low but position is good, say: "It rarely comes up, but when it does, it's typically the first name listed."
-- If competitiveRank is provided, explain it clearly: e.g., "ranks 10th out of 15 in how often AI mentions it" — NOT just "10th place."
-- Do NOT repeat the same point in different words. Each sentence must add NEW information. If you've already said visibility is low, don't say "room for growth" — that's the same point.
-- If the brand is rarely mentioned (<30%), lead with the visibility gap.
-- If the brand is frequently mentioned (>=60%), lead with the positive.
-- When citing the top narrative frame, use the EXACT frame name from the data in quotes.
-- ${isOrg ? 'This is a cause/advocacy organization. Say "other organizations" instead of "competitors," "organization" instead of "brand," and "entity mentions" or "names mentioned" instead of "brand mentions."' : ""}
-- Do NOT use markdown, bullet points, or headers. Just plain paragraph text.
-- Keep it to 3-4 sentences max. Every sentence should give the reader a distinct, clear takeaway.`,
+- Exactly ONE sentence. No more.
+- Plain, conversational English for a marketing executive. No jargon.
+- Reference specific numbers from the data. Every number MUST exactly match the data provided.
+- NEVER say "rank score of X" or "average rank score." Use natural language like "tends to be listed first."
+- If mention rate is low (<30%), focus on the visibility gap. If high (>=60%), focus on the strength.
+- ${isOrg ? 'This is a cause/advocacy organization. Say "other organizations" instead of "competitors," "organization" instead of "brand."' : ""}
+- No markdown, no bullet points. Just one plain sentence.`,
         },
         {
           role: "user",

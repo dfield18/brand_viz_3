@@ -186,10 +186,10 @@ function OverviewInner() {
         {/* Key Insights: Executive Summary + Top Recommendation merged */}
         <div id="key-insights" className="scroll-mt-24">
           <div className="rounded-xl bg-card shadow-section overflow-hidden">
-            {/* AI Summary */}
+            {/* 1-sentence AI insight */}
             {apiData.aiSummary && (
-              <div className="px-5 py-4">
-                <p className="text-sm text-foreground/80 leading-relaxed">
+              <div className="px-5 py-3.5">
+                <p className="text-[13px] text-foreground/80 leading-relaxed">
                   {apiData.aiSummary}
                 </p>
               </div>
