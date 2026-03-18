@@ -27,7 +27,6 @@ function makeMetric(overrides: Partial<EntityMetricInput> = {}): EntityMetricInp
   return {
     runId: "run1",
     entityId: "nike",
-    prominenceScore: 50,
     rankPosition: 2,
     ...overrides,
   };
@@ -54,8 +53,8 @@ describe("computeSourceSummary", () => {
       makeOcc({ runId: "r2", domain: "authority.com" }),
     ];
     const metrics = [
-      makeMetric({ runId: "r1", entityId: "nike", prominenceScore: 80, rankPosition: 1 }),
-      makeMetric({ runId: "r2", entityId: "nike", prominenceScore: 50, rankPosition: 3 }),
+      makeMetric({ runId: "r1", entityId: "nike", rankPosition: 1 }),
+      makeMetric({ runId: "r2", entityId: "nike", rankPosition: 3 }),
     ];
     const result = computeSourceSummary(occ, metrics, "nike", 2);
     assert.equal(result.authorityDriverCount, 2); // a.com and other.com cited in r1 which has rank=1 & prominence≥70
@@ -86,31 +85,14 @@ describe("computeTopDomains", () => {
     assert.equal(result[1].citations, 1);
   });
 
-  it("computes prominence lift", () => {
-    const occ = [
-      makeOcc({ runId: "r1", domain: "good.com" }),
-      makeOcc({ runId: "r2", domain: "bad.com" }),
-    ];
-    const metrics = [
-      makeMetric({ runId: "r1", prominenceScore: 90, rankPosition: 1 }),
-      makeMetric({ runId: "r2", prominenceScore: 30, rankPosition: 5 }),
-    ];
-    const result = computeTopDomains(occ, metrics, "nike", 2);
-    const good = result.find((r) => r.domain === "good.com")!;
-    const bad = result.find((r) => r.domain === "bad.com")!;
-    // Baseline: (90+30)/2 = 60
-    assert.ok(good.prominenceLift > 0); // 90 - 60 = 30
-    assert.ok(bad.prominenceLift < 0);  // 30 - 60 = -30
-  });
-
   it("computes rank lift", () => {
     const occ = [
       makeOcc({ runId: "r1", domain: "good.com" }),
       makeOcc({ runId: "r2", domain: "bad.com" }),
     ];
     const metrics = [
-      makeMetric({ runId: "r1", prominenceScore: 80, rankPosition: 1 }),
-      makeMetric({ runId: "r2", prominenceScore: 40, rankPosition: 5 }),
+      makeMetric({ runId: "r1", rankPosition: 1 }),
+      makeMetric({ runId: "r2", rankPosition: 5 }),
     ];
     const result = computeTopDomains(occ, metrics, "nike", 2);
     const good = result.find((r) => r.domain === "good.com")!;

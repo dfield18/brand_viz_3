@@ -10,14 +10,12 @@ export const PATAGONIA_DUMMY_VISIBILITY: VisibilityResponse = {
   shareOfVoice: 25,
   avgRankScore: 2.3,
   firstMentionRate: 35.5,
-  prominence: 42.67,
 
   kpiDeltas: {
     mentionRate: 3.5,
     shareOfVoice: 2.6,
     avgRank: -0.17,
     firstMentionRate: -1.4,
-    prominence: 2.14,
   },
 
   clusters: [
@@ -315,14 +313,12 @@ export const NUCLEAR_ENERGY_DUMMY_VISIBILITY: VisibilityResponse = {
   shareOfVoice: 30,
   avgRankScore: 1.73,
   firstMentionRate: 51.6,
-  prominence: 58.4,
 
   kpiDeltas: {
     mentionRate: 3.6,
     shareOfVoice: -1.1,
     avgRank: 0.12,
     firstMentionRate: 0.9,
-    prominence: 3.8,
   },
 
   clusters: [

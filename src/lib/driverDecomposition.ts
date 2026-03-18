@@ -14,7 +14,6 @@
 
 export type KpiKey =
   | "mentionRate"
-  | "avgProminence"
   | "firstMentionRate"
   | "avgRank"
   | "shareOfVoice";
@@ -59,7 +58,6 @@ export interface DecompositionResult {
 
 export const KPI_LABELS: Record<KpiKey, string> = {
   mentionRate: "Mention Rate",
-  avgProminence: "AI Visibility",
   firstMentionRate: "Top Result Rate",
   avgRank: "Avg Position",
   shareOfVoice: "Share of Voice",
@@ -71,10 +69,6 @@ export function computeKpi(runs: DecomposedRun[], kpi: KpiKey): number | null {
     case "mentionRate": {
       const mentioned = runs.filter((r) => r.brandMentioned).length;
       return Math.round((mentioned / runs.length) * 1000) / 10;
-    }
-    case "avgProminence": {
-      const sum = runs.reduce((s, r) => s + r.brandMentionStrength, 0);
-      return Math.round((sum / runs.length) * 10) / 10;
     }
     case "firstMentionRate": {
       const first = runs.filter((r) => r.rank === 1).length;

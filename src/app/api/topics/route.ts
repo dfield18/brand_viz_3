@@ -128,7 +128,6 @@ export async function GET(req: NextRequest) {
         entityId: true,
         model: true,
         promptId: true,
-        prominenceScore: true,
         rankPosition: true,
       },
     });
@@ -143,7 +142,6 @@ export async function GET(req: NextRequest) {
         topicKey: promptTopicMap.get(m.promptId)!,
         entityId: m.entityId,
         model: m.model,
-        prominenceScore: m.prominenceScore,
         rankPosition: m.rankPosition,
         createdAt: runDateMap.get(m.runId) ?? new Date(),
       }));
@@ -201,7 +199,7 @@ export async function GET(req: NextRequest) {
       );
       const modelMetrics = topicMetrics.filter((m) => modelRunIds.has(m.runId));
       const brandModelMetrics = modelMetrics.filter(
-        (m) => m.entityId === brand.slug && m.prominenceScore > 0,
+        (m) => m.entityId === brand.slug,
       );
 
       const byTopic = new Map<string, typeof brandModelMetrics>();

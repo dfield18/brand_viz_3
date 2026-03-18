@@ -42,7 +42,7 @@ export default function TopicPromptExamples({ promptExamples, topics, brandName 
       if (search && !e.promptText.toLowerCase().includes(search.toLowerCase())) return false;
       if (outcome === "win" && (e.brandRank === null || e.brandRank !== 1)) return false;
       if (outcome === "loss" && (e.brandRank === null || e.brandRank === 1)) return false;
-      if (outcome === "absent" && e.brandProminence > 0) return false;
+      if (outcome === "absent" && e.brandRank !== null) return false;
       return true;
     });
   }, [promptExamples, topic, modelFilter, outcome, search]);

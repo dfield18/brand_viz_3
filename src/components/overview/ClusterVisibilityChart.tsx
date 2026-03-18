@@ -37,7 +37,6 @@ export function ClusterVisibilityChart({ clusters }: ClusterVisibilityChartProps
   const data = clusters.map((c) => ({
     cluster: CLUSTER_LABELS[c.cluster] ?? c.cluster,
     "Mention Rate": c.mentionRate,
-    "Prominence Score": c.prominenceScore,
   }));
 
   return (
@@ -61,12 +60,6 @@ export function ClusterVisibilityChart({ clusters }: ClusterVisibilityChartProps
               <Bar
                 dataKey="Mention Rate"
                 fill="var(--chart-1)"
-                radius={[4, 4, 0, 0]}
-                barSize={28}
-              />
-              <Bar
-                dataKey="Prominence Score"
-                fill="var(--chart-3)"
                 radius={[4, 4, 0, 0]}
                 barSize={28}
               />

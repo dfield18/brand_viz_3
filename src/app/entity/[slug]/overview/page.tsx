@@ -212,10 +212,23 @@ function OverviewInner() {
                       return n + (s[(v - 20) % 10] || s[v] || s[0]);
                     };
                     const parts: string[] = [];
-                    if (kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5) {
+                    // Compute % of mentions where brand is #1 (conditional rate, not overall rate)
+                    const firstWhenMentioned = kpis.overallMentionRate > 0
+                      ? Math.round((kpis.firstMentionRate / kpis.overallMentionRate) * 100)
+                      : 0;
+
+                    // ── Paragraph 1: Visibility (how often the brand appears) ──
+                    // Also include position claim when mentionRate >= 80 to avoid redundancy with P2
+                    const p1IncludesPosition = kpis.overallMentionRate >= 80 && kpis.avgRankScore > 0 && kpis.avgRankScore <= 1.5 && firstWhenMentioned >= 60;
+                    if (p1IncludesPosition) {
                       parts.push(`Great news — when someone asks an AI tool about ${spaceLabel}, ${brandName} comes up ${kpis.overallMentionRate}% of the time, and it's usually the very first name mentioned. That's a strong position.${noMentionNote}`);
+                    } else if (kpis.overallMentionRate >= 80) {
+                      parts.push(`${brandName} has strong visibility — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up.${noMentionNote}`);
                     } else if (kpis.overallMentionRate >= 60) {
-                      parts.push(`${brandName} is showing up well — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up. That's solid visibility.${noMentionNote}`);
+                      const sovComment = kpis.shareOfVoice >= 15
+                        ? `That's solid visibility.`
+                        : `That's decent frequency, though ${brandName} captures only ${kpis.shareOfVoice}% of all ${names} — there's room to grow its share.`;
+                      parts.push(`${brandName} is showing up well — it's mentioned in ${kpis.overallMentionRate}% of AI answers about ${spaceLabel} and makes up ${kpis.shareOfVoice}% of all the ${names} AI brings up. ${sovComment}${noMentionNote}`);
                     } else if (kpis.overallMentionRate >= 30) {
                       parts.push(`Right now, when someone asks an AI tool about ${spaceLabel} without mentioning ${brandName} by name, ${brandName} comes up about ${kpis.overallMentionRate}% of the time. That means in roughly ${100 - kpis.overallMentionRate}% of those conversations, people are hearing about ${others} instead. ${brandName} makes up ${kpis.shareOfVoice}% of all the ${names} mentioned.`);
                     } else if (kpis.overallMentionRate > 0) {
@@ -223,19 +236,30 @@ function OverviewInner() {
                     } else {
                       parts.push(`${brandName} isn't showing up in AI answers about ${spaceLabel} yet. When people ask AI tools like ChatGPT and Google about ${spaceLabel} without mentioning ${brandName} by name, they won't find it in the results.`);
                     }
-                    if (kpis.avgRankScore > 0) {
+
+                    // ── Paragraph 2: Position (where the brand ranks when it does appear) ──
+                    // Skip if P1 already made a position claim
+                    if (kpis.avgRankScore > 0 && !p1IncludesPosition) {
                       const rounded = Math.round(kpis.avgRankScore);
                       const isLowVisibility = kpis.overallMentionRate < 30;
-                      if (kpis.avgRankScore <= 1.3) {
+                      if (kpis.avgRankScore <= 1.3 && firstWhenMentioned >= 60) {
+                        // Strong first-position: brand is #1 in most of its appearances
                         if (isLowVisibility) {
-                          parts.push(`One bright spot: when ${brandName} does come up, it tends to be the first name on the list — AI leads with it ${kpis.firstMentionRate}% of the time. The challenge is getting mentioned more often.`);
+                          parts.push(`One bright spot: when ${brandName} does come up, it's usually the first name on the list (${firstWhenMentioned}% of the time it's mentioned). The challenge is getting mentioned more often.`);
                         } else {
-                          parts.push(`Even better, when ${brandName} does come up, it's typically the first name on the list — AI leads with it ${kpis.firstMentionRate}% of the time.`);
+                          parts.push(`When ${brandName} comes up, it's typically the first name on the list — it leads ${firstWhenMentioned}% of the time it's mentioned.`);
                         }
-                      } else if (kpis.avgRankScore <= 2.0) {
-                        parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it leads the list ${kpis.firstMentionRate}% of the time.`);
+                      } else if (kpis.avgRankScore <= 2.0 && firstWhenMentioned >= 30) {
+                        parts.push(`When it does come up, ${brandName} is usually near the top — it's the ${kpis.avgRankScore <= 1.5 ? "1st or 2nd" : "2nd"} ${nameNoun} AI mentions, and it leads the list ${firstWhenMentioned}% of the time it appears.`);
+                      } else if (rounded <= 2) {
+                        // Moderate position but low first-mention rate, or very few mentions
+                        if (isLowVisibility) {
+                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list. The main challenge is getting mentioned more often.`);
+                        } else {
+                          parts.push(`When it does come up, ${brandName} tends to appear near the top of the list, though it only leads as the first name in ${firstWhenMentioned}% of its appearances.`);
+                        }
                       } else if (kpis.avgRankScore <= 3.0) {
-                        parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so ${isOrg ? "other organizations" : "competitors"} tend to get named first.${kpis.firstMentionRate > 0 ? ` Only ${kpis.firstMentionRate}% of the time is ${brandName} the first name mentioned.` : ` ${brandName} is rarely the first name mentioned.`}`);
+                        parts.push(`When it does come up, ${brandName} is typically listed as the ${ordinal(rounded)} ${nameNoun} — so ${isOrg ? "other organizations" : "competitors"} tend to get named first.${kpis.firstMentionRate > 0 ? ` Only ${firstWhenMentioned}% of the time it's mentioned is ${brandName} the first name.` : ` ${brandName} is rarely the first name mentioned.`}`);
                       } else {
                         parts.push(`When AI does mention ${brandName}, it usually lists ${rounded === 4 ? "three or four" : "several"} ${others} first — ${brandName} tends to show up around the ${ordinal(rounded)} spot. There's an opportunity to move up.`);
                       }

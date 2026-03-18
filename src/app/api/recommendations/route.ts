@@ -96,7 +96,6 @@ interface NarrativeJson {
 
 interface ProminenceMetric {
   entityId: string;
-  prominenceScore: number;
   rankPosition: number | null;
   model: string;
   promptId: string;
@@ -175,7 +174,6 @@ export async function GET(req: NextRequest) {
         prominenceMetrics: {
           select: {
             entityId: true,
-            prominenceScore: true,
             rankPosition: true,
             model: true,
             promptId: true,
@@ -618,13 +616,13 @@ export async function GET(req: NextRequest) {
     const [recentMetrics, earlierMetrics] = await Promise.all([
       recentJobIds.length > 0
         ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } }, prominenceScore: { gt: 0 } },
+            where: { run: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } } },
             select: { entityId: true, runId: true },
           })
         : Promise.resolve([]),
       earlierJobIds.length > 0
         ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } }, prominenceScore: { gt: 0 } },
+            where: { run: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } } },
             select: { entityId: true, runId: true },
           })
         : Promise.resolve([]),
@@ -800,7 +798,6 @@ export async function GET(req: NextRequest) {
   function computeHalfMetrics(halfRuns: RecommendationRun[]) {
     let mentions = 0;
     const ranks: number[] = [];
-    const prominences: number[] = [];
     const perModel: Record<string, { mentions: number; total: number; ranks: number[] }> = {};
 
     for (const run of halfRuns) {
@@ -808,7 +805,6 @@ export async function GET(req: NextRequest) {
       if (bm) {
         mentions++;
         if (bm.rankPosition !== null) ranks.push(bm.rankPosition);
-        prominences.push(bm.prominenceScore);
       }
       if (!perModel[run.model]) perModel[run.model] = { mentions: 0, total: 0, ranks: [] };
       perModel[run.model].total++;
@@ -821,7 +817,6 @@ export async function GET(req: NextRequest) {
     return {
       mentionRate: halfRuns.length > 0 ? mentions / halfRuns.length : 0,
       avgRank: ranks.length > 0 ? ranks.reduce((s, r) => s + r, 0) / ranks.length : null,
-      avgProminence: prominences.length > 0 ? prominences.reduce((s, p) => s + p, 0) / prominences.length : null,
       perModel,
     };
   }

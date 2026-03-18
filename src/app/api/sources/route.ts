@@ -116,14 +116,12 @@ export async function GET(req: NextRequest) {
       select: {
         runId: true,
         entityId: true,
-        prominenceScore: true,
         rankPosition: true,
       },
     });
     const entityMetrics: EntityMetricInput[] = rawMetrics.map((m) => ({
       runId: m.runId,
       entityId: m.entityId,
-      prominenceScore: m.prominenceScore,
       rankPosition: m.rankPosition,
     }));
 

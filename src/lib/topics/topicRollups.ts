@@ -22,7 +22,6 @@ export interface TopicMetricInput {
   topicKey: string;
   entityId: string;
   model: string;
-  prominenceScore: number;
   rankPosition: number | null;
   createdAt: Date;
 }
@@ -85,7 +84,7 @@ export function computeTopicRows(
   entityDisplayNames?: Map<string, string>,
 ): TopicRow[] {
   const brandMetrics = metrics.filter(
-    (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
+    (m) => m.entityId === brandEntityId,
   );
 
   // Group brand metrics by topicKey
@@ -107,7 +106,6 @@ export function computeTopicRows(
   // Compute per-entity per-topic mention counts (for baselines)
   const entityTopicMentions = new Map<string, Map<string, number>>();
   for (const m of metrics) {
-    if (m.prominenceScore <= 0) continue;
     const topicMap = entityTopicMentions.get(m.topicKey) ?? new Map<string, number>();
     topicMap.set(m.entityId, (topicMap.get(m.entityId) ?? 0) + 1);
     entityTopicMentions.set(m.topicKey, topicMap);
@@ -156,9 +154,6 @@ export function computeTopicRows(
       rank1Rate: validRanks.length > 0
         ? Math.round((validRanks.filter((r) => r === 1).length / validRanks.length) * 100)
         : 0,
-      avgProminence: mentions > 0
-        ? Math.round((topicMetrics.reduce((s, m) => s + m.prominenceScore, 0) / mentions) * 100) / 100
-        : 0,
       categoryAvgMentionRate: categoryAvg,
       leaderMentionRate: Math.round(leaderRate * 100) / 100,
       leaderName,
@@ -179,7 +174,6 @@ export function computeTopicOwnership(
 ): TopicOwnershipRow[] {
   const byTopic = new Map<string, TopicMetricInput[]>();
   for (const m of metrics) {
-    if (m.prominenceScore <= 0) continue;
     const arr = byTopic.get(m.topicKey) ?? [];
     arr.push(m);
     byTopic.set(m.topicKey, arr);
@@ -236,7 +230,7 @@ export function detectEmergingTopics(
   promptTexts: Map<string, string>,
 ): EmergingTopic[] {
   const brandMetrics = metrics.filter(
-    (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
+    (m) => m.entityId === brandEntityId,
   );
 
   const current = brandMetrics.filter((m) => m.createdAt >= midpointDate);
@@ -321,7 +315,7 @@ export function computeTopicTrend(
   return dates.map((date) => {
     const dayMetrics = byDate.get(date)!;
     const brandDay = dayMetrics.filter(
-      (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
+      (m) => m.entityId === brandEntityId,
     );
 
     // Count total runs per topic for this date
@@ -361,7 +355,7 @@ export function computeTopicProminence(
   brandEntityId: string,
 ): TopicProminenceRow[] {
   const brandMetrics = metrics.filter(
-    (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
+    (m) => m.entityId === brandEntityId,
   );
 
   // Group by topic
@@ -372,36 +366,32 @@ export function computeTopicProminence(
     byTopic.set(m.topicKey, arr);
   }
 
-  // Total prominence per topic across all entities (for share)
-  const totalProminenceByTopic = new Map<string, number>();
+  // Total mentions per topic across all entities (for share)
+  const totalMentionsByTopic = new Map<string, number>();
   for (const m of metrics) {
-    if (m.prominenceScore <= 0) continue;
-    totalProminenceByTopic.set(
+    totalMentionsByTopic.set(
       m.topicKey,
-      (totalProminenceByTopic.get(m.topicKey) ?? 0) + m.prominenceScore,
+      (totalMentionsByTopic.get(m.topicKey) ?? 0) + 1,
     );
   }
 
   const rows: TopicProminenceRow[] = [];
 
   for (const [key, topicMetrics] of byTopic) {
-    const totalBrandProm = topicMetrics.reduce((s, m) => s + m.prominenceScore, 0);
-    const totalAllProm = totalProminenceByTopic.get(key) ?? totalBrandProm;
+    const brandCount = topicMetrics.length;
+    const totalAll = totalMentionsByTopic.get(key) ?? brandCount;
 
     rows.push({
       topicKey: key,
       topicLabel: topicLabel(key),
-      avgProminence: topicMetrics.length > 0
-        ? Math.round((totalBrandProm / topicMetrics.length) * 100) / 100
-        : 0,
-      nMentions: topicMetrics.length,
-      prominenceShare: totalAllProm > 0
-        ? Math.round((totalBrandProm / totalAllProm) * 10000) / 100
+      nMentions: brandCount,
+      mentionShare: totalAll > 0
+        ? Math.round((brandCount / totalAll) * 10000) / 100
         : 0,
     });
   }
 
-  return rows.sort((a, b) => b.avgProminence - a.avgProminence);
+  return rows.sort((a, b) => b.mentionShare - a.mentionShare);
 }
 
 // ---------------------------------------------------------------------------
@@ -432,15 +422,15 @@ export function computeTopicPromptExamples(
 
     const runMetrics = metricsByRun.get(info.runId) ?? [];
 
-    // Brand's rank and prominence in this run
+    // Brand's rank in this run
     const brandMetric = runMetrics.find(
-      (m) => m.entityId === brandEntityId && m.prominenceScore > 0,
+      (m) => m.entityId === brandEntityId,
     );
 
-    // Top competitor (non-brand, highest prominence)
+    // Top competitor (non-brand, best rank)
     const competitors = runMetrics
-      .filter((m) => m.entityId !== brandEntityId && m.prominenceScore > 0)
-      .sort((a, b) => b.prominenceScore - a.prominenceScore);
+      .filter((m) => m.entityId !== brandEntityId)
+      .sort((a, b) => (a.rankPosition ?? 999) - (b.rankPosition ?? 999));
     const topComp = competitors[0] ?? null;
 
     examples.push({
@@ -450,7 +440,6 @@ export function computeTopicPromptExamples(
       topicLabel: topicLabel(info.topicKey),
       model: info.model,
       brandRank: brandMetric?.rankPosition ?? null,
-      brandProminence: brandMetric?.prominenceScore ?? 0,
       topCompetitor: topComp ? resolveEntityName(topComp.entityId, entityDisplayNames ?? new Map()) : null,
       topCompetitorRank: topComp?.rankPosition ?? null,
       cluster: info.cluster,
@@ -471,7 +460,6 @@ export function computeTopicFragmentation(
   // Group by topic, count entity appearances
   const byTopic = new Map<string, Map<string, number>>();
   for (const m of metrics) {
-    if (m.prominenceScore <= 0) continue;
     const entityMap = byTopic.get(m.topicKey) ?? new Map<string, number>();
     entityMap.set(m.entityId, (entityMap.get(m.entityId) ?? 0) + 1);
     byTopic.set(m.topicKey, entityMap);

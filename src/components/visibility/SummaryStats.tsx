@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, PieChart, Award, BarChart3, Trophy, Info, TrendingUp, TrendingDown } from "lucide-react";
+import { Eye, PieChart, Award, Trophy, Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
 
 interface SummaryStatsProps {
@@ -8,7 +8,6 @@ interface SummaryStatsProps {
   shareOfVoice: number;
   avgRankScore: number;
   firstMentionRate: number;
-  prominence: number;
   totalRuns: number;
   totalMentions: number;
   kpiDeltas: KpiDeltas | null;
@@ -31,7 +30,6 @@ export function SummaryStats({
   shareOfVoice,
   avgRankScore,
   firstMentionRate,
-  prominence,
   totalRuns,
   totalMentions,
   kpiDeltas,
@@ -79,30 +77,10 @@ export function SummaryStats({
       delta: kpiDeltas?.firstMentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}pp`,
     },
-    {
-      Icon: BarChart3,
-      label: "Prominence",
-      value: prominence ? prominence.toFixed(2) : "\u2014",
-      subtitle: "Relative attention share",
-      tooltip: (
-        <>
-          <p className="mb-2">Weighted score (0–100) combining four factors:</p>
-          <ul className="space-y-1">
-            <li><span className="font-semibold">Frequency (35%)</span> — share of total entity mentions</li>
-            <li><span className="font-semibold">Position (25%)</span> — how early the brand appears</li>
-            <li><span className="font-semibold">Depth (20%)</span> — how much of the response discusses the brand</li>
-            <li><span className="font-semibold">Structure (20%)</span> — bonuses for headings, bullet lists, or recommendation language</li>
-          </ul>
-        </>
-      ),
-      iconColor: "text-chart-5",
-      delta: kpiDeltas?.prominence ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)}`,
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {cards.map((card) => {
         const isPositive = card.delta !== null && card.delta !== 0
           ? card.invertDelta ? card.delta < 0 : card.delta > 0

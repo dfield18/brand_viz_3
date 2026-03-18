@@ -94,14 +94,9 @@ export default function DomainDetailDrawer({ domain, brandSlug, model, range, on
               <span>URL: <span className="font-mono break-all">{ex.normalizedUrl}</span></span>
             </div>
 
-            {(ex.brandProminence !== null || ex.brandRank !== null) && (
+            {ex.brandRank !== null && (
               <div className="flex gap-4 text-[11px]">
-                {ex.brandProminence !== null && (
-                  <span>Prominence: <span className="font-medium tabular-nums">{ex.brandProminence}</span></span>
-                )}
-                {ex.brandRank !== null && (
-                  <span>Rank: <span className="font-medium tabular-nums">#{ex.brandRank}</span></span>
-                )}
+                <span>Rank: <span className="font-medium tabular-nums">#{ex.brandRank}</span></span>
               </div>
             )}
           </div>

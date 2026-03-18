@@ -163,7 +163,6 @@ function ReferenceInner() {
         shareOfVoice={data.shareOfVoice}
         avgRankScore={data.avgRankScore}
         firstMentionRate={data.firstMentionRate}
-        prominence={data.prominence}
         totalRuns={totals.totalRuns}
         totalMentions={totals.totalMentions}
         kpiDeltas={data.kpiDeltas}

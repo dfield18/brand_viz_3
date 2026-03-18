@@ -7,7 +7,6 @@ import {
   computeAvgRank,
   computeRank1RateAll,
   computeMentionRate,
-  computeAvgProminence,
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 
@@ -112,102 +111,80 @@ export async function GET(req: NextRequest) {
     const avgRankScore = computeAvgRank(industryRanks) ?? 0;
     const firstMentionRate = computeRank1RateAll(industryRanks);
 
-    // Avg prominence from EntityResponseMetric — industry-cluster runs only
-    const runIds = runs.map((r) => r.id);
-    const industryRunIdSet = new Set(
-      runs.filter((r) => r.prompt.cluster === "industry").map((r) => r.id),
-    );
-    const industryRunIdArr = [...industryRunIdSet];
-    let avgProminence = 0;
-    const prominenceByRunId: Record<string, number> = {};
-    if (runIds.length > 0) {
-      const prominenceMetrics = await prisma.entityResponseMetric.findMany({
-        where: { runId: { in: runIds }, entityId: brand.slug },
-        select: { prominenceScore: true, runId: true },
-      });
-      for (const m of prominenceMetrics) {
-        prominenceByRunId[m.runId] = m.prominenceScore;
+    // --- Text-based entity counting from analysisJson (no EntityResponseMetric dependency) ---
+    type AnalysisCompetitor = { name: string; mentionStrength?: number };
+    type ParsedAnalysis = { brandMentioned?: boolean; competitors?: AnalysisCompetitor[] };
+
+    function getRunEntities(run: VisibilityRun): { brandMentioned: boolean; competitors: string[] } {
+      const brandMentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const analysis = run.analysisJson as ParsedAnalysis | null;
+      const competitors = (analysis?.competitors ?? []).map((c) => c.name);
+      return { brandMentioned, competitors };
+    }
+
+    function slugify(name: string): string {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    }
+
+    // Share of Voice: text-based entity counting across industry-cluster runs
+    const industryRuns2 = runs.filter((r) => r.prompt.cluster === "industry");
+    let sovBrandMentions = 0;
+    let sovTotalEntityMentions = 0;
+    // Also build entity run sets for visibility ranking + opportunity prompts
+    const entityRunSets = new Map<string, Set<string>>();
+    const runCompetitorMap = new Map<string, string[]>(); // runId → competitor entity IDs
+
+    for (const run of industryRuns2) {
+      const { brandMentioned, competitors } = getRunEntities(run);
+      const competitorIds = competitors.map((c) => slugify(c));
+      runCompetitorMap.set(run.id, competitorIds);
+
+      if (brandMentioned) {
+        sovBrandMentions++;
+        if (!entityRunSets.has(brand.slug)) entityRunSets.set(brand.slug, new Set());
+        entityRunSets.get(brand.slug)!.add(run.id);
       }
-      // KPI prominence: industry runs only
-      const industryPromMetrics = prominenceMetrics.filter((m) => industryRunIdSet.has(m.runId));
-      avgProminence = computeAvgProminence(industryPromMetrics.map((m) => m.prominenceScore));
-    }
+      // Total entity mentions = brand (if mentioned) + all competitors
+      sovTotalEntityMentions += (brandMentioned ? 1 : 0) + competitorIds.length;
 
-    // Share of Voice: industry-cluster runs only
-    let shareOfVoice = 0;
-    if (industryRunIdArr.length > 0) {
-      const [brandCount, totalCount] = await Promise.all([
-        prisma.entityResponseMetric.count({
-          where: { runId: { in: industryRunIdArr }, entityId: brand.slug, prominenceScore: { gt: 0 } },
-        }),
-        prisma.entityResponseMetric.count({
-          where: { runId: { in: industryRunIdArr }, prominenceScore: { gt: 0 } },
-        }),
-      ]);
-      shareOfVoice = computeShareOfVoice(brandCount, totalCount);
+      for (const compId of competitorIds) {
+        if (!entityRunSets.has(compId)) entityRunSets.set(compId, new Set());
+        entityRunSets.get(compId)!.add(run.id);
+      }
     }
+    const shareOfVoice = computeShareOfVoice(sovBrandMentions, sovTotalEntityMentions);
 
-    // AI Visibility Ranking + Opportunity Prompts from industry-cluster runs
-    const industryRunIds = industryRunIdArr;
+    // AI Visibility Ranking from text-based entity counts
+    const totalIndustryRunCount = industryRuns2.length;
     let visibilityRanking: { entityId: string; name: string; score: number; isBrand: boolean }[] = [];
-    const opportunityPrompts: { prompt: string; competitorCount: number; competitors: string[] }[] = [];
-
-    if (industryRunIds.length > 0) {
-      const industryMetrics = await prisma.entityResponseMetric.findMany({
-        where: { runId: { in: industryRunIds }, prominenceScore: { gt: 0 } },
-        select: { entityId: true, runId: true },
-      });
-
-      // Count distinct runs per entity
-      const entityRunSets = new Map<string, Set<string>>();
-      for (const m of industryMetrics) {
-        if (!entityRunSets.has(m.entityId)) entityRunSets.set(m.entityId, new Set());
-        entityRunSets.get(m.entityId)!.add(m.runId);
-      }
-
-      const totalIndustryRuns = industryRunIds.length;
+    if (totalIndustryRunCount > 0) {
       visibilityRanking = Array.from(entityRunSets.entries())
         .map(([entityId, runSet]) => ({
           entityId,
           name: entityId === brand.slug ? brand.name : resolveEntityName(entityId, entityDisplayNames),
-          score: Math.round((runSet.size / totalIndustryRuns) * 100),
+          score: Math.round((runSet.size / totalIndustryRunCount) * 100),
           isBrand: entityId === brand.slug,
         }))
         .sort((a, b) => b.score - a.score);
-
-      // Opportunity Prompts: industry runs where competitors appear but brand doesn't
-      const brandRunSet = entityRunSets.get(brand.slug) ?? new Set<string>();
-      const industryRunsWithPrompt = new Map<string, string>();
-      for (const run of runs) {
-        if (run.prompt.cluster === "industry") {
-          industryRunsWithPrompt.set(run.id, run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`));
-        }
-      }
-      // Pre-index industry metrics by runId for O(1) lookups
-      const industryMetricsByRun = new Map<string, typeof industryMetrics>();
-      for (const m of industryMetrics) {
-        const list = industryMetricsByRun.get(m.runId) ?? [];
-        list.push(m);
-        industryMetricsByRun.set(m.runId, list);
-      }
-      const seenPromptTexts = new Set<string>();
-      for (const runId of industryRunIds) {
-        if (brandRunSet.has(runId)) continue;
-        const runMetrics = industryMetricsByRun.get(runId) ?? [];
-        const competitorEntities = runMetrics
-          .filter((m) => m.entityId !== brand.slug)
-          .map((m) => m.entityId);
-        if (competitorEntities.length === 0) continue;
-        const promptText = industryRunsWithPrompt.get(runId);
-        if (!promptText || seenPromptTexts.has(promptText)) continue;
-        seenPromptTexts.add(promptText);
-        const competitors = [...new Set(competitorEntities)].map((id) =>
-          id === brand.slug ? brand.name : resolveEntityName(id, entityDisplayNames),
-        );
-        opportunityPrompts.push({ prompt: promptText, competitorCount: competitors.length, competitors });
-      }
-      opportunityPrompts.sort((a, b) => b.competitorCount - a.competitorCount);
     }
+
+    // Opportunity Prompts: industry runs where competitors appear but brand doesn't
+    const opportunityPrompts: { prompt: string; competitorCount: number; competitors: string[] }[] = [];
+    const brandRunSet = entityRunSets.get(brand.slug) ?? new Set<string>();
+    const seenPromptTexts = new Set<string>();
+    for (const run of industryRuns2) {
+      if (brandRunSet.has(run.id)) continue;
+      const competitorIds = runCompetitorMap.get(run.id) ?? [];
+      if (competitorIds.length === 0) continue;
+      const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+      if (seenPromptTexts.has(promptText)) continue;
+      seenPromptTexts.add(promptText);
+      const competitors = [...new Set(competitorIds)].map((id) =>
+        resolveEntityName(id, entityDisplayNames),
+      );
+      opportunityPrompts.push({ prompt: promptText, competitorCount: competitors.length, competitors });
+    }
+    opportunityPrompts.sort((a, b) => b.competitorCount - a.competitorCount);
 
     // Build clusters array + cluster breakdown table
     const modelKeys = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
@@ -322,46 +299,28 @@ export async function GET(req: NextRequest) {
         const rk = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
         wRanks.push(rk);
       }
-      const promScores = weekRuns
-        .map((r) => prominenceByRunId[r.id])
-        .filter((p): p is number => p !== undefined);
       return {
         mentionRate: mr,
         avgRank: computeAvgRank(wRanks) ?? 0,
         firstMentionRate: computeRank1RateAll(wRanks),
-        prominence: computeAvgProminence(promScores),
       };
     }
 
     const thisMonth = computeWeekKpis(thisMonthIndustry);
     const priorMonth = computeWeekKpis(priorMonthIndustry);
 
-    // SOV deltas
-    const thisMonthIds = thisMonthIndustry.map((r) => r.id);
-    const priorMonthIds = priorMonthIndustry.map((r) => r.id);
-    let thisMonthSov = 0;
-    let priorMonthSov = 0;
-    if (thisMonthIds.length > 0 || priorMonthIds.length > 0) {
-      const allMomIds = [...thisMonthIds, ...priorMonthIds];
-      const momMetrics = await prisma.entityResponseMetric.findMany({
-        where: { runId: { in: allMomIds }, prominenceScore: { gt: 0 } },
-        select: { runId: true, entityId: true },
-      });
-      const thisMonthIdSet = new Set(thisMonthIds);
-      const priorMonthIdSet = new Set(priorMonthIds);
-      let tmBrand = 0, tmTotal = 0, pmBrand = 0, pmTotal = 0;
-      for (const m of momMetrics) {
-        if (thisMonthIdSet.has(m.runId)) {
-          tmTotal++;
-          if (m.entityId === brand.slug) tmBrand++;
-        } else if (priorMonthIdSet.has(m.runId)) {
-          pmTotal++;
-          if (m.entityId === brand.slug) pmBrand++;
-        }
+    // SOV deltas — text-based
+    function computeTextBasedSov(sovRuns: VisibilityRun[]): number {
+      let bm = 0, total = 0;
+      for (const run of sovRuns) {
+        const { brandMentioned, competitors } = getRunEntities(run);
+        if (brandMentioned) bm++;
+        total += (brandMentioned ? 1 : 0) + competitors.length;
       }
-      thisMonthSov = computeShareOfVoice(tmBrand, tmTotal);
-      priorMonthSov = computeShareOfVoice(pmBrand, pmTotal);
+      return computeShareOfVoice(bm, total);
     }
+    const thisMonthSov = computeTextBasedSov(thisMonthIndustry);
+    const priorMonthSov = computeTextBasedSov(priorMonthIndustry);
 
     const hasPriorMonth = priorMonthIndustry.length > 0;
     const kpiDeltas = hasPriorMonth
@@ -370,7 +329,6 @@ export async function GET(req: NextRequest) {
           shareOfVoice: thisMonthSov - priorMonthSov,
           avgRank: Math.round((thisMonth.avgRank - priorMonth.avgRank) * 100) / 100,
           firstMentionRate: Math.round((thisMonth.firstMentionRate - priorMonth.firstMentionRate) * 10) / 10,
-          prominence: Math.round((thisMonth.prominence - priorMonth.prominence) * 100) / 100,
         }
       : null;
 
@@ -386,36 +344,22 @@ export async function GET(req: NextRequest) {
       if (brandRank !== null && brandRank <= 1) continue;
       worstPrompts.push({ prompt: promptText, rank: brandRank, competitors: [] });
     }
-    // Enrich with top 5 competitors from entityResponseMetric
+    // Enrich with top 5 competitors from analysisJson
     if (worstPrompts.length > 0) {
-      const worstRunMap = new Map<string, string>(); // promptText → runId
+      const worstRunMap = new Map<string, VisibilityRun>(); // promptText → run
       for (const run of industryRuns) {
         const pt = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
-        if (!worstRunMap.has(pt)) worstRunMap.set(pt, run.id);
+        if (!worstRunMap.has(pt)) worstRunMap.set(pt, run);
       }
-      const worstRunIds = [...new Set(worstPrompts.map((w) => worstRunMap.get(w.prompt)).filter(Boolean))] as string[];
-      if (worstRunIds.length > 0) {
-        const worstMetrics = await prisma.entityResponseMetric.findMany({
-          where: { runId: { in: worstRunIds }, prominenceScore: { gt: 0 }, entityId: { not: brand.slug } },
-          select: { runId: true, entityId: true, prominenceScore: true },
-        });
-        // Group by runId, sorted by prominence desc, top 5
-        const competitorsByRun = new Map<string, { entityId: string; score: number }[]>();
-        for (const m of worstMetrics) {
-          if (!competitorsByRun.has(m.runId)) competitorsByRun.set(m.runId, []);
-          competitorsByRun.get(m.runId)!.push({ entityId: m.entityId, score: m.prominenceScore });
-        }
-        for (const wp of worstPrompts) {
-          const runId = worstRunMap.get(wp.prompt);
-          if (!runId) continue;
-          const entries = competitorsByRun.get(runId);
-          if (entries) {
-            wp.competitors = entries
-              .sort((a, b) => b.score - a.score)
-              .slice(0, 5)
-              .map((e) => resolveEntityName(e.entityId, entityDisplayNames));
-          }
-        }
+      for (const wp of worstPrompts) {
+        const run = worstRunMap.get(wp.prompt);
+        if (!run) continue;
+        const analysis = run.analysisJson as ParsedAnalysis | null;
+        const competitors = (analysis?.competitors ?? [])
+          .sort((a, b) => (b.mentionStrength ?? 0) - (a.mentionStrength ?? 0))
+          .slice(0, 5)
+          .map((c) => c.name);
+        wp.competitors = competitors;
       }
     }
     // Sort: absent first (null rank), then by highest rank
@@ -458,23 +402,17 @@ export async function GET(req: NextRequest) {
       trendRunsByJob.set(run.jobId, list);
     }
 
-    // Batch-fetch entity metrics for SOV trend calculation
-    const industryTrendRunIds = allTrendRuns
-      .filter((r) => r.prompt.cluster === "industry")
-      .map((r) => r.id);
-    const trendEntityMetrics = industryTrendRunIds.length > 0
-      ? await prisma.entityResponseMetric.findMany({
-          where: { runId: { in: industryTrendRunIds }, prominenceScore: { gt: 0 } },
-          select: { runId: true, entityId: true },
-        })
-      : [];
-    // Per-run: { brandMentioned, totalEntities }
+    // Text-based SOV per trend run (from analysisJson)
     const sovByRun = new Map<string, { brandMentions: number; totalMentions: number }>();
-    for (const em of trendEntityMetrics) {
-      const entry = sovByRun.get(em.runId) ?? { brandMentions: 0, totalMentions: 0 };
-      entry.totalMentions++;
-      if (em.entityId === brand.slug) entry.brandMentions++;
-      sovByRun.set(em.runId, entry);
+    for (const run of allTrendRuns) {
+      if (run.prompt.cluster !== "industry") continue;
+      const bMentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const analysis = run.analysisJson as ParsedAnalysis | null;
+      const compCount = (analysis?.competitors ?? []).length;
+      sovByRun.set(run.id, {
+        brandMentions: bMentioned ? 1 : 0,
+        totalMentions: (bMentioned ? 1 : 0) + compCount,
+      });
     }
 
     // Cumulative trend: for each date, use the latest run per model+prompt AS OF that date.
@@ -670,26 +608,17 @@ export async function GET(req: NextRequest) {
       industryRunPromptMap.get(key)!.push({ runId: run.id, promptText, model: run.model });
     }
 
-    // Compute SOV per prompt bucket
-    const allIndustryRunIdsForQuestions = runs
-      .filter((r) => r.prompt.cluster === "industry")
-      .map((r) => r.id);
+    // Compute text-based SOV per run for per-question aggregation
     const sovByRunId: Record<string, { brandMentions: number; totalMentions: number }> = {};
-    if (allIndustryRunIdsForQuestions.length > 0) {
-      const qMetrics = await prisma.entityResponseMetric.findMany({
-        where: { runId: { in: allIndustryRunIdsForQuestions }, prominenceScore: { gt: 0 } },
-        select: { runId: true, entityId: true },
-      });
-      const byRun = new Map<string, { brand: number; total: number }>();
-      for (const m of qMetrics) {
-        if (!byRun.has(m.runId)) byRun.set(m.runId, { brand: 0, total: 0 });
-        const b = byRun.get(m.runId)!;
-        b.total++;
-        if (m.entityId === brand.slug) b.brand++;
-      }
-      for (const [runId, counts] of byRun) {
-        sovByRunId[runId] = { brandMentions: counts.brand, totalMentions: counts.total };
-      }
+    for (const run of runs) {
+      if (run.prompt.cluster !== "industry") continue;
+      const bm = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const analysis = run.analysisJson as ParsedAnalysis | null;
+      const compCount = (analysis?.competitors ?? []).length;
+      sovByRunId[run.id] = {
+        brandMentions: bm ? 1 : 0,
+        totalMentions: (bm ? 1 : 0) + compCount,
+      };
     }
 
     const resultsByQuestion: {
@@ -766,7 +695,6 @@ export async function GET(req: NextRequest) {
         shareOfVoice,
         avgRankScore,
         firstMentionRate,
-        prominence: avgProminence,
         visibilityRanking,
         positionDistribution,
         positionDistributionOverTime: (() => {

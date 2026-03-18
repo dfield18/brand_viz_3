@@ -29,7 +29,6 @@ export interface SourceOccurrenceInput {
 export interface EntityMetricInput {
   runId: string;
   entityId: string;
-  prominenceScore: number;
   rankPosition: number | null;
 }
 
@@ -55,14 +54,13 @@ export function computeSourceSummary(
       ? Math.round((runsWithCitations / totalResponses) * 100)
       : 0;
 
-  // Authority drivers: domains cited in runs where brand has rank=1 AND prominence>=70
+  // Authority drivers: domains cited in runs where brand has rank=1
   const authorityRunIds = new Set(
     entityMetrics
       .filter(
         (m) =>
           m.entityId === brandEntityId &&
-          m.rankPosition === 1 &&
-          m.prominenceScore >= 70,
+          m.rankPosition === 1,
       )
       .map((m) => m.runId),
   );
@@ -105,10 +103,6 @@ export function computeTopDomains(
 
   // Baseline averages (across all responses with brand metrics)
   const allBrandMetrics = [...brandMetricByRun.values()];
-  const baselineProminence =
-    allBrandMetrics.length > 0
-      ? allBrandMetrics.reduce((s, m) => s + m.prominenceScore, 0) / allBrandMetrics.length
-      : 0;
   const allBrandRanks = allBrandMetrics
     .map((m) => m.rankPosition)
     .filter((r): r is number => r !== null);
@@ -137,15 +131,6 @@ export function computeTopDomains(
       .map((rid) => brandMetricByRun.get(rid))
       .filter((m): m is EntityMetricInput => m !== undefined);
 
-    const avgProminenceWhenCited =
-      citedBrandMetrics.length > 0
-        ? Math.round(
-            (citedBrandMetrics.reduce((s, m) => s + m.prominenceScore, 0) /
-              citedBrandMetrics.length) *
-              100,
-          ) / 100
-        : 0;
-
     const citedRanks = citedBrandMetrics
       .map((m) => m.rankPosition)
       .filter((r): r is number => r !== null);
@@ -161,8 +146,6 @@ export function computeTopDomains(
         ? Math.round((rank1Count / citedRanks.length) * 100)
         : 0;
 
-    const prominenceLift =
-      Math.round((avgProminenceWhenCited - baselineProminence) * 100) / 100;
     const rankLift =
       avgRankWhenCited !== null && baselineRank > 0
         ? Math.round((avgRankWhenCited - baselineRank) * 100) / 100
@@ -177,9 +160,7 @@ export function computeTopDomains(
       citations,
       responses,
       avgRankWhenCited,
-      avgProminenceWhenCited,
       rank1RateWhenCited,
-      prominenceLift,
       rankLift,
       firstSeen,
       lastSeen,

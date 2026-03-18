@@ -343,10 +343,9 @@ function DomainExamples({
                     Entity: {ex.entityId}
                   </span>
                 )}
-                {(ex.brandRank !== null || ex.brandProminence !== null) && (
+                {ex.brandRank !== null && (
                   <div className="flex gap-3 text-[10px] text-muted-foreground">
-                    {ex.brandRank !== null && <span>Rank: <span className="font-medium">#{ex.brandRank}</span></span>}
-                    {ex.brandProminence !== null && <span>Prominence: <span className="font-medium tabular-nums">{ex.brandProminence}</span></span>}
+                    <span>Rank: <span className="font-medium">#{ex.brandRank}</span></span>
                   </div>
                 )}
                 <ExternalLink className="h-3 w-3 text-muted-foreground/40 ml-auto shrink-0" />

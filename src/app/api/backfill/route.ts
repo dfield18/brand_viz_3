@@ -289,14 +289,14 @@ export async function POST(req: NextRequest) {
   let competitors: string[] = [];
   if (comparativeWithCompetitor.length > 0) {
     const brandMetrics = await prisma.entityResponseMetric.findMany({
-      where: { run: { brandId: brand.id }, entityId: brand.slug, prominenceScore: { gt: 0 } },
+      where: { run: { brandId: brand.id }, entityId: brand.slug },
       select: { runId: true },
     });
     const brandRunIds = brandMetrics.map((m) => m.runId);
     if (brandRunIds.length > 0) {
       const coEntities = await prisma.entityResponseMetric.groupBy({
         by: ["entityId"],
-        where: { runId: { in: brandRunIds }, entityId: { not: brand.slug }, prominenceScore: { gt: 0 } },
+        where: { runId: { in: brandRunIds }, entityId: { not: brand.slug } },
         _count: { entityId: true },
         orderBy: { _count: { entityId: "desc" } },
         take: 5,

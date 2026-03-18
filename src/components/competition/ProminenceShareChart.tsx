@@ -12,8 +12,8 @@ export function ProminenceShareChart({ prominenceShare, brandEntityId }: Promine
     return <p className="text-sm text-muted-foreground">No prominence data available.</p>;
   }
 
-  const sorted = [...prominenceShare].sort((a, b) => b.prominenceShare - a.prominenceShare);
-  const maxShare = Math.max(...sorted.map((c) => c.prominenceShare));
+  const sorted = [...prominenceShare].sort((a, b) => b.mentionShare - a.mentionShare);
+  const maxShare = Math.max(...sorted.map((c) => c.mentionShare));
 
   return (
     <div className="space-y-3">
@@ -28,11 +28,11 @@ export function ProminenceShareChart({ prominenceShare, brandEntityId }: Promine
           <div className="flex-1 h-7 rounded bg-muted/50 overflow-hidden">
             <div
               className={`h-full rounded transition-all duration-300 ${c.entityId === brandEntityId ? "bg-primary" : "bg-[var(--chart-4)]"}`}
-              style={{ width: maxShare > 0 ? `${(c.prominenceShare / maxShare) * 100}%` : "0%" }}
+              style={{ width: maxShare > 0 ? `${(c.mentionShare / maxShare) * 100}%` : "0%" }}
             />
           </div>
           <span className="text-sm font-semibold tabular-nums w-14 text-right">
-            {c.prominenceShare.toFixed(1)}%
+            {c.mentionShare.toFixed(1)}%
           </span>
         </div>
       ))}

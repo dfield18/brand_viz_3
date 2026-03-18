@@ -40,7 +40,6 @@ export interface TrendPoint {
 export interface ClusterVisibility {
   cluster: string;
   mentionRate: number;    // % of prompts that mention the brand
-  prominenceScore: number; // avg brandMentionStrength for this cluster
 }
 
 export interface ModelComparison {
@@ -225,7 +224,6 @@ export interface VisibilityResponse {
   shareOfVoice: number;        // 0–100 brand mentions / all entity mentions
   avgRankScore: number;        // 1 = first mentioned
   firstMentionRate: number;    // 0–100
-  prominence: number;          // 0–100
   visibilityRanking: VisibilityRankingEntry[];
   positionDistribution: PositionDistributionEntry[];
   positionDistributionOverTime: PositionDistributionOverTimeEntry[];
@@ -257,7 +255,6 @@ export interface KpiDeltas {
   shareOfVoice: number;
   avgRank: number;
   firstMentionRate: number;
-  prominence: number;
 }
 
 export interface NarrativeDeltas {
@@ -316,7 +313,6 @@ export interface CompetitorRow {
   mentionRate: number;      // 0-100
   avgRank: number | null;
   rank1Rate: number;        // 0-100
-  avgProminence: number;    // 0-100
   appearances: number;
   avgSentiment?: "Strong" | "Positive" | "Neutral" | "Conditional" | "Negative";
   sentimentScore?: number;  // raw -1 to 1 average
@@ -334,7 +330,7 @@ export interface PromptMatrixRow {
   cluster: string;
   intent: string;
   model: string;
-  entities: Record<string, { rank: number | null; prominence: number }>;
+  entities: Record<string, { rank: number | null }>;
 }
 
 export interface WinLossCompetitor {
@@ -350,10 +346,8 @@ export interface TopLoss {
   cluster: string;
   intent: string;
   yourRank: number | null;
-  yourProminence: number;
   competitorName: string;
   competitorRank: number | null;
-  competitorProminence: number;
 }
 
 export interface WinLossData {
@@ -374,12 +368,12 @@ export interface CompetitiveTrendPoint {
   rank1Rate?: Record<string, number>;    // entityId → % of mentions where brand is #1
 }
 
+/** @deprecated Prominence removed — use mentionShare from CompetitorRow instead */
 export interface ProminenceShareRow {
   entityId: string;
   name: string;
   isBrand: boolean;
-  avgProminence: number;
-  prominenceShare: number;  // 0-100
+  mentionShare: number;  // 0-100
 }
 
 export interface CompetitiveOpportunity {
@@ -469,7 +463,6 @@ export interface TopicRow {
   mentionRate: number;         // 0-100
   avgRank: number | null;
   rank1Rate: number;           // 0-100
-  avgProminence: number;       // 0-100
   categoryAvgMentionRate: number; // 0-100
   leaderMentionRate: number;      // 0-100
   leaderName: string;
@@ -522,9 +515,8 @@ export interface TopicTrendPoint {
 export interface TopicProminenceRow {
   topicKey: string;
   topicLabel: string;
-  avgProminence: number;
   nMentions: number;
-  prominenceShare: number;     // 0-100
+  mentionShare: number;     // 0-100
 }
 
 export interface TopicPromptExample {
@@ -534,7 +526,6 @@ export interface TopicPromptExample {
   topicLabel: string;
   model: string;
   brandRank: number | null;
-  brandProminence: number;
   topCompetitor: string | null;
   topCompetitorRank: number | null;
   cluster: string;
@@ -599,9 +590,7 @@ export interface TopDomainRow {
   citations: number;
   responses: number;
   avgRankWhenCited: number | null;
-  avgProminenceWhenCited: number;
   rank1RateWhenCited: number;
-  prominenceLift: number;
   rankLift: number;
   firstSeen: string;
   lastSeen: string;
@@ -699,7 +688,6 @@ export interface DomainDetailExample {
   model: string;
   entityId: string | null;
   normalizedUrl: string;
-  brandProminence: number | null;
   brandRank: number | null;
   createdAt: string;
 }

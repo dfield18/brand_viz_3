@@ -323,7 +323,6 @@ const VISIBILITY_PROFILES: Record<string, {
   overallMentionRate: number;
   avgRankScore: number;
   firstMentionRate: number;
-  prominence: number;
 }> = {
   patagonia: {
     clusters: [
@@ -336,7 +335,6 @@ const VISIBILITY_PROFILES: Record<string, {
     overallMentionRate: 58,
     avgRankScore: 0.72,
     firstMentionRate: 45,
-    prominence: 0.65,
   },
   nike: {
     clusters: [
@@ -349,7 +347,6 @@ const VISIBILITY_PROFILES: Record<string, {
     overallMentionRate: 82,
     avgRankScore: 0.85,
     firstMentionRate: 72,
-    prominence: 0.91,
   },
   allbirds: {
     clusters: [
@@ -362,7 +359,6 @@ const VISIBILITY_PROFILES: Record<string, {
     overallMentionRate: 36,
     avgRankScore: 0.48,
     firstMentionRate: 30,
-    prominence: 0.39,
   },
 };
 
@@ -378,7 +374,6 @@ function getVisibilityProfile(slug: string) {
     overallMentionRate: 45,
     avgRankScore: 0.55,
     firstMentionRate: 40,
-    prominence: 0.50,
   };
 }
 
@@ -415,8 +410,6 @@ function generateVisibility(brandId: string, filters: Filters): VisibilityRespon
     parseFloat((profile.avgRankScore + (rand() - 0.5) * 0.1).toFixed(2))));
   const firstMentionRate = Math.max(0, Math.min(100,
     Math.round(profile.firstMentionRate + (rand() - 0.5) * 10)));
-  const prominence = Math.max(0, Math.min(1,
-    parseFloat((profile.prominence + (rand() - 0.5) * 0.08).toFixed(2))));
   const shareOfVoice = Math.max(0, Math.min(100,
     Math.round(overallMentionRate * (0.3 + rand() * 0.4))));
 
@@ -507,7 +500,7 @@ function generateVisibility(brandId: string, filters: Filters): VisibilityRespon
     { promptText: `Top alternatives to ${brandId}`, model: "gemini", position: null },
   ];
 
-  return { clusters, clusterBreakdown, modelBreakdown, topPromptWins, trend, rankDistribution, intentSplit, overallMentionRate, shareOfVoice, avgRankScore, firstMentionRate, prominence, visibilityRanking, positionDistribution, positionDistributionOverTime: [], opportunityPrompts, kpiDeltas, worstPerformingPrompts, resultsByQuestion, promptPositions };
+  return { clusters, clusterBreakdown, modelBreakdown, topPromptWins, trend, rankDistribution, intentSplit, overallMentionRate, shareOfVoice, avgRankScore, firstMentionRate, visibilityRanking, positionDistribution, positionDistributionOverTime: [], opportunityPrompts, kpiDeltas, worstPerformingPrompts, resultsByQuestion, promptPositions };
 }
 
 // --- Competition mock data ---

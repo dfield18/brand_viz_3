@@ -196,7 +196,7 @@ function MatrixRow({
             <td key={id} className="py-2 px-2 text-center">
               <span
                 className={`inline-block rounded px-1.5 py-0.5 tabular-nums font-medium ${rankColor(cell.rank)}`}
-                title={`Rank ${cell.rank ?? "—"} · Prominence ${cell.prominence}`}
+                title={`Rank ${cell.rank ?? "—"}`}
               >
                 {cell.rank ?? "—"}
               </span>

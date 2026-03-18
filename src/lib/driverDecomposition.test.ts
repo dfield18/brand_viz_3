@@ -53,14 +53,6 @@ describe("computeKpi", () => {
     assert.equal(computeKpi(runs, "mentionRate"), 33.3);
   });
 
-  it("avgProminence", () => {
-    const runs = [
-      makeRun({ brandMentionStrength: 80 }),
-      makeRun({ brandMentionStrength: 40 }),
-    ];
-    assert.equal(computeKpi(runs, "avgProminence"), 60);
-  });
-
   it("firstMentionRate: all rank 1", () => {
     const runs = [makeRun({ rank: 1 }), makeRun({ rank: 1 })];
     assert.equal(computeKpi(runs, "firstMentionRate"), 100);
@@ -94,18 +86,18 @@ describe("computeKpi", () => {
 describe("decomposeAlongDimension", () => {
   it("contributions sum to total delta", () => {
     const current = [
-      makeRun({ model: "chatgpt", brandMentionStrength: 80 }),
-      makeRun({ model: "chatgpt", brandMentionStrength: 70 }),
-      makeRun({ model: "gemini", brandMentionStrength: 60 }),
+      makeRun({ model: "chatgpt", brandMentioned: true }),
+      makeRun({ model: "chatgpt", brandMentioned: true }),
+      makeRun({ model: "gemini", brandMentioned: false }),
     ];
     const previous = [
-      makeRun({ model: "chatgpt", brandMentionStrength: 50 }),
-      makeRun({ model: "chatgpt", brandMentionStrength: 40 }),
-      makeRun({ model: "gemini", brandMentionStrength: 50 }),
+      makeRun({ model: "chatgpt", brandMentioned: false }),
+      makeRun({ model: "chatgpt", brandMentioned: false }),
+      makeRun({ model: "gemini", brandMentioned: true }),
     ];
-    const totalDelta = computeKpi(current, "avgProminence")! - computeKpi(previous, "avgProminence")!;
+    const totalDelta = computeKpi(current, "mentionRate")! - computeKpi(previous, "mentionRate")!;
     const drivers = decomposeAlongDimension(
-      current, previous, "avgProminence", "model",
+      current, previous, "mentionRate", "model",
       (r) => r.model, totalDelta,
     );
     const sum = drivers.reduce((s, d) => s + d.contribution, 0);
@@ -113,21 +105,21 @@ describe("decomposeAlongDimension", () => {
   });
 
   it("handles single segment", () => {
-    const current = [makeRun({ brandMentionStrength: 80 })];
-    const previous = [makeRun({ brandMentionStrength: 50 })];
-    const totalDelta = 30;
+    const current = [makeRun({ brandMentioned: true }), makeRun({ brandMentioned: true })];
+    const previous = [makeRun({ brandMentioned: false }), makeRun({ brandMentioned: false })];
+    const totalDelta = 100;
     const drivers = decomposeAlongDimension(
-      current, previous, "avgProminence", "model",
+      current, previous, "mentionRate", "model",
       (r) => r.model, totalDelta,
     );
     assert.equal(drivers.length, 1);
-    assert.ok(Math.abs(drivers[0].contribution - 30) < 0.2);
+    assert.ok(Math.abs(drivers[0].contribution - 100) < 0.2);
   });
 
   it("handles zero delta", () => {
-    const runs = [makeRun({ brandMentionStrength: 50 })];
+    const runs = [makeRun({ brandMentioned: true })];
     const drivers = decomposeAlongDimension(
-      runs, runs, "avgProminence", "model",
+      runs, runs, "mentionRate", "model",
       (r) => r.model, 0,
     );
     assert.equal(drivers[0].contribution, 0);
@@ -135,16 +127,16 @@ describe("decomposeAlongDimension", () => {
 
   it("handles missing segment in one period", () => {
     const current = [
-      makeRun({ model: "chatgpt", brandMentionStrength: 60 }),
-      makeRun({ model: "gemini", brandMentionStrength: 40 }),
+      makeRun({ model: "chatgpt", brandMentioned: true }),
+      makeRun({ model: "gemini", brandMentioned: false }),
     ];
     const previous = [
-      makeRun({ model: "chatgpt", brandMentionStrength: 50 }),
+      makeRun({ model: "chatgpt", brandMentioned: false }),
       // gemini not present in previous
     ];
-    const totalDelta = computeKpi(current, "avgProminence")! - computeKpi(previous, "avgProminence")!;
+    const totalDelta = computeKpi(current, "mentionRate")! - computeKpi(previous, "mentionRate")!;
     const drivers = decomposeAlongDimension(
-      current, previous, "avgProminence", "model",
+      current, previous, "mentionRate", "model",
       (r) => r.model, totalDelta,
     );
     // Should still produce drivers for both models
@@ -191,10 +183,10 @@ describe("decomposeKpi", () => {
       makeRun({ model: "gemini", cluster: "industry", topic: "brand_reputation", brandMentionStrength: 40, rank: 2 }),
     ];
 
-    const result = decomposeKpi(current, previous, "avgProminence", "2025-02 to 2025-03", "2025-01 to 2025-02");
+    const result = decomposeKpi(current, previous, "mentionRate", "2025-02 to 2025-03", "2025-01 to 2025-02");
 
-    assert.equal(result.kpi, "avgProminence");
-    assert.equal(result.kpiLabel, "AI Visibility");
+    assert.equal(result.kpi, "mentionRate");
+    assert.equal(result.kpiLabel, "Mention Rate");
     assert.ok(result.totalDelta > 0, "Delta should be positive");
     assert.ok(result.drivers.length > 0, "Should have drivers");
     assert.ok(result.narrative.length > 0, "Should have narrative");
@@ -208,15 +200,15 @@ describe("decomposeKpi", () => {
       makeRun({ model: "chatgpt", brandMentionStrength: 50 }),
       makeRun({ model: "chatgpt", brandMentionStrength: 50 }),
     ];
-    const result = decomposeKpi(runs, runs, "avgProminence", "curr", "prev");
+    const result = decomposeKpi(runs, runs, "mentionRate", "curr", "prev");
     assert.equal(result.totalDelta, 0);
     assert.ok(result.narrative.includes("flat"));
   });
 
   it("handles sparse data", () => {
-    const current = [makeRun({ model: "chatgpt", brandMentionStrength: 80 })];
-    const previous = [makeRun({ model: "chatgpt", brandMentionStrength: 40 })];
-    const result = decomposeKpi(current, previous, "avgProminence", "curr", "prev");
+    const current = [makeRun({ model: "chatgpt", brandMentioned: true })];
+    const previous = [makeRun({ model: "chatgpt", brandMentioned: false })];
+    const result = decomposeKpi(current, previous, "mentionRate", "curr", "prev");
     assert.equal(result.confidence, "Low");
   });
 });

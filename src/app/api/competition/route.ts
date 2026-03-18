@@ -10,7 +10,6 @@ import {
   computeFragmentation,
   computeWinLoss,
   computeMentionRate,
-  computeAvgProminence,
 } from "@/lib/competition/computeCompetition";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import {
@@ -94,7 +93,6 @@ export async function GET(req: NextRequest) {
         entityId: true,
         model: true,
         promptId: true,
-        prominenceScore: true,
         rankPosition: true,
       },
     });
@@ -117,14 +115,14 @@ export async function GET(req: NextRequest) {
 
     // Find brand entity metrics
     const brandMetrics = byEntity.get(brand.slug) ?? [];
-    const brandRunIds = new Set(brandMetrics.filter((m) => m.prominenceScore > 0).map((m) => m.runId));
+    const brandRunIds = new Set(brandMetrics.map((m) => m.runId));
 
     // Auto-discover competitors: top N by co-occurrence with brand
     const cooccurrence: { entityId: string; count: number }[] = [];
     for (const [entityId, entityMetrics] of byEntity) {
       if (entityId === brand.slug) continue;
       const coCount = entityMetrics.filter(
-        (m) => m.prominenceScore > 0 && brandRunIds.has(m.runId),
+        (m) => brandRunIds.has(m.runId),
       ).length;
       if (coCount > 0) {
         cooccurrence.push({ entityId, count: coCount });
@@ -152,11 +150,11 @@ export async function GET(req: NextRequest) {
     // Use ALL entity appearances as denominator (same methodology as Visibility tab SOV)
     let totalAppearances = 0;
     for (const [, entityMetrics] of byEntity) {
-      totalAppearances += entityMetrics.filter((m) => m.prominenceScore > 0).length;
+      totalAppearances += entityMetrics.length;
     }
 
     const competitors: CompetitorRow[] = trackedIds.map((entityId) => {
-      const ms = (byEntity.get(entityId) ?? []).filter((m) => m.prominenceScore > 0);
+      const ms = byEntity.get(entityId) ?? [];
       const appearances = ms.length;
       const ranks = ms.map((m) => m.rankPosition);
       return {
@@ -167,7 +165,6 @@ export async function GET(req: NextRequest) {
         mentionRate: computeMentionRate(appearances, totalResponses),
         avgRank: computeAvgRank(ranks),
         rank1Rate: computeRank1Rate(ranks),
-        avgProminence: computeAvgProminence(ms.map((m) => m.prominenceScore)),
         appearances,
       };
     });
@@ -211,7 +208,7 @@ export async function GET(req: NextRequest) {
     }
 
     for (const comp of competitors) {
-      const entityMetrics = (byEntity.get(comp.entityId) ?? []).filter((m) => m.prominenceScore > 0);
+      const entityMetrics = byEntity.get(comp.entityId) ?? [];
       if (entityMetrics.length === 0) continue;
 
       let totalScore = 0;
@@ -283,11 +280,10 @@ export async function GET(req: NextRequest) {
       const prompt = promptMap.get(run.promptId);
       if (!prompt) continue;
       const runMetrics = metricsByRun.get(run.id) ?? [];
-      const entities: Record<string, { rank: number | null; prominence: number }> = {};
+      const entities: Record<string, { rank: number | null }> = {};
       for (const m of runMetrics) {
         entities[m.entityId] = {
           rank: m.rankPosition,
-          prominence: Math.round(m.prominenceScore * 100) / 100,
         };
       }
       matrixRows.push({
@@ -307,7 +303,7 @@ export async function GET(req: NextRequest) {
     // Win/Loss
     const brandMetricsByRun = new Map<string, Metric>();
     for (const m of brandMetrics) {
-      if (m.prominenceScore > 0) brandMetricsByRun.set(m.runId, m);
+      brandMetricsByRun.set(m.runId, m);
     }
 
     const winLossMap = new Map<string, { wins: number; losses: number }>();
@@ -317,9 +313,7 @@ export async function GET(req: NextRequest) {
     // so topLosses and byCompetitor are consistent
     for (const [competitorId, entityMetrics] of byEntity) {
       if (competitorId === brand.slug) continue;
-      const competitorMetrics = entityMetrics.filter(
-        (m) => m.prominenceScore > 0,
-      );
+      const competitorMetrics = entityMetrics;
       let wins = 0;
       let losses = 0;
 
@@ -338,10 +332,8 @@ export async function GET(req: NextRequest) {
               cluster: prompt.cluster,
               intent: prompt.intent,
               yourRank: bm.rankPosition,
-              yourProminence: Math.round(bm.prominenceScore * 100) / 100,
               competitorName: resolveEntityName(competitorId, entityDisplayNames),
               competitorRank: cm.rankPosition,
-              competitorProminence: Math.round(cm.prominenceScore * 100) / 100,
             });
           }
         }
@@ -366,7 +358,7 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => b.losses - a.losses);
 
-    allLosses.sort((a, b) => b.competitorProminence - a.competitorProminence);
+    allLosses.sort((a, b) => (a.competitorRank ?? Infinity) - (b.competitorRank ?? Infinity));
     const topLosses = allLosses.slice(0, MAX_TOP_LOSSES);
 
     // Model Split
@@ -378,13 +370,13 @@ export async function GET(req: NextRequest) {
       let modelTotalAppearances = 0;
       for (const [, entityMetrics] of byEntity) {
         modelTotalAppearances += entityMetrics.filter(
-          (m) => m.prominenceScore > 0 && modelRunIds.has(m.runId),
+          (m) => modelRunIds.has(m.runId),
         ).length;
       }
 
       const modelCompetitors: CompetitorRow[] = trackedIds.map((entityId) => {
         const ms = (byEntity.get(entityId) ?? []).filter(
-          (m) => m.prominenceScore > 0 && modelRunIds.has(m.runId),
+          (m) => modelRunIds.has(m.runId),
         );
         const appearances = ms.length;
         const ranks = ms.map((m) => m.rankPosition);
@@ -396,7 +388,6 @@ export async function GET(req: NextRequest) {
           mentionRate: computeMentionRate(appearances, modelTotalResponses),
           avgRank: computeAvgRank(ranks),
           rank1Rate: computeRank1Rate(ranks),
-          avgProminence: computeAvgProminence(ms.map((m) => m.prominenceScore)),
           appearances,
         };
       });
@@ -404,24 +395,14 @@ export async function GET(req: NextRequest) {
       return { model: modelId, competitors: modelCompetitors };
     });
 
-    // --- Prominence Share ---
-    const totalProminenceSum = trackedIds.reduce((sum, id) => {
-      const ms = (byEntity.get(id) ?? []).filter((m) => m.prominenceScore > 0);
-      return sum + ms.reduce((s, m) => s + m.prominenceScore, 0);
-    }, 0);
-
+    // --- Prominence Share (now uses mentionShare) ---
     const prominenceShare: ProminenceShareRow[] = trackedIds.map((entityId) => {
-      const ms = (byEntity.get(entityId) ?? []).filter((m) => m.prominenceScore > 0);
-      const entityPromSum = ms.reduce((s, m) => s + m.prominenceScore, 0);
       const comp = competitors.find((c) => c.entityId === entityId)!;
       return {
         entityId,
         name: comp.name,
         isBrand: comp.isBrand,
-        avgProminence: comp.avgProminence,
-        prominenceShare: totalProminenceSum > 0
-          ? Math.round((entityPromSum / totalProminenceSum) * 10000) / 100
-          : 0,
+        mentionShare: comp.mentionShare,
       };
     });
 
@@ -429,7 +410,7 @@ export async function GET(req: NextRequest) {
     const opportunities: CompetitiveOpportunity[] = [];
     for (const row of matrixRows) {
       const brandCell = row.entities[brand.slug];
-      const brandAbsent = !brandCell || brandCell.prominence <= 0;
+      const brandAbsent = !brandCell;
       const brandNotFirst = brandCell && brandCell.rank !== 1;
       if (!brandAbsent && !brandNotFirst) continue;
 
@@ -445,7 +426,7 @@ export async function GET(req: NextRequest) {
       if (!topCompId || topCompRank === Infinity) continue;
 
       const compCell = row.entities[topCompId];
-      const rawScore = compCell.prominence * (1 / topCompRank) * (brandAbsent ? 1.5 : 1.0);
+      const rawScore = (1 / topCompRank) * (brandAbsent ? 1.5 : 1.0);
       opportunities.push({
         promptText: row.promptText,
         cluster: row.cluster,
@@ -467,7 +448,7 @@ export async function GET(req: NextRequest) {
     // --- Co-Mention Pairs ---
     const entityRunSets = new Map<string, Set<string>>();
     for (const entityId of trackedIds) {
-      const ms = (byEntity.get(entityId) ?? []).filter((m) => m.prominenceScore > 0);
+      const ms = byEntity.get(entityId) ?? [];
       entityRunSets.set(entityId, new Set(ms.map((m) => m.runId)));
     }
 
@@ -529,7 +510,7 @@ export async function GET(req: NextRequest) {
               prompt: { cluster: "industry" },
             },
           },
-          select: { runId: true, entityId: true, prominenceScore: true, rankPosition: true, run: { select: { jobId: true } } },
+          select: { runId: true, entityId: true, rankPosition: true, run: { select: { jobId: true } } },
         })
       : [];
 
@@ -562,7 +543,6 @@ export async function GET(req: NextRequest) {
 
       bucket.totalResponses += jobRunIds.size;
       for (const m of jobMetrics) {
-        if (m.prominenceScore <= 0) continue;
         if (trendEntitySet.has(m.entityId)) {
           bucket.totalAppearances++;
           bucket.entityAppearances[m.entityId]?.add(m.runId);
@@ -617,7 +597,7 @@ export async function GET(req: NextRequest) {
     // Fetch raw text for trend runs
     const trendRunIds = new Set<string>();
     for (const m of allTrendMetrics) {
-      if (m.prominenceScore > 0 && trendEntitySet.has(m.entityId)) {
+      if (trendEntitySet.has(m.entityId)) {
         trendRunIds.add(m.runId);
       }
     }
@@ -654,7 +634,7 @@ export async function GET(req: NextRequest) {
     }
 
     for (const m of allTrendMetrics) {
-      if (m.prominenceScore <= 0 || !trendEntitySet.has(m.entityId)) continue;
+      if (!trendEntitySet.has(m.entityId)) continue;
       const jobId = runJobMap.get(m.runId);
       if (!jobId) continue;
       const date = jobDateMap.get(jobId);
@@ -728,7 +708,6 @@ export async function GET(req: NextRequest) {
     // Build entityId → set of runIds where entity appears
     const entityRunIds = new Map<string, Set<string>>();
     for (const m of metrics) {
-      if (m.prominenceScore <= 0) continue;
       const entityId = aliasMap.get(m.entityId) ?? m.entityId;
       if (!trackedSet.has(entityId) || entityId === brand.slug) continue;
       const set = entityRunIds.get(entityId) ?? new Set<string>();

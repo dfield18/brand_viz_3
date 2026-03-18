@@ -535,7 +535,7 @@ export async function POST(
     if (needsExpansion) {
       // Discover top competitors from EntityResponseMetric co-occurrence
       const brandMetrics = await prisma.entityResponseMetric.findMany({
-        where: { run: { brandId: job.brandId }, entityId: job.brand.slug, prominenceScore: { gt: 0 } },
+        where: { run: { brandId: job.brandId }, entityId: job.brand.slug },
         select: { runId: true },
       });
       const brandRunIds = brandMetrics.map((m) => m.runId);
@@ -543,7 +543,7 @@ export async function POST(
       if (brandRunIds.length > 0) {
         const coEntities = await prisma.entityResponseMetric.groupBy({
           by: ["entityId"],
-          where: { runId: { in: brandRunIds }, entityId: { not: job.brand.slug }, prominenceScore: { gt: 0 } },
+          where: { runId: { in: brandRunIds }, entityId: { not: job.brand.slug } },
           _count: { entityId: true },
           orderBy: { _count: { entityId: "desc" } },
           take: 5,

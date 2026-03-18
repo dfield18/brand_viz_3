@@ -10,7 +10,7 @@ import {
   type DecompositionResult,
 } from "@/lib/driverDecomposition";
 
-const VALID_KPIS: KpiKey[] = ["mentionRate", "avgProminence", "firstMentionRate", "avgRank", "shareOfVoice"];
+const VALID_KPIS: KpiKey[] = ["mentionRate", "firstMentionRate", "avgRank", "shareOfVoice"];
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");

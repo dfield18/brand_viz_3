@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     const metricRunIds = [...new Set(occurrences.map((o) => o.runId))];
     const brandMetrics = await prisma.entityResponseMetric.findMany({
       where: { runId: { in: metricRunIds }, entityId: brand.slug },
-      select: { runId: true, prominenceScore: true, rankPosition: true },
+      select: { runId: true, rankPosition: true },
     });
     const metricByRun = new Map(brandMetrics.map((m) => [m.runId, m]));
 
@@ -84,7 +84,6 @@ export async function GET(req: NextRequest) {
         model: o.model,
         entityId: o.entityId,
         normalizedUrl: o.normalizedUrl,
-        brandProminence: metric?.prominenceScore ?? null,
         brandRank: metric?.rankPosition ?? null,
         createdAt: o.run.createdAt.toISOString(),
       };

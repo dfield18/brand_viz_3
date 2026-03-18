@@ -368,13 +368,9 @@ export async function GET(req: NextRequest) {
     .filter((c) => mergedClusters.has(c))
     .map((cluster) => {
       const stats = mergedClusters.get(cluster)!;
-      const avg = stats.strengths.length > 0
-        ? stats.strengths.reduce((s, n) => s + n, 0) / stats.strengths.length
-        : 0;
       return {
         cluster,
         mentionRate: stats.total > 0 ? Math.round((stats.mentioned / stats.total) * 100) : 0,
-        prominenceScore: Math.round(avg),
       };
     });
   overview.clusterVisibility = clusterVisibility;
@@ -470,8 +466,46 @@ export async function GET(req: NextRequest) {
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
 
-    // SoV + competitive rank + KPI deltas — all entity metric queries in one parallel batch
+    // SoV + competitive rank + KPI deltas — text-based (no EntityResponseMetric)
+    type OverviewAnalysis = { brandMentioned?: boolean; competitors?: { name: string }[] };
+
+    function computeTextSov(sovRuns: OverviewVisRun[]): number {
+      let bm = 0, total = 0;
+      for (const run of sovRuns) {
+        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
+        const analysis = run.analysisJson as OverviewAnalysis | null;
+        const compCount = (analysis?.competitors ?? []).length;
+        if (mentioned) bm++;
+        total += (mentioned ? 1 : 0) + compCount;
+      }
+      return computeShareOfVoice(bm, total);
+    }
+
     if (industryRunIds.length > 0) {
+      shareOfVoice = computeTextSov(industryRuns);
+
+      // Competitive rank: count entity appearances from analysisJson
+      const entityAppearances = new Map<string, number>();
+      for (const run of industryRuns) {
+        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
+        if (mentioned) {
+          entityAppearances.set(visBrand.slug, (entityAppearances.get(visBrand.slug) ?? 0) + 1);
+        }
+        const analysis = run.analysisJson as OverviewAnalysis | null;
+        for (const comp of (analysis?.competitors ?? [])) {
+          const id = comp.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          entityAppearances.set(id, (entityAppearances.get(id) ?? 0) + 1);
+        }
+      }
+      const sorted = [...entityAppearances.entries()]
+        .map(([entityId, count]) => ({ entityId, count }))
+        .sort((a, b) => b.count - a.count);
+      const brandIdx = sorted.findIndex((e) => e.entityId === visBrand.slug);
+      if (brandIdx >= 0) {
+        competitiveRank = { rank: brandIdx + 1, totalCompetitors: sorted.length };
+      }
+
+      // KPI deltas
       const now = Date.now();
       const oneWeekAgo = new Date(now - 7 * 86_400_000);
       const twoWeeksAgo = new Date(now - 14 * 86_400_000);
@@ -479,73 +513,9 @@ export async function GET(req: NextRequest) {
       const priorWeekRuns = industryRuns.filter(
         (r) => r.createdAt >= twoWeeksAgo && r.createdAt < oneWeekAgo,
       );
-      const twRunIds = thisWeekRuns.map((r) => r.id);
-      const pwRunIds = priorWeekRuns.map((r) => r.id);
       const hasDelta = thisWeekRuns.length > 0 && priorWeekRuns.length > 0;
 
-      // Build all entity metric queries and run in one Promise.all
-      const metricQueries: Promise<unknown>[] = [
-        // [0] brand SoV count
-        prisma.entityResponseMetric.count({
-          where: { runId: { in: industryRunIds }, entityId: visBrand.slug, prominenceScore: { gt: 0 } },
-        }),
-        // [1] total SoV count
-        prisma.entityResponseMetric.count({
-          where: { runId: { in: industryRunIds }, prominenceScore: { gt: 0 } },
-        }),
-        // [2] competitive rank groupBy
-        prisma.entityResponseMetric.groupBy({
-          by: ["entityId"],
-          where: { runId: { in: industryRunIds }, prominenceScore: { gt: 0 } },
-          _count: { entityId: true },
-        }),
-      ];
-
-      // Delta queries only if we have both weeks
       if (hasDelta) {
-        metricQueries.push(
-          // [3] tw brand count
-          prisma.entityResponseMetric.count({
-            where: { runId: { in: twRunIds }, entityId: visBrand.slug, prominenceScore: { gt: 0 } },
-          }),
-          // [4] tw total count
-          prisma.entityResponseMetric.count({
-            where: { runId: { in: twRunIds }, prominenceScore: { gt: 0 } },
-          }),
-          // [5] pw brand count
-          prisma.entityResponseMetric.count({
-            where: { runId: { in: pwRunIds }, entityId: visBrand.slug, prominenceScore: { gt: 0 } },
-          }),
-          // [6] pw total count
-          prisma.entityResponseMetric.count({
-            where: { runId: { in: pwRunIds }, prominenceScore: { gt: 0 } },
-          }),
-        );
-      }
-
-      const results = await Promise.all(metricQueries);
-
-      const brandCount = results[0] as number;
-      const totalCount = results[1] as number;
-      shareOfVoice = computeShareOfVoice(brandCount, totalCount);
-
-      // Competitive rank
-      const entityCounts = results[2] as { entityId: string; _count: { entityId: number } }[];
-      const sorted = entityCounts
-        .map((e) => ({ entityId: e.entityId, count: e._count.entityId }))
-        .sort((a, b) => b.count - a.count);
-      const brandIdx = sorted.findIndex((e) => e.entityId === brand.slug);
-      if (brandIdx >= 0) {
-        competitiveRank = { rank: brandIdx + 1, totalCompetitors: sorted.length };
-      }
-
-      // KPI deltas
-      if (hasDelta) {
-        const twBrandC = results[3] as number;
-        const twTotalC = results[4] as number;
-        const pwBrandC = results[5] as number;
-        const pwTotalC = results[6] as number;
-
         const twMentions = thisWeekRuns.filter((r) =>
           isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
@@ -564,10 +534,9 @@ export async function GET(req: NextRequest) {
 
         kpiDeltas = {
           mentionRate: parseFloat((twMR - pwMR).toFixed(1)),
-          shareOfVoice: parseFloat((computeShareOfVoice(twBrandC, twTotalC) - computeShareOfVoice(pwBrandC, pwTotalC)).toFixed(1)),
+          shareOfVoice: parseFloat((computeTextSov(thisWeekRuns) - computeTextSov(priorWeekRuns)).toFixed(1)),
           avgRank: parseFloat(((computeAvgRank(twRanks) ?? 0) - (computeAvgRank(pwRanks) ?? 0)).toFixed(2)),
           firstMentionRate: parseFloat((computeRank1RateAll(twRanks) - computeRank1RateAll(pwRanks)).toFixed(1)),
-          prominence: 0,
         };
       }
     }
