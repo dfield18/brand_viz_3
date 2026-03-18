@@ -95,7 +95,7 @@ function BarYAxisTick(props: {
 }) {
   const { x = 0, y = 0, payload } = props;
   const label = payload?.value ?? "";
-  const lines = wrapLabel(label, 16);
+  const lines = wrapLabel(label, 22);
   return (
     <g transform={`translate(${x},${y})`}>
       {lines.map((line, i) => (
@@ -182,7 +182,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ top: 0, right: 40, bottom: 0, left: 0 }}
+              margin={{ top: 0, right: 40, bottom: 0, left: 10 }}
             >
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis
@@ -195,7 +195,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
               <YAxis
                 type="category"
                 dataKey="frame"
-                width={150}
+                width={190}
                 tickLine={false}
                 tick={(props: object) => <BarYAxisTick {...props as Parameters<typeof BarYAxisTick>[0]} />}
               />

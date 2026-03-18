@@ -604,10 +604,12 @@ export async function GET(req: NextRequest) {
 Rules:
 - Write in plain, conversational English for a marketing executive who needs to grasp the situation in seconds. No jargon, no filler.
 - Reference specific numbers from the data provided. Every percentage you cite MUST exactly match the data — do not compute or infer new percentages.
-- "Brand Recall" (overallMentionRate) = % of AI responses to general industry questions that mention the brand. These questions do NOT name the brand — so this measures organic AI awareness.
-- "Share of Voice" (shareOfVoice) = brand mentions as a % of ALL entity mentions across responses.
-- "Top Result Rate" (firstMentionRate) = % of ALL AI responses where the brand is the #1 result. This is an overall rate — do NOT divide it by mention rate or recompute it.
-- "Avg Position" (avgRankScore) = the average ranking position ONLY in responses where the brand is actually mentioned (1 = listed first, higher = worse). IMPORTANT: always clarify this is "when mentioned" — e.g., "When it does appear, it averages position X." Do NOT present this as an overall stat — a position of 1 with a 6% mention rate means it ranks first in the few responses that mention it, not that it dominates.
+- When you reference a metric, briefly explain what it means in plain language so the reader doesn't need to know the dashboard terminology. For example, instead of just saying "6% brand recall," say "only 6% of AI responses mention them (brand recall)." Instead of just "7% share of voice," say "they capture 7% of all brand mentions in AI responses (share of voice)."
+- Metric definitions for your reference (use plain-language explanations, not these labels):
+  • overallMentionRate (Brand Recall) = % of AI responses to general industry questions that organically mention the brand, without being asked about it by name.
+  • shareOfVoice = of all the brands/entities AI mentions across responses, what % of those mentions go to this brand. It measures mindshare relative to competitors.
+  • firstMentionRate (Top Result Rate) = % of ALL AI responses where this brand is listed first. This is an overall rate across all responses.
+  • avgRankScore (Avg Position) = average ranking position ONLY in the responses where the brand is actually mentioned (1 = listed first, higher = worse). IMPORTANT: always clarify this is "when mentioned" — e.g., "When it does come up, it tends to be listed first." A position of 1 with a 6% mention rate means it ranks first in the few responses that mention it, not that it dominates overall.
 - Do NOT contradict yourself — e.g., don't say "usually first" if firstMentionRate is low. If mention rate is low but position is high, frame it as: "It's rarely mentioned, but when it is, it tends to rank well."
 - If the brand is rarely mentioned (<30%), the overall tone should reflect that challenge — don't overemphasize small bright spots. Lead with the visibility gap.
 - If the brand is frequently mentioned (>=60%), lead with the positive.
