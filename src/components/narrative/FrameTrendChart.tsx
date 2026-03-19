@@ -14,6 +14,8 @@ import { MODEL_LABELS } from "@/lib/constants";
 
 interface FrameTrendChartProps {
   frameTrend: Record<string, string | number>[];
+  /** When provided, only these frames are shown (in this order). Should match the top narratives list. */
+  topFrameNames?: string[];
 }
 
 const FRAME_COLORS = [
@@ -31,7 +33,7 @@ const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as co
 
 const MAX_VISIBLE_FRAMES = 4;
 
-export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
+export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartProps) {
   const [selectedModel, setSelectedModel] = useState("all");
   const [highlightFrame, setHighlightFrame] = useState<string | null>(null);
 
@@ -46,21 +48,29 @@ export function FrameTrendChart({ frameTrend }: FrameTrendChartProps) {
     return frameTrend.filter((d) => (d.model ?? "all") === selectedModel);
   }, [frameTrend, selectedModel]);
 
-  // Extract all frame names from the data (sorted by avg, top first)
+  // Extract frame names — prefer topFrameNames when provided so the chart
+  // matches the "Top Narratives in AI Responses" section exactly.
   const frameNames = useMemo(() => {
-    const names = new Set<string>();
+    // Collect all frame keys present in the filtered trend data
+    const dataKeys = new Set<string>();
     for (const entry of filteredData) {
       for (const key of Object.keys(entry)) {
-        if (key !== "date" && key !== "model") names.add(key);
+        if (key !== "date" && key !== "model") dataKeys.add(key);
       }
     }
-    // Sort by average value descending so the most prominent frames are first
-    return [...names].sort((a, b) => {
+
+    if (topFrameNames && topFrameNames.length > 0) {
+      // Use the provided order, but only include frames that exist in the data
+      return topFrameNames.filter((name) => dataKeys.has(name));
+    }
+
+    // Fallback: sort by average value descending
+    return [...dataKeys].sort((a, b) => {
       const avgA = filteredData.reduce((s, e) => s + (Number(e[a]) || 0), 0) / (filteredData.length || 1);
       const avgB = filteredData.reduce((s, e) => s + (Number(e[b]) || 0), 0) / (filteredData.length || 1);
       return avgB - avgA;
     });
-  }, [filteredData]);
+  }, [filteredData, topFrameNames]);
 
   const visibleFrames = frameNames.slice(0, MAX_VISIBLE_FRAMES);
 

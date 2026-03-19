@@ -280,7 +280,10 @@ function NarrativeInner() {
         {/* Narrative Frame Trend */}
         {data.frameTrend && data.frameTrend.length >= 2 && (
           <div id="frame-trend" className="scroll-mt-24">
-            <FrameTrendChart frameTrend={data.frameTrend} />
+            <FrameTrendChart
+              frameTrend={data.frameTrend}
+              topFrameNames={[...frames].sort((a, b) => b.percentage - a.percentage).map((f) => f.frame)}
+            />
           </div>
         )}
 
