@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     promptId: string;
     model: string;
     createdAt: Date;
-    prompt: { text: string };
+    prompt: { text: string; cluster: string };
   };
   const result = await fetchBrandRuns<NarrativeRun>({
     brandSlug,
@@ -55,13 +55,16 @@ export async function GET(req: NextRequest) {
         promptId: true,
         model: true,
         createdAt: true,
-        prompt: { select: { text: true } },
+        prompt: { select: { text: true, cluster: true } },
       },
     },
   });
   if (!result.ok) return result.response;
   const { brand, job, runs, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+
+  // Industry-only runs for frame computation (matches overview tab methodology)
+  const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
 
   const analyses = runs
     .map((r) => parseAnalysis(r.analysisJson))
@@ -75,14 +78,23 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const narrativeBase = aggregateNarrative(analyses, brand.name, isAll ? "all" : model);
+  // Aggregate frames from industry-only runs (consistent with overview tab)
+  const industryAnalyses = industryRuns
+    .map((r) => parseAnalysis(r.analysisJson))
+    .filter((a): a is NonNullable<typeof a> => a !== null);
+  const narrativeBase = aggregateNarrative(
+    industryAnalyses.length > 0 ? industryAnalyses : analyses,
+    brand.name,
+    isAll ? "all" : model,
+  );
 
   // Fix byModel: compute per-model frame frequency (% of model's responses containing frame)
   {
     const STRENGTH_THRESHOLD = 20;
     const modelRunCounts: Record<string, number> = {};
     const modelFrameCounts: Record<string, Record<string, number>> = {};
-    for (const r of runs) {
+    const frameRuns = industryRuns.length > 0 ? industryRuns : runs;
+    for (const r of frameRuns) {
       const a = parseAnalysis(r.analysisJson);
       if (!a) continue;
       modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
@@ -109,9 +121,10 @@ export async function GET(req: NextRequest) {
   narrativeBase.frames = await validateFrames(narrativeBase.frames, brandName);
 
   // Fallback: if frames are empty after aggregation + validation, synthesize from raw responses
-  if (narrativeBase.frames.length === 0 && runs.length > 0) {
+  const frameRunPool = industryRuns.length > 0 ? industryRuns : runs;
+  if (narrativeBase.frames.length === 0 && frameRunPool.length > 0) {
     narrativeBase.frames = await synthesizeFramesFromResponses(
-      runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+      frameRunPool.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
       brandName,
       isAll ? "all" : model,
     );
@@ -121,7 +134,7 @@ export async function GET(req: NextRequest) {
   narrativeBase.frames = await ensureMinimumFrames(
     narrativeBase.frames,
     brandName,
-    runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+    frameRunPool.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
   );
 
   // --- Aggregate narrativeJson data ---

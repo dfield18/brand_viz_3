@@ -427,16 +427,36 @@ export async function GET(req: NextRequest) {
       shareOfVoice = computeTextSov(industryRuns);
 
       // Competitive rank: use EntityResponseMetric (same as Competition tab)
+      // Only count entities that co-occur with the brand in the same response
       const erm = await prisma.entityResponseMetric.findMany({
         where: { runId: { in: industryRunIds } },
-        select: { entityId: true },
+        select: { runId: true, entityId: true },
       });
-      // Count appearances per entity
+      // Group by entity
+      const entityByRun = new Map<string, Set<string>>();
       const entityAppearances = new Map<string, number>();
       for (const m of erm) {
         entityAppearances.set(m.entityId, (entityAppearances.get(m.entityId) ?? 0) + 1);
+        if (!entityByRun.has(m.runId)) entityByRun.set(m.runId, new Set());
+        entityByRun.get(m.runId)!.add(m.entityId);
       }
-      const sorted = [...entityAppearances.entries()]
+      // Find runs where brand appears
+      const brandRunIds = new Set<string>();
+      for (const [runId, entities] of entityByRun) {
+        if (entities.has(visBrand.slug)) brandRunIds.add(runId);
+      }
+      // Count only entities that co-occur with brand
+      const coEntityCounts = new Map<string, number>();
+      coEntityCounts.set(visBrand.slug, entityAppearances.get(visBrand.slug) ?? 0);
+      for (const [entityId] of entityAppearances) {
+        if (entityId === visBrand.slug) continue;
+        let coCount = 0;
+        for (const m of erm) {
+          if (m.entityId === entityId && brandRunIds.has(m.runId)) coCount++;
+        }
+        if (coCount > 0) coEntityCounts.set(entityId, entityAppearances.get(entityId) ?? 0);
+      }
+      const sorted = [...coEntityCounts.entries()]
         .map(([entityId, count]) => ({ entityId, count }))
         .sort((a, b) => b.count - a.count);
       const brandIdx = sorted.findIndex((e) => e.entityId === visBrand.slug);
@@ -444,38 +464,38 @@ export async function GET(req: NextRequest) {
         competitiveRank = { rank: brandIdx + 1, totalCompetitors: sorted.length };
       }
 
-      // KPI deltas
+      // KPI deltas (30-day window, matching visibility tab)
       const now = Date.now();
-      const oneWeekAgo = new Date(now - 7 * 86_400_000);
-      const twoWeeksAgo = new Date(now - 14 * 86_400_000);
-      const thisWeekRuns = industryRuns.filter((r) => r.createdAt >= oneWeekAgo);
-      const priorWeekRuns = industryRuns.filter(
-        (r) => r.createdAt >= twoWeeksAgo && r.createdAt < oneWeekAgo,
+      const oneMonthAgo = new Date(now - 30 * 86_400_000);
+      const twoMonthsAgo = new Date(now - 60 * 86_400_000);
+      const thisMonthRuns = industryRuns.filter((r) => r.createdAt >= oneMonthAgo);
+      const priorMonthRuns = industryRuns.filter(
+        (r) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
       );
-      const hasDelta = thisWeekRuns.length > 0 && priorWeekRuns.length > 0;
+      const hasDelta = thisMonthRuns.length > 0 && priorMonthRuns.length > 0;
 
       if (hasDelta) {
-        const twMentions = thisWeekRuns.filter((r) =>
+        const tmMentions = thisMonthRuns.filter((r) =>
           isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
-        const pwMentions = priorWeekRuns.filter((r) =>
+        const pmMentions = priorMonthRuns.filter((r) =>
           isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
-        const twMR = computeMentionRate(twMentions, thisWeekRuns.length);
-        const pwMR = computeMentionRate(pwMentions, priorWeekRuns.length);
+        const tmMR = computeMentionRate(tmMentions, thisMonthRuns.length);
+        const pmMR = computeMentionRate(pmMentions, priorMonthRuns.length);
 
-        const twRanks = thisWeekRuns.map((r) =>
+        const tmRanks = thisMonthRuns.map((r) =>
           computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
-        const pwRanks = priorWeekRuns.map((r) =>
+        const pmRanks = priorMonthRuns.map((r) =>
           computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
 
         kpiDeltas = {
-          mentionRate: parseFloat((twMR - pwMR).toFixed(1)),
-          shareOfVoice: parseFloat((computeTextSov(thisWeekRuns) - computeTextSov(priorWeekRuns)).toFixed(1)),
-          avgRank: parseFloat(((computeAvgRank(twRanks) ?? 0) - (computeAvgRank(pwRanks) ?? 0)).toFixed(2)),
-          firstMentionRate: parseFloat((computeRank1RateAll(twRanks) - computeRank1RateAll(pwRanks)).toFixed(1)),
+          mentionRate: parseFloat((tmMR - pmMR).toFixed(1)),
+          shareOfVoice: parseFloat((computeTextSov(thisMonthRuns) - computeTextSov(priorMonthRuns)).toFixed(1)),
+          avgRank: parseFloat(((computeAvgRank(tmRanks) ?? 0) - (computeAvgRank(pmRanks) ?? 0)).toFixed(2)),
+          firstMentionRate: parseFloat((computeRank1RateAll(tmRanks) - computeRank1RateAll(pmRanks)).toFixed(1)),
         };
       }
     }
