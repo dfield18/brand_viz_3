@@ -242,11 +242,12 @@ export function NarrativeMetricCards({
       .map((t) => t.positive);
   }, [sentimentTrend]);
 
-  // Find all frames tied for the top percentage
+  // Find all frames tied for the top percentage (sort first to ensure correctness)
   const topFrames = (() => {
     if (!frames || frames.length === 0) return [];
-    const maxPct = frames[0].percentage;
-    return frames.filter((f) => f.percentage === maxPct);
+    const sorted = [...frames].sort((a, b) => b.percentage - a.percentage);
+    const maxPct = sorted[0].percentage;
+    return sorted.filter((f) => f.percentage === maxPct);
   })();
 
   interface CardConfig {

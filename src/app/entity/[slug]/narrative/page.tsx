@@ -184,7 +184,7 @@ function NarrativeInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         {/* Metric Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <NarrativeMetricCards

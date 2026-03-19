@@ -152,9 +152,10 @@ function OverviewInner() {
   ];
 
   const kpis = apiData.visibilityKpis;
-  // Collect all frames tied at the top percentage
-  const topPct = data.topFrames[0]?.percentage ?? 0;
-  const dominantFrames = data.topFrames
+  // Collect all frames tied at the top percentage (sort to ensure highest first)
+  const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);
+  const topPct = sortedFrames[0]?.percentage ?? 0;
+  const dominantFrames = sortedFrames
     .filter((f) => f.percentage === topPct)
     .map((f) => ({ name: f.frame, percentage: f.percentage }));
 
@@ -166,7 +167,7 @@ function OverviewInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         {/* ── Visibility ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
 

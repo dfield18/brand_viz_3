@@ -170,6 +170,8 @@ export function OverviewScorecard({
     (() => {
       const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
       const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
+      // Short name for description text (strip parenthetical from badge label)
+      const sourceShort = sourceLabel?.replace(/\s*\(.*\)$/, "") ?? null;
       return {
         label: "MOST CITED SOURCE TYPE",
         value: topSourceType ? `${sourcePct}%` : "\u2014",
@@ -179,7 +181,7 @@ export function OverviewScorecard({
           ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
           : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
         description: topSourceType
-          ? `${sourceLabel} sources make up ${sourcePct}% of all citations`
+          ? `${sourceShort} sources make up ${sourcePct}% of all citations`
           : "The most common type of source AI cites",
         tooltip: "The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this brand.",
         delta: null,
