@@ -309,7 +309,7 @@ function NarrativeInner() {
         {/* Sentiment by Model */}
         {data.sentimentTrend && data.sentimentTrend.length > 0 && (
           <div id="sentiment-by-model" className="scroll-mt-24">
-            <SentimentByModel trend={data.sentimentTrend} brandName={brandName} />
+            <SentimentByModel trend={data.sentimentTrend} brandName={brandName} modelComparison={overviewData?.overview?.modelComparison} />
           </div>
         )}
 

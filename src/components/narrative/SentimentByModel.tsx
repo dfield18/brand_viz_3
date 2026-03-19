@@ -1,32 +1,44 @@
 "use client";
 
 import { useMemo } from "react";
-import type { SentimentTrendPoint } from "@/types/api";
+import type { SentimentTrendPoint, ModelComparison } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
 
 interface SentimentByModelProps {
   trend: SentimentTrendPoint[];
   brandName?: string;
+  /** When provided, use these pre-computed per-model sentiment values (% positive) to match the overview tab exactly. */
+  modelComparison?: ModelComparison[];
 }
 
 function barColor(score: number): string {
-  if (score >= 65) return "bg-emerald-500";
-  if (score >= 55) return "bg-emerald-400";
-  if (score >= 45) return "bg-gray-400";
-  if (score >= 35) return "bg-amber-400";
-  return "bg-red-400";
+  if (score >= 60) return "bg-emerald-500";
+  if (score >= 40) return "bg-emerald-400";
+  if (score <= 15) return "bg-red-400";
+  return "bg-amber-400";
 }
 
 function scoreLabel(score: number): string {
-  if (score >= 65) return "Positive";
-  if (score >= 55) return "Leaning positive";
-  if (score >= 45) return "Neutral";
-  if (score >= 35) return "Leaning negative";
-  return "Negative";
+  if (score >= 60) return "Strongly positive";
+  if (score >= 40) return "Mostly positive";
+  if (score <= 15) return "Mostly negative";
+  return "Mixed";
 }
 
-export function SentimentByModel({ trend, brandName = "the Brand" }: SentimentByModelProps) {
+export function SentimentByModel({ trend, brandName = "the Brand", modelComparison }: SentimentByModelProps) {
   const modelScores = useMemo(() => {
+    // Prefer modelComparison (from overview API) for consistency with overview tab
+    if (modelComparison && modelComparison.length > 0) {
+      return modelComparison
+        .map((mc) => ({
+          model: mc.model,
+          label: MODEL_LABELS[mc.model] ?? mc.model,
+          score: mc.sentiment,
+        }))
+        .sort((a, b) => b.score - a.score);
+    }
+
+    // Fallback: derive from trend data
     const buckets = new Map<string, { sum: number; count: number }>();
     for (const t of trend) {
       if (t.model === "all") continue;
@@ -42,7 +54,7 @@ export function SentimentByModel({ trend, brandName = "the Brand" }: SentimentBy
         score: Math.round(sum / count),
       }))
       .sort((a, b) => b.score - a.score);
-  }, [trend]);
+  }, [trend, modelComparison]);
 
   if (modelScores.length === 0) return null;
 

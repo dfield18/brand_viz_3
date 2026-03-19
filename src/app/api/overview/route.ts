@@ -426,18 +426,15 @@ export async function GET(req: NextRequest) {
     if (industryRunIds.length > 0) {
       shareOfVoice = computeTextSov(industryRuns);
 
-      // Competitive rank: count entity appearances from analysisJson
+      // Competitive rank: use EntityResponseMetric (same as Competition tab)
+      const erm = await prisma.entityResponseMetric.findMany({
+        where: { runId: { in: industryRunIds } },
+        select: { entityId: true },
+      });
+      // Count appearances per entity
       const entityAppearances = new Map<string, number>();
-      for (const run of industryRuns) {
-        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
-        if (mentioned) {
-          entityAppearances.set(visBrand.slug, (entityAppearances.get(visBrand.slug) ?? 0) + 1);
-        }
-        const analysis = run.analysisJson as OverviewAnalysis | null;
-        for (const comp of (analysis?.competitors ?? [])) {
-          const id = comp.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-          entityAppearances.set(id, (entityAppearances.get(id) ?? 0) + 1);
-        }
+      for (const m of erm) {
+        entityAppearances.set(m.entityId, (entityAppearances.get(m.entityId) ?? 0) + 1);
       }
       const sorted = [...entityAppearances.entries()]
         .map(([entityId, count]) => ({ entityId, count }))
@@ -655,40 +652,46 @@ export async function GET(req: NextRequest) {
   const industry = (brand as unknown as { industry?: string | null }).industry ?? null;
   let aiSummary: string | null = null;
   try {
+    // Pick the single most important story to tell
+    const sortedFrames = [...overview.topFrames].sort((a, b) => b.percentage - a.percentage);
+    const topFrame = sortedFrames[0]?.frame ?? null;
+    const sentLabel = sentimentSplit
+      ? sentimentSplit.positive >= 50 ? "mostly positive"
+        : sentimentSplit.negative >= 30 ? `${sentimentSplit.negative}% negative`
+        : sentimentSplit.neutral >= 50 ? "mostly neutral"
+        : "mixed"
+      : null;
+
     const summaryData = {
-      brandName: brandName,
-      isOrganization: isOrg,
+      brandName,
       industry: industry ?? "this space",
-      overallMentionRate,
-      shareOfVoice,
-      firstMentionRate,
-      avgRankScore,
-      sentimentSplit,
-      topFrame: overview.topFrames[0]?.frame ?? null,
-      competitiveRank,
+      mentionRate: overallMentionRate,
+      sentiment: sentLabel,
+      topNarrative: topFrame,
+      ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
     };
     const oai = getOpenAIDefault();
     const completion = await oai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.4,
-      max_tokens: 120,
+      max_tokens: 100,
       messages: [
         {
           role: "system",
-          content: `You write a single-sentence executive insight for a brand visibility dashboard. The sentence explains the most important takeaway about how a brand/organization appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity, Google AI).
+          content: `You write a single-sentence executive insight for a brand visibility dashboard. The sentence explains the most important takeaway about how a ${isOrg ? "organization" : "brand"} appears in AI-generated answers (ChatGPT, Gemini, Claude, Perplexity).
 
 Rules:
-- Exactly ONE sentence. No more.
-- Plain, conversational English for a marketing executive. No jargon.
-- Reference specific numbers from the data. Every number MUST exactly match the data provided.
-- NEVER say "rank score of X" or "average rank score." Use natural language like "tends to be listed first."
-- If mention rate is low (<30%), focus on the visibility gap. If high (>=60%), focus on the strength.
-- ${isOrg ? 'This is a cause/advocacy organization. Say "other organizations" instead of "competitors," "organization" instead of "brand."' : ""}
-- No markdown, no bullet points. Just one plain sentence.`,
+- Exactly ONE sentence, max 30 words. Be concise.
+- Plain, conversational English for a marketing executive.
+- Focus on the ONE most noteworthy finding — don't try to mention every metric.
+- Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
+- Reference at most 1-2 specific numbers. Do NOT list multiple stats.
+- ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
+- No markdown, no bullet points, no jargon.`,
         },
         {
           role: "user",
-          content: `Generate a summary for: ${JSON.stringify(summaryData)}`,
+          content: `Data: ${JSON.stringify(summaryData)}`,
         },
       ],
     });
