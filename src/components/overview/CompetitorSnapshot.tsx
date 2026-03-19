@@ -38,13 +38,13 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
 
     // Biggest threat — only from the competitors shown in the chart
     const wlMap = new Map(winLoss.byCompetitor.map((w) => [w.entityId, w]));
-    let best: { name: string; lossRate: number; mentionRate: number; score: number } | null = null;
+    let best: { name: string; lossRate: number; mentionShare: number; score: number } | null = null;
     for (const c of top) {
       const wl = wlMap.get(c.entityId);
       const lossRate = wl ? wl.lossRate : 0;
-      const score = lossRate * 0.6 + c.mentionRate * 0.4;
+      const score = lossRate * 0.6 + c.mentionShare * 0.4;
       if (!best || score > best.score) {
-        best = { name: c.name, lossRate, mentionRate: c.mentionRate, score };
+        best = { name: c.name, lossRate, mentionShare: c.mentionShare, score };
       }
     }
 
@@ -140,7 +140,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
               {isOrg ? (
                 <>
                   <span className="font-semibold text-foreground">{threat.name}</span> has the strongest AI visibility in this space
-                  {" — "}it appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
                     <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
                   )}
@@ -148,7 +148,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
               ) : (
                 <>
                   <span className="font-semibold text-foreground">{threat.name}</span> is {brandName}&apos;s biggest competitive threat
-                  {" — "}it appears in <span className="font-semibold text-foreground">{Number(threat.mentionRate).toFixed(1)}%</span> of all AI responses
+                  {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
                     <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
                   )}
