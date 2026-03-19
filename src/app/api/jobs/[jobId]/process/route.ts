@@ -51,7 +51,7 @@ interface OpenAIResult {
 }
 
 async function callOpenAI(promptText: string): Promise<OpenAIResult> {
-  const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;
+  const input = `Today is ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Answer concisely and factually in 5 bullet points using the most recent information available. Include source URLs where possible.\n\nQuestion: ${promptText}`;
 
   let lastError: unknown = new Error("All retry attempts exhausted");
 
@@ -169,7 +169,7 @@ interface GeminiResult {
 }
 
 async function callGemini(promptText: string): Promise<GeminiResult> {
-  const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;
+  const input = `Today is ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Answer concisely and factually in 5 bullet points using the most recent information available. Include source URLs where possible.\n\nQuestion: ${promptText}`;
 
   let lastError: unknown = new Error("All retry attempts exhausted");
 
@@ -246,7 +246,7 @@ interface ClaudeResult {
 }
 
 async function callClaude(promptText: string): Promise<ClaudeResult> {
-  const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;
+  const input = `Today is ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Answer concisely and factually in 5 bullet points using the most recent information available. Include source URLs where possible.\n\nQuestion: ${promptText}`;
 
   let lastError: unknown = new Error("All retry attempts exhausted");
 
@@ -322,7 +322,7 @@ interface PerplexityResult {
 }
 
 async function callPerplexity(promptText: string): Promise<PerplexityResult> {
-  const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;
+  const input = `Today is ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Answer concisely and factually in 5 bullet points using the most recent information available. Include source URLs where possible.\n\nQuestion: ${promptText}`;
 
   let lastError: unknown = new Error("All retry attempts exhausted");
 
