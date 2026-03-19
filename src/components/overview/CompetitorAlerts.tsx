@@ -60,7 +60,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-3">
-        The % shows how often each {entityWord} currently appears across all AI responses.
+        Current mention rate and change vs. prior period
       </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
@@ -77,14 +77,14 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
                 <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
-              {!isStable && (
-                <span className={`text-xs font-medium tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-red-400"}`}>
-                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts
-                </span>
-              )}
-              <span className="text-[10px] text-muted-foreground tabular-nums">
+              <span className="text-xs font-medium tabular-nums text-muted-foreground">
                 {alert.recentMentionRate}%
               </span>
+              {!isStable && (
+                <span className={`text-[11px] tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
+                  ({isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts)
+                </span>
+              )}
             </div>
           );
         })}

@@ -29,13 +29,12 @@ export function getEntityContextWindow(
   brandSlug: string,
   windowSize = 1,
 ): string[] {
-  const brandLower = brandName.toLowerCase();
-  const slugLower = brandSlug.toLowerCase();
+  const nameRe = wordBoundaryRegex(brandName);
+  const slugRe = wordBoundaryRegex(brandSlug);
 
   const mentionIndices = new Set<number>();
   for (let i = 0; i < sentences.length; i++) {
-    const lower = sentences[i].toLowerCase();
-    if (lower.includes(brandLower) || lower.includes(slugLower)) {
+    if (nameRe.test(sentences[i]) || slugRe.test(sentences[i])) {
       mentionIndices.add(i);
     }
   }
@@ -75,4 +74,9 @@ export function countSignalHits(text: string, signals: string[]): number {
 
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function wordBoundaryRegex(term: string): RegExp {
+  const escaped = escapeRegex(term);
+  return new RegExp(`(?<![a-zA-Z0-9])${escaped}(?![a-zA-Z0-9])`, "i");
 }

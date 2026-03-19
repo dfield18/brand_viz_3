@@ -36,10 +36,10 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
       .sort((a, b) => b.mentionShare - a.mentionShare)
       .slice(0, 3);
 
-    // Biggest threat (same logic as BiggestThreat component)
+    // Biggest threat — only from the competitors shown in the chart
     const wlMap = new Map(winLoss.byCompetitor.map((w) => [w.entityId, w]));
     let best: { name: string; lossRate: number; mentionRate: number; score: number } | null = null;
-    for (const c of nonBrand) {
+    for (const c of top) {
       const wl = wlMap.get(c.entityId);
       const lossRate = wl ? wl.lossRate : 0;
       const score = lossRate * 0.6 + c.mentionRate * 0.4;
