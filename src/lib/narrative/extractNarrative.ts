@@ -368,6 +368,30 @@ function extractDescriptors(
 }
 
 // ---------------------------------------------------------------------------
+// Post-classification safety net — catch misclassified strengths
+// ---------------------------------------------------------------------------
+
+const NEGATIVE_PHRASES = [
+  "stop working with", "called for", "called on", "boycott", "backlash",
+  "distanced themselves", "cut ties", "sever ties", "pulled support",
+  "faced criticism", "under fire", "accused of", "allegations",
+  "sued", "lawsuit", "legal action", "investigation",
+  "concerns about", "concerns over", "concerns regarding",
+  "controversy", "controversial", "scandals", "scandal",
+  "protested", "protest against", "condemned", "denounced",
+  "criticized for", "criticism of", "critics say", "critics argue",
+  "opposition to", "opposed by", "rejected by",
+  "lost trust", "lost credibility", "damaged reputation",
+  "problematic", "complicit", "bias", "biased",
+];
+
+/** Returns true if text contains phrases indicating criticism, even if phrased indirectly. */
+function looksNegative(text: string): boolean {
+  const lower = text.toLowerCase();
+  return NEGATIVE_PHRASES.some((phrase) => lower.includes(phrase));
+}
+
+// ---------------------------------------------------------------------------
 // LLM-based claim classification
 // ---------------------------------------------------------------------------
 
@@ -377,7 +401,17 @@ const CLAIM_CLASSIFY_TIMEOUT_MS = 10_000;
 const CLAIM_CLASSIFY_SYSTEM = `You classify sentences about a brand into "strength", "weakness", or "neutral".
 
 A "strength" is a sentence that makes a specific, substantive positive claim about the brand — e.g. quality, trust, innovation, leadership, reliability, superior performance, good reputation, customer satisfaction, market leadership.
+
 A "weakness" is a sentence that makes a specific, substantive negative claim about the brand — e.g. criticism, controversy, limitations, complaints, high price as a downside, poor service, legal issues, safety concerns, competitive disadvantages.
+
+CRITICAL: Indirect criticism is still a weakness. If a sentence describes others criticizing, boycotting, protesting, suing, or calling for action against the brand, that is a "weakness" — even if the sentence is written in a neutral, factual tone. Examples of weaknesses:
+- "Some groups have called for people to stop working with [Brand]"
+- "Critics have accused [Brand] of bias in its reporting"
+- "[Brand] has faced backlash over its stance on..."
+- "Several organizations have distanced themselves from [Brand]"
+- "Concerns have been raised about [Brand]'s political alignment"
+- "[Brand] has been sued for..."
+
 A "neutral" is anything else: factual statements, generic list introductions (e.g. "here are the top brands"), transitional phrases, definitions, or descriptive sentences with no clear positive or negative framing about the brand.
 
 IMPORTANT: Be strict. Only classify as "strength" or "weakness" if the sentence makes a clear, specific claim about the brand's qualities, performance, or reputation. Generic mentions, list headers, or sentences that merely include the brand name without making a substantive claim should be "neutral".
@@ -447,6 +481,13 @@ async function classifyClaimsWithLLM(
       claims.push({ type, text: candidate.text });
     }
 
+    // Post-classification validation: reclassify misclassified strengths
+    for (const claim of claims) {
+      if (claim.type === "strength" && looksNegative(claim.text)) {
+        claim.type = "weakness";
+      }
+    }
+
     // Return top 5 per type
     const strengths = claims.filter((c) => c.type === "strength").slice(0, 5);
     const weaknesses = claims.filter((c) => c.type === "weakness").slice(0, 5);
@@ -490,10 +531,10 @@ function extractClaimsKeyword(
       : sentence.slice(0, 300).replace(/\s+\S*$/, "").trim() + "…";
     if (seen.has(trimmed.toLowerCase())) continue;
 
-    if (hasAuthority || hasTrust) {
+    if ((hasAuthority || hasTrust) && !looksNegative(trimmed)) {
       seen.add(trimmed.toLowerCase());
       claims.push({ type: "strength", text: trimmed });
-    } else if (hasWeakness) {
+    } else if (hasWeakness || looksNegative(trimmed)) {
       seen.add(trimmed.toLowerCase());
       claims.push({ type: "weakness", text: trimmed });
     } else {

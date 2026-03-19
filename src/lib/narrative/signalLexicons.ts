@@ -14,7 +14,9 @@ export const WEAKNESS_SIGNALS = [
   "expensive", "limited", "lacks", "poor", "complex", "confusing",
   "slow", "weak", "inadequate", "outdated", "criticism", "criticized",
   "controversial", "overpriced", "difficult", "unreliable", "risky",
-  "behind", "falling short",
+  "behind", "falling short", "backlash", "boycott", "lawsuit",
+  "sued", "allegations", "scandal", "condemned", "denounced",
+  "under fire", "problematic", "complicit",
 ];
 
 export const POSITIVE_DESCRIPTORS = [
