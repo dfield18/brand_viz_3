@@ -144,18 +144,24 @@ export async function GET(req: NextRequest) {
 
   const narrativeCount = narratives.length;
 
-  // Sentiment split
+  // Sentiment split — iterate runs directly (matches overview tab methodology)
+  // This avoids parseNarrative() filtering out runs that have sentiment but no themes array
   let posCount = 0, neuCount = 0, negCount = 0;
-  for (const { parsed } of narratives) {
-    if (parsed.sentiment.label === "POS") posCount++;
-    else if (parsed.sentiment.label === "NEG") negCount++;
+  for (const r of runs) {
+    const nj = r.narrativeJson as Record<string, unknown> | null;
+    if (!nj) continue;
+    const sent = nj.sentiment as { label?: string } | undefined;
+    if (!sent?.label) continue;
+    if (sent.label === "POS") posCount++;
+    else if (sent.label === "NEG") negCount++;
     else neuCount++;
   }
-  const sentimentSplit = narrativeCount > 0
+  const sentimentTotal = posCount + neuCount + negCount;
+  const sentimentSplit = sentimentTotal > 0
     ? {
-        positive: Math.round((posCount / narrativeCount) * 100),
-        neutral: Math.round((neuCount / narrativeCount) * 100),
-        negative: Math.round((negCount / narrativeCount) * 100),
+        positive: Math.round((posCount / sentimentTotal) * 100),
+        neutral: Math.round((neuCount / sentimentTotal) * 100),
+        negative: Math.round((negCount / sentimentTotal) * 100),
       }
     : undefined;
 

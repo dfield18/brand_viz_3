@@ -49,7 +49,7 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
         count,
         percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
       };
-    }).filter((b) => b.count > 0 || b.label === "#1"); // always show #1
+    }); // always show all bands, including 0%
   }, [filtered]);
 
   const maxPct = useMemo(

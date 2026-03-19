@@ -32,6 +32,8 @@ interface DonutCardConfig {
   metricKey?: MetricTab;
   sparkKey?: "visibility" | "sov" | "topResult";
   scrollTarget?: string;
+  /** Raw rank value for the position scale visualization */
+  rankValue?: number;
 }
 
 function MiniSparkline({ points }: { points: number[] }) {
@@ -105,6 +107,52 @@ function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percenta
   );
 }
 
+
+function positionColor(score: number): string {
+  if (score <= 1.5) return "rgb(16 185 129)";   // emerald-500
+  if (score <= 2.5) return "rgb(52 211 153)";   // emerald-400
+  if (score <= 3.5) return "rgb(251 191 36)";   // amber-400
+  return "rgb(239 68 68)";                       // red-500
+}
+
+function PositionScale({ score, color }: { score: number; color: string }) {
+  const marks = [1, 2, 3, 4, 5];
+  // Clamp position to 1–5 for the marker
+  const clamped = Math.max(1, Math.min(5, score));
+  // Percentage along the track (1 = 0%, 5 = 100%)
+  const pct = ((clamped - 1) / 4) * 100;
+  const markerColor = positionColor(score);
+
+  return (
+    <div className="w-full px-1">
+      {/* Large number */}
+      <div className="text-center mb-3">
+        <span className="text-2xl font-bold tabular-nums">#{score.toFixed(1)}</span>
+      </div>
+      {/* Track */}
+      <div className="relative h-2 rounded-full bg-muted/50">
+        {/* Filled portion (left = good) */}
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+          style={{ width: `${100 - pct}%`, backgroundColor: markerColor, opacity: 0.25 }}
+        />
+        {/* Marker dot */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all duration-500"
+          style={{ left: `${pct}%`, marginLeft: "-7px", backgroundColor: markerColor }}
+        />
+      </div>
+      {/* Scale labels */}
+      <div className="flex justify-between mt-1.5">
+        {marks.map((m) => (
+          <span key={m} className="text-[10px] text-muted-foreground/60 tabular-nums">
+            #{m}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function getVisibilityBadge(rate: number): { text: string; color: string } {
   if (rate >= 80) return { text: "High", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
@@ -198,6 +246,7 @@ export function SummaryCardsDonut({
       delta: kpiDeltas?.avgRank ?? null,
       invertDelta: true,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} positions vs prior month`,
+      rankValue: avgRankScore > 0 ? avgRankScore : undefined,
     },
   ];
 
@@ -233,14 +282,20 @@ export function SummaryCardsDonut({
             </div>
           </div>
 
-          {/* Donut */}
+          {/* Visualization */}
           <div className="flex items-center justify-center mb-4 h-[90px]">
-            <div className="relative">
-              <DonutRing percentage={card.percentage} color={card.color} size={84} strokeWidth={8} />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold tabular-nums">{card.value}</span>
+            {card.rankValue != null ? (
+              <div className="w-full flex items-center">
+                <PositionScale score={card.rankValue} color={card.color} />
               </div>
-            </div>
+            ) : (
+              <div className="relative">
+                <DonutRing percentage={card.percentage} color={card.color} size={84} strokeWidth={8} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg font-bold tabular-nums">{card.value}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Badge + Sparkline */}

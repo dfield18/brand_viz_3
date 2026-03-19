@@ -18,6 +18,8 @@ import {
   CircleDot,
   Circle,
 } from "lucide-react";
+import { useBrandName } from "@/lib/useBrandName";
+import { expandPromptPlaceholders } from "@/lib/utils";
 
 interface PromptRow {
   id: string;
@@ -49,6 +51,8 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
   const [newCluster, setNewCluster] = useState("direct");
   const [newIntent, setNewIntent] = useState("informational");
   const [saving, setSaving] = useState(false);
+  const [industry, setIndustry] = useState<string | null>(null);
+  const brandName = useBrandName(brandSlug);
 
   const fetchPrompts = useCallback(async () => {
     try {
@@ -56,6 +60,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
       if (!res.ok) return;
       const data = await res.json();
       setPrompts(data.prompts);
+      if (data.industry) setIndustry(data.industry);
     } catch {
       // silently fail
     } finally {
@@ -160,6 +165,10 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
   const suggested = prompts.filter((p) => p.source === "suggested");
   const custom = prompts.filter((p) => p.source === "custom");
 
+  /** Expand {brand} and {industry} placeholders for display */
+  const displayText = (text: string) =>
+    expandPromptPlaceholders(text, { brandName, industry });
+
   return (
     <div className="space-y-4">
       {/* Prompt Management */}
@@ -203,6 +212,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
                   <PromptRow
                     key={p.id}
                     prompt={p}
+                    displayText={displayText(p.text)}
                     isEditing={editingId === p.id}
                     editText={editText}
                     saving={saving}
@@ -241,6 +251,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
                     <PromptRow
                       key={p.id}
                       prompt={p}
+                      displayText={displayText(p.text)}
                       isEditing={editingId === p.id}
                       editText={editText}
                       saving={saving}
@@ -339,6 +350,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
 
 function PromptRow({
   prompt,
+  displayText,
   isEditing,
   editText,
   saving,
@@ -351,6 +363,7 @@ function PromptRow({
   onDelete,
 }: {
   prompt: PromptRow;
+  displayText: string;
   isEditing: boolean;
   editText: string;
   saving: boolean;
@@ -415,7 +428,7 @@ function PromptRow({
               prompt.enabled ? "text-foreground" : "text-muted-foreground line-through"
             }`}
           >
-            {prompt.text}
+            {displayText}
           </p>
         )}
       </div>

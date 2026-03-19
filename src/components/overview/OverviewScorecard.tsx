@@ -42,7 +42,7 @@ function getVisibilityBadge(rate: number): { text: string; color: string } {
 function getSentimentBadge(split: { positive: number; neutral: number; negative: number }): { text: string; color: string } {
   if (split.positive >= 60) return { text: "Strongly positive", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
   if (split.positive >= 40) return { text: "Mostly positive", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (split.negative >= 40) return { text: "Mostly negative", color: "text-red-700 bg-red-50 border-red-200" };
+  if (split.positive <= 15) return { text: "Mostly negative", color: "text-red-700 bg-red-50 border-red-200" };
   return { text: "Mixed sentiment", color: "text-amber-700 bg-amber-50 border-amber-200" };
 }
 
