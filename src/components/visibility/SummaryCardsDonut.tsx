@@ -16,7 +16,6 @@ interface SummaryCardsDonutProps {
   onCardClick?: (metric: MetricTab) => void;
   activeMetric?: MetricTab;
   sparklines?: { visibility: number[]; sov: number[]; topResult: number[] };
-  topSourceType?: { category: string; count: number; totalSources: number } | null;
 }
 
 interface DonutCardConfig {
@@ -126,20 +125,11 @@ function getTopResultBadge(rate: number): { text: string; color: string } {
   return { text: "Weak", color: "text-orange-700 bg-orange-50 border-orange-200" };
 }
 
-const SOURCE_TYPE_LABELS: Record<string, string> = {
-  news_media: "News & Media",
-  reviews: "Reviews",
-  ecommerce: "E-Commerce",
-  reference: "Reference",
-  video: "Video",
-  social_media: "Social Media",
-  blog_forum: "Blogs & Forums",
-  brand_official: "Brand Official",
-  academic: "Academic",
-  government: "Government",
-  technology: "Technology",
-  other: "Other",
-};
+function getPositionBadge(score: number): { text: string; color: string } {
+  if (score <= 2) return { text: "Top tier", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  if (score <= 4) return { text: "Mid-range", color: "text-amber-700 bg-amber-50 border-amber-200" };
+  return { text: "Low ranking", color: "text-orange-700 bg-orange-50 border-orange-200" };
+}
 
 export function SummaryCardsDonut({
   overallMentionRate,
@@ -151,13 +141,11 @@ export function SummaryCardsDonut({
   onCardClick,
   activeMetric,
   sparklines,
-  topSourceType,
 }: SummaryCardsDonutProps) {
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
-  const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
-  const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
+  const positionBadge = getPositionBadge(avgRankScore);
 
   const cards: DonutCardConfig[] = [
     {
@@ -200,17 +188,16 @@ export function SummaryCardsDonut({
       sparkKey: "topResult",
     },
     {
-      label: "MOST CITED SOURCE TYPE",
-      value: topSourceType ? `${sourcePct}%` : "\u2014",
-      percentage: sourcePct,
+      label: "AVG POSITION",
+      value: avgRankScore > 0 ? `#${avgRankScore.toFixed(1)}` : "\u2014",
+      percentage: avgRankScore > 0 ? Math.max(0, 100 - (avgRankScore - 1) * 10) : 0,
       color: "var(--chart-4)",
-      badge: sourceLabel
-        ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
-        : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: "The category of website AI references most",
-      tooltip: "The kind of website AI platforms reference most often (e.g., news sites, review sites, official brand pages). This shows what type of content AI trusts most in this space.",
-      delta: null,
-      deltaFormat: () => "",
+      badge: avgRankScore > 0 ? positionBadge : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
+      description: `Average rank position when ${brandName} is mentioned`,
+      tooltip: "The average position where this brand appears in AI recommendation lists. #1 means the brand is typically mentioned first. Based on general industry questions only.",
+      delta: kpiDeltas?.avgRank ?? null,
+      invertDelta: true,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} positions vs prior month`,
     },
   ];
 

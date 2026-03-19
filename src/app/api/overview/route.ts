@@ -323,15 +323,15 @@ export async function GET(req: NextRequest) {
   overview.clusterVisibility = clusterVisibility;
 
   // Per-model comparison (visibility uses industry-only data)
+  // Initial sentiment uses legitimacy; will be recomputed from narrativeJson in the deduped block below
   const modelComparison = withData.map(({ model: m, data }) => {
     const allAnalyses = data!.latestAnalyses;
-    const indAnalyses = data!.industryLatestAnalyses;
     return {
       model: m,
       mentionRate: data!.industryMentionRate,
       controversy: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.controversy))),
       authority: parseFloat(avgArr(allAnalyses.map((a) => a.authorityScore)).toFixed(2)),
-      sentiment: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.legitimacy))),
+      sentiment: 0, // placeholder — recomputed from narrativeJson below
       narrativeStability: computeStability(allAnalyses),
       avgRank: data!.avgRank,
     };
@@ -593,13 +593,30 @@ export async function GET(req: NextRequest) {
     }
 
     // Recompute model comparison sentiment/authority/stability from deduped data
+    // Group visRuns by model for narrative-based sentiment
+    const runsByModel = new Map<string, typeof visRuns>();
+    for (const r of visRuns) {
+      if (!runsByModel.has(r.model)) runsByModel.set(r.model, []);
+      runsByModel.get(r.model)!.push(r);
+    }
     for (const mc of overview.modelComparison) {
       const analyses = dedupedByModel.get(mc.model);
       if (!analyses || analyses.length === 0) continue;
       mc.controversy = Math.round(avgArr(analyses.map((a) => a.sentiment.controversy)));
       mc.authority = parseFloat(avgArr(analyses.map((a) => a.authorityScore)).toFixed(2));
-      mc.sentiment = Math.round(avgArr(analyses.map((a) => a.sentiment.legitimacy)));
       mc.narrativeStability = computeStability(analyses);
+      // Sentiment from narrativeJson (matches overall sentimentSplit methodology)
+      const modelRuns = runsByModel.get(mc.model) ?? [];
+      let pos = 0, total = 0;
+      for (const r of modelRuns) {
+        const nj = r.narrativeJson as Record<string, unknown> | null;
+        if (!nj) continue;
+        const sent = nj.sentiment as { label?: string } | undefined;
+        if (!sent?.label) continue;
+        total++;
+        if (sent.label === "POS") pos++;
+      }
+      mc.sentiment = total > 0 ? Math.round((pos / total) * 100) : 0;
     }
   }
 

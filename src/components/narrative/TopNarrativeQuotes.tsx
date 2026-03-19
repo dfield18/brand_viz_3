@@ -16,9 +16,30 @@ interface TopNarrativeQuotesProps {
 }
 
 const FRAME_COLORS = [
-  { border: "border-l-blue-500", bg: "bg-blue-50/50 dark:bg-blue-950/10", badge: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400", bar: "bg-blue-500" },
-  { border: "border-l-violet-500", bg: "bg-violet-50/50 dark:bg-violet-950/10", badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400", bar: "bg-violet-500" },
-  { border: "border-l-emerald-500", bg: "bg-emerald-50/50 dark:bg-emerald-950/10", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400", bar: "bg-emerald-500" },
+  {
+    border: "border-l-blue-500",
+    bg: "bg-blue-50/40 dark:bg-blue-950/10",
+    badge: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+    bar: "bg-gradient-to-r from-blue-400 to-blue-600",
+    rank: "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-800",
+    dot: "bg-blue-500",
+  },
+  {
+    border: "border-l-violet-500",
+    bg: "bg-violet-50/40 dark:bg-violet-950/10",
+    badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
+    bar: "bg-gradient-to-r from-violet-400 to-violet-600",
+    rank: "text-violet-600 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-950/20 dark:border-violet-800",
+    dot: "bg-violet-500",
+  },
+  {
+    border: "border-l-emerald-500",
+    bg: "bg-emerald-50/40 dark:bg-emerald-950/10",
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+    bar: "bg-gradient-to-r from-emerald-400 to-emerald-600",
+    rank: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/20 dark:border-emerald-800",
+    dot: "bg-emerald-500",
+  },
 ];
 
 function matchesFrame(example: NarrativeExample, frameName: string): boolean {
@@ -31,6 +52,12 @@ function matchesFrame(example: NarrativeExample, frameName: string): boolean {
   });
 }
 
+const SENTIMENT_DOT: Record<string, string> = {
+  POS: "bg-emerald-500",
+  NEG: "bg-red-400",
+  NEU: "bg-gray-400",
+};
+
 const SENTIMENT_LABEL: Record<string, string> = {
   POS: "Positive",
   NEG: "Negative",
@@ -39,7 +66,6 @@ const SENTIMENT_LABEL: Record<string, string> = {
 
 /** Strip AI preamble like "Here are 5 bullet points..." from the start of a quote */
 function trimPreamble(text: string): string {
-  // Remove patterns like "Here are X ..." or "Sure, here's..." up to the first colon/newline
   const preamblePatterns = [
     /^(?:Here (?:are|is)|Sure,?\s+here(?:'s| is| are)|Let me|I(?:'d| would) (?:say|recommend|suggest))[^:.\n]*[:.]\s*/i,
     /^(?:Based on|According to|When (?:it comes to|looking at|considering))[^:.\n]*[:.]\s*/i,
@@ -48,11 +74,18 @@ function trimPreamble(text: string): string {
   for (const pattern of preamblePatterns) {
     result = result.replace(pattern, "");
   }
-  // Capitalize first letter after trimming
   if (result.length > 0 && result !== text) {
     result = result.charAt(0).toUpperCase() + result.slice(1);
   }
   return result;
+}
+
+/** Truncate text at a word boundary near maxLen */
+function smartTruncate(text: string, maxLen = 180): string {
+  if (text.length <= maxLen) return text;
+  const truncated = text.slice(0, maxLen);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > maxLen * 0.6 ? truncated.slice(0, lastSpace) : truncated) + "\u2026";
 }
 
 /** Compute frame trend delta (percentage point change over the trend period) */
@@ -125,29 +158,35 @@ function QuoteCard({
   example: NarrativeExample;
   color: (typeof FRAME_COLORS)[number];
 }) {
-  const cleanExcerpt = trimPreamble(example.excerpt);
+  const cleanExcerpt = smartTruncate(trimPreamble(example.excerpt));
+  const sentimentDot = example.sentiment ? SENTIMENT_DOT[example.sentiment] ?? "bg-gray-400" : null;
+  const sentimentText = example.sentiment ? SENTIMENT_LABEL[example.sentiment] ?? example.sentiment : null;
   return (
-    <div className={`rounded-lg border border-border ${color.border} border-l-[3px] ${color.bg} px-4 py-3`}>
+    <div className={`rounded-lg border border-border/60 ${color.border} border-l-[3px] ${color.bg} px-4 py-3.5`}>
       <div className="flex items-start gap-2.5">
-        <MessageSquareQuote className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+        <MessageSquareQuote className="h-3.5 w-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
         <div className="min-w-0">
-          <p className="text-[13px] text-foreground leading-relaxed">
-            &ldquo;{renderTextWithLinks(cleanExcerpt)}{cleanExcerpt.length >= 198 ? "\u2026" : ""}&rdquo;
+          <p className="text-[13px] text-foreground/85 leading-relaxed">
+            &ldquo;{renderTextWithLinks(cleanExcerpt)}&rdquo;
           </p>
-          <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-muted-foreground/70">
+          <div className="flex items-center gap-2 mt-3">
             {example.model && (
-              <span className="font-medium">{MODEL_LABELS[example.model] ?? example.model}</span>
+              <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5">
+                {MODEL_LABELS[example.model] ?? example.model}
+              </span>
             )}
-            {example.sentiment && (
-              <>
-                <span className="text-border">·</span>
-                <span>{SENTIMENT_LABEL[example.sentiment] ?? example.sentiment}</span>
-              </>
+            {sentimentDot && sentimentText && (
+              <span className="flex items-center gap-1">
+                <span className={`h-1.5 w-1.5 rounded-full ${sentimentDot} shrink-0`} />
+                <span className="text-[10px] text-muted-foreground/60">{sentimentText}</span>
+              </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground/60 mt-1.5 line-clamp-1 italic">
-            {example.prompt}
-          </p>
+          {example.prompt && (
+            <p className="text-[10px] text-muted-foreground/50 mt-2 line-clamp-1 italic">
+              {example.prompt}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -199,38 +238,44 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Top Narratives in AI Responses</h2>
-      <p className="text-xs text-muted-foreground mb-5">
+      <p className="text-xs text-muted-foreground mb-6">
         The most common ways AI platforms describe {brandName ?? "this brand"}, with representative quotes
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {quotesByFrame.map(({ frame, quotes }, idx) => {
           const color = FRAME_COLORS[idx] ?? FRAME_COLORS[0];
           const delta = computeFrameDelta(frame.frame, frameTrend);
+          const cleanFrameName = frame.frame.replace(/https?:\/\/\S+/g, "").replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim();
           return (
-            <div key={frame.frame}>
-              {/* Frame heading with progress bar */}
-              <div className="mb-3">
-                <div className="flex items-center gap-2 mb-1.5">
+            <div key={frame.frame} className="flex flex-col">
+              {/* Frame heading */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className={`inline-flex items-center justify-center h-5 w-5 rounded text-[11px] font-bold border ${color.rank} shrink-0`}>
+                    {idx + 1}
+                  </span>
                   <h3
-                    className={`text-sm font-semibold capitalize ${onFrameClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+                    className={`text-sm font-semibold capitalize leading-snug ${onFrameClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
                     onClick={() => onFrameClick?.(frame.frame)}
                   >
-                    {frame.frame.replace(/https?:\/\/\S+/g, "").replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()}
+                    {cleanFrameName}
                   </h3>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${color.badge}`}>
+                </div>
+                {/* Percentage + Progress bar */}
+                <div className="flex items-center gap-2.5">
+                  <div className="flex-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${color.bar} transition-all duration-700 ease-out`}
+                      style={{ width: `${(frame.percentage / Math.max(maxPct, 1)) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${color.badge} rounded-full px-2 py-0.5`}>
                     {frame.percentage}%
                   </span>
                 </div>
-                {/* Progress bar */}
-                <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${color.bar} transition-all duration-500`}
-                    style={{ width: `${(frame.percentage / Math.max(maxPct, 1)) * 100}%` }}
-                  />
-                </div>
                 {/* Trend delta */}
                 {delta != null && (
-                  <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
                     {delta > 0 ? <TrendingUp className="h-2.5 w-2.5 text-emerald-600" /> : <TrendingDown className="h-2.5 w-2.5 text-red-500" />}
                     <span className={delta > 0 ? "text-emerald-600" : "text-red-500"}>
                       {delta > 0 ? "+" : ""}{delta}%
@@ -239,8 +284,9 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
                   </p>
                 )}
               </div>
+              {/* Quotes */}
               {quotes.length > 0 ? (
-                <div className="space-y-2.5">
+                <div className="space-y-2.5 flex-1">
                   {quotes.map((q, i) => (
                     <QuoteCard key={i} example={q} color={color} />
                   ))}
@@ -257,18 +303,23 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
 
       {/* Remaining frames summary */}
       {remainingFrames.length > 0 && (
-        <div className="mt-5 pt-4 border-t border-border/50">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Other Narratives</p>
+        <div className="mt-6 pt-4 border-t border-border/50">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Other Narratives</p>
           <div className="flex flex-wrap gap-2">
-            {remainingFrames.map((f) => (
-              <span
-                key={f.frame}
-                className={`text-[11px] font-medium rounded-full border px-2.5 py-0.5 text-muted-foreground bg-muted/30 border-border ${onFrameClick ? "cursor-pointer hover:border-primary/40 hover:text-foreground transition-colors" : ""}`}
-                onClick={() => onFrameClick?.(f.frame)}
-              >
-                {f.frame} · {f.percentage}%
-              </span>
-            ))}
+            {remainingFrames.map((f, i) => {
+              const pillColor = FRAME_COLORS[i % FRAME_COLORS.length];
+              return (
+                <span
+                  key={f.frame}
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full border px-3 py-1 text-muted-foreground bg-card border-border/70 shadow-sm ${onFrameClick ? "cursor-pointer hover:border-primary/40 hover:text-foreground transition-colors" : ""}`}
+                  onClick={() => onFrameClick?.(f.frame)}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${pillColor.dot} shrink-0`} />
+                  {f.frame}
+                  <span className="text-muted-foreground/50 font-normal">{f.percentage}%</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       )}

@@ -101,7 +101,7 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
   news_media: "News & Media",
   reviews: "Reviews",
   ecommerce: "E-Commerce",
-  reference: "Reference",
+  reference: "Reference (encyclopedias, data portals)",
   video: "Video",
   social_media: "Social Media",
   blog_forum: "Blogs & Forums",

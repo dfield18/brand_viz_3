@@ -197,7 +197,6 @@ function VisibilityInner() {
             firstMentionRate={data.firstMentionRate}
             kpiDeltas={data.kpiDeltas}
             brandName={brandName}
-            topSourceType={apiData?.topSourceType ?? null}
           />
         </div>
 

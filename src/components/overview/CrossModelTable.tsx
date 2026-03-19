@@ -26,15 +26,13 @@ function getStabilityLabel(value: number): { text: string; className: string } {
 }
 
 /**
- * Sentiment label from legitimacy score (0–100).
- * Thresholds match the narrative tab's getSentimentBadge:
- *   >=60 → Strongly positive, >=40 → Mostly positive,
- *   <=30 → Mostly negative, else → Mixed
+ * Sentiment label from % of positive responses (0–100).
+ * Thresholds match the overall sentiment scorecard badge.
  */
-function getSentimentLabel(score: number): { text: string; className: string } {
-  if (score >= 60) return { text: "Strongly positive", className: "text-emerald-600" };
-  if (score >= 40) return { text: "Mostly positive", className: "text-emerald-600" };
-  if (score <= 30) return { text: "Mostly negative", className: "text-red-500" };
+function getSentimentLabel(positivePct: number): { text: string; className: string } {
+  if (positivePct >= 60) return { text: "Strongly positive", className: "text-emerald-600" };
+  if (positivePct >= 40) return { text: "Mostly positive", className: "text-emerald-600" };
+  if (positivePct <= 15) return { text: "Mostly negative", className: "text-red-500" };
   return { text: "Mixed", className: "text-amber-600" };
 }
 
