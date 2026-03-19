@@ -4,6 +4,7 @@ import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { openai, getOpenAIDefault } from "@/lib/openai";
+import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -635,18 +636,35 @@ export async function GET(req: NextRequest) {
     ]);
 
     // Count distinct runs per entity in each period
-    const recentEntityRuns = new Map<string, Set<string>>();
+    let recentEntityRuns = new Map<string, Set<string>>();
     for (const m of recentMetrics) {
       if (m.entityId === brand.slug) continue;
       if (!recentEntityRuns.has(m.entityId)) recentEntityRuns.set(m.entityId, new Set());
       recentEntityRuns.get(m.entityId)!.add(m.runId);
     }
-    const earlierEntityRuns = new Map<string, Set<string>>();
+    let earlierEntityRuns = new Map<string, Set<string>>();
     for (const m of earlierMetrics) {
       if (m.entityId === brand.slug) continue;
       if (!earlierEntityRuns.has(m.entityId)) earlierEntityRuns.set(m.entityId, new Set());
       earlierEntityRuns.get(m.entityId)!.add(m.runId);
     }
+
+    // Normalize entity IDs: merge duplicates like "abc" + "disney/abc"
+    const rawEntityIds = [...new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()])];
+    const aliasMap = await normalizeEntityIds(rawEntityIds, brand.slug);
+
+    // Merge run sets by canonical entity ID
+    function mergeRunSets(source: Map<string, Set<string>>): Map<string, Set<string>> {
+      const merged = new Map<string, Set<string>>();
+      for (const [entityId, runSet] of source) {
+        const canonical = aliasMap.get(entityId) ?? entityId;
+        if (!merged.has(canonical)) merged.set(canonical, new Set());
+        for (const runId of runSet) merged.get(canonical)!.add(runId);
+      }
+      return merged;
+    }
+    recentEntityRuns = mergeRunSets(recentEntityRuns);
+    earlierEntityRuns = mergeRunSets(earlierEntityRuns);
 
     const allEntityIds = new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()]);
     for (const entityId of allEntityIds) {

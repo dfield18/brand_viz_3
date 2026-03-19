@@ -4,16 +4,19 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
-const TABS = [
-  { label: "Overview", segment: "overview" },
-  { label: "Visibility", segment: "visibility-v2" },
-  { label: "Narrative", segment: "narrative" },
-  { label: "Issue Landscape", segment: "competition" },
-  { label: "Sources", segment: "sources" },
-  { label: "Recommendations", segment: "recommendations" },
-  { label: "Site Audit", segment: "site-audit" },
-  { label: "Reports", segment: "reports" },
-];
+function getTabs(category?: string | null) {
+  const competitionLabel = category === "political_advocacy" ? "Issue Landscape" : "Competitive Marketplace";
+  return [
+    { label: "Overview", segment: "overview" },
+    { label: "Visibility", segment: "visibility-v2" },
+    { label: "Narrative", segment: "narrative" },
+    { label: competitionLabel, segment: "competition" },
+    { label: "Sources", segment: "sources" },
+    { label: "Recommendations", segment: "recommendations" },
+    { label: "Site Audit", segment: "site-audit" },
+    { label: "Reports", segment: "reports" },
+  ];
+}
 
 const SECONDARY_TABS = [
   { label: "Reference", segment: "reference" },
@@ -23,16 +26,17 @@ const SECONDARY_TABS = [
   { label: "Prompts", segment: "prompts" },
 ];
 
-function TabNavInner({ slug }: { slug: string }) {
+function TabNavInner({ slug, category }: { slug: string; category?: string | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
   const suffix = qs ? `?${qs}` : "";
+  const tabs = getTabs(category);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/60 bg-card">
       <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
           const isActive = pathname === `/entity/${slug}/${tab.segment}`;
           return (
@@ -73,10 +77,10 @@ function TabNavInner({ slug }: { slug: string }) {
   );
 }
 
-export function TabNav({ slug }: { slug: string }) {
+export function TabNav({ slug, category }: { slug: string; category?: string | null }) {
   return (
     <Suspense fallback={<nav className="border-b border-border bg-background h-[45px]" />}>
-      <TabNavInner slug={slug} />
+      <TabNavInner slug={slug} category={category} />
     </Suspense>
   );
 }

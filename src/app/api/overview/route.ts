@@ -15,6 +15,7 @@ import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
 import { classifyDomains } from "@/lib/sources/classifyDomain";
+import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -432,13 +433,19 @@ export async function GET(req: NextRequest) {
         where: { runId: { in: industryRunIds } },
         select: { runId: true, entityId: true },
       });
-      // Group by entity
+      // Normalize entity IDs: merge duplicates like "abc" + "disney/abc"
+      const rawIds = [...new Set(erm.map((m) => m.entityId))].filter((id) => id !== visBrand.slug);
+      const aliasMap = await normalizeEntityIds(rawIds, visBrand.slug);
+      aliasMap.set(visBrand.slug, visBrand.slug);
+
+      // Group by entity (using canonical IDs)
       const entityByRun = new Map<string, Set<string>>();
       const entityAppearances = new Map<string, number>();
       for (const m of erm) {
-        entityAppearances.set(m.entityId, (entityAppearances.get(m.entityId) ?? 0) + 1);
+        const canonical = aliasMap.get(m.entityId) ?? m.entityId;
+        entityAppearances.set(canonical, (entityAppearances.get(canonical) ?? 0) + 1);
         if (!entityByRun.has(m.runId)) entityByRun.set(m.runId, new Set());
-        entityByRun.get(m.runId)!.add(m.entityId);
+        entityByRun.get(m.runId)!.add(canonical);
       }
       // Find runs where brand appears
       const brandRunIds = new Set<string>();

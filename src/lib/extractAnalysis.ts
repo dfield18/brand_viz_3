@@ -11,7 +11,7 @@ Given an AI response about a brand or organization, extract the following as JSO
 {
   "brandMentioned": boolean,
   "brandMentionStrength": 0-100 (how prominently the brand is discussed),
-  "competitors": [{"name": string, "mentionStrength": 0-100}],
+  "competitors": [{"name": string, "mentionStrength": 0-100}],  // IMPORTANT: merge subsidiaries/parent companies into one entry using the most recognized name (e.g. "ABC" and "Disney/ABC" → "Disney (ABC)"; "Instagram" and "Meta" → "Meta")
   "topics": [{"name": string, "relevance": 0-100}] (up to 5 most relevant topics),
   "frames": [{"name": string, "strength": 0-100}] (the main narrative frames — see below),
   "sentiment": {"legitimacy": 0-100, "controversy": 0-100},

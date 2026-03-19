@@ -7,6 +7,7 @@ export interface Brand {
   name: string;
   type: EntityType;
   slug: string;
+  category?: string | null;
   createdAt: string;
 }
 

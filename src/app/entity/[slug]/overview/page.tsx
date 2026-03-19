@@ -146,7 +146,7 @@ function OverviewInner() {
     { id: "cross-model", label: "By AI Platform" },
     { id: "narrative-section", label: `How AI Describes ${brandName}`, heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
-    { id: "competitor-snapshot", label: isOrg ? "Landscape" : "Competitive Landscape", heading: "Issue Landscape" },
+    { id: "competitor-snapshot", label: isOrg ? "Landscape" : "Competitive Landscape", heading: isOrg ? "Issue Landscape" : "Competitive Marketplace" },
     { id: "competitor-alerts", label: isOrg ? "Movement" : "Competitor Movement" },
     { id: "sources-trend", label: "Top Sources", heading: "Sources" },
   ];
@@ -246,8 +246,8 @@ function OverviewInner() {
           </div>
         )}
 
-        {/* ── Issue Landscape ────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Issue Landscape</h2>
+        {/* ── Competition section ────────────────────── */}
+        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">{isOrg ? "Issue Landscape" : "Competitive Marketplace"}</h2>
 
         <div id="competitor-snapshot" className="scroll-mt-24">
           <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />

@@ -51,7 +51,7 @@ function CompetitionInner() {
   if (loading) {
     return (
       <PageSkeleton label="Loading competition data...">
-        <Header brandName={brandName} range={range} model={model} />
+        <Header brandName={brandName} range={range} model={model} isOrg={isOrg} />
       </PageSkeleton>
     );
   }
@@ -60,7 +60,7 @@ function CompetitionInner() {
   if (error) {
     return (
       <div className="space-y-8">
-        <Header brandName={brandName} range={range} model={model} />
+        <Header brandName={brandName} range={range} model={model} isOrg={isOrg} />
         <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">
           {error}
         </div>
@@ -73,7 +73,7 @@ function CompetitionInner() {
     const qs = new URLSearchParams({ range: String(range), model }).toString();
     return (
       <div className="space-y-8">
-        <Header brandName={brandName} range={range} model={model} />
+        <Header brandName={brandName} range={range} model={model} isOrg={isOrg} />
         <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center space-y-3">
           <p className="text-sm text-muted-foreground">
             {apiData.hint || (
@@ -602,11 +602,11 @@ function CompetitorPerceptionSection({
   );
 }
 
-function Header({ brandName, range, model }: { brandName: string; range: number; model: string }) {
+function Header({ brandName, range, model, isOrg }: { brandName: string; range: number; model: string; isOrg?: boolean }) {
   return (
     <div>
       <h1 className="text-2xl font-bold">
-        {brandName} &mdash; Competitive Landscape
+        {brandName} &mdash; {isOrg ? "Issue Landscape" : "Competitive Marketplace"}
       </h1>
       <p className="text-sm text-muted-foreground mt-1">
         {range}-day window &middot; {MODEL_LABELS[model] ?? model}
