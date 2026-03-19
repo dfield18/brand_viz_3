@@ -14,6 +14,7 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
+import { classifyDomains } from "@/lib/sources/classifyDomain";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -366,7 +367,7 @@ export async function GET(req: NextRequest) {
   // Await fetchBrandRuns first — we need deduped run IDs for source type query
   const visResult = await visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; });
 
-  // Top source type: query ALL runs in range (matching sources tab, not just deduped)
+  // Top source type: query ALL runs in range (matching sources tab)
   const sourceOccurrences = visResult && visResult.ok
     ? await prisma.sourceOccurrence.findMany({
         where: {
@@ -377,8 +378,8 @@ export async function GET(req: NextRequest) {
             ...(model !== "all" ? { model } : {}),
           },
         },
-        select: { source: { select: { domain: true, category: true } } },
-      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { domain: string; category: string | null } }[]; })
+        select: { source: { select: { domain: true } } },
+      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { domain: string } }[]; })
     : [];
 
   // --- Visibility KPIs + Competitive Rank (from single visResult) ---
@@ -602,25 +603,27 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Top cited source type (matches sources tab: group by domain, sum citations by category) ---
+  // --- Top cited source type (matches sources tab exactly: top 25 domains, classifyDomains, aggregate) ---
   let topSourceType: { category: string; count: number; totalSources: number } | null = null;
   if (sourceOccurrences.length > 0) {
     // Group by domain → count citations per domain
-    const domainCitations = new Map<string, { category: string; count: number }>();
+    const domainCitationCounts = new Map<string, number>();
     for (const s of sourceOccurrences) {
-      const domain = s.source.domain;
-      const existing = domainCitations.get(domain);
-      if (existing) {
-        existing.count++;
-      } else {
-        domainCitations.set(domain, { category: s.source.category ?? "other", count: 1 });
-      }
+      domainCitationCounts.set(s.source.domain, (domainCitationCounts.get(s.source.domain) ?? 0) + 1);
     }
-    // Aggregate citations by category (same as SourceSummaryCards)
+    // Keep only top 25 domains by citation count (same as computeTopDomains limit=25)
+    const top25Domains = [...domainCitationCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 25);
+    // Classify domains using same pipeline as sources tab (DB cache → static map → GPT)
+    const domainNames = top25Domains.map(([d]) => d);
+    const categories = await classifyDomains(domainNames);
+    // Aggregate citations by category from top 25 (same as SourceSummaryCards/SourceTypeDonut)
     const catCitations: Record<string, number> = {};
     let totalCitations = 0;
-    for (const { category, count } of domainCitations.values()) {
-      catCitations[category] = (catCitations[category] ?? 0) + count;
+    for (const [domain, count] of top25Domains) {
+      const cat = categories[domain] ?? "other";
+      catCitations[cat] = (catCitations[cat] ?? 0) + count;
       totalCitations += count;
     }
     const sorted = Object.entries(catCitations).sort((a, b) => b[1] - a[1]);
