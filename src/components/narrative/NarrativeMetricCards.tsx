@@ -289,18 +289,25 @@ export function NarrativeMetricCards({
   });
 
   // 2. Sentiment
+  const dominant = sentimentSplit
+    ? (sentimentSplit.positive >= sentimentSplit.neutral && sentimentSplit.positive >= sentimentSplit.negative
+        ? { pct: sentimentSplit.positive, label: "Positive" }
+        : sentimentSplit.negative >= sentimentSplit.neutral
+          ? { pct: sentimentSplit.negative, label: "Negative" }
+          : { pct: sentimentSplit.neutral, label: "Neutral" })
+    : null;
   cards.push({
     label: "SENTIMENT",
     tooltip: "Breakdown of how AI models frame the brand \u2014 positive, neutral, or negative.",
-    description: "Distribution of positive, neutral, and negative responses",
+    description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()}` : "Distribution of positive, neutral, and negative responses",
     badge: [sentimentSplit ? getSentimentBadge(sentimentSplit) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
-    donutPct: sentimentSplit?.positive ?? 0,
+    donutPct: dominant?.pct ?? 0,
     donutColor: "hsl(160, 60%, 45%)",
-    donutValue: sentimentSplit ? `${sentimentSplit.positive}%` : "\u2014",
-    custom: sentimentSplit ? (
+    donutValue: dominant ? `${dominant.pct}%` : "\u2014",
+    custom: sentimentSplit && dominant ? (
       <div className="flex items-center justify-center mb-4 h-[88px]">
         <div className="w-full px-2 flex flex-col items-center justify-center gap-2">
-          <span className="text-2xl font-bold tabular-nums">{sentimentSplit.positive}%</span>
+          <span className="text-2xl font-bold tabular-nums">{dominant.pct}% {dominant.label}</span>
           <SentimentBar split={sentimentSplit} />
         </div>
       </div>

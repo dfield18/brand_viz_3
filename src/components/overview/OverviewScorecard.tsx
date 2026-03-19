@@ -93,6 +93,7 @@ interface CardConfig {
   isNarrative?: boolean;
   isSentiment?: boolean;
   sentimentData?: { positive: number; neutral: number; negative: number };
+  sentimentLabel?: string;
   narrativeFrames?: { name: string; percentage: number }[];
   scrollTarget?: string;
 }
@@ -151,22 +152,32 @@ export function OverviewScorecard({
       deltaFormat: () => "",
       scrollTarget: "narrative-section",
     },
-    {
+    (() => {
+      const dominant = sentimentSplit
+        ? (sentimentSplit.positive >= sentimentSplit.neutral && sentimentSplit.positive >= sentimentSplit.negative
+            ? { pct: sentimentSplit.positive, label: "Positive" }
+            : sentimentSplit.negative >= sentimentSplit.neutral
+              ? { pct: sentimentSplit.negative, label: "Negative" }
+              : { pct: sentimentSplit.neutral, label: "Neutral" })
+        : null;
+      return {
       label: "SENTIMENT",
-      value: sentimentSplit ? `${sentimentSplit.positive}%` : "\u2014",
-      percentage: sentimentSplit?.positive ?? 0,
+      value: dominant ? `${dominant.pct}%` : "\u2014",
+      percentage: dominant?.pct ?? 0,
       color: "hsl(160, 60%, 45%)",
       badge: sentimentSplit
         ? getSentimentBadge(sentimentSplit)
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: "How positively AI talks about you",
+      description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()}` : "How AI talks about you",
       tooltip: "Breakdown of how AI models frame the brand — positive, neutral, or negative — based on authority and trust signals in responses.",
       isSentiment: true,
       sentimentData: sentimentSplit ?? undefined,
+      sentimentLabel: dominant?.label,
       delta: null,
       deltaFormat: () => "",
       scrollTarget: "narrative-section",
-    },
+    };
+    })(),
     (() => {
       const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
       const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
@@ -213,7 +224,7 @@ export function OverviewScorecard({
           <div className="flex items-center justify-center mb-4 h-[90px]">
             {card.isSentiment && card.sentimentData ? (
               <div className="w-full px-2 flex flex-col items-center justify-center gap-2">
-                <span className="text-2xl font-bold tabular-nums">{card.sentimentData.positive}%</span>
+                <span className="text-2xl font-bold tabular-nums">{card.value} {card.sentimentLabel}</span>
                 <SentimentBar split={card.sentimentData} />
               </div>
             ) : (
