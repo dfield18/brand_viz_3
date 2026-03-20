@@ -443,6 +443,10 @@ export async function GET(req: NextRequest) {
   }
 
   const usedRunIds = new Set<string>();
+  const pendingExamples: {
+    runId: string; prompt: string; fullText: string; themes: string[];
+    sentiment: string; model: string; matchedFrame: string;
+  }[] = [];
   const examples: {
     runId: string; prompt: string; excerpt: string; themes: string[];
     sentiment: string; model: string; matchedFrame: string;
@@ -454,71 +458,114 @@ export async function GET(req: NextRequest) {
       .filter((c) => !usedRunIds.has(c.runId))
       .sort((a, b) => b.strength - a.strength);
 
-    let picked = 0;
+    // Collect candidates (up to 4 per frame, GPT will pick the best)
+    let collected = 0;
     for (const contributor of contributors) {
-      if (picked >= 2) break;
+      if (collected >= 4) break;
       const run = runById.get(contributor.runId);
       if (!run) continue;
-
-      // Only include responses that actually mention the brand
       if (!isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) continue;
-
-      // Extract the brand-focused excerpt
-      const cleanText = run.rawResponseText
-        .replace(/\*\*/g, "").replace(/\*/g, "")
-        .replace(/^#+\s+/gm, "").replace(/^[-*•]\s+/gm, "").replace(/^\d+\.\s+/gm, "");
-      const sentences = splitSentences(cleanText);
-      const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 2);
-      const brandExcerpt = brandContext.length > 0
-        ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500)
-        : cleanText.replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500);
 
       const parsed = narrativeByRunId.get(contributor.runId);
       usedRunIds.add(contributor.runId);
-      examples.push({
+      const cleanText = run.rawResponseText
+        .replace(/\*\*/g, "").replace(/\*/g, "")
+        .replace(/^#+\s+/gm, "").replace(/^[-*•]\s+/gm, "").replace(/^\d+\.\s+/gm, "")
+        .replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim();
+      pendingExamples.push({
         runId: contributor.runId,
         prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
-        excerpt: brandExcerpt,
+        fullText: cleanText.slice(0, 1500),
         themes: parsed ? parsed.themes.map((t) => t.label) : [],
         sentiment: parsed ? parsed.sentiment.label : "NEU",
         model: run.model,
         matchedFrame: frameName,
       });
-      picked++;
+      collected++;
     }
   }
 
-  // Generate "Why" explanations for each example in context of its assigned frame
-  if (examples.length > 0) {
+  // Use GPT to extract the relevant quote AND explanation from each response
+  // GPT reads the full text and finds the specific part about the brand + frame
+  type PendingExample = typeof pendingExamples[number];
+  if (pendingExamples.length > 0) {
     try {
       const oai = getOpenAIDefault();
       const resp = await oai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0,
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages: [
           {
             role: "system",
-            content: `For each item, explain in 1-2 sentences why the AI response excerpt illustrates the given narrative frame about ${brandName}. Cite specific details from the excerpt text.
+            content: `You extract relevant quotes from AI responses about ${brandName}.
 
-Return a JSON array of strings, one per item.`,
+For each item you receive a narrative frame and a full AI response. Your job:
+1. Find the 1-3 sentences in the response that BEST illustrate how ${brandName} relates to the given frame
+2. The quote MUST specifically mention or describe ${brandName} (not just competitors)
+3. The quote MUST be relevant to the frame topic
+4. Write a 1-sentence explanation of WHY this quote illustrates the frame
+
+Return a JSON array of objects: [{"quote": "exact text from response", "reason": "1 sentence"}, ...]
+
+Rules:
+- Copy the quote exactly from the response text (don't paraphrase)
+- Keep quotes under 200 characters — extract only the most relevant part
+- If the response doesn't contain content about ${brandName} that relates to the frame, return {"quote": "", "reason": ""} for that item`,
           },
           {
             role: "user",
             content: JSON.stringify(
-              examples.map((ex) => ({ frame: ex.matchedFrame, excerpt: ex.excerpt })),
+              pendingExamples.map((ex) => ({ frame: ex.matchedFrame, response: ex.fullText })),
             ),
           },
         ],
       });
       const content = resp.choices?.[0]?.message?.content?.trim() ?? "[]";
       const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-      const reasons = JSON.parse(cleaned) as string[];
-      for (let i = 0; i < examples.length && i < reasons.length; i++) {
-        (examples[i] as { reason?: string }).reason = reasons[i];
+      const results = JSON.parse(cleaned) as { quote: string; reason: string }[];
+
+      // Build final examples, skipping any where GPT couldn't find a relevant quote
+      const seenFrames = new Map<string, number>();
+      for (let i = 0; i < pendingExamples.length && i < results.length; i++) {
+        const r = results[i];
+        if (!r.quote) continue;
+        const ex = pendingExamples[i];
+        const frameCount = seenFrames.get(ex.matchedFrame) ?? 0;
+        if (frameCount >= 2) continue; // max 2 per frame
+        seenFrames.set(ex.matchedFrame, frameCount + 1);
+        examples.push({
+          runId: ex.runId,
+          prompt: ex.prompt,
+          excerpt: r.quote,
+          themes: ex.themes,
+          sentiment: ex.sentiment,
+          model: ex.model,
+          matchedFrame: ex.matchedFrame,
+        });
+        (examples[examples.length - 1] as { reason?: string }).reason = r.reason;
       }
     } catch (err) {
-      console.error("[narrative] GPT reason generation failed (non-blocking):", err);
+      console.error("[narrative] GPT quote extraction failed, using fallback:", err);
+      // Fallback: use first 200 chars of brand context
+      for (const ex of pendingExamples) {
+        const run = runById.get(ex.runId);
+        if (!run) continue;
+        const sentences = splitSentences(run.rawResponseText);
+        const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 1);
+        const fallback = brandContext.length > 0
+          ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 200)
+          : ex.fullText.slice(0, 200);
+        examples.push({
+          runId: ex.runId,
+          prompt: ex.prompt,
+          excerpt: fallback,
+          themes: ex.themes,
+          sentiment: ex.sentiment,
+          model: ex.model,
+          matchedFrame: ex.matchedFrame,
+        });
+      }
     }
   }
 
