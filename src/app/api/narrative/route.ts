@@ -324,10 +324,15 @@ export async function GET(req: NextRequest) {
   const sentimentBuckets: Record<string, Record<string, { pos: number; count: number }>> = {};
   for (const dr of allTrendRuns) {
     const narr = parseNarrative(dr.narrativeJson);
+    const analysis = parseAnalysis(dr.analysisJson);
     // Use POS/NEU/NEG label (same as scorecard sentimentSplit)
+    // Fallback: derive label from analysisJson.sentiment.legitimacy for older runs
     let label: string | null = null;
     if (narr) {
       label = narr.sentiment.label;
+    } else if (analysis) {
+      const leg = analysis.sentiment.legitimacy;
+      label = leg >= 60 ? "POS" : leg <= 35 ? "NEG" : "NEU";
     }
     if (!label) continue;
 
