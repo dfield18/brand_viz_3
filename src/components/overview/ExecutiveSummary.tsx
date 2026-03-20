@@ -84,6 +84,14 @@ export function ExecutiveSummary({
       parts.push(
         `AI mostly takes a neutral tone when discussing ${brandName} (${sentimentSplit.neutral}% neutral). This means AI doesn't have a strong opinion either way — there may be an opportunity to shape a more positive narrative.`,
       );
+    } else if (sentimentSplit.positive >= 40) {
+      parts.push(
+        `Sentiment leans positive (${sentimentSplit.positive}% favorable, ${sentimentSplit.neutral}% neutral). There's room to strengthen ${brandName}'s narrative to push sentiment higher.`,
+      );
+    } else {
+      parts.push(
+        `AI sentiment toward ${brandName} is mixed — ${sentimentSplit.positive}% positive, ${sentimentSplit.neutral}% neutral, ${sentimentSplit.negative}% negative. A clearer brand message could help shift the balance.`,
+      );
     }
   }
 

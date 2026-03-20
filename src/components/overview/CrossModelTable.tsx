@@ -32,11 +32,13 @@ function getStabilityLabel(value: number): { text: string; className: string } {
 function getSentimentLabel(split?: { positive: number; neutral: number; negative: number }): { text: string; className: string } {
   if (!split) return { text: "—", className: "text-muted-foreground" };
   const { positive, neutral, negative } = split;
+  const max = Math.max(positive, neutral, negative);
+  const min = Math.min(positive, neutral, negative);
+  // Near three-way tie — no category is clearly dominant
+  if (max - min <= 10 && max < 45) return { text: "Mixed", className: "text-amber-600" };
   // Find dominant category
   if (positive >= neutral && positive >= negative) {
-    if (positive >= 60) return { text: `${positive}% Positive`, className: "text-emerald-600" };
-    if (positive >= 40) return { text: `${positive}% Positive`, className: "text-emerald-600" };
-    return { text: `${positive}% Positive`, className: "text-amber-600" };
+    return { text: `${positive}% Positive`, className: positive >= 40 ? "text-emerald-600" : "text-amber-600" };
   }
   if (negative >= neutral) {
     return { text: `${negative}% Negative`, className: "text-red-500" };
