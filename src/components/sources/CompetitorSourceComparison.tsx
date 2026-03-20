@@ -83,7 +83,7 @@ export default function CompetitorSourceComparison({
         .replace(/\{brand\}/gi, brandName)
         .replace(/\{competitor\}/gi, competitorLabel)
         .replace(/\{industry\}/gi, "the industry");
-  }, [initialCrossCitation, brandSlug, brandName]);
+  }, [initialCrossCitation, brandSlug, brandName, entityNames]);
   const [view, setView] = useState<ViewMode>("brands");
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
