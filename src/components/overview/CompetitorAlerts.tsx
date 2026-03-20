@@ -60,7 +60,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-3">
-        Current mention rate and change vs. prior period
+        Brand recall and how it&apos;s changing over time
       </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
@@ -78,11 +78,11 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
               <span className="text-xs tabular-nums text-muted-foreground">
-                {alert.recentMentionRate}% <span className="text-muted-foreground/60">mention rate</span>
+                {alert.recentMentionRate}% <span className="text-muted-foreground/60">brand recall (% of AI responses)</span>
               </span>
               {!isStable && (
                 <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
-                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">change</span>
+                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">vs. prior period</span>
                 </span>
               )}
             </div>
