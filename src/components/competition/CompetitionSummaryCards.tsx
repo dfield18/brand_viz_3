@@ -149,7 +149,7 @@ export function CompetitionSummaryCards({
       scrollTo: "brand-breakdown",
     },
     {
-      label: `${brandName.toUpperCase()} MENTION SHARE`,
+      label: `${brandName.toUpperCase()} SHARE OF VOICE`,
       tooltip: `${brandName}'s share of all entity mentions across AI responses. Higher means AI models mention ${brandName} more often relative to competitors.`,
       description: `${brandName}'s share of all brand mentions across AI responses`,
       badge: getMentionShareBadge(brandCompetitor.mentionShare),
