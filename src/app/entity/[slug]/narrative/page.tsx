@@ -201,6 +201,12 @@ function NarrativeInner() {
           />
         </div>
 
+        <div className="px-5 py-4 mt-2">
+          <p className="text-base text-muted-foreground leading-relaxed">
+            When AI talks about {brandName}, what story does it tell? These metrics reveal the narrative AI platforms build around {brandName} — the themes, sentiment, and framing that shape how people perceive the brand through AI-generated answers.
+          </p>
+        </div>
+
         {/* Narrative Insight — concise summary + optional perception issue */}
         <div id="narrative-insight" className="scroll-mt-24">
           {data.sentimentSplit && frames.length > 0 && (
