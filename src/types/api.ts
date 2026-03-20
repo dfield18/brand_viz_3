@@ -130,7 +130,9 @@ export interface NarrativeExample {
   themes: string[];
   sentiment: string;
   model?: string;
-  /** One-sentence explanation of why this response was classified under its frame */
+  /** Which narrative frame this example best illustrates */
+  matchedFrame?: string;
+  /** 1-2 sentence explanation of why this response fits the matched frame */
   reason?: string;
 }
 

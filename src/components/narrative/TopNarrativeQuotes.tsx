@@ -214,9 +214,14 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
   const quotesByFrame = useMemo(() => {
     const usedIds = new Set<number>();
     const result = topFrames.map((frame) => {
+      // Prefer GPT-assigned matchedFrame, fall back to keyword matching
       const matching = examples
         .map((ex, i) => ({ ex, i }))
-        .filter(({ ex }) => matchesFrame(ex, frame.frame));
+        .filter(({ ex, i }) => {
+          if (usedIds.has(i)) return false;
+          if (ex.matchedFrame) return ex.matchedFrame === frame.frame;
+          return matchesFrame(ex, frame.frame);
+        });
       const picked = matching.slice(0, 2);
       picked.forEach(({ i }) => usedIds.add(i));
       return { frame, quotes: picked.map(({ ex }) => ex) };

@@ -443,47 +443,52 @@ export async function GET(req: NextRequest) {
       model: run.model,
     }));
 
-  // Generate classification reasons for top examples using GPT-4o-mini
-  // Generate for the first 8 examples (covers all that the component might display)
+  // Use GPT to match examples to top frames and explain why
+  // This replaces unreliable keyword matching with semantic understanding
   if (examples.length > 0 && narrativeBase.frames.length > 0) {
-    const topFrameNames = narrativeBase.frames.slice(0, 3).map((f: { frame: string }) => f.frame);
-    const toExplain = examples.slice(0, 8);
+    const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
+    const toClassify = examples.slice(0, 12);
     try {
       const oai = getOpenAIDefault();
       const resp = await oai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0,
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [
           {
             role: "system",
-            content: `You explain why AI responses were classified under specific narrative frames about a brand.
+            content: `You classify AI response excerpts into narrative frames about a brand.
 
-The top narrative frames are: ${topFrameNames.join(", ")}
+Available frames: ${JSON.stringify(topFrameNames)}
 
-For each item, write 1-2 concise sentences explaining what specific content in the excerpt led to its classification. Reference concrete details from the text — names, claims, topics, or language that connects to the themes.
+For each excerpt, determine which frame it BEST illustrates based on what the text actually says. Then write 1-2 sentences explaining what specific content in the excerpt connects to that frame. Reference concrete details — names, claims, actions, or language.
 
-Good: "References Paramount Skydance merger and stock performance, connecting the brand to major entertainment industry consolidation."
-Bad: "The response discusses entertainment themes."
+Return a JSON array of objects: [{"frame": "exact frame name", "reason": "1-2 sentences"}, ...]
 
-Return a JSON array of strings, one per item, in the same order as the input.`,
+Rules:
+- The frame must be from the available list
+- The reason must cite specific details from the excerpt, not generic descriptions
+- If the excerpt doesn't clearly fit any frame, pick the closest match and explain the connection
+- Each excerpt gets exactly one frame assignment`,
           },
           {
             role: "user",
             content: JSON.stringify(
-              toExplain.map((ex) => ({ themes: ex.themes, excerpt: ex.excerpt })),
+              toClassify.map((ex, i) => ({ id: i, excerpt: ex.excerpt })),
             ),
           },
         ],
       });
       const content = resp.choices?.[0]?.message?.content?.trim() ?? "[]";
       const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-      const reasons = JSON.parse(cleaned) as string[];
-      for (let i = 0; i < toExplain.length && i < reasons.length; i++) {
-        (examples[i] as { reason?: string }).reason = reasons[i];
+      const results = JSON.parse(cleaned) as { frame: string; reason: string }[];
+      for (let i = 0; i < toClassify.length && i < results.length; i++) {
+        const ex = examples[i] as { matchedFrame?: string; reason?: string };
+        ex.matchedFrame = results[i].frame;
+        ex.reason = results[i].reason;
       }
     } catch (err) {
-      console.error("[narrative] GPT reason generation failed (non-blocking):", err);
+      console.error("[narrative] GPT frame matching failed (non-blocking):", err);
     }
   }
 
