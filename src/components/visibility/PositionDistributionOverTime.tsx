@@ -48,33 +48,28 @@ function buildSummary(
 
   let summary = `${brandName} is most often ${dominant.label} (${Math.round(dominant.pct)}% of responses).`;
 
-  // Add a trend note if we have enough history
+  // Add a trend note describing the most notable shift
   if (first && first !== latest) {
-    const latestPos1 = latest.pos1;
-    const latestPos2_3 = latest.pos2_3;
-    const firstPos1 = first.pos1;
-    const firstPos2_3 = first.pos2_3;
-    const pos1Delta = latestPos1 - firstPos1;
-    const pos2_3Delta = latestPos2_3 - firstPos2_3;
-    const topDelta = (latestPos1 + latestPos2_3) - (firstPos1 + firstPos2_3);
+    const shifts = [
+      { label: "#1 rankings", from: first.pos1, to: latest.pos1 },
+      { label: "#2–#3 rankings", from: first.pos2_3, to: latest.pos2_3 },
+      { label: "#4–#5 rankings", from: first.pos4_5, to: latest.pos4_5 },
+      { label: "#6+ rankings", from: first.pos6plus, to: latest.pos6plus },
+    ]
+      .map((s) => ({ ...s, delta: Math.round(s.to - s.from) }))
+      .filter((s) => Math.abs(s.delta) >= 8);
 
-    if (Math.abs(topDelta) >= 8) {
-      // Describe which positions actually changed
-      const hasPos1 = latestPos1 > 0 || firstPos1 > 0;
-      const hasPos2_3 = latestPos2_3 > 0 || firstPos2_3 > 0;
-      const posLabel = hasPos1 && hasPos2_3 ? "Top-3 (positions #1–#3)"
-        : hasPos1 ? "#1 position"
-        : "Positions #2–#3";
-      if (topDelta > 0) {
-        summary += ` ${posLabel} appearances are up ${Math.round(topDelta)} pts over this period.`;
-      } else {
-        summary += ` ${posLabel} appearances are down ${Math.round(Math.abs(topDelta))} pts over this period.`;
-      }
-    } else if (Math.abs(pos1Delta) >= 5) {
-      if (pos1Delta > 0) {
-        summary += ` #1 rankings are trending up.`;
-      } else {
-        summary += ` #1 rankings have declined.`;
+    if (shifts.length > 0) {
+      // Show the biggest shift
+      const biggest = shifts.reduce((a, b) => Math.abs(b.delta) > Math.abs(a.delta) ? b : a);
+      const dir = biggest.delta > 0 ? "up" : "down";
+      summary += ` ${biggest.label} are ${dir} ${Math.abs(biggest.delta)} pts (${Math.round(biggest.from)}% → ${Math.round(biggest.to)}%).`;
+
+      // If there's a notable counter-shift, mention it
+      const counter = shifts.find((s) => s !== biggest && s.delta * biggest.delta < 0);
+      if (counter) {
+        const cDir = counter.delta > 0 ? "up" : "down";
+        summary += ` Meanwhile, ${counter.label.toLowerCase()} are ${cDir} ${Math.abs(counter.delta)} pts.`;
       }
     }
   }
