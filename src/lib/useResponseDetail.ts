@@ -58,7 +58,7 @@ export function useResponseDetail(brandSlug: string) {
         const r = data.responses[0];
         viewer.open({
           responseText: r.responseText,
-          promptText: r.prompt.text.replace(/\{brand\}/g, opts.brandName ?? data.brandName ?? brandSlug),
+          promptText: r.prompt.text,
           model: r.model,
           brandName: opts.brandName ?? data.brandName ?? brandSlug,
           cluster: r.prompt.cluster ?? undefined,
@@ -105,7 +105,7 @@ export function useResponseDetail(brandSlug: string) {
         const r = data.responses[0];
         viewer.open({
           responseText: r.responseText,
-          promptText: r.prompt.text.replace(/\{brand\}/g, opts.brandName ?? data.brandName ?? brandSlug),
+          promptText: r.prompt.text,
           model: r.model,
           brandName: opts.brandName ?? data.brandName ?? brandSlug,
           cluster: r.prompt.cluster ?? undefined,
@@ -135,7 +135,7 @@ export function useResponseDetail(brandSlug: string) {
         const r = data.responses[0];
         viewer.open({
           responseText: r.responseText,
-          promptText: r.prompt.text.replace(/\{brand\}/g, opts?.brandName ?? data.brandName ?? brandSlug),
+          promptText: r.prompt.text,
           model: r.model,
           brandName: opts?.brandName ?? data.brandName ?? brandSlug,
           cluster: r.prompt.cluster ?? undefined,

@@ -27,14 +27,15 @@ export async function GET(req: NextRequest) {
         analysisJson: true,
         createdAt: true,
         prompt: { select: { text: true, cluster: true, intent: true } },
-        brand: { select: { name: true, displayName: true } },
+        brand: { select: { name: true, displayName: true, industry: true } },
       },
     });
     if (!run) {
       return NextResponse.json({ error: "Run not found" }, { status: 404 });
     }
     const name = run.brand.displayName || run.brand.name;
-    return respondWith(name, [run]);
+    const industry = (run.brand as unknown as { industry?: string | null }).industry;
+    return respondWith(name, [run], industry);
   }
 
   if (!brandSlug) {
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
   const brandName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
+  const brandIndustry = (brand as unknown as { industry?: string | null }).industry;
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   // Mode 1: By prompt text
@@ -90,7 +92,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return respondWith(brandName, runs);
+    return respondWith(brandName, runs, brandIndustry);
   }
 
   // Mode 2: By model + position range (for dot chart drill-down)
@@ -124,10 +126,10 @@ export async function GET(req: NextRequest) {
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
       });
-      return respondWith(brandName, filtered.slice(0, 4));
+      return respondWith(brandName, filtered.slice(0, 4), brandIndustry);
     }
 
-    return respondWith(brandName, runs.slice(0, 4));
+    return respondWith(brandName, runs.slice(0, 4), brandIndustry);
   }
 
   return NextResponse.json({ error: "Provide promptText or model with position range" }, { status: 400 });
@@ -142,7 +144,8 @@ function respondWith(
     analysisJson: unknown;
     createdAt: Date;
     prompt: { text: string; cluster: string | null; intent: string | null };
-  }[]
+  }[],
+  industry?: string | null,
 ) {
   if (runs.length === 0) {
     return NextResponse.json({ brandName, responses: [] });
@@ -158,18 +161,30 @@ function respondWith(
 
   return NextResponse.json({
     brandName,
-    responses: deduped.map((r) => ({
-      id: r.id,
-      model: r.model,
-      responseText: r.rawResponseText,
-      analysis: r.analysisJson,
-      date: r.createdAt.toISOString().slice(0, 10),
-      prompt: {
-        text: r.prompt.text,
-        cluster: r.prompt.cluster,
-        intent: r.prompt.intent,
-      },
-    })),
+    responses: deduped.map((r) => {
+      // Expand placeholders in prompt text
+      let expandedPrompt = r.prompt.text
+        .replace(/\{brand\}/gi, brandName)
+        .replace(/\{industry\}/gi, industry || `${brandName}'s industry`);
+      // Replace {competitor} with the top competitor from analysis
+      if (expandedPrompt.includes("{competitor}")) {
+        const analysis = r.analysisJson as { competitors?: { name: string }[] } | null;
+        const topComp = analysis?.competitors?.[0]?.name ?? "competitors";
+        expandedPrompt = expandedPrompt.replace(/\{competitor\}/gi, topComp);
+      }
+      return {
+        id: r.id,
+        model: r.model,
+        responseText: r.rawResponseText,
+        analysis: r.analysisJson,
+        date: r.createdAt.toISOString().slice(0, 10),
+        prompt: {
+          text: expandedPrompt,
+          cluster: r.prompt.cluster,
+          intent: r.prompt.intent,
+        },
+      };
+    }),
   }, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
   });
