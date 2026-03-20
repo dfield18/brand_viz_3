@@ -99,8 +99,13 @@ export function CompetitorRankDistribution({
                         style={{ width: `${pct}%` }}
                         title={`${RANK_LABELS[seg.key]}: ${seg.count}`}
                       >
-                        {pct >= 18 && (
+                        {pct >= 25 && (
                           <span className={`text-[10px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
+                            #{seg.key === "other" ? "4+" : seg.key}: {seg.count}×
+                          </span>
+                        )}
+                        {pct >= 15 && pct < 25 && (
+                          <span className={`text-[9px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
                             {seg.count}
                           </span>
                         )}
