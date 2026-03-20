@@ -284,10 +284,10 @@ function VisibilityV2Inner() {
             </div>
           </div>
 
-          <h3 className="text-sm font-medium text-foreground -mt-3 mb-1">
+          <h3 className="text-base font-semibold text-foreground -mt-3 mb-1">
             {getMetricTitle(activeMetric, brandName)}
           </h3>
-          <p className="text-xs text-muted-foreground mb-5">
+          <p className="text-sm text-muted-foreground mb-5">
             {getMetricDescription(activeMetric, brandName)}
           </p>
 
