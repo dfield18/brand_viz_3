@@ -153,10 +153,10 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
             ))}
           </div>
 
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="95%" height={320} style={{ marginLeft: "auto" }}>
             <AreaChart
               data={chartData}
-              margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+              margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
               stackOffset="expand"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
@@ -176,13 +176,13 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `${Math.round(v * 100)}%`}
-                width={48}
+                width={56}
                 label={{
                   value: "% of responses",
                   angle: -90,
                   position: "insideLeft",
-                  offset: 10,
-                  style: { fontSize: 10, fill: "var(--muted-foreground)", textAnchor: "middle" },
+                  offset: 14,
+                  style: { fontSize: 13, fill: "var(--muted-foreground)", textAnchor: "middle" },
                 }}
               />
               <Tooltip
