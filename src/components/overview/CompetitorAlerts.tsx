@@ -62,7 +62,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
       <p className="text-xs text-muted-foreground mt-1">
         Current mention rate and change vs. prior period
       </p>
-      <p className="text-[10px] text-muted-foreground/70 mt-1 mb-3">
+      <p className="text-xs text-muted-foreground/70 mt-1 mb-3">
         <span className="text-muted-foreground font-medium">%</span> = % of AI responses mentioning this {entityWord} · <span className="text-muted-foreground font-medium">pts</span> = percentage-point change vs. prior period
       </p>
       <div className="space-y-2.5">
