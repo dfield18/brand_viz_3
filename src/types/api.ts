@@ -130,6 +130,8 @@ export interface NarrativeExample {
   themes: string[];
   sentiment: string;
   model?: string;
+  /** One-sentence explanation of why this response was classified under its frame */
+  reason?: string;
 }
 
 export interface SentimentByQuestionEntry {

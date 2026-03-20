@@ -9,6 +9,7 @@ import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { expandPromptPlaceholders } from "@/lib/utils";
+import { getOpenAIDefault } from "@/lib/openai";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -436,6 +437,71 @@ export async function GET(req: NextRequest) {
       sentiment: parsed.sentiment.label,
       model: run.model,
     }));
+
+  // Generate classification reasons for top examples using GPT-4o-mini
+  // Match examples to top 3 frames (same logic as TopNarrativeQuotes component)
+  if (narrativeBase.frames.length > 0 && examples.length > 0) {
+    const topFrameNames = narrativeBase.frames.slice(0, 3).map((f: { frame: string }) => f.frame);
+    function matchesFrame(ex: typeof examples[0], frameName: string): boolean {
+      const lower = frameName.toLowerCase();
+      const frameWords = lower.split(/\s+/).filter((w: string) => w.length > 2);
+      return ex.themes.some((t: string) => {
+        const tl = t.toLowerCase();
+        if (tl.includes(lower) || lower.includes(tl)) return true;
+        return frameWords.some((w: string) => tl.includes(w));
+      });
+    }
+    // Pick top 2 examples per frame (same as component)
+    const usedIds = new Set<number>();
+    const toExplain: { idx: number; frame: string; excerpt: string }[] = [];
+    for (const frameName of topFrameNames) {
+      const matching = examples
+        .map((ex, i) => ({ ex, i }))
+        .filter(({ ex, i }) => matchesFrame(ex, frameName) && !usedIds.has(i));
+      for (const { ex, i } of matching.slice(0, 2)) {
+        usedIds.add(i);
+        toExplain.push({ idx: i, frame: frameName, excerpt: ex.excerpt });
+      }
+    }
+
+    if (toExplain.length > 0) {
+      try {
+        const oai = getOpenAIDefault();
+        const resp = await oai.chat.completions.create({
+          model: "gpt-4o-mini",
+          temperature: 0,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "system",
+              content: `You explain why AI responses were classified under specific narrative frames.
+
+For each item, write ONE concise sentence (max 20 words) explaining what specific content in the excerpt justifies the frame classification. Focus on concrete details from the text, not generic explanations.
+
+Good: "Mentions Netflix, Comcast as direct competitors, positioning the brand in the media landscape"
+Bad: "The response discusses entertainment themes"
+
+Return a JSON array of strings, one per item, in the same order as the input.`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify(
+                toExplain.map((t) => ({ frame: t.frame, excerpt: t.excerpt })),
+              ),
+            },
+          ],
+        });
+        const content = resp.choices?.[0]?.message?.content?.trim() ?? "[]";
+        const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+        const reasons = JSON.parse(cleaned) as string[];
+        for (let i = 0; i < toExplain.length && i < reasons.length; i++) {
+          (examples[toExplain[i].idx] as { reason?: string }).reason = reasons[i];
+        }
+      } catch (err) {
+        console.error("[narrative] GPT reason generation failed (non-blocking):", err);
+      }
+    }
+  }
 
   // Sentiment by Question: group by prompt, compute count + dominant sentiment
   const promptSentimentMap = new Map<string, { mentions: number; scores: number[] }>();
