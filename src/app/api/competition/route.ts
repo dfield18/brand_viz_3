@@ -174,16 +174,27 @@ export async function GET(req: NextRequest) {
     // so the numbers shown in the competition table match the visibility scorecards
     const brandMentionOrderRanks: (number | null)[] = [];
     let brandTextMentions = 0;
+    let sovTotalEntityMentions = 0;
+    type AnalysisCompetitor = { name: string };
+    type ParsedAnalysisComp = { brandMentioned?: boolean; competitors?: AnalysisCompetitor[] };
     for (const run of runs) {
       const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
       if (mentioned) brandTextMentions++;
       const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       brandMentionOrderRanks.push(rank);
+      // Count total entity mentions for SoV (same as visibility tab)
+      const analysis = run.analysisJson as ParsedAnalysisComp | null;
+      const compCount = (analysis?.competitors ?? []).length;
+      sovTotalEntityMentions += (mentioned ? 1 : 0) + compCount;
     }
     const brandComp = competitors.find((c) => c.isBrand);
     if (brandComp) {
       // mentionRate: same as visibility tab (isBrandMentioned count / total responses)
       brandComp.mentionRate = computeMentionRate(brandTextMentions, runs.length);
+      // mentionShare (SoV): same as visibility tab (brand mentions / total entity mentions)
+      brandComp.mentionShare = sovTotalEntityMentions > 0
+        ? Math.round((brandTextMentions / sovTotalEntityMentions) * 10000) / 100
+        : 0;
       // avgRank: same as visibility tab (text-order ranking)
       brandComp.avgRank = computeAvgRank(brandMentionOrderRanks);
       // rank1Rate: same as visibility tab (divides by ALL responses, not just mentions)
