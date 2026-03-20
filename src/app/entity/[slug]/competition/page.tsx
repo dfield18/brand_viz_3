@@ -157,11 +157,12 @@ function CompetitionInner() {
           )}
         </div>
 
-        {/* ── Metrics Deep Dive ─────────────────────────── */}
-        <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed -mt-6">
+        <p className="text-base text-muted-foreground leading-relaxed mt-2">
           This tab shows how {compBrandName} stacks up against {isOrg ? "other organizations" : "competitors"} in AI responses. See who AI mentions most often, track how positioning is shifting over time, and identify where {compBrandName} is winning or losing when {isOrg ? "multiple organizations" : "both brands"} appear in the same AI answer.
         </p>
+
+        {/* ── Metrics Deep Dive ─────────────────────────── */}
+        <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
 
         {/* Visibility Trend */}
         {data.competitiveTrend.length >= 1 && (
