@@ -51,19 +51,20 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-600",
 };
 
+// Colors match the sources tab's CATEGORY_COLORS exactly
 const DONUT_COLORS: Record<string, string> = {
-  reviews: "hsl(200, 70%, 55%)",
-  news_media: "hsl(230, 60%, 55%)",
-  video: "hsl(0, 65%, 55%)",
-  ecommerce: "hsl(155, 60%, 45%)",
-  reference: "hsl(270, 55%, 55%)",
-  social_media: "hsl(330, 60%, 55%)",
-  government: "hsl(210, 15%, 50%)",
-  academic: "hsl(240, 50%, 55%)",
-  blog_forum: "hsl(25, 70%, 55%)",
-  brand_official: "hsl(190, 60%, 50%)",
-  technology: "hsl(170, 50%, 45%)",
-  other: "hsl(0, 0%, 65%)",
+  reviews: "#38bdf8",
+  news_media: "#818cf8",
+  video: "#fb7185",
+  ecommerce: "#f97316",
+  reference: "#a78bfa",
+  social_media: "#f472b6",
+  government: "#14b8a6",
+  academic: "#6366f1",
+  blog_forum: "#84cc16",
+  brand_official: "#eab308",
+  technology: "#06b6d4",
+  other: "#cbd5e1",
 };
 
 /* ─── Mini Donut ──────────────────────────────────────────────────── */

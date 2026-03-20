@@ -601,6 +601,7 @@ export async function GET(req: NextRequest) {
     previousMentionRate: number;
     direction: "rising" | "falling" | "stable";
   }[] = [];
+  let comparisonPeriodLabel = "prior period";
 
   if (alertJobs.length >= 2) {
     const jobDates = alertJobs.map((j) => j.finishedAt!.toISOString().slice(0, 10));
@@ -608,6 +609,19 @@ export async function GET(req: NextRequest) {
     const midpoint = Math.floor(uniqueDates.length / 2);
     const recentDates = new Set(uniqueDates.slice(midpoint));
     const earlierDates = new Set(uniqueDates.slice(0, midpoint));
+
+    // Compute the comparison period label
+    const recentArr = uniqueDates.slice(midpoint);
+    const earlierArr = uniqueDates.slice(0, midpoint);
+    if (recentArr.length > 0 && earlierArr.length > 0) {
+      const recentStart = new Date(recentArr[0]);
+      const earlierStart = new Date(earlierArr[0]);
+      const spanDays = Math.round((recentStart.getTime() - earlierStart.getTime()) / 86_400_000);
+      if (spanDays <= 10) comparisonPeriodLabel = "prior week";
+      else if (spanDays <= 35) comparisonPeriodLabel = "prior month";
+      else if (spanDays <= 100) comparisonPeriodLabel = "prior quarter";
+      else comparisonPeriodLabel = `prior ${Math.round(spanDays / 30)} months`;
+    }
 
     const recentJobIds = alertJobs.filter((j) => recentDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
     const earlierJobIds = alertJobs.filter((j) => earlierDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
@@ -981,6 +995,7 @@ export async function GET(req: NextRequest) {
     negativeNarratives: { weaknesses, negativeThemes, narrativeSummary },
     competitorNarrativeGaps,
     competitorAlerts,
+    comparisonPeriodLabel,
     sourceGapOpportunities,
     topicCoverageGaps,
     decliningMetrics,

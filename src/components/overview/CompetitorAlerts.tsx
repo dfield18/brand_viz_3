@@ -15,6 +15,7 @@ interface CompetitorAlert {
 interface RecsApiResponse {
   hasData: boolean;
   competitorAlerts?: CompetitorAlert[];
+  comparisonPeriodLabel?: string;
 }
 
 interface Props {
@@ -38,6 +39,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   }
 
   const allAlerts = data?.competitorAlerts ?? [];
+  const periodLabel = data?.comparisonPeriodLabel ?? "prior period";
   if (allAlerts.length === 0) return null;
 
   const rising = allAlerts.filter((a) => a.direction === "rising").sort((a, b) => b.mentionRateChange - a.mentionRateChange);
@@ -82,7 +84,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               </span>
               {!isStable && (
                 <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
-                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">vs. prior period</span>
+                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">vs. {periodLabel}</span>
                 </span>
               )}
             </div>
