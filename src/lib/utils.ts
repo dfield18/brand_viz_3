@@ -156,6 +156,9 @@ export function expandPromptPlaceholders(
   let expanded = text
     .replace(/\{brand\}/gi, opts.brandName)
     .replace(/\{industry\}/gi, opts.industry || `${opts.brandName}'s industry`);
+  if (opts.industry) {
+    expanded = expanded.replace(/\bthe industry\b/gi, `the ${opts.industry} industry`);
+  }
   if (expanded.includes("{competitor}")) {
     expanded = expanded.replace(/\{competitor\}/gi, opts.competitor || "competitors");
   }
