@@ -715,7 +715,8 @@ export async function GET(req: NextRequest) {
     const summaryData = {
       brandName,
       industry: industry ?? "this space",
-      mentionRate: overallMentionRate,
+      brandRecall: overallMentionRate,
+      brandRecallDescription: `${overallMentionRate}% of AI responses to general industry questions (that don't mention ${brandName} by name) still bring up ${brandName}`,
       sentiment: sentLabel,
       topNarrative: topFrame,
       ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
