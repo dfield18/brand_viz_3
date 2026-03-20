@@ -213,8 +213,9 @@ function NarrativeInner() {
                     let summary = `AI frames ${brandName} as "${topFrame.frame}" (${topFrame.percentage}% of responses). `;
 
                     if (split.positive >= 60) summary += `Sentiment: ${split.positive}% positive.`;
-                    else if (split.negative >= 30) summary += `${split.negative}% negative sentiment — worth monitoring.`;
-                    else if (split.neutral >= 60) summary += `Mostly neutral (${split.neutral}%).`;
+                    else if (split.negative >= 40) summary += `${split.negative}% negative sentiment — worth monitoring.`;
+                    else if (split.neutral >= 50) summary += `Mostly neutral (${split.neutral}%).`;
+                    else if (split.positive >= 40) summary += `Leaning positive (${split.positive}%).`;
                     else summary += `Mixed: ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`;
 
                     if (data.polarization === "High") summary += ` Platforms disagree significantly.`;

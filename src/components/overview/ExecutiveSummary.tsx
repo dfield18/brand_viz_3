@@ -80,6 +80,10 @@ export function ExecutiveSummary({
       parts.push(
         `A note of caution: ${sentimentSplit.negative}% of AI responses describe ${brandName} in a negative light. Since people increasingly trust AI recommendations, it's worth understanding what's driving this and whether ${brandName}'s messaging can address it.`,
       );
+    } else if (sentimentSplit.neutral >= 50) {
+      parts.push(
+        `AI mostly takes a neutral tone when discussing ${brandName} (${sentimentSplit.neutral}% neutral). This means AI doesn't have a strong opinion either way — there may be an opportunity to shape a more positive narrative.`,
+      );
     }
   }
 
