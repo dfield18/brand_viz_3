@@ -146,9 +146,9 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
           {hoveredSlice ? (
             <>
               <span className="text-base font-bold">{Math.round(hoveredSlice.pct)}%</span>
-              <span className="text-[10px] font-medium text-foreground">{hoveredSlice.label}</span>
-              <span className="text-[8px] text-muted-foreground/70 leading-tight text-center px-1">{CATEGORY_DESCRIPTIONS[hoveredSlice.category] ?? ""}</span>
-              <span className="text-[9px] text-muted-foreground">{hoveredSlice.citations} citations</span>
+              <span className="text-xs font-medium text-foreground">{hoveredSlice.label}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight text-center px-2">{CATEGORY_DESCRIPTIONS[hoveredSlice.category] ?? ""}</span>
+              <span className="text-[10px] text-muted-foreground">{hoveredSlice.citations} citations</span>
             </>
           ) : (
             <>
@@ -167,13 +167,13 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
             onMouseLeave={() => setHovered(null)}
           >
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-            <span className="text-[11px] text-muted-foreground flex-1 min-w-0">
+            <span className="text-xs text-muted-foreground flex-1 min-w-0">
               <span className="truncate">{b.label}</span>
               {CATEGORY_DESCRIPTIONS[b.category] && (
-                <span className="text-[9px] text-muted-foreground/60"> ({CATEGORY_DESCRIPTIONS[b.category]})</span>
+                <span className="text-[10px] text-muted-foreground/60"> ({CATEGORY_DESCRIPTIONS[b.category]})</span>
               )}
             </span>
-            <span className="text-[11px] font-medium tabular-nums shrink-0">{Math.round(b.pct)}%</span>
+            <span className="text-xs font-medium tabular-nums shrink-0">{Math.round(b.pct)}%</span>
           </div>
         ))}
       </div>
