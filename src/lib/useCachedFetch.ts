@@ -103,9 +103,12 @@ export function useCachedFetch<T>(url: string | null): UseCachedFetchResult<T> {
     }
   }, []);
 
+  // If we have cached data, never report loading — show stale data instantly
+  // while revalidation happens in the background
+  const hasData = entry?.data != null;
   return {
     data: (entry?.data as T) ?? null,
-    loading: entry?.loading ?? (url ? true : false),
+    loading: hasData ? false : (entry?.loading ?? (url ? true : false)),
     error: entry?.error ?? null,
     refetch,
   };
