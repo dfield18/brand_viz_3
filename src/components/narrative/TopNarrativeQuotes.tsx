@@ -156,15 +156,26 @@ function renderTextWithLinks(text: string): ReactNode[] {
 function QuoteCard({
   example,
   color,
+  frameName,
   onClick,
 }: {
   example: NarrativeExample;
   color: (typeof FRAME_COLORS)[number];
+  frameName?: string;
   onClick?: () => void;
 }) {
   const cleanExcerpt = smartTruncate(trimPreamble(example.excerpt));
   const sentimentDot = example.sentiment ? SENTIMENT_DOT[example.sentiment] ?? "bg-gray-400" : null;
   const sentimentText = example.sentiment ? SENTIMENT_LABEL[example.sentiment] ?? example.sentiment : null;
+  // Find which themes matched the frame
+  const matchingThemes = frameName
+    ? example.themes.filter((t) => {
+        const tl = t.toLowerCase();
+        const fl = frameName.toLowerCase();
+        const frameWords = fl.split(/\s+/).filter((w) => w.length > 2);
+        return tl.includes(fl) || fl.includes(tl) || frameWords.some((w) => tl.includes(w));
+      })
+    : [];
   return (
     <div
       className={`rounded-lg border border-border/60 ${color.border} border-l-[3px] ${color.bg} px-4 py-3.5 ${onClick ? "cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all" : ""}`}
@@ -192,6 +203,11 @@ function QuoteCard({
           {example.prompt && (
             <p className="text-[10px] text-muted-foreground/50 mt-2 line-clamp-1 italic">
               {example.prompt}
+            </p>
+          )}
+          {matchingThemes.length > 0 && (
+            <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+              Classified as <span className="font-medium text-muted-foreground">{frameName}</span> because themes include: {matchingThemes.join(", ")}
             </p>
           )}
         </div>
@@ -295,7 +311,7 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
               {quotes.length > 0 ? (
                 <div className="space-y-2.5 flex-1">
                   {quotes.map((q, i) => (
-                    <QuoteCard key={i} example={q} color={color} onClick={q.runId && onQuoteClick ? () => onQuoteClick(q.runId!) : undefined} />
+                    <QuoteCard key={i} example={q} color={color} frameName={cleanFrameName} onClick={q.runId && onQuoteClick ? () => onQuoteClick(q.runId!) : undefined} />
                   ))}
                 </div>
               ) : (
