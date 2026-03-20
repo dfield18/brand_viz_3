@@ -59,11 +59,8 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
-      <p className="text-xs text-muted-foreground mt-1">
+      <p className="text-xs text-muted-foreground mt-1 mb-3">
         Current mention rate and change vs. prior period
-      </p>
-      <p className="text-xs text-muted-foreground/70 mt-1 mb-3">
-        <span className="text-muted-foreground font-medium">%</span> = % of AI responses mentioning this {entityWord} · <span className="text-muted-foreground font-medium">pts</span> = percentage-point change vs. prior period
       </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
@@ -80,12 +77,12 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
                 <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                {alert.recentMentionRate}%
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {alert.recentMentionRate}% <span className="text-muted-foreground/60">mention rate</span>
               </span>
               {!isStable && (
-                <span className={`text-[11px] tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
-                  ({isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts)
+                <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
+                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">change</span>
                 </span>
               )}
             </div>
