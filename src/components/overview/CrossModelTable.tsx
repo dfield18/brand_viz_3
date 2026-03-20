@@ -26,20 +26,28 @@ function getStabilityLabel(value: number): { text: string; className: string } {
 }
 
 /**
- * Sentiment label from % of positive responses (0–100).
- * Thresholds match the overall sentiment scorecard badge.
+ * Sentiment label from split — shows the dominant category.
+ * Matches the overview sentiment scorecard exactly.
  */
-function getSentimentLabel(positivePct: number): { text: string; className: string } {
-  if (positivePct >= 60) return { text: "Strongly positive", className: "text-emerald-600" };
-  if (positivePct >= 40) return { text: "Mostly positive", className: "text-emerald-600" };
-  if (positivePct <= 15) return { text: "Mostly negative", className: "text-red-500" };
-  return { text: "Mixed", className: "text-amber-600" };
+function getSentimentLabel(split?: { positive: number; neutral: number; negative: number }): { text: string; className: string } {
+  if (!split) return { text: "—", className: "text-muted-foreground" };
+  const { positive, neutral, negative } = split;
+  // Find dominant category
+  if (positive >= neutral && positive >= negative) {
+    if (positive >= 60) return { text: `${positive}% Positive`, className: "text-emerald-600" };
+    if (positive >= 40) return { text: `${positive}% Positive`, className: "text-emerald-600" };
+    return { text: `${positive}% Positive`, className: "text-amber-600" };
+  }
+  if (negative >= neutral) {
+    return { text: `${negative}% Negative`, className: "text-red-500" };
+  }
+  return { text: `${neutral}% Neutral`, className: "text-muted-foreground" };
 }
 
 interface MetricDef {
   label: string;
   key: keyof ModelComparison;
-  render: (value: number | null, isBest: boolean) => React.ReactNode;
+  render: (value: number | null, isBest: boolean, model: string) => React.ReactNode;
   lowerIsBetter?: boolean;
 }
 
@@ -64,8 +72,9 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
     {
       label: "Avg Sentiment",
       key: "sentiment",
-      render: (v) => {
-        const { text, className } = getSentimentLabel(v ?? 0);
+      render: (_v, _isBest, model) => {
+        const m = models.find((mod) => mod.model === model);
+        const { text, className } = getSentimentLabel(m?.sentimentSplit);
         return <span className={`text-sm font-medium ${className}`}>{text}</span>;
       },
     },
@@ -138,7 +147,7 @@ export function CrossModelTable({ models, brandName = "You" }: CrossModelTablePr
                       key={metric.key}
                       className="py-3 px-4 text-center tabular-nums"
                     >
-                      {metric.render(m[metric.key] as number | null, isBest)}
+                      {metric.render(m[metric.key] as number | null, isBest, m.model)}
                     </td>
                   );
                 })}

@@ -49,6 +49,7 @@ export interface ModelComparison {
   controversy: number;
   authority: number;
   sentiment: number;
+  sentimentSplit?: { positive: number; neutral: number; negative: number };
   narrativeStability: number;
   avgRank: number | null;
 }

@@ -629,18 +629,27 @@ export async function GET(req: NextRequest) {
       mc.controversy = Math.round(avgArr(analyses.map((a) => a.sentiment.controversy)));
       mc.authority = parseFloat(avgArr(analyses.map((a) => a.authorityScore)).toFixed(2));
       mc.narrativeStability = computeStability(analyses);
-      // Sentiment from narrativeJson (matches overall sentimentSplit methodology)
+      // Sentiment from narrativeJson (matches overall sentimentSplit methodology exactly)
       const modelRuns = runsByModel.get(mc.model) ?? [];
-      let pos = 0, total = 0;
+      let pos = 0, neu = 0, neg = 0;
       for (const r of modelRuns) {
         const nj = r.narrativeJson as Record<string, unknown> | null;
         if (!nj) continue;
         const sent = nj.sentiment as { label?: string } | undefined;
         if (!sent?.label) continue;
-        total++;
         if (sent.label === "POS") pos++;
+        else if (sent.label === "NEG") neg++;
+        else neu++;
       }
+      const total = pos + neu + neg;
       mc.sentiment = total > 0 ? Math.round((pos / total) * 100) : 0;
+      if (total > 0) {
+        mc.sentimentSplit = {
+          positive: Math.round((pos / total) * 100),
+          neutral: Math.round((neu / total) * 100),
+          negative: Math.round((neg / total) * 100),
+        };
+      }
     }
   }
 
