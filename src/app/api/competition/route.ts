@@ -864,8 +864,6 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
-      if (themes.length === 0 && strengths.length === 0 && weaknesses.length === 0) continue;
-
       competitorNarratives.push({
         entityId,
         name: comp.name,

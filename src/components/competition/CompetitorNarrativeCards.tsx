@@ -70,8 +70,6 @@ export function CompetitorNarrativeCards({ narratives, competitors, selectedEnti
         const sentiment = comp?.avgSentiment;
         const hasContent = narrative.themes.length > 0 || narrative.strengths.length > 0 || narrative.weaknesses.length > 0;
 
-        if (!hasContent) return null;
-
         return (
           <div
             key={narrative.entityId}
@@ -101,6 +99,11 @@ export function CompetitorNarrativeCards({ narratives, competitors, selectedEnti
             {/* Expanded content */}
             {isOpen && (
               <div className="px-5 pb-5 space-y-5 border-t border-border/50">
+                {!hasContent && (
+                  <p className="text-sm text-muted-foreground pt-4">
+                    No detailed narrative data available yet for this competitor. Run more analyses to generate themes and claims.
+                  </p>
+                )}
                 {/* Themes */}
                 {narrative.themes.length > 0 && (
                   <div className="pt-4">
