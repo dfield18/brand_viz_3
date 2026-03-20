@@ -420,33 +420,79 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Examples: runs with most theme hits, 500-char excerpt for better GPT matching
-  const examples = narratives
-    .filter((n) => n.parsed.themes.length > 0)
-    .sort((a, b) => b.parsed.themes.length - a.parsed.themes.length)
-    .slice(0, 20)
-    .map(({ parsed, run }) => ({
-      runId: run.id,
-      prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
-      excerpt: run.rawResponseText
-        .replace(/\*\*/g, "")           // remove bold markdown
-        .replace(/\*/g, "")             // remove italic markdown
-        .replace(/^#+\s+/gm, "")        // remove heading markers
-        .replace(/^[-*•]\s+/gm, "")     // remove bullet markers at line start
-        .replace(/^\d+\.\s+/gm, "")     // remove numbered list markers
-        .replace(/\n+/g, " ")           // collapse newlines to spaces
-        .replace(/\s{2,}/g, " ")        // collapse multiple spaces
-        .trim()
-        .slice(0, 500),
-      themes: parsed.themes.map((t) => t.label),
-      sentiment: parsed.sentiment.label,
-      model: run.model,
-    }));
+  // Examples: match runs to top frames using analysisJson.frames (same source as the frame list)
+  // Each run's analysisJson.frames contains the frames GPT identified for that specific response
+  const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
+  const STRENGTH_THRESHOLD = 20;
 
-  // Use GPT to pick the best 2 quotes per frame and explain why
-  if (examples.length > 0 && narrativeBase.frames.length > 0) {
-    const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
-    const pool = examples.slice(0, 15);
+  // For each run, find which top frame it best matches (by frame strength in analysisJson)
+  type ExampleCandidate = {
+    run: NarrativeRun;
+    parsed: NarrativeExtractionResult;
+    matchedFrame: string;
+    frameStrength: number;
+  };
+
+  const candidates: ExampleCandidate[] = [];
+  for (const { parsed, run } of narratives) {
+    const analysis = parseAnalysis(run.analysisJson);
+    if (!analysis) continue;
+    // Find the top frame this run best matches by checking its analysisJson.frames
+    let bestFrame = "";
+    let bestStrength = 0;
+    for (const f of analysis.frames) {
+      if (f.strength < STRENGTH_THRESHOLD) continue;
+      // Check if this frame name matches any top frame (case-insensitive)
+      const matchingTopFrame = topFrameNames.find(
+        (tf) => tf.toLowerCase() === f.name.toLowerCase(),
+      );
+      if (matchingTopFrame && f.strength > bestStrength) {
+        bestFrame = matchingTopFrame;
+        bestStrength = f.strength;
+      }
+    }
+    if (bestFrame) {
+      candidates.push({ run, parsed, matchedFrame: bestFrame, frameStrength: bestStrength });
+    }
+  }
+
+  // Pick top 2 candidates per frame, sorted by frame strength
+  const usedRunIds = new Set<string>();
+  const examples: (typeof candidates[0] extends { run: infer R, parsed: infer P } ? {
+    runId: string; prompt: string; excerpt: string; themes: string[];
+    sentiment: string; model: string; matchedFrame: string;
+  } : never)[] = [];
+
+  for (const frameName of topFrameNames) {
+    const frameMatches = candidates
+      .filter((c) => c.matchedFrame === frameName && !usedRunIds.has(c.run.id))
+      .sort((a, b) => b.frameStrength - a.frameStrength)
+      .slice(0, 2);
+    for (const c of frameMatches) {
+      usedRunIds.add(c.run.id);
+      examples.push({
+        runId: c.run.id,
+        prompt: expandPromptPlaceholders(c.run.prompt.text, { brandName, industry: brand.industry }),
+        excerpt: c.run.rawResponseText
+          .replace(/\*\*/g, "")
+          .replace(/\*/g, "")
+          .replace(/^#+\s+/gm, "")
+          .replace(/^[-*•]\s+/gm, "")
+          .replace(/^\d+\.\s+/gm, "")
+          .replace(/\n+/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .trim()
+          .slice(0, 500),
+        themes: c.parsed.themes.map((t) => t.label),
+        sentiment: c.parsed.sentiment.label,
+        model: c.run.model,
+        matchedFrame: frameName,
+      });
+    }
+  }
+
+  // Generate "Why" explanations for each example in context of its assigned frame
+  if (examples.length > 0) {
     try {
       const oai = getOpenAIDefault();
       const resp = await oai.chat.completions.create({
@@ -456,42 +502,26 @@ export async function GET(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are selecting the best representative quotes for narrative frames about ${brandName}.
+            content: `For each item, explain in 1-2 sentences why the AI response excerpt illustrates the given narrative frame about ${brandName}. Cite specific details from the excerpt text.
 
-Frames: ${JSON.stringify(topFrameNames)}
-
-You are given a pool of AI response excerpts (each with an id). For each frame, pick the 1-2 excerpts that BEST illustrate that frame based on what the text actually says. Only pick excerpts that genuinely fit — do NOT force a match if nothing fits well.
-
-For each pick, write 1-2 sentences explaining what specific content in the excerpt demonstrates the frame. Cite concrete details from the text.
-
-Return JSON: {"assignments": [{"frame": "exact frame name", "id": number, "reason": "1-2 sentences citing specifics"}, ...]}
-
-Rules:
-- Each excerpt id can only be assigned to ONE frame
-- Only assign an excerpt if there is a clear, genuine connection to the frame
-- It's OK if a frame gets 0 picks — better than a forced bad match
-- Cite specific names, claims, or facts from the excerpt in the reason`,
+Return a JSON array of strings, one per item.`,
           },
           {
             role: "user",
             content: JSON.stringify(
-              pool.map((ex, i) => ({ id: i, excerpt: ex.excerpt })),
+              examples.map((ex) => ({ frame: ex.matchedFrame, excerpt: ex.excerpt })),
             ),
           },
         ],
       });
-      const content = resp.choices?.[0]?.message?.content?.trim() ?? "{}";
+      const content = resp.choices?.[0]?.message?.content?.trim() ?? "[]";
       const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-      const result = JSON.parse(cleaned) as { assignments: { frame: string; id: number; reason: string }[] };
-      for (const a of result.assignments) {
-        if (a.id >= 0 && a.id < pool.length) {
-          const ex = examples[a.id] as { matchedFrame?: string; reason?: string };
-          ex.matchedFrame = a.frame;
-          ex.reason = a.reason;
-        }
+      const reasons = JSON.parse(cleaned) as string[];
+      for (let i = 0; i < examples.length && i < reasons.length; i++) {
+        (examples[i] as { reason?: string }).reason = reasons[i];
       }
     } catch (err) {
-      console.error("[narrative] GPT frame matching failed (non-blocking):", err);
+      console.error("[narrative] GPT reason generation failed (non-blocking):", err);
     }
   }
 
