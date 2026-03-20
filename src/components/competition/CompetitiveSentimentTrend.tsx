@@ -125,8 +125,7 @@ export function CompetitiveSentimentTrend({
     if (value >= 60) return "Strongly Positive";
     if (value >= 40) return "Mostly Positive";
     if (value >= 20) return "Mixed";
-    if (value > 0) return "Mostly Negative";
-    return "No Positive";
+    return "Low Positive";
   }
 
   return (
