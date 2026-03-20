@@ -420,7 +420,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Examples: runs with most theme hits, 200-char excerpt
+  // Examples: runs with most theme hits, 500-char excerpt for better GPT matching
   const examples = narratives
     .filter((n) => n.parsed.themes.length > 0)
     .sort((a, b) => b.parsed.themes.length - a.parsed.themes.length)
@@ -437,17 +437,16 @@ export async function GET(req: NextRequest) {
         .replace(/\n+/g, " ")           // collapse newlines to spaces
         .replace(/\s{2,}/g, " ")        // collapse multiple spaces
         .trim()
-        .slice(0, 200),
+        .slice(0, 500),
       themes: parsed.themes.map((t) => t.label),
       sentiment: parsed.sentiment.label,
       model: run.model,
     }));
 
-  // Use GPT to match examples to top frames and explain why
-  // This replaces unreliable keyword matching with semantic understanding
+  // Use GPT to pick the best 2 quotes per frame and explain why
   if (examples.length > 0 && narrativeBase.frames.length > 0) {
     const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
-    const toClassify = examples.slice(0, 12);
+    const pool = examples.slice(0, 15);
     try {
       const oai = getOpenAIDefault();
       const resp = await oai.chat.completions.create({
@@ -457,35 +456,39 @@ export async function GET(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You classify AI response excerpts into narrative frames about a brand.
+            content: `You are selecting the best representative quotes for narrative frames about ${brandName}.
 
-Available frames: ${JSON.stringify(topFrameNames)}
+Frames: ${JSON.stringify(topFrameNames)}
 
-For each excerpt, determine which frame it BEST illustrates based on what the text actually says. Then write 1-2 sentences explaining what specific content in the excerpt connects to that frame. Reference concrete details — names, claims, actions, or language.
+You are given a pool of AI response excerpts (each with an id). For each frame, pick the 1-2 excerpts that BEST illustrate that frame based on what the text actually says. Only pick excerpts that genuinely fit — do NOT force a match if nothing fits well.
 
-Return a JSON array of objects: [{"frame": "exact frame name", "reason": "1-2 sentences"}, ...]
+For each pick, write 1-2 sentences explaining what specific content in the excerpt demonstrates the frame. Cite concrete details from the text.
+
+Return JSON: {"assignments": [{"frame": "exact frame name", "id": number, "reason": "1-2 sentences citing specifics"}, ...]}
 
 Rules:
-- The frame must be from the available list
-- The reason must cite specific details from the excerpt, not generic descriptions
-- If the excerpt doesn't clearly fit any frame, pick the closest match and explain the connection
-- Each excerpt gets exactly one frame assignment`,
+- Each excerpt id can only be assigned to ONE frame
+- Only assign an excerpt if there is a clear, genuine connection to the frame
+- It's OK if a frame gets 0 picks — better than a forced bad match
+- Cite specific names, claims, or facts from the excerpt in the reason`,
           },
           {
             role: "user",
             content: JSON.stringify(
-              toClassify.map((ex, i) => ({ id: i, excerpt: ex.excerpt })),
+              pool.map((ex, i) => ({ id: i, excerpt: ex.excerpt })),
             ),
           },
         ],
       });
-      const content = resp.choices?.[0]?.message?.content?.trim() ?? "[]";
+      const content = resp.choices?.[0]?.message?.content?.trim() ?? "{}";
       const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-      const results = JSON.parse(cleaned) as { frame: string; reason: string }[];
-      for (let i = 0; i < toClassify.length && i < results.length; i++) {
-        const ex = examples[i] as { matchedFrame?: string; reason?: string };
-        ex.matchedFrame = results[i].frame;
-        ex.reason = results[i].reason;
+      const result = JSON.parse(cleaned) as { assignments: { frame: string; id: number; reason: string }[] };
+      for (const a of result.assignments) {
+        if (a.id >= 0 && a.id < pool.length) {
+          const ex = examples[a.id] as { matchedFrame?: string; reason?: string };
+          ex.matchedFrame = a.frame;
+          ex.reason = a.reason;
+        }
       }
     } catch (err) {
       console.error("[narrative] GPT frame matching failed (non-blocking):", err);
