@@ -14,8 +14,8 @@ interface SentimentByModelProps {
 function barColor(score: number): string {
   if (score >= 60) return "bg-emerald-500";
   if (score >= 40) return "bg-emerald-400";
-  if (score <= 15) return "bg-red-400";
-  return "bg-amber-400";
+  if (score >= 20) return "bg-emerald-300";
+  return "bg-emerald-200";
 }
 
 function scoreLabel(score: number, split?: { positive: number; neutral: number; negative: number }): string {
