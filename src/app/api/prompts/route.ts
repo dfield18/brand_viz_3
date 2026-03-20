@@ -36,8 +36,11 @@ export async function GET(req: NextRequest) {
 
     const prompts = await getAllBrandPrompts(brand.id);
 
+    // Re-read brand in case materializePromptsForBrand classified the industry
+    const updatedBrand = await prisma.brand.findUnique({ where: { id: brand.id }, select: { industry: true } });
+
     return NextResponse.json({
-      industry: brand.industry ?? null,
+      industry: updatedBrand?.industry ?? brand.industry ?? null,
       prompts: prompts.map((p) => ({
         id: p.id,
         text: p.text,

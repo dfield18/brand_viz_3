@@ -369,10 +369,14 @@ function PromptItem({
   onDelete?: () => void;
 }) {
   // Replace placeholders for display
-  const displayText = prompt.text
+  let displayText = prompt.text
     .replace(/\{brand\}/g, brandName)
     .replace(/\{industry\}/g, industry ?? "the industry")
     .replace(/\{competitor\}/g, "competitor");
+  // Also replace literal "the industry" with actual industry name
+  if (industry) {
+    displayText = displayText.replace(/\bthe industry\b/gi, `the ${industry} industry`);
+  }
 
   return (
     <div className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors ${prompt.enabled ? "bg-muted/30" : "bg-transparent opacity-60"}`}>
