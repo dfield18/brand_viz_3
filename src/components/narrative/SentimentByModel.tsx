@@ -18,10 +18,17 @@ function barColor(score: number): string {
   return "bg-amber-400";
 }
 
-function scoreLabel(score: number): string {
+function scoreLabel(score: number, split?: { positive: number; neutral: number; negative: number }): string {
+  if (split) {
+    if (split.positive >= 60) return "Strongly positive";
+    if (split.positive >= 40) return "Mostly positive";
+    if (split.negative >= 40) return "Mostly negative";
+    if (split.neutral >= 50) return "Mostly neutral";
+    return "Mixed";
+  }
   if (score >= 60) return "Strongly positive";
   if (score >= 40) return "Mostly positive";
-  if (score <= 15) return "Mostly negative";
+  if (score <= 10 && score > 0) return "Mostly negative";
   return "Mixed";
 }
 
@@ -34,6 +41,7 @@ export function SentimentByModel({ trend, brandName = "the Brand", modelComparis
           model: mc.model,
           label: MODEL_LABELS[mc.model] ?? mc.model,
           score: mc.sentiment,
+          split: mc.sentimentSplit,
         }))
         .sort((a, b) => b.score - a.score);
     }
@@ -52,6 +60,7 @@ export function SentimentByModel({ trend, brandName = "the Brand", modelComparis
         model,
         label: MODEL_LABELS[model] ?? model,
         score: Math.round(sum / count),
+        split: undefined as { positive: number; neutral: number; negative: number } | undefined,
       }))
       .sort((a, b) => b.score - a.score);
   }, [trend, modelComparison]);
@@ -66,7 +75,7 @@ export function SentimentByModel({ trend, brandName = "the Brand", modelComparis
       </p>
 
       <div className="space-y-3">
-        {modelScores.map(({ model, label, score }) => (
+        {modelScores.map(({ model, label, score, split }) => (
           <div key={model} className="flex items-center gap-3">
             <span className="text-sm w-24 shrink-0 truncate text-left text-muted-foreground">
               {label}
@@ -85,7 +94,7 @@ export function SentimentByModel({ trend, brandName = "the Brand", modelComparis
               )}
             </div>
             <div className="shrink-0 text-right w-24">
-              <span className="text-[11px] text-muted-foreground">{scoreLabel(score)}</span>
+              <span className="text-[11px] text-muted-foreground">{scoreLabel(score, split)}</span>
             </div>
           </div>
         ))}
