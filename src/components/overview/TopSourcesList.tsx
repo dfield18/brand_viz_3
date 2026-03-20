@@ -96,15 +96,15 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
   return (
     <div className="flex flex-col items-center">
       <p className="text-sm font-semibold mb-3">Source Types</p>
-      <div className="relative">
-        <ResponsiveContainer width="100%" height={180}>
+      <div className="relative" style={{ width: 200, height: 200, margin: "0 auto" }}>
+        <ResponsiveContainer width={200} height={200}>
           <PieChart>
             <Pie
               data={pieData}
               cx="50%"
               cy="50%"
-              innerRadius={45}
-              outerRadius={75}
+              innerRadius={50}
+              outerRadius={85}
               paddingAngle={2}
               dataKey="value"
               nameKey="name"
