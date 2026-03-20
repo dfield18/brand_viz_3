@@ -101,12 +101,12 @@ export function CompetitorRankDistribution({
                       >
                         {pct >= 25 && (
                           <span className={`text-[10px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
-                            #{seg.key === "other" ? "4+" : seg.key}: {seg.count}×
+                            Rank #{seg.key === "other" ? "4+" : seg.key}: {seg.count} {seg.count === 1 ? "response" : "responses"}
                           </span>
                         )}
                         {pct >= 15 && pct < 25 && (
                           <span className={`text-[9px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
-                            {seg.count}
+                            #{seg.key === "other" ? "4+" : seg.key}: {seg.count}
                           </span>
                         )}
                       </div>
