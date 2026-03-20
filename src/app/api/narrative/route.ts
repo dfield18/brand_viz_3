@@ -11,6 +11,7 @@ import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrat
 import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
+import { isBrandMentioned } from "@/lib/visibility/brandMention";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -455,6 +456,9 @@ export async function GET(req: NextRequest) {
   for (const { parsed, run } of narratives) {
     const analysis = parseAnalysis(run.analysisJson);
     if (!analysis) continue;
+
+    // Only include responses that actually mention the brand
+    if (!isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) continue;
 
     // Extract the brand-focused portion of the response
     const cleanText = run.rawResponseText
