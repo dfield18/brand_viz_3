@@ -13,6 +13,8 @@ interface TopNarrativeQuotesProps {
   frameTrend?: Record<string, string | number>[];
   /** When set, clicking a frame heading calls this with the frame name */
   onFrameClick?: (frame: string) => void;
+  /** When set, clicking a quote card calls this with the runId */
+  onQuoteClick?: (runId: string) => void;
 }
 
 const FRAME_COLORS = [
@@ -154,15 +156,20 @@ function renderTextWithLinks(text: string): ReactNode[] {
 function QuoteCard({
   example,
   color,
+  onClick,
 }: {
   example: NarrativeExample;
   color: (typeof FRAME_COLORS)[number];
+  onClick?: () => void;
 }) {
   const cleanExcerpt = smartTruncate(trimPreamble(example.excerpt));
   const sentimentDot = example.sentiment ? SENTIMENT_DOT[example.sentiment] ?? "bg-gray-400" : null;
   const sentimentText = example.sentiment ? SENTIMENT_LABEL[example.sentiment] ?? example.sentiment : null;
   return (
-    <div className={`rounded-lg border border-border/60 ${color.border} border-l-[3px] ${color.bg} px-4 py-3.5`}>
+    <div
+      className={`rounded-lg border border-border/60 ${color.border} border-l-[3px] ${color.bg} px-4 py-3.5 ${onClick ? "cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-start gap-2.5">
         <MessageSquareQuote className="h-3.5 w-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
         <div className="min-w-0">
@@ -193,7 +200,7 @@ function QuoteCard({
   );
 }
 
-export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, onFrameClick }: TopNarrativeQuotesProps) {
+export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, onFrameClick, onQuoteClick }: TopNarrativeQuotesProps) {
   const topFrames = useMemo(() => {
     return [...frames].sort((a, b) => b.percentage - a.percentage).slice(0, 3);
   }, [frames]);
@@ -288,7 +295,7 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
               {quotes.length > 0 ? (
                 <div className="space-y-2.5 flex-1">
                   {quotes.map((q, i) => (
-                    <QuoteCard key={i} example={q} color={color} />
+                    <QuoteCard key={i} example={q} color={color} onClick={q.runId && onQuoteClick ? () => onQuoteClick(q.runId!) : undefined} />
                   ))}
                 </div>
               ) : (

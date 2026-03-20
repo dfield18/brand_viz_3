@@ -120,5 +120,35 @@ export function useResponseDetail(brandSlug: string) {
     [brandSlug, viewer]
   );
 
-  return { openResponse, openByPosition };
+  const openByRunId = useCallback(
+    async (runId: string, opts?: { brandName?: string }) => {
+      if (loadingRef.current || !runId) return;
+      loadingRef.current = true;
+
+      try {
+        const res = await fetch(`/api/response-detail?runId=${encodeURIComponent(runId)}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data.responses || data.responses.length === 0) return;
+
+        const r = data.responses[0];
+        viewer.open({
+          responseText: r.responseText,
+          promptText: r.prompt.text.replace(/\{brand\}/g, opts?.brandName ?? data.brandName ?? brandSlug),
+          model: r.model,
+          brandName: opts?.brandName ?? data.brandName ?? brandSlug,
+          cluster: r.prompt.cluster ?? undefined,
+          intent: r.prompt.intent ?? undefined,
+          date: r.date,
+          analysis: r.analysis,
+        });
+      } finally {
+        loadingRef.current = false;
+      }
+    },
+    [brandSlug, viewer]
+  );
+
+  return { openResponse, openByPosition, openByRunId };
 }

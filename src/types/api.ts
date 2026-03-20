@@ -123,6 +123,7 @@ export interface NarrativeDriftPoint {
 }
 
 export interface NarrativeExample {
+  runId?: string;
   prompt: string;
   excerpt: string;
   themes: string[];

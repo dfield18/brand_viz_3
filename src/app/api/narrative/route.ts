@@ -429,6 +429,7 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.parsed.themes.length - a.parsed.themes.length)
     .slice(0, 20)
     .map(({ parsed, run }) => ({
+      runId: run.id,
       prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
       excerpt: run.rawResponseText
         .replace(/\*\*/g, "")           // remove bold markdown

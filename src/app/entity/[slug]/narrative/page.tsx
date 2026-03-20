@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Lightbulb } from "lucide-react";
 import { NarrativeResponse, NarrativeFrame, TopicsResponse, NarrativeDeltas, OverviewResponse } from "@/types/api";
 import { NarrativeMetricCards } from "@/components/narrative/NarrativeMetricCards";
+import { useResponseDetail } from "@/lib/useResponseDetail";
 
 import { StrengthsWeaknesses } from "@/components/narrative/StrengthsWeaknesses";
 import { TopNarrativeQuotes } from "@/components/narrative/TopNarrativeQuotes";
@@ -65,6 +66,7 @@ function NarrativeInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
+  const { openByRunId } = useResponseDetail(params.slug);
 
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
@@ -273,6 +275,7 @@ function NarrativeInner() {
                 const el = document.getElementById("frame-trend");
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
+              onQuoteClick={(runId) => openByRunId(runId, { brandName })}
             />
           </div>
         )}

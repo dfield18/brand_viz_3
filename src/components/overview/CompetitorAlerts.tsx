@@ -59,8 +59,11 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
-      <p className="text-xs text-muted-foreground mt-1 mb-3">
+      <p className="text-xs text-muted-foreground mt-1">
         Current mention rate and change vs. prior period
+      </p>
+      <p className="text-[10px] text-muted-foreground/70 mt-1 mb-3">
+        <span className="text-muted-foreground font-medium">%</span> = % of AI responses mentioning this {entityWord} · <span className="text-muted-foreground font-medium">pts</span> = percentage-point change vs. prior period
       </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
@@ -89,9 +92,6 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
           );
         })}
       </div>
-      <p className="text-[10px] text-muted-foreground/70 mt-3 pt-2.5 border-t border-border/50 leading-relaxed">
-        &ldquo;pts&rdquo; = percentage-point change in the % of AI responses that mention this {entityWord} vs. the prior period.
-      </p>
     </section>
   );
 }

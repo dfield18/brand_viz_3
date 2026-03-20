@@ -10,13 +10,35 @@ import { computeBrandRank } from "@/lib/visibility/brandMention";
  */
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
+  const runId = req.nextUrl.searchParams.get("runId");
   const promptText = req.nextUrl.searchParams.get("promptText");
   const model = req.nextUrl.searchParams.get("model");
   const positionMin = req.nextUrl.searchParams.get("positionMin");
   const positionMax = req.nextUrl.searchParams.get("positionMax");
 
+  // Mode 0: By runId (direct lookup, no brandSlug required)
+  if (runId) {
+    const run = await prisma.run.findUnique({
+      where: { id: runId },
+      select: {
+        id: true,
+        model: true,
+        rawResponseText: true,
+        analysisJson: true,
+        createdAt: true,
+        prompt: { select: { text: true, cluster: true, intent: true } },
+        brand: { select: { name: true, displayName: true } },
+      },
+    });
+    if (!run) {
+      return NextResponse.json({ error: "Run not found" }, { status: 404 });
+    }
+    const name = run.brand.displayName || run.brand.name;
+    return respondWith(name, [run]);
+  }
+
   if (!brandSlug) {
-    return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
+    return NextResponse.json({ error: "Missing brandSlug or runId" }, { status: 400 });
   }
 
   const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
