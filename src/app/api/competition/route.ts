@@ -619,7 +619,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Build per-entity, per-date sentiment scores
-    type SentimentBucket = { totalScore: number; count: number };
+    type SentimentBucket = { posCount: number; count: number };
     const sentimentByDateEntity = new Map<string, Map<string, SentimentBucket>>();
 
     const trendSentenceCache = new Map<string, string[]>();
@@ -657,13 +657,15 @@ export async function GET(req: NextRequest) {
       const neg = weakness;
       const total = Math.max(1, pos + neg);
       const score = (pos - neg) / total;
+      // Count as "positive" if signal score maps to Strong or Positive (>= 0.15)
+      const isPositive = score >= 0.15;
 
       if (!sentimentByDateEntity.has(date)) sentimentByDateEntity.set(date, new Map());
       const dateMap = sentimentByDateEntity.get(date)!;
-      if (!dateMap.has(m.entityId)) dateMap.set(m.entityId, { totalScore: 0, count: 0 });
+      if (!dateMap.has(m.entityId)) dateMap.set(m.entityId, { posCount: 0, count: 0 });
       const bucket = dateMap.get(m.entityId)!;
-      bucket.totalScore += score;
       bucket.count++;
+      if (isPositive) bucket.posCount++;
     }
 
     const sentimentTrend: CompetitiveSentimentTrendPoint[] = [];
@@ -673,8 +675,7 @@ export async function GET(req: NextRequest) {
       for (const entityId of trendEntityIds) {
         const bucket = dateMap?.get(entityId);
         if (bucket && bucket.count > 0) {
-          const avg = bucket.totalScore / bucket.count;
-          sentiment[entityId] = Math.round((avg + 1) * 50);
+          sentiment[entityId] = Math.round((bucket.posCount / bucket.count) * 100);
         }
       }
       // Only include dates where at least one entity has data

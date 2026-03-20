@@ -122,11 +122,11 @@ export function CompetitiveSentimentTrend({
   const strokeColor = "hsl(160, 60%, 45%)";
 
   function sentimentLabel(value: number): string {
-    if (value >= 70) return "Very Positive";
-    if (value >= 55) return "Positive";
-    if (value >= 45) return "Neutral";
-    if (value >= 30) return "Negative";
-    return "Very Negative";
+    if (value >= 60) return "Strongly Positive";
+    if (value >= 40) return "Mostly Positive";
+    if (value >= 20) return "Mixed";
+    if (value > 0) return "Mostly Negative";
+    return "No Positive";
   }
 
   return (
@@ -165,7 +165,7 @@ export function CompetitiveSentimentTrend({
         Whether AI platforms are becoming more positive or negative about {brandName ?? "the brand"} vs competitors
       </p>
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-        Sentiment score: 0% = very negative, 50% = neutral, 100% = very positive
+        Y-axis shows % of AI responses with positive sentiment toward each entity
       </p>
 
       {loading && (
