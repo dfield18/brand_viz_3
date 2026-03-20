@@ -103,7 +103,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
         <div>
           <h3 className="text-base font-semibold">Where AI Ranks {brandName} Over Time</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            When AI recommends brands, where does {brandName} show up in the list?
+            When AI recommends brands in this space, where does {brandName} appear in the list? Position #1 means AI mentions {brandName} first. Lower positions mean competitors are being recommended ahead of {brandName}.
           </p>
         </div>
         <select
