@@ -17,6 +17,7 @@ import { TOPIC_TAXONOMY } from "@/lib/topics/topicTaxonomy";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import type { TopicModelSplitRow } from "@/types/api";
 import { buildEntityDisplayNames, expandPromptPlaceholders } from "@/lib/utils";
+import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 
 const TOPIC_LABEL_MAP: Record<string, string> = {};
 for (const t of TOPIC_TAXONOMY) {
@@ -173,6 +174,22 @@ export async function GET(req: NextRequest) {
 
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(runs);
+
+    // Normalize entity IDs: merge duplicates (same as competition API)
+    const allEntityIds = [...new Set(topicMetrics.map((m) => m.entityId))].filter((id) => id !== brand.slug);
+    const aliasMap = await normalizeEntityIds(allEntityIds, brand.slug);
+    aliasMap.set(brand.slug, brand.slug);
+    // Apply normalization to topicMetrics in-place
+    for (const m of topicMetrics) {
+      m.entityId = aliasMap.get(m.entityId) ?? m.entityId;
+    }
+    // Update display names for canonical IDs
+    for (const [entityId, canonical] of aliasMap) {
+      if (entityId !== canonical && !entityDisplayNames.has(canonical)) {
+        const aliasName = entityDisplayNames.get(entityId);
+        if (aliasName) entityDisplayNames.set(canonical, aliasName);
+      }
+    }
 
     // Compute all rollups
     const topics = computeTopicRows(topicMetrics, brand.slug, totalResponsesByTopic, entityDisplayNames);

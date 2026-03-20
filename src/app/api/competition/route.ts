@@ -158,6 +158,8 @@ export async function GET(req: NextRequest) {
       const ms = byEntity.get(entityId) ?? [];
       const appearances = ms.length;
       const ranks = ms.map((m) => m.rankPosition);
+      // rank1Rate uses totalResponses as denominator (same as brand) for comparability
+      const rank1Count = ranks.filter((r) => r === 1).length;
       return {
         entityId,
         name: entityId === brand.slug ? brandName : resolveEntityName(entityId, entityDisplayNames),
@@ -165,7 +167,7 @@ export async function GET(req: NextRequest) {
         mentionShare: computeMentionShare(appearances, totalAppearances),
         mentionRate: computeMentionRate(appearances, totalResponses),
         avgRank: computeAvgRank(ranks),
-        rank1Rate: computeRank1Rate(ranks),
+        rank1Rate: totalResponses > 0 ? Math.round((rank1Count / totalResponses) * 100) : 0,
         appearances,
       };
     });
@@ -399,6 +401,7 @@ export async function GET(req: NextRequest) {
         );
         const appearances = ms.length;
         const ranks = ms.map((m) => m.rankPosition);
+        const modelRank1Count = ranks.filter((r) => r === 1).length;
         return {
           entityId,
           name: entityId === brand.slug ? brand.name : titleCase(entityId),
@@ -406,7 +409,7 @@ export async function GET(req: NextRequest) {
           mentionShare: computeMentionShare(appearances, modelTotalAppearances),
           mentionRate: computeMentionRate(appearances, modelTotalResponses),
           avgRank: computeAvgRank(ranks),
-          rank1Rate: computeRank1Rate(ranks),
+          rank1Rate: modelTotalResponses > 0 ? Math.round((modelRank1Count / modelTotalResponses) * 100) : 0,
           appearances,
         };
       });
