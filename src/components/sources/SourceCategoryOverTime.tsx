@@ -172,7 +172,13 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
         </div>
       )}
 
-      {!loading && chartData.length > 0 && (
+      {!loading && chartData.length === 1 && (
+        <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-muted-foreground">Only one data point available. Run more analyses over time to see trends.</p>
+        </div>
+      )}
+
+      {!loading && chartData.length > 1 && (
         <div className="mt-4">
           <ResponsiveContainer width="100%" height={320}>
             <LineChart

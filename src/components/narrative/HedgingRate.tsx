@@ -22,6 +22,10 @@ export function HedgingRate({ rate, trend }: HedgingRateProps) {
 
       {trend.length === 0 ? (
         <EmptyState message="No hedging trend data available for this model." />
+      ) : trend.length === 1 ? (
+        <div className="rounded-lg border border-dashed border-border p-4 text-center">
+          <p className="text-sm text-muted-foreground">Only one data point. Run more analyses to see trends.</p>
+        </div>
       ) : (
         <div>
           <p className="text-xs text-muted-foreground mb-2">

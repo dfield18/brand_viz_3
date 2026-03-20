@@ -33,6 +33,10 @@ export function TrendChart({ trend }: TrendChartProps) {
       </h2>
       {trend.length === 0 ? (
         <EmptyState message="No trend data available." />
+      ) : trend.length === 1 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-muted-foreground">Only one data point available. Run more analyses over time to see trends.</p>
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <LineChart

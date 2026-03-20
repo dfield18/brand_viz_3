@@ -181,7 +181,13 @@ export function CompetitiveSentimentTrend({
         </div>
       )}
 
-      {!loading && trend.length >= 1 && (
+      {!loading && trend.length === 1 && (
+        <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-muted-foreground">Only one data point available. Run more analyses over time to see trends.</p>
+        </div>
+      )}
+
+      {!loading && trend.length >= 2 && (
         <div className="mt-6">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart
