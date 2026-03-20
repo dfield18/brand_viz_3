@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { SourcesResponse, TopDomainRow } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { MODEL_LABELS } from "@/lib/constants";
@@ -68,7 +69,7 @@ const DONUT_COLORS: Record<string, string> = {
 /* ─── Mini Donut ──────────────────────────────────────────────────── */
 
 function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
-  const breakdown = useMemo(() => {
+  const { pieData, totalCitations } = useMemo(() => {
     const counts: Record<string, number> = {};
     let total = 0;
     for (const d of topDomains) {
@@ -76,104 +77,95 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
       counts[cat] = (counts[cat] ?? 0) + d.citations;
       total += d.citations;
     }
-    if (total === 0) return { slices: [], total: 0 };
+    if (total === 0) return { pieData: [], totalCitations: 0 };
     const slices = Object.entries(counts)
-      .map(([category, citations]) => ({
-        category,
-        label: CATEGORY_LABELS[category] ?? category,
-        citations,
-        pct: Math.round((citations / total) * 1000) / 10,
-        color: DONUT_COLORS[category] ?? DONUT_COLORS.other,
+      .map(([key, value]) => ({
+        key,
+        name: CATEGORY_LABELS[key] ?? key,
+        value,
+        pct: Math.round((value / total) * 100),
       }))
-      .sort((a, b) => b.citations - a.citations);
-    return { slices, total };
+      .sort((a, b) => b.value - a.value);
+    return { pieData: slices, totalCitations: total };
   }, [topDomains]);
 
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
 
-  const size = 150;
-  const strokeWidth = 20;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const center = size / 2;
-
-  // Precompute cumulative offsets immutably to avoid render-time mutation
-  const sliceOffsets = useMemo(() => {
-    return breakdown.slices.reduce<{ dashLength: number; rotation: number }[]>((acc, slice) => {
-      const prevOffset = acc.length > 0
-        ? acc.reduce((sum, s) => sum + s.dashLength, 0)
-        : 0;
-      const dashLength = (slice.pct / 100) * circumference;
-      const rotation = (prevOffset / circumference) * 360 - 90;
-      acc.push({ dashLength, rotation });
-      return acc;
-    }, []);
-  }, [breakdown.slices, circumference]);
-
-  if (breakdown.slices.length === 0) return null;
-
-  const hoveredSlice = hovered ? breakdown.slices.find((s) => s.category === hovered) : null;
+  if (pieData.length === 0) return null;
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-xs font-medium text-muted-foreground mb-2">Source Types</p>
+      <p className="text-sm font-semibold mb-3">Source Types</p>
       <div className="relative">
-        <svg width={size} height={size}>
-          {breakdown.slices.map((slice, i) => {
-            const { dashLength, rotation } = sliceOffsets[i];
-            const isHovered = hovered === slice.category;
-            return (
-              <circle
-                key={slice.category}
-                cx={center}
-                cy={center}
-                r={radius}
-                fill="none"
-                stroke={slice.color}
-                strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
-                strokeOpacity={hovered && !isHovered ? 0.35 : 1}
-                strokeDasharray={`${dashLength} ${circumference - dashLength}`}
-                strokeDashoffset={0}
-                transform={`rotate(${rotation} ${center} ${center})`}
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHovered(slice.category)}
-                onMouseLeave={() => setHovered(null)}
-              />
-            );
-          })}
-        </svg>
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              innerRadius={45}
+              outerRadius={75}
+              paddingAngle={2}
+              dataKey="value"
+              nameKey="name"
+              stroke="none"
+              onMouseEnter={(_, idx) => {
+                const d = pieData[idx];
+                if (d) setHoveredSlice({ name: d.name, value: d.value, pct: d.pct });
+              }}
+              onMouseLeave={() => setHoveredSlice(null)}
+            >
+              {pieData.map((entry) => (
+                <Cell
+                  key={entry.key}
+                  fill={DONUT_COLORS[entry.key] ?? DONUT_COLORS.other}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload as (typeof pieData)[number];
+                return (
+                  <div className="rounded-lg border border-border bg-popover p-3 shadow-md text-xs space-y-1">
+                    <p className="font-medium text-popover-foreground flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[d.key] ?? DONUT_COLORS.other }} />
+                      {d.name}
+                    </p>
+                    <p className="text-muted-foreground">{d.value} citations &middot; {d.pct}%</p>
+                  </div>
+                );
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {hoveredSlice ? (
             <>
-              <span className="text-base font-bold">{Math.round(hoveredSlice.pct)}%</span>
-              <span className="text-xs font-medium text-foreground">{hoveredSlice.label}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight text-center px-2">{CATEGORY_DESCRIPTIONS[hoveredSlice.category] ?? ""}</span>
-              <span className="text-[10px] text-muted-foreground">{hoveredSlice.citations} citations</span>
+              <span className="text-lg font-bold tabular-nums">{hoveredSlice.pct}%</span>
+              <span className="text-[11px] font-medium text-foreground">{hoveredSlice.name}</span>
+              <span className="text-[10px] text-muted-foreground">{hoveredSlice.value} citations</span>
             </>
           ) : (
             <>
-              <span className="text-lg font-bold">{breakdown.total}</span>
+              <span className="text-lg font-bold tabular-nums">{totalCitations}</span>
               <span className="text-[10px] text-muted-foreground">citations</span>
             </>
           )}
         </div>
       </div>
-      <div className="mt-2.5 space-y-1 mx-auto" style={{ maxWidth: 220 }}>
-        {breakdown.slices.slice(0, 5).map((b) => (
-          <div
-            key={b.category}
-            className={`flex items-center gap-1.5 rounded px-1 -mx-1 transition-colors cursor-default ${hovered === b.category ? "bg-muted/60" : ""}`}
-            onMouseEnter={() => setHovered(b.category)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-            <span className="text-xs text-muted-foreground flex-1 min-w-0">
-              <span className="truncate">{b.label}</span>
-              {CATEGORY_DESCRIPTIONS[b.category] && (
-                <span className="text-[10px] text-muted-foreground/60"> ({CATEGORY_DESCRIPTIONS[b.category]})</span>
-              )}
+      {/* Horizontal legend (matches sources tab) */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-2">
+        {pieData.map((entry) => (
+          <div key={entry.key} className="flex items-center gap-1.5 text-xs">
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: DONUT_COLORS[entry.key] ?? DONUT_COLORS.other }}
+            />
+            <span className="text-muted-foreground">
+              {entry.name} {entry.pct}%
             </span>
-            <span className="text-xs font-medium tabular-nums shrink-0">{Math.round(b.pct)}%</span>
           </div>
         ))}
       </div>
