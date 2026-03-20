@@ -127,9 +127,11 @@ function SourcesInner() {
           <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} range={range} />
         </div>
 
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps identify which content to optimize and which third-party sources are shaping {brandName}&apos;s AI presence.
-        </p>
+        <div className="px-5 py-4 mt-2">
+          <p className="text-base text-muted-foreground leading-relaxed">
+            See which websites and sources AI platforms cite when talking about {brandName}. Understanding where AI gets its information helps identify which content to optimize and which third-party sources are shaping {brandName}&apos;s AI presence.
+          </p>
+        </div>
 
         {/* ── Source Overview ─────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Source Overview</h2>
