@@ -572,6 +572,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fetch industry runs per trend job for text-based brand metrics (matches visibility tab)
+    const brandTrendRuns = trendJobIds.length > 0
+      ? await prisma.run.findMany({
+          where: { jobId: { in: trendJobIds }, prompt: { cluster: "industry" } },
+          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true },
+        })
+      : [];
+    // Group trend runs by job date
+    const trendRunsByDate = new Map<string, typeof brandTrendRuns>();
+    for (const r of brandTrendRuns) {
+      const tj = allTrendJobs.find((j) => j.id === r.jobId);
+      if (!tj?.finishedAt) continue;
+      const date = tj.finishedAt.toISOString().slice(0, 10);
+      if (!trendRunsByDate.has(date)) trendRunsByDate.set(date, []);
+      trendRunsByDate.get(date)!.push(r);
+    }
+
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, bucket] of [...trendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const mentionShare: Record<string, number> = {};
@@ -596,6 +613,32 @@ export async function GET(req: NextRequest) {
           ? Math.round((rank1Count / ranks.length) * 10000) / 100
           : 0;
       }
+
+      // Override brand's trend values with text-based methodology (matches scorecard)
+      if (trendEntitySet.has(brand.slug)) {
+        const dateRuns = trendRunsByDate.get(date) ?? [];
+        if (dateRuns.length > 0) {
+          let brandMentions = 0;
+          let totalEntityMentions = 0;
+          const brandRanks: (number | null)[] = [];
+          for (const r of dateRuns) {
+            const mentioned = isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases);
+            if (mentioned) brandMentions++;
+            const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
+            brandRanks.push(rank);
+            const analysis = r.analysisJson as ParsedAnalysisComp | null;
+            const compCount = (analysis?.competitors ?? []).length;
+            totalEntityMentions += (mentioned ? 1 : 0) + compCount;
+          }
+          mentionRate[brand.slug] = computeMentionRate(brandMentions, dateRuns.length);
+          mentionShare[brand.slug] = totalEntityMentions > 0
+            ? Math.round((brandMentions / totalEntityMentions) * 10000) / 100
+            : 0;
+          avgPosition[brand.slug] = computeAvgRank(brandRanks);
+          rank1Rate[brand.slug] = computeRank1RateAll(brandRanks);
+        }
+      }
+
       competitiveTrend.push({ date, mentionShare, mentionRate, avgPosition, rank1Rate });
     }
 
