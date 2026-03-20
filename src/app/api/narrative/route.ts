@@ -318,23 +318,17 @@ export async function GET(req: NextRequest) {
     .map(([date, themeCounts]) => ({ date, themeCounts }));
   const drift = computeDrift(driftBuckets, themeLabels);
 
-  // Sentiment trend: group by (week, model) → average sentiment score scaled to 0-100
-  // Uses allTrendRuns so older runs without narrativeJson still contribute via analysisJson fallback
-  const sentimentBuckets: Record<string, Record<string, { sum: number; count: number }>> = {};
+  // Sentiment trend: group by (week, model) → % of responses that are POS
+  // Matches the scorecard methodology (POS count / total count * 100)
+  const sentimentBuckets: Record<string, Record<string, { pos: number; count: number }>> = {};
   for (const dr of allTrendRuns) {
     const narr = parseNarrative(dr.narrativeJson);
-    const analysis = parseAnalysis(dr.analysisJson);
-    // Derive a -1 to 1 sentiment score from whichever source is available
-    let score: number | null = null;
+    // Use POS/NEU/NEG label (same as scorecard sentimentSplit)
+    let label: string | null = null;
     if (narr) {
-      score = narr.sentiment.label === "POS" ? narr.sentiment.score
-        : narr.sentiment.label === "NEG" ? -narr.sentiment.score
-        : 0;
-    } else if (analysis) {
-      // Fallback: use legitimacy (0-100) → scale to -1..1 (50 = neutral)
-      score = (analysis.sentiment.legitimacy - 50) / 50;
+      label = narr.sentiment.label;
     }
-    if (score === null) continue;
+    if (!label) continue;
 
     const d = new Date(dr.createdAt);
     const day = d.getDay();
@@ -343,25 +337,22 @@ export async function GET(req: NextRequest) {
     const weekKey = monday.toISOString().slice(0, 10);
     if (!sentimentBuckets[weekKey]) sentimentBuckets[weekKey] = {};
     // Per-model bucket
-    if (!sentimentBuckets[weekKey][dr.model]) sentimentBuckets[weekKey][dr.model] = { sum: 0, count: 0 };
-    sentimentBuckets[weekKey][dr.model].sum += score;
+    if (!sentimentBuckets[weekKey][dr.model]) sentimentBuckets[weekKey][dr.model] = { pos: 0, count: 0 };
     sentimentBuckets[weekKey][dr.model].count++;
+    if (label === "POS") sentimentBuckets[weekKey][dr.model].pos++;
     // "all" aggregate bucket
-    if (!sentimentBuckets[weekKey]["all"]) sentimentBuckets[weekKey]["all"] = { sum: 0, count: 0 };
-    sentimentBuckets[weekKey]["all"].sum += score;
+    if (!sentimentBuckets[weekKey]["all"]) sentimentBuckets[weekKey]["all"] = { pos: 0, count: 0 };
     sentimentBuckets[weekKey]["all"].count++;
+    if (label === "POS") sentimentBuckets[weekKey]["all"].pos++;
   }
   const sentimentTrend = Object.entries(sentimentBuckets)
     .sort(([a], [b]) => a.localeCompare(b))
     .flatMap(([date, models]) =>
-      Object.entries(models).map(([m, { sum, count }]) => {
-        const avg = count > 0 ? sum / count : 0; // -1 to 1
-        return {
-          date,
-          model: m,
-          positive: Math.round((avg + 1) * 50), // scale to 0-100 (50 = neutral)
-        };
-      }),
+      Object.entries(models).map(([m, { pos, count }]) => ({
+        date,
+        model: m,
+        positive: count > 0 ? Math.round((pos / count) * 100) : 0,
+      })),
     );
 
   // Frame trend: group by (week, model) with "all" aggregate
