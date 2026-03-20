@@ -80,7 +80,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
               <span className="text-xs tabular-nums text-muted-foreground">
-                {alert.recentMentionRate}% <span className="text-muted-foreground/60">brand recall (% of AI answers that mention)</span>
+                {alert.recentMentionRate}% <span className="text-muted-foreground/60">of AI answers mention</span>
               </span>
               {!isStable && (
                 <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
