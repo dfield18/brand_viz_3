@@ -131,10 +131,10 @@ function PositionScale({ score, color }: { score: number; color: string }) {
       </div>
       {/* Track */}
       <div className="relative h-2 rounded-full bg-muted/50">
-        {/* Filled portion (left = good) */}
+        {/* Filled portion — extends from #1 to the dot position */}
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-          style={{ width: `${100 - pct}%`, backgroundColor: markerColor, opacity: 0.25 }}
+          style={{ width: `${pct}%`, backgroundColor: markerColor, opacity: 0.25 }}
         />
         {/* Marker dot */}
         <div
