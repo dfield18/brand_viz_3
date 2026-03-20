@@ -117,7 +117,7 @@ function escapeHtml(str: string): string {
 }
 
 export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeExamplesProps) {
-  const { openResponse } = useResponseDetail(brandSlug ?? "");
+  const { openResponse, openByRunId } = useResponseDetail(brandSlug ?? "");
   const [modelFilter, setModelFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [showAll, setShowAll] = useState(false);
@@ -289,7 +289,13 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
             <div
               key={i}
               className={`rounded-lg border border-border ${badge.border} border-l-[3px] bg-card p-4 space-y-2.5 ${brandSlug ? "cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all" : ""}`}
-              onClick={brandSlug ? () => openResponse({ promptText: ex.prompt, model: ex.model, brandName }) : undefined}
+              onClick={brandSlug ? () => {
+                if (ex.runId) {
+                  openByRunId(ex.runId, { brandName });
+                } else {
+                  openResponse({ promptText: ex.prompt, model: ex.model, brandName });
+                }
+              } : undefined}
             >
               {/* Prompt + model row */}
               <div className="flex items-center gap-2">
