@@ -26,6 +26,10 @@ function parseNarrative(json: unknown): NarrativeExtractionResult | null {
   return json as NarrativeExtractionResult;
 }
 
+// Server-side response cache: avoids re-running GPT calls when underlying data hasn't changed
+const narrativeCache = new Map<string, { response: unknown; runCount: number; ts: number }>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
   if (!brandSlug) {
@@ -65,6 +69,15 @@ export async function GET(req: NextRequest) {
   if (!result.ok) return result.response;
   const { brand, job, runs, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+
+  // Check server-side cache: if run count hasn't changed and cache is fresh, return cached response
+  const cacheKey = `${brandSlug}|${model}|${viewRange}`;
+  const cached = narrativeCache.get(cacheKey);
+  if (cached && cached.runCount === runs.length && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return NextResponse.json(cached.response, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    });
+  }
 
   // Industry-only runs for frame computation (matches overview tab methodology)
   const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
@@ -673,13 +686,18 @@ Rules:
       : {}),
   };
 
-  return NextResponse.json({
+  const responseBody = {
     hasData: true,
     job: formatJobMeta(job!),
     narrative,
     narrativeDeltas,
     totals: { totalRuns: runs.length, analyzedRuns: analyses.length },
-  }, {
+  };
+
+  // Cache the response to avoid re-running GPT calls
+  narrativeCache.set(cacheKey, { response: responseBody, runCount: runs.length, ts: Date.now() });
+
+  return NextResponse.json(responseBody, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
   });
   } catch (e) {

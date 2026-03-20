@@ -140,6 +140,10 @@ async function getModelOverviewData(
   };
 }
 
+// Server-side response cache: avoids re-running GPT calls when data hasn't changed
+const overviewCache = new Map<string, { response: unknown; runCount: number; ts: number }>();
+const OVERVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
   const model = req.nextUrl.searchParams.get("model");
@@ -367,6 +371,16 @@ export async function GET(req: NextRequest) {
 
   // Await fetchBrandRuns first — we need deduped run IDs for source type query
   const visResult = await visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; });
+
+  // Check server-side cache
+  const overviewCacheKey = `${brandSlug}|${model}|${range}`;
+  const totalRunCount = (visResult && visResult.ok ? visResult.runs.length : 0) + withData.reduce((s, w) => s + (w.data?.totalRuns ?? 0), 0);
+  const cachedOverview = overviewCache.get(overviewCacheKey);
+  if (cachedOverview && cachedOverview.runCount === totalRunCount && Date.now() - cachedOverview.ts < OVERVIEW_CACHE_TTL_MS) {
+    return NextResponse.json(cachedOverview.response, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    });
+  }
 
   // Top source type: query ALL runs in range (matching sources tab)
   const sourceOccurrences = visResult && visResult.ok
@@ -737,7 +751,7 @@ Rules:
     // Fallback: aiSummary stays null, client can show nothing or a simple fallback
   }
 
-  return NextResponse.json({
+  const overviewResponseBody = {
     hasData: true,
     aiSummary,
     brandCategory: (brand as unknown as { category?: string | null }).category ?? null,
@@ -761,7 +775,12 @@ Rules:
     topSourceType,
     totals: { totalRuns, analyzedRuns: totalAnalyzed },
     ...(model === "all" ? { activeModels } : {}),
-  }, {
+  };
+
+  // Cache the response
+  overviewCache.set(overviewCacheKey, { response: overviewResponseBody, runCount: totalRunCount, ts: Date.now() });
+
+  return NextResponse.json(overviewResponseBody, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
   });
 }
