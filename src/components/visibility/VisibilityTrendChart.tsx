@@ -191,7 +191,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
           {!compact && (
             <p className="text-xs text-muted-foreground mt-1">
               {effectiveMetric === "visibility"
-                ? "How often AI platforms mention the brand in response to general industry questions"
+                ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
                 : effectiveMetric === "topResult"
                 ? "How often the brand appears as the #1 recommendation in AI responses"
                 : "The brand's share of all entity mentions across AI responses"}
