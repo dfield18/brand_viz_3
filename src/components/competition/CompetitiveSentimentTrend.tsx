@@ -154,7 +154,7 @@ export function CompetitiveSentimentTrend({
           {delta !== null && delta !== 0 && (
             <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
               {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {delta > 0 ? "+" : ""}{delta} pts vs start
+              {delta > 0 ? "+" : ""}{delta} pts since {chartData.length > 0 ? new Date(String((chartData[0] as Record<string, unknown>).date) + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "start"}
             </span>
           )}
         </div>

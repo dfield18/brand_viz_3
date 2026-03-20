@@ -161,7 +161,7 @@ export function KpiRow({ kpis }: KpiRowProps) {
                     {kpi.delta >= 0 ? "+" : ""}
                     {kpi.delta}
                     {kpi.unit === "%" ? "pp" : ""}
-                    <span className="text-muted-foreground ml-0.5">(7d)</span>
+                    <span className="text-muted-foreground ml-0.5">(30d)</span>
                   </span>
                 )}
                 {meta?.subtitle && (
