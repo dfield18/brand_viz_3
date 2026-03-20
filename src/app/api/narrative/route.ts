@@ -10,6 +10,7 @@ import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
+import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -421,68 +422,73 @@ export async function GET(req: NextRequest) {
   }
 
   // Examples: match runs to top frames using analysisJson.frames (same source as the frame list)
-  // Each run's analysisJson.frames contains the frames GPT identified for that specific response
+  // Only use responses where the brand is prominently discussed (not just listed among competitors)
   const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
   const STRENGTH_THRESHOLD = 20;
+  const brandAliases = brand.aliases?.length ? brand.aliases : [];
 
-  // For each run, find which top frame it best matches (by frame strength in analysisJson)
   type ExampleCandidate = {
     run: NarrativeRun;
     parsed: NarrativeExtractionResult;
     matchedFrame: string;
     frameStrength: number;
+    brandStrength: number;
+    brandExcerpt: string; // excerpt focused on the brand, not the start of the response
   };
 
   const candidates: ExampleCandidate[] = [];
   for (const { parsed, run } of narratives) {
     const analysis = parseAnalysis(run.analysisJson);
     if (!analysis) continue;
-    // Find the top frame this run best matches by checking its analysisJson.frames
-    let bestFrame = "";
-    let bestStrength = 0;
+    // Skip responses where the brand is barely mentioned (just a name in a list)
+    if (analysis.brandMentionStrength < 25) continue;
+
+    // Extract the brand-focused portion of the response
+    const cleanText = run.rawResponseText
+      .replace(/\*\*/g, "").replace(/\*/g, "")
+      .replace(/^#+\s+/gm, "").replace(/^[-*•]\s+/gm, "").replace(/^\d+\.\s+/gm, "");
+    const sentences = splitSentences(cleanText);
+    const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 2);
+    const brandExcerpt = brandContext.length > 0
+      ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500)
+      : cleanText.replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500);
+
+    // Find which top frames this run matches
     for (const f of analysis.frames) {
       if (f.strength < STRENGTH_THRESHOLD) continue;
-      // Check if this frame name matches any top frame (case-insensitive)
       const matchingTopFrame = topFrameNames.find(
         (tf) => tf.toLowerCase() === f.name.toLowerCase(),
       );
-      if (matchingTopFrame && f.strength > bestStrength) {
-        bestFrame = matchingTopFrame;
-        bestStrength = f.strength;
+      if (matchingTopFrame) {
+        candidates.push({
+          run, parsed, matchedFrame: matchingTopFrame,
+          frameStrength: f.strength,
+          brandStrength: analysis.brandMentionStrength,
+          brandExcerpt,
+        });
       }
-    }
-    if (bestFrame) {
-      candidates.push({ run, parsed, matchedFrame: bestFrame, frameStrength: bestStrength });
     }
   }
 
-  // Pick top 2 candidates per frame, sorted by frame strength
+  // Pick top 2 candidates per frame, preferring high brand mention strength
   const usedRunIds = new Set<string>();
-  const examples: (typeof candidates[0] extends { run: infer R, parsed: infer P } ? {
+  const examples: {
     runId: string; prompt: string; excerpt: string; themes: string[];
     sentiment: string; model: string; matchedFrame: string;
-  } : never)[] = [];
+  }[] = [];
 
   for (const frameName of topFrameNames) {
     const frameMatches = candidates
       .filter((c) => c.matchedFrame === frameName && !usedRunIds.has(c.run.id))
-      .sort((a, b) => b.frameStrength - a.frameStrength)
+      // Prefer responses where the brand is prominently discussed AND the frame is strong
+      .sort((a, b) => (b.brandStrength * b.frameStrength) - (a.brandStrength * a.frameStrength))
       .slice(0, 2);
     for (const c of frameMatches) {
       usedRunIds.add(c.run.id);
       examples.push({
         runId: c.run.id,
         prompt: expandPromptPlaceholders(c.run.prompt.text, { brandName, industry: brand.industry }),
-        excerpt: c.run.rawResponseText
-          .replace(/\*\*/g, "")
-          .replace(/\*/g, "")
-          .replace(/^#+\s+/gm, "")
-          .replace(/^[-*•]\s+/gm, "")
-          .replace(/^\d+\.\s+/gm, "")
-          .replace(/\n+/g, " ")
-          .replace(/\s{2,}/g, " ")
-          .trim()
-          .slice(0, 500),
+        excerpt: c.brandExcerpt,
         themes: c.parsed.themes.map((t) => t.label),
         sentiment: c.parsed.sentiment.label,
         model: c.run.model,
