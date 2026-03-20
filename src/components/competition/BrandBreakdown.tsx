@@ -298,15 +298,15 @@ function ExpandableRow({
         </td>
         {/* Brand Recall */}
         <td className="py-4 px-4 text-center font-semibold tabular-nums">
-          {comp.mentionRate}%
+          {Math.round(comp.mentionRate)}%
         </td>
         {/* Share of Voice */}
         <td className="py-4 px-4 text-center tabular-nums">
-          {Math.round(comp.mentionShare)}%
+          {Number(comp.mentionShare.toFixed(1))}%
         </td>
         {/* Top Result Rate */}
         <td className={`py-4 px-4 text-center font-semibold tabular-nums ${comp.rank1Rate >= 50 ? "text-emerald-600" : comp.rank1Rate >= 20 ? "text-amber-600" : comp.rank1Rate > 0 ? "text-red-500" : ""}`}>
-          {comp.rank1Rate}%
+          {Number(comp.rank1Rate.toFixed(1))}%
         </td>
         {/* Avg. Position */}
         <td className="py-4 px-4 text-center font-semibold tabular-nums">
@@ -359,8 +359,8 @@ function ExpandableRow({
                       <thead>
                         <tr className="text-muted-foreground border-b border-border/50">
                           <th className="pb-2 pr-3 text-left font-medium">Platform</th>
-                          <th className="pb-2 px-3 text-center font-medium">Visibility</th>
-                          <th className="pb-2 px-3 text-center font-medium">Share</th>
+                          <th className="pb-2 px-3 text-center font-medium">Brand Recall</th>
+                          <th className="pb-2 px-3 text-center font-medium">SoV</th>
                           <th className="pb-2 px-3 text-center font-medium">Top Result</th>
                           <th className="pb-2 px-3 text-center font-medium">Avg. Pos.</th>
                           <th className="pb-2 pl-3 text-center font-medium">Sentiment</th>
@@ -370,9 +370,9 @@ function ExpandableRow({
                         {perModel.map(({ model, label, row }) => (
                           <tr key={model} className="border-b border-border/30 last:border-0">
                             <td className="py-2 pr-3 text-muted-foreground">{label}</td>
-                            <td className="py-2 px-3 text-center tabular-nums">{row.mentionRate}%</td>
-                            <td className="py-2 px-3 text-center tabular-nums">{Math.round(row.mentionShare)}%</td>
-                            <td className="py-2 px-3 text-center tabular-nums">{row.rank1Rate}%</td>
+                            <td className="py-2 px-3 text-center tabular-nums">{Math.round(row.mentionRate)}%</td>
+                            <td className="py-2 px-3 text-center tabular-nums">{Number(row.mentionShare.toFixed(1))}%</td>
+                            <td className="py-2 px-3 text-center tabular-nums">{Number(row.rank1Rate.toFixed(1))}%</td>
                             <td className="py-2 px-3 text-center tabular-nums">
                               {row.avgRank !== null ? `#${row.avgRank.toFixed(1)}` : "\u2014"}
                             </td>
