@@ -436,12 +436,25 @@ export async function GET(req: NextRequest) {
     brandExcerpt: string; // excerpt focused on the brand, not the start of the response
   };
 
+  // Fuzzy match: check if a per-response frame name matches a top frame name
+  // GPT often generates slight variations (e.g. "Streaming Innovation" vs "Streaming Service Innovation")
+  function fuzzyFrameMatch(responsFrame: string, topFrame: string): boolean {
+    const a = responsFrame.toLowerCase();
+    const b = topFrame.toLowerCase();
+    if (a === b) return true;
+    // One contains the other
+    if (a.includes(b) || b.includes(a)) return true;
+    // Share significant words (>3 chars)
+    const aWords = a.split(/\s+/).filter((w) => w.length > 3);
+    const bWords = new Set(b.split(/\s+/).filter((w) => w.length > 3));
+    const overlap = aWords.filter((w) => bWords.has(w)).length;
+    return overlap >= Math.min(aWords.length, bWords.size) * 0.5 && overlap >= 1;
+  }
+
   const candidates: ExampleCandidate[] = [];
   for (const { parsed, run } of narratives) {
     const analysis = parseAnalysis(run.analysisJson);
     if (!analysis) continue;
-    // Skip responses where the brand is barely mentioned (just a name in a list)
-    if (analysis.brandMentionStrength < 25) continue;
 
     // Extract the brand-focused portion of the response
     const cleanText = run.rawResponseText
@@ -456,9 +469,7 @@ export async function GET(req: NextRequest) {
     // Find which top frames this run matches
     for (const f of analysis.frames) {
       if (f.strength < STRENGTH_THRESHOLD) continue;
-      const matchingTopFrame = topFrameNames.find(
-        (tf) => tf.toLowerCase() === f.name.toLowerCase(),
-      );
+      const matchingTopFrame = topFrameNames.find((tf) => fuzzyFrameMatch(f.name, tf));
       if (matchingTopFrame) {
         candidates.push({
           run, parsed, matchedFrame: matchingTopFrame,
