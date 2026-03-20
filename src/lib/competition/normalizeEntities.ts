@@ -38,18 +38,18 @@ export async function normalizeEntityIds(
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0,
-      max_tokens: 500,
+      max_tokens: 1024,
       messages: [
         {
           role: "system",
           content: `You are given a list of company/brand names (lowercased). Some may refer to the same entity (e.g. "volkswagen" and "volkswagen group", or "toyota" and "toyota motor corporation").
 
-Group names that clearly refer to the same company. For each group, pick the shortest common name as the canonical form.
+Group names that clearly refer to the same company. For each group, pick the shortest common name as the canonical form. Consider full legal names, abbreviations, parent/subsidiary relationships, and "the" prefixes.
 
 Return a JSON object mapping every input name to its canonical form. Names that have no duplicates should map to themselves.
 
-Example input: ["volkswagen", "volkswagen group", "toyota", "toyota motor corporation", "honda"]
-Example output: {"volkswagen":"volkswagen","volkswagen group":"volkswagen","toyota":"toyota","toyota motor corporation":"toyota","honda":"honda"}
+Example input: ["volkswagen", "volkswagen group", "the walt disney company", "disney", "toyota motor corporation", "toyota", "honda"]
+Example output: {"volkswagen":"volkswagen","volkswagen group":"volkswagen","the walt disney company":"disney","disney":"disney","toyota motor corporation":"toyota","toyota":"toyota","honda":"honda"}
 
 Return ONLY the JSON object, no other text.`,
         },
@@ -65,6 +65,11 @@ Return ONLY the JSON object, no other text.`,
 
     const parsed = JSON.parse(content) as Record<string, string>;
     const map = new Map<string, string>();
+    // Preserve any existing cache entries not in this batch
+    const existing = aliasCache.get(brandSlug);
+    if (existing) {
+      for (const [k, v] of existing) map.set(k, v);
+    }
     for (const id of entityIds) {
       map.set(id, parsed[id] ?? id);
     }

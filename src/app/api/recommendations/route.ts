@@ -649,9 +649,17 @@ export async function GET(req: NextRequest) {
       earlierEntityRuns.get(m.entityId)!.add(m.runId);
     }
 
-    // Normalize entity IDs: merge duplicates like "abc" + "disney/abc"
+    // Normalize entity IDs: merge duplicates like "the walt disney company" + "disney"
     const rawEntityIds = [...new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()])];
     const aliasMap = await normalizeEntityIds(rawEntityIds, brand.slug);
+
+    // Update display names so canonical IDs inherit the best name from all aliases
+    for (const [entityId, canonical] of aliasMap) {
+      if (entityId !== canonical && !entityDisplayNames.has(canonical)) {
+        const aliasName = entityDisplayNames.get(entityId);
+        if (aliasName) entityDisplayNames.set(canonical, aliasName);
+      }
+    }
 
     // Merge run sets by canonical entity ID
     function mergeRunSets(source: Map<string, Set<string>>): Map<string, Set<string>> {
