@@ -50,13 +50,25 @@ function buildSummary(
 
   // Add a trend note if we have enough history
   if (first && first !== latest) {
-    const pos1Delta = latest.pos1 - first.pos1;
-    const topDelta = (latest.pos1 + latest.pos2_3) - (first.pos1 + first.pos2_3);
+    const latestPos1 = latest.pos1;
+    const latestPos2_3 = latest.pos2_3;
+    const firstPos1 = first.pos1;
+    const firstPos2_3 = first.pos2_3;
+    const pos1Delta = latestPos1 - firstPos1;
+    const pos2_3Delta = latestPos2_3 - firstPos2_3;
+    const topDelta = (latestPos1 + latestPos2_3) - (firstPos1 + firstPos2_3);
+
     if (Math.abs(topDelta) >= 8) {
+      // Describe which positions actually changed
+      const hasPos1 = latestPos1 > 0 || firstPos1 > 0;
+      const hasPos2_3 = latestPos2_3 > 0 || firstPos2_3 > 0;
+      const posLabel = hasPos1 && hasPos2_3 ? "Top-3 (positions #1–#3)"
+        : hasPos1 ? "#1 position"
+        : "Positions #2–#3";
       if (topDelta > 0) {
-        summary += ` Top-3 appearances are up ${Math.round(topDelta)} pts over this period.`;
+        summary += ` ${posLabel} appearances are up ${Math.round(topDelta)} pts over this period.`;
       } else {
-        summary += ` Top-3 appearances are down ${Math.round(Math.abs(topDelta))} pts over this period.`;
+        summary += ` ${posLabel} appearances are down ${Math.round(Math.abs(topDelta))} pts over this period.`;
       }
     } else if (Math.abs(pos1Delta) >= 5) {
       if (pos1Delta > 0) {
