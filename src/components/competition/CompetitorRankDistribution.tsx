@@ -85,9 +85,10 @@ export function CompetitorRankDistribution({
               >
                 {c.name}
               </span>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                {/* Stacked bar */}
                 <div
-                  className="h-7 rounded overflow-hidden flex transition-all duration-300"
+                  className="h-5 rounded overflow-hidden flex transition-all duration-300"
                   style={{ width: `${barWidthPct}%` }}
                 >
                   {segments.map((seg) => {
@@ -95,23 +96,22 @@ export function CompetitorRankDistribution({
                     return (
                       <div
                         key={seg.key}
-                        className={`h-full ${seg.color} transition-all duration-300 flex items-center justify-center`}
+                        className={`h-full ${seg.color} transition-all duration-300`}
                         style={{ width: `${pct}%` }}
                         title={`${RANK_LABELS[seg.key]}: ${seg.count}`}
-                      >
-                        {pct >= 25 && (
-                          <span className={`text-[10px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
-                            Rank #{seg.key === "other" ? "4+" : seg.key}: {seg.count} {seg.count === 1 ? "response" : "responses"}
-                          </span>
-                        )}
-                        {pct >= 15 && pct < 25 && (
-                          <span className={`text-[9px] font-medium drop-shadow-sm ${seg.key === "other" ? "text-slate-600 dark:text-slate-200 drop-shadow-none" : "text-white"}`}>
-                            #{seg.key === "other" ? "4+" : seg.key}: {seg.count}
-                          </span>
-                        )}
-                      </div>
+                      />
                     );
                   })}
+                </div>
+                {/* Labels below the bar */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                  {segments.map((seg) => (
+                    <span key={seg.key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${seg.color}`} />
+                      <span className="font-medium">#{seg.key === "other" ? "4+" : seg.key}</span>
+                      <span className="text-muted-foreground/60">{seg.count} {seg.count === 1 ? "response" : "responses"}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
               <span className="text-[11px] tabular-nums w-20 text-right text-muted-foreground shrink-0">
