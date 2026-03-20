@@ -144,27 +144,28 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
       ) : (
         <div className="mt-5">
           {/* Color-coded legend */}
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 mb-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 mb-5">
             {SERIES.map((s) => (
-              <div key={s.key} className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
-                <span className="text-xs text-muted-foreground">{s.label}</span>
+              <div key={s.key} className="flex items-center gap-2">
+                <span className="inline-block w-3.5 h-3.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                <span className="text-sm text-muted-foreground">{s.label}</span>
               </div>
             ))}
           </div>
 
-          <ResponsiveContainer width="95%" height={320} style={{ marginLeft: "auto" }}>
+          <ResponsiveContainer width="95%" height={340} style={{ marginLeft: "auto" }}>
             <AreaChart
               data={chartData}
-              margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+              margin={{ top: 5, right: 20, bottom: 10, left: 10 }}
               stackOffset="expand"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
               <XAxis
                 dataKey="date"
-                fontSize={11}
+                fontSize={13}
                 tickLine={false}
                 axisLine={false}
+                tickMargin={8}
                 tickFormatter={(d: string) => {
                   const [, m, day] = d.split("-");
                   return `${m}/${day}`;
@@ -172,17 +173,18 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
               />
               <YAxis
                 domain={[0, 1]}
-                fontSize={11}
+                fontSize={13}
                 tickLine={false}
                 axisLine={false}
+                tickMargin={6}
                 tickFormatter={(v) => `${Math.round(v * 100)}%`}
-                width={56}
+                width={60}
                 label={{
                   value: "% of responses",
                   angle: -90,
                   position: "insideLeft",
-                  offset: 14,
-                  style: { fontSize: 13, fill: "var(--muted-foreground)", textAnchor: "middle" },
+                  offset: 16,
+                  style: { fontSize: 14, fill: "var(--muted-foreground)", textAnchor: "middle" },
                 }}
               />
               <Tooltip
@@ -222,7 +224,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
             </AreaChart>
           </ResponsiveContainer>
 
-          <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+          <p className="text-xs text-muted-foreground/60 text-center mt-3">
             Green = #1 recommendation &middot; Blue = 2nd–3rd &middot; Amber = 4th–5th &middot; Red = 6th or lower
           </p>
         </div>
