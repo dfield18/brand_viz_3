@@ -157,9 +157,11 @@ function CompetitionInner() {
           )}
         </div>
 
-        <p className="text-base text-muted-foreground leading-relaxed mt-2">
-          This tab shows how {compBrandName} stacks up against {isOrg ? "other organizations" : "competitors"} in AI responses. See who AI mentions most often, track how positioning is shifting over time, and identify where {compBrandName} is winning or losing when {isOrg ? "multiple organizations" : "both brands"} appear in the same AI answer.
-        </p>
+        <div className="px-5 py-4 mt-2">
+          <p className="text-base text-muted-foreground leading-relaxed">
+            This tab shows how {compBrandName} stacks up against {isOrg ? "other organizations" : "competitors"} in AI responses. See who AI mentions most often, track how positioning is shifting over time, and identify where {compBrandName} is winning or losing when {isOrg ? "multiple organizations" : "both brands"} appear in the same AI answer.
+          </p>
+        </div>
 
         {/* ── Metrics Deep Dive ─────────────────────────── */}
         <h2 className="text-lg font-semibold text-foreground mt-4">Metrics Deep Dive</h2>
