@@ -7,11 +7,12 @@ import {
   computeMentionShare,
   computeAvgRank,
   computeRank1Rate,
+  computeRank1RateAll,
   computeFragmentation,
   computeWinLoss,
   computeMentionRate,
 } from "@/lib/competition/computeCompetition";
-import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { computeBrandRank, isBrandMentioned } from "@/lib/visibility/brandMention";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -169,17 +170,24 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Override brand's avgRank and rank1Rate with mention-order ranking
-    // (same methodology as Visibility tab — based on order of first appearance in text)
-    const brandMentionOrderRanks: number[] = [];
+    // Override brand's metrics with the same methodology as the Visibility tab
+    // so the numbers shown in the competition table match the visibility scorecards
+    const brandMentionOrderRanks: (number | null)[] = [];
+    let brandTextMentions = 0;
     for (const run of runs) {
+      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      if (mentioned) brandTextMentions++;
       const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
-      if (rank !== null) brandMentionOrderRanks.push(rank);
+      brandMentionOrderRanks.push(rank);
     }
     const brandComp = competitors.find((c) => c.isBrand);
-    if (brandComp && brandMentionOrderRanks.length > 0) {
+    if (brandComp) {
+      // mentionRate: same as visibility tab (isBrandMentioned count / total responses)
+      brandComp.mentionRate = computeMentionRate(brandTextMentions, runs.length);
+      // avgRank: same as visibility tab (text-order ranking)
       brandComp.avgRank = computeAvgRank(brandMentionOrderRanks);
-      brandComp.rank1Rate = computeRank1Rate(brandMentionOrderRanks);
+      // rank1Rate: same as visibility tab (divides by ALL responses, not just mentions)
+      brandComp.rank1Rate = computeRank1RateAll(brandMentionOrderRanks);
     }
 
     // --- Per-entity sentiment ---
