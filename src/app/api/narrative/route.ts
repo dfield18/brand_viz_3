@@ -91,7 +91,9 @@ export async function GET(req: NextRequest) {
     isAll ? "all" : model,
   );
 
-  // Fix byModel: compute per-model frame frequency (% of model's responses containing frame)
+  // Fix byModel + build frame→runId mapping for example quotes
+  // Track which exact run IDs contributed to each frame name during aggregation
+  const frameRunIds = new Map<string, { runId: string; strength: number }[]>();
   {
     const STRENGTH_THRESHOLD = 20;
     const modelRunCounts: Record<string, number> = {};
@@ -105,6 +107,9 @@ export async function GET(req: NextRequest) {
       for (const f of a.frames) {
         if (f.strength >= STRENGTH_THRESHOLD) {
           modelFrameCounts[r.model][f.name] = (modelFrameCounts[r.model][f.name] ?? 0) + 1;
+          // Track this run as a contributor to this exact frame name
+          if (!frameRunIds.has(f.name)) frameRunIds.set(f.name, []);
+          frameRunIds.get(f.name)!.push({ runId: r.id, strength: f.strength });
         }
       }
     }
@@ -422,70 +427,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Examples: match runs to top frames using analysisJson.frames (same source as the frame list)
-  // Only use responses where the brand is prominently discussed (not just listed among competitors)
+  // Examples: use the frameRunIds map built during aggregation
+  // This guarantees quotes come from runs that EXACTLY match the frame name
   const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
-  const STRENGTH_THRESHOLD = 20;
   const brandAliases = brand.aliases?.length ? brand.aliases : [];
 
-  type ExampleCandidate = {
-    run: NarrativeRun;
-    parsed: NarrativeExtractionResult;
-    matchedFrame: string;
-    frameStrength: number;
-    brandStrength: number;
-    brandExcerpt: string; // excerpt focused on the brand, not the start of the response
-  };
-
-  // Fuzzy match: check if a per-response frame name matches a top frame name
-  // GPT often generates slight variations (e.g. "Streaming Innovation" vs "Streaming Service Innovation")
-  function fuzzyFrameMatch(responsFrame: string, topFrame: string): boolean {
-    const a = responsFrame.toLowerCase();
-    const b = topFrame.toLowerCase();
-    if (a === b) return true;
-    // One contains the other
-    if (a.includes(b) || b.includes(a)) return true;
-    // Share significant words (>3 chars)
-    const aWords = a.split(/\s+/).filter((w) => w.length > 3);
-    const bWords = new Set(b.split(/\s+/).filter((w) => w.length > 3));
-    const overlap = aWords.filter((w) => bWords.has(w)).length;
-    return overlap >= Math.min(aWords.length, bWords.size) * 0.5 && overlap >= 1;
+  // Build a run lookup for quick access
+  const runById = new Map<string, NarrativeRun>();
+  for (const r of (industryRuns.length > 0 ? industryRuns : runs)) {
+    runById.set(r.id, r);
   }
-
-  const candidates: ExampleCandidate[] = [];
+  const narrativeByRunId = new Map<string, NarrativeExtractionResult>();
   for (const { parsed, run } of narratives) {
-    const analysis = parseAnalysis(run.analysisJson);
-    if (!analysis) continue;
-
-    // Only include responses that actually mention the brand
-    if (!isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) continue;
-
-    // Extract the brand-focused portion of the response
-    const cleanText = run.rawResponseText
-      .replace(/\*\*/g, "").replace(/\*/g, "")
-      .replace(/^#+\s+/gm, "").replace(/^[-*•]\s+/gm, "").replace(/^\d+\.\s+/gm, "");
-    const sentences = splitSentences(cleanText);
-    const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 2);
-    const brandExcerpt = brandContext.length > 0
-      ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500)
-      : cleanText.replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500);
-
-    // Find which top frames this run matches
-    for (const f of analysis.frames) {
-      if (f.strength < STRENGTH_THRESHOLD) continue;
-      const matchingTopFrame = topFrameNames.find((tf) => fuzzyFrameMatch(f.name, tf));
-      if (matchingTopFrame) {
-        candidates.push({
-          run, parsed, matchedFrame: matchingTopFrame,
-          frameStrength: f.strength,
-          brandStrength: analysis.brandMentionStrength,
-          brandExcerpt,
-        });
-      }
-    }
+    narrativeByRunId.set(run.id, parsed);
   }
 
-  // Pick top 2 candidates per frame, preferring high brand mention strength
   const usedRunIds = new Set<string>();
   const examples: {
     runId: string; prompt: string; excerpt: string; themes: string[];
@@ -493,22 +449,42 @@ export async function GET(req: NextRequest) {
   }[] = [];
 
   for (const frameName of topFrameNames) {
-    const frameMatches = candidates
-      .filter((c) => c.matchedFrame === frameName && !usedRunIds.has(c.run.id))
-      // Prefer responses where the brand is prominently discussed AND the frame is strong
-      .sort((a, b) => (b.brandStrength * b.frameStrength) - (a.brandStrength * a.frameStrength))
-      .slice(0, 2);
-    for (const c of frameMatches) {
-      usedRunIds.add(c.run.id);
+    // Get run IDs that contributed to THIS EXACT frame name during aggregation
+    const contributors = (frameRunIds.get(frameName) ?? [])
+      .filter((c) => !usedRunIds.has(c.runId))
+      .sort((a, b) => b.strength - a.strength);
+
+    let picked = 0;
+    for (const contributor of contributors) {
+      if (picked >= 2) break;
+      const run = runById.get(contributor.runId);
+      if (!run) continue;
+
+      // Only include responses that actually mention the brand
+      if (!isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) continue;
+
+      // Extract the brand-focused excerpt
+      const cleanText = run.rawResponseText
+        .replace(/\*\*/g, "").replace(/\*/g, "")
+        .replace(/^#+\s+/gm, "").replace(/^[-*•]\s+/gm, "").replace(/^\d+\.\s+/gm, "");
+      const sentences = splitSentences(cleanText);
+      const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 2);
+      const brandExcerpt = brandContext.length > 0
+        ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500)
+        : cleanText.replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 500);
+
+      const parsed = narrativeByRunId.get(contributor.runId);
+      usedRunIds.add(contributor.runId);
       examples.push({
-        runId: c.run.id,
-        prompt: expandPromptPlaceholders(c.run.prompt.text, { brandName, industry: brand.industry }),
-        excerpt: c.brandExcerpt,
-        themes: c.parsed.themes.map((t) => t.label),
-        sentiment: c.parsed.sentiment.label,
-        model: c.run.model,
+        runId: contributor.runId,
+        prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
+        excerpt: brandExcerpt,
+        themes: parsed ? parsed.themes.map((t) => t.label) : [],
+        sentiment: parsed ? parsed.sentiment.label : "NEU",
+        model: run.model,
         matchedFrame: frameName,
       });
+      picked++;
     }
   }
 
