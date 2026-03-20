@@ -240,7 +240,7 @@ function VisibilityV2Inner() {
         </div>
 
         <div className="px-5 py-4 mt-2">
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p className="text-base text-muted-foreground leading-relaxed">
             When someone asks AI about this space, does {brandName} come up? These metrics track how often AI platforms mention {brandName} unprompted—no brand in the query, just pure organic visibility.
           </p>
           {data.resultsByQuestion?.[0]?.promptText && (
