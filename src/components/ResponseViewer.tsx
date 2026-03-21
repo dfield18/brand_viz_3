@@ -191,6 +191,18 @@ function ResponseModalBody({ data, onClose }: { data: ResponseViewerData; onClos
         </div>
       )}
 
+      {/* Date label */}
+      {data.date && (
+        <p className="text-sm text-muted-foreground shrink-0">
+          Response from {new Date(data.date + "T00:00:00").toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+      )}
+
       {/* Formatted response */}
       <div className="overflow-y-auto flex-1 -mx-6 px-6">
         <div className="space-y-3 pb-2">
