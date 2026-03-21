@@ -465,9 +465,30 @@ export async function GET(req: NextRequest) {
     sentiment: string; model: string; matchedFrame: string;
   }[] = [];
 
+  // Fuzzy match finalized frame names to raw frameRunIds keys
+  // (validateFrames/ensureMinimumFrames may have renamed frames)
+  function findFrameContributors(frameName: string): { runId: string; strength: number }[] {
+    // Try exact match first
+    const exact = frameRunIds.get(frameName);
+    if (exact && exact.length > 0) return exact;
+    // Fuzzy: find the best-matching raw frame name
+    const lower = frameName.toLowerCase();
+    const words = lower.split(/\s+/).filter((w) => w.length > 3);
+    let bestKey = "";
+    let bestOverlap = 0;
+    for (const [key] of frameRunIds) {
+      const kl = key.toLowerCase();
+      if (kl.includes(lower) || lower.includes(kl)) return frameRunIds.get(key)!;
+      const kWords = new Set(kl.split(/\s+/).filter((w) => w.length > 3));
+      const overlap = words.filter((w) => kWords.has(w)).length;
+      if (overlap > bestOverlap) { bestOverlap = overlap; bestKey = key; }
+    }
+    if (bestOverlap >= 1 && bestKey) return frameRunIds.get(bestKey)!;
+    return [];
+  }
+
   for (const frameName of topFrameNames) {
-    // Get run IDs that contributed to THIS EXACT frame name during aggregation
-    const contributors = (frameRunIds.get(frameName) ?? [])
+    const contributors = findFrameContributors(frameName)
       .filter((c) => !usedRunIds.has(c.runId))
       .sort((a, b) => b.strength - a.strength);
 
