@@ -68,7 +68,7 @@ function ResponsesInner() {
       r.prompt.cluster,
       r.prompt.intent,
       `"${r.rawResponseText.replace(/"/g, '""')}"`,
-      r.createdAt,
+      new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       r.cost.total.toFixed(4),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
