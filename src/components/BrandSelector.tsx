@@ -40,7 +40,14 @@ export function BrandSelector({
             No brands yet
           </DropdownMenuItem>
         )}
-        {brands.map((brand) => (
+        {[...brands]
+          .sort((a, b) => {
+            // Current brand first
+            if (a.slug === currentSlug) return -1;
+            if (b.slug === currentSlug) return 1;
+            return a.name.localeCompare(b.name);
+          })
+          .map((brand) => (
           <DropdownMenuItem
             key={brand.id}
             onSelect={() => onSelect(brand.slug)}
