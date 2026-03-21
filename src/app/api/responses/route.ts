@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
+import { prisma } from "@/lib/prisma";
+import { formatJobMeta } from "@/lib/apiPipeline";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -25,25 +27,43 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 
-  type ResponseRun = {
-    id: string;
-    model: string;
-    promptId: string;
-    createdAt: Date;
-    rawResponseText: string;
-    promptTextHash: string | null;
-    analysisJson: unknown;
-    prompt: { text: string; cluster: string | null; intent: string | null };
-  };
-  const result = await fetchBrandRuns<ResponseRun>({
-    brandSlug,
-    model,
-    viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, rawResponseText: true, promptTextHash: true, analysisJson: true, prompt: { select: { text: true, cluster: true, intent: true } } } },
-    disableAllModel: false,
+  // Query ALL runs (no dedup) so the full data tab shows historical data
+  const brand = await prisma.brand.findUnique({
+    where: { slug: brandSlug },
+    select: { id: true, name: true, displayName: true, slug: true, industry: true, aliases: true },
   });
-  if (!result.ok) return result.response;
-  const { brand, job, runs } = result;
+  if (!brand) {
+    return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+  }
+
+  const isAll = model === "all";
+  const rangeCutoff = new Date(Date.now() - viewRange * 86_400_000);
+  const runWhere = isAll
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } };
+
+  const runs = await prisma.run.findMany({
+    where: runWhere,
+    select: {
+      id: true, model: true, promptId: true, createdAt: true,
+      rawResponseText: true, promptTextHash: true, analysisJson: true,
+      prompt: { select: { text: true, cluster: true, intent: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const job = await prisma.job.findFirst({
+    where: isAll
+      ? { brandId: brand.id, status: "done" }
+      : { brandId: brand.id, model, status: "done" },
+    orderBy: [{ finishedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true, model: true, range: true, finishedAt: true },
+  });
+
+  if (runs.length === 0) {
+    return NextResponse.json({ hasData: false, reason: "no_runs" });
+  }
+
   const brandName = brand.displayName || brand.name;
 
   try {
@@ -103,7 +123,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       hasData: true,
-      job: formatJobMeta(job!),
+      job: job ? formatJobMeta(job) : null,
       runs: runData,
       costs: {
         responseCost: Number(totalResponseCost.toFixed(6)),
