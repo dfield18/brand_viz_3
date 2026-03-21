@@ -71,7 +71,7 @@ export function CompetitorEntityDropdown({
         const comp = competitors.find((c) => c.entityId === n.entityId);
         return (
           <option key={n.entityId} value={n.entityId}>
-            {n.name}{comp ? ` (${comp.mentionRate}% recall)` : ""}
+            {n.name}{comp ? ` (mentioned in ${comp.mentionRate}% of AI answers)` : ""}
           </option>
         );
       })}
