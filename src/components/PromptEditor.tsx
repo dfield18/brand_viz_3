@@ -290,11 +290,30 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
         </button>
         {showSuggested && (
           <div className="space-y-3">
-            {clusterGroups.map((group) => (
+            {clusterGroups.map((group) => {
+              const allEnabled = group.prompts.every((p) => p.enabled);
+              const toggleAll = async () => {
+                const newEnabled = !allEnabled;
+                for (const p of group.prompts) {
+                  if (p.enabled !== newEnabled) {
+                    await handleToggle(p.id, p.enabled);
+                  }
+                }
+              };
+              return (
               <div key={group.cluster}>
-                <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-1.5 ml-1">
-                  {group.label}
-                </p>
+                <div className="flex items-center justify-between mb-1.5 ml-1">
+                  <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                    {group.label}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {allEnabled ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
                 <div className="space-y-1">
                   {group.prompts.map((p) => (
                     <PromptItem
@@ -319,7 +338,8 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
