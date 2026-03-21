@@ -394,6 +394,9 @@ export async function GET(req: NextRequest) {
     const entityDisplayNames = buildEntityDisplayNames(runs);
     const entityNames: Record<string, string> = {};
     for (const [id, name] of entityDisplayNames) entityNames[id] = name;
+    // Ensure the searched brand uses its proper display name (not titleCase of slug)
+    const brandDisplayName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
+    entityNames[brand.slug] = brandDisplayName;
 
     return NextResponse.json({
       hasData: true,

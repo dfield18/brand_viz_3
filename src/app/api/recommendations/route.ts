@@ -200,6 +200,7 @@ export async function GET(req: NextRequest) {
   const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
   const competitorWord = isOrg ? "other organizations" : "competitors";
   const entityDisplayNames = buildEntityDisplayNames(runs);
+  entityDisplayNames.set(brand.slug, brandName);
 
   /** Expand {brand}, {industry}, and {competitor} placeholders in prompt text */
   const expandPrompt = (text: string, run?: RecommendationRun) => {

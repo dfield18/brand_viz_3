@@ -174,6 +174,9 @@ export async function GET(req: NextRequest) {
 
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(runs);
+    // Ensure the searched brand uses its proper display name
+    const brandDisplayName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
+    entityDisplayNames.set(brand.slug, brandDisplayName);
 
     // Normalize entity IDs: merge duplicates (same as competition API)
     const allEntityIds = [...new Set(topicMetrics.map((m) => m.entityId))].filter((id) => id !== brand.slug);

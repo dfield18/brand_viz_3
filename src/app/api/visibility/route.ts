@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
   try {
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(allRuns);
+    const brandDisplayName = brand.displayName || brand.name;
+    entityDisplayNames.set(brand.slug, brandDisplayName);
 
     // Filter to industry-cluster responses only
     const runs = allRuns.filter((r) => r.prompt.cluster === "industry");

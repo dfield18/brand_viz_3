@@ -78,6 +78,8 @@ export async function GET(req: NextRequest) {
   try {
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(runs);
+    // Ensure the searched brand uses its proper display name
+    entityDisplayNames.set(brand.slug, brandName);
 
     const runIds = runs.map((r) => r.id);
     const totalResponses = runIds.length;
