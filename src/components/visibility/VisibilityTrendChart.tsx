@@ -189,7 +189,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
             )}
           </div>
           {!compact && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-2 mb-2">
               {effectiveMetric === "visibility"
                 ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
                 : effectiveMetric === "topResult"
@@ -236,7 +236,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
         </div>
       ) : (
       <>
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={320}>
         <AreaChart
           data={chartData}
           margin={{ top: 5, right: 20, bottom: 5, left: 5 }}
@@ -250,9 +250,10 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
           <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
           <XAxis
             dataKey="date"
-            fontSize={11}
+            fontSize={13}
             tickLine={false}
             axisLine={false}
+            tickMargin={8}
             tickFormatter={(d: string) => {
               if (isMonthly) {
                 const date = new Date(d + "T00:00:00");
@@ -265,9 +266,10 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
           />
           <YAxis
             domain={yDomain}
-            fontSize={11}
+            fontSize={13}
             tickLine={false}
             axisLine={false}
+            tickMargin={6}
             tickFormatter={(v) => `${v}%`}
             width={48}
           />
