@@ -66,6 +66,7 @@ export function computeBrandRank(
   const positions = [namePos, slugPos].filter((p) => p >= 0);
   if (aliases) {
     for (const alias of aliases) {
+      if (alias.length < 3) continue; // Skip very short aliases to avoid false positives
       const aliasPos = wordBoundaryIndex(responseText, alias);
       if (aliasPos >= 0) positions.push(aliasPos);
     }
