@@ -169,7 +169,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
           ) : (
             <>
               <span className="text-lg font-bold tabular-nums">{totalCitations}</span>
-              <span className="text-[10px] text-muted-foreground">citations</span>
+              <span className="text-[10px] text-muted-foreground">total URL citations</span>
             </>
           )}
         </div>
@@ -303,7 +303,8 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
 
           {apiData.sources.topDomains.length > 5 && (
             <p className="text-[11px] text-muted-foreground mt-3">
-              +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details
+              +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details.
+              Donut chart includes all {apiData.sources.topDomains.length} sources.
             </p>
           )}
         </div>
