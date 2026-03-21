@@ -139,7 +139,17 @@ export async function GET(req: NextRequest) {
   }
 
   // Validate frames: filter out generic jargon, replace with specific issues
+  // Track original names before validation so we can update frameRunIds
+  const preValidationNames = narrativeBase.frames.map((f: { frame: string }) => f.frame);
   narrativeBase.frames = await validateFrames(narrativeBase.frames, brandName);
+  // Update frameRunIds keys for any renamed frames
+  for (let i = 0; i < preValidationNames.length && i < narrativeBase.frames.length; i++) {
+    const oldName = preValidationNames[i];
+    const newName = (narrativeBase.frames[i] as { frame: string }).frame;
+    if (oldName !== newName && frameRunIds.has(oldName) && !frameRunIds.has(newName)) {
+      frameRunIds.set(newName, frameRunIds.get(oldName)!);
+    }
+  }
 
   // Fallback: if frames are empty after aggregation + validation, synthesize from raw responses
   const frameRunPool = industryRuns.length > 0 ? industryRuns : runs;
@@ -465,25 +475,23 @@ export async function GET(req: NextRequest) {
     sentiment: string; model: string; matchedFrame: string;
   }[] = [];
 
-  // Fuzzy match finalized frame names to raw frameRunIds keys
-  // (validateFrames/ensureMinimumFrames may have renamed frames)
+  // Find contributing runs for a finalized frame name
+  // After validateFrames renames are tracked above, most frames will have exact matches.
+  // For synthesized/padded frames, fall back to best word overlap (require 2+ words).
   function findFrameContributors(frameName: string): { runId: string; strength: number }[] {
-    // Try exact match first
     const exact = frameRunIds.get(frameName);
     if (exact && exact.length > 0) return exact;
-    // Fuzzy: find the best-matching raw frame name
+    // Fuzzy fallback: require at least 2 overlapping significant words to avoid false matches
     const lower = frameName.toLowerCase();
     const words = lower.split(/\s+/).filter((w) => w.length > 3);
     let bestKey = "";
     let bestOverlap = 0;
     for (const [key] of frameRunIds) {
-      const kl = key.toLowerCase();
-      if (kl.includes(lower) || lower.includes(kl)) return frameRunIds.get(key)!;
-      const kWords = new Set(kl.split(/\s+/).filter((w) => w.length > 3));
+      const kWords = new Set(key.toLowerCase().split(/\s+/).filter((w) => w.length > 3));
       const overlap = words.filter((w) => kWords.has(w)).length;
       if (overlap > bestOverlap) { bestOverlap = overlap; bestKey = key; }
     }
-    if (bestOverlap >= 1 && bestKey) return frameRunIds.get(bestKey)!;
+    if (bestOverlap >= 2 && bestKey) return frameRunIds.get(bestKey)!;
     return [];
   }
 
