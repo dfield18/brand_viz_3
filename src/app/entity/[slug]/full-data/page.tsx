@@ -225,6 +225,17 @@ ${runs.map((r) => `
             key={run.id}
             className="rounded-xl bg-card overflow-hidden shadow-section"
           >
+            {/* Date */}
+            <div className="px-5 pt-3 pb-1">
+              <p className="text-xs text-muted-foreground">
+                {new Date(run.createdAt).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
             {/* Prompt header */}
             <div className="border-b border-border bg-muted/50 px-5 py-3">
               <p className="text-sm font-medium text-foreground">
