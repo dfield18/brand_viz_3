@@ -737,6 +737,7 @@ Rules:
 - Focus on the ONE most noteworthy finding — don't try to mention every metric.
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
+- When referencing brand recall, make it clear that the % refers to AI answers where ${brandName} was NOT named in the question but AI brought it up anyway. Say something like "even when not named in the query" or "without being asked about ${brandName} directly."
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
         },
