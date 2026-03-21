@@ -16,10 +16,10 @@ const RANK_COLORS: Record<string, string> = {
 };
 
 const RANK_LABELS: Record<string, string> = {
-  "1": "Rank 1",
-  "2": "Rank 2",
-  "3": "Rank 3",
-  other: "Rank 4+",
+  "1": "Position 1",
+  "2": "Position 2",
+  "3": "Position 3",
+  other: "Position 4+",
 };
 
 export function CompetitorRankDistribution({
@@ -108,7 +108,7 @@ export function CompetitorRankDistribution({
                   {segments.map((seg) => (
                     <span key={seg.key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${seg.color}`} />
-                      <span className="font-medium">#{seg.key === "other" ? "4+" : seg.key} rank,</span>
+                      <span className="font-medium">#{seg.key === "other" ? "4+" : seg.key} position,</span>
                       <span className="text-muted-foreground/60">{seg.count} {seg.count === 1 ? "response" : "responses"}</span>
                     </span>
                   ))}

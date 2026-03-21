@@ -240,7 +240,7 @@ export function BrandBreakdown({
         {/* Rank Distribution */}
         {rankDistribution && brandEntityId && Object.keys(rankDistribution).length > 0 && (
           <div className="mt-6 pt-6 border-t border-border">
-            <h3 className="text-sm font-normal text-muted-foreground mb-1">Rank Distribution</h3>
+            <h3 className="text-sm font-normal text-muted-foreground mb-1">Position Distribution</h3>
             <p className="text-xs text-muted-foreground mb-4">
               How often each brand lands in the #1, #2, or #3 position across all AI responses
             </p>
