@@ -218,7 +218,7 @@ export function SummaryCardsDonut({
       description: `% of all AI brand mentions captured by ${brandName}`,
       tooltip: "Based on general industry questions — prompts that don't mention the brand by name — so results reflect organic AI awareness.",
       delta: kpiDeltas?.shareOfVoice ?? null,
-      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v} pts vs prior month`,
+      deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
       metricKey: "sov",
       sparkKey: "sov",
     },

@@ -127,7 +127,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
 
   const mainDataKey = effectiveMetric === "visibility" ? "mentionRate" : effectiveMetric === "topResult" ? "firstMentionPct" : "sovPct";
   const activeDataKey = focusModel === "all" ? mainDataKey : `${focusModel}_${mainDataKey}`;
-  const strokeColor = effectiveMetric === "visibility" ? "var(--chart-1)" : effectiveMetric === "topResult" ? "var(--chart-3)" : "var(--chart-2)";
+  const strokeColor = effectiveMetric === "visibility" ? "var(--chart-1)" : effectiveMetric === "topResult" ? "var(--chart-2)" : "var(--chart-3)";
   const gradientId = effectiveMetric === "visibility" ? "visGradient" : effectiveMetric === "topResult" ? "trGradient" : "sovGradient";
 
   return (

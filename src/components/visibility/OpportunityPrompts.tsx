@@ -18,7 +18,7 @@ export function OpportunityPrompts({ prompts, isOrg }: OpportunityPromptsProps) 
         <h2 className="text-base font-semibold">Opportunity Prompts</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Top prompts where {isOrg ? "other organizations appear" : "competitors appear"} but {isOrg ? "this organization doesn\u2019t" : "you don\u2019t"}
+        Top prompts where {isOrg ? "other organizations appear" : "competitors appear"} but {isOrg ? "this organization doesn\u2019t" : "the brand doesn\u2019t"}
       </p>
       <ul className="space-y-3">
         {prompts.map((p) => (

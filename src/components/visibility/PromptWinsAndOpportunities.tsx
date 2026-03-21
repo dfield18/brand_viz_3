@@ -84,7 +84,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
         {tab === "wins" ? (
           wins.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No #1 rankings yet. Run more prompts to find {brandName ? `${brandName}'s` : "your"} wins.
+              No #1 rankings yet. Run more prompts to find {brandName ? `${brandName}'s` : "the brand's"} wins.
             </p>
           ) : (
             <table className="w-full text-sm table-fixed">
