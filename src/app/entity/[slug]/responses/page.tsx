@@ -301,8 +301,16 @@ ${runs.map((r) => `
       {/* Prompt/Response cards */}
       <div className="space-y-4">
         {filteredRuns.map((run) => (
+          <div key={run.id}>
+            <p className="text-xs text-muted-foreground mb-1.5">
+              {new Date(run.createdAt).toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
           <div
-            key={run.id}
             className="rounded-lg bg-card overflow-hidden"
           >
             {/* Prompt header */}
@@ -336,6 +344,7 @@ ${runs.map((r) => `
                 {run.rawResponseText}
               </div>
             </div>
+          </div>
           </div>
         ))}
       </div>
