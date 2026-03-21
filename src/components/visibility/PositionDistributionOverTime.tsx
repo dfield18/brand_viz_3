@@ -21,10 +21,10 @@ interface PositionDistributionOverTimeProps {
 }
 
 const SERIES = [
-  { key: "pos1", label: "#1", color: "hsl(160, 60%, 45%)" },       // green — best
-  { key: "pos2_3", label: "2–3", color: "hsl(217, 91%, 55%)" },    // blue
-  { key: "pos4_5", label: "4–5", color: "hsl(38, 92%, 50%)" },     // amber
-  { key: "pos6plus", label: "6+", color: "hsl(0, 72%, 55%)" },     // red — worst
+  { key: "pos1", label: "Rank #1", color: "hsl(160, 60%, 45%)" },       // green — best
+  { key: "pos2_3", label: "Rank #2–#3", color: "hsl(217, 91%, 55%)" },  // blue
+  { key: "pos4_5", label: "Rank #4–#5", color: "hsl(38, 92%, 50%)" },   // amber
+  { key: "pos6plus", label: "Rank #6+", color: "hsl(0, 72%, 55%)" },  // red — worst
 ] as const;
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
@@ -151,7 +151,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
           <ResponsiveContainer width="95%" height={340} style={{ marginLeft: "auto" }}>
             <AreaChart
               data={chartData}
-              margin={{ top: 5, right: 20, bottom: 10, left: 10 }}
+              margin={{ top: 5, right: 20, bottom: 10, left: 15 }}
               stackOffset="expand"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
@@ -171,15 +171,15 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
                 fontSize={13}
                 tickLine={false}
                 axisLine={false}
-                tickMargin={6}
+                tickMargin={8}
                 tickFormatter={(v) => `${Math.round(v * 100)}%`}
-                width={60}
+                width={72}
                 label={{
                   value: "% of responses",
                   angle: -90,
                   position: "insideLeft",
-                  offset: 16,
-                  style: { fontSize: 14, fill: "var(--muted-foreground)", textAnchor: "middle" },
+                  offset: 24,
+                  style: { fontSize: 13, fill: "var(--muted-foreground)", textAnchor: "middle" },
                 }}
               />
               <Tooltip
@@ -220,7 +220,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
           </ResponsiveContainer>
 
           <p className="text-xs text-muted-foreground/60 text-center mt-3">
-            Green = #1 recommendation &middot; Blue = 2nd–3rd &middot; Amber = 4th–5th &middot; Red = 6th or lower
+            Green = Rank #1 (top recommendation) &middot; Blue = Rank #2–#3 &middot; Amber = Rank #4–#5 &middot; Red = Rank #6+
           </p>
         </div>
       )}
