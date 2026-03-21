@@ -77,7 +77,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-base font-semibold">{isOrg ? "Landscape" : "Competitive Landscape"}</h2>
+          <h2 className="text-base font-semibold">{isOrg ? "Issue Landscape" : "Competitive Landscape"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isOrg
               ? `Other organizations AI mentions alongside ${brandName || "this brand"} in this space`

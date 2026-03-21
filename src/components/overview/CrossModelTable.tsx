@@ -13,6 +13,7 @@ const MODEL_LABELS: Record<string, string> = {
   gemini: "GEMINI",
   claude: "CLAUDE",
   perplexity: "PERPLEXITY",
+  google: "GOOGLE AIO",
 };
 
 /**
