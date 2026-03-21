@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   LineChart,
   Line,
@@ -75,30 +75,8 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
   const visibleFrames = frameNames.slice(0, MAX_VISIBLE_FRAMES);
 
   // Compute spaced-out label Y positions so overlapping labels get pushed apart
-  const labelYPositions = useMemo(() => {
-    if (filteredData.length === 0) return {} as Record<string, number>;
-    const firstRow = filteredData[0];
-    // Collect raw Y values (percentage) for each visible frame
-    const entries = visibleFrames.map((name) => ({
-      name,
-      value: Number(firstRow[name] ?? 0),
-    }));
-    // Sort by value descending (highest value = highest on chart = lowest Y pixel)
-    entries.sort((a, b) => b.value - a.value);
-    // Minimum gap in percentage-point space between labels
-    const MIN_GAP = 4;
-    const positions: Record<string, number> = {};
-    let lastY: number | null = null;
-    for (const entry of entries) {
-      let y = entry.value;
-      if (lastY !== null && lastY - y < MIN_GAP) {
-        y = lastY - MIN_GAP;
-      }
-      positions[entry.name] = y;
-      lastY = y;
-    }
-    return positions;
-  }, [filteredData, visibleFrames]);
+  // Track pixel-space label positions to avoid overlap (populated during render)
+  const labelPixelPositions = useRef<Record<string, number>>({});
 
   // Reset highlight if the selected frame is no longer visible
   const effectiveHighlight = highlightFrame && visibleFrames.includes(highlightFrame) ? highlightFrame : null;
@@ -200,14 +178,20 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
                   label={(props: { x?: string | number; y?: string | number; index?: number }) => {
                     if (props.index !== 0) return <g key={`label-skip-${name}-${props.index}`} />;
                     const x = Number(props.x ?? 0) + 4;
-                    const rawY = Number(props.y ?? 0);
-                    // Use spaced label position: convert percentage offset to pixel offset from raw y
-                    const rawValue = Number((props as Record<string, unknown>).value ?? 0);
-                    const spacedValue = labelYPositions[name] ?? rawValue;
-                    // Chart Y axis is inverted (higher value = lower pixel Y), estimate px per percentage point
-                    const pxPerPt = rawValue > 0 ? rawY / rawValue : 3;
-                    const yOffset = (rawValue - spacedValue) * pxPerPt;
-                    const y = rawY - yOffset - 8;
+                    let y = Number(props.y ?? 0) - 8;
+                    // Push labels apart in pixel space to avoid overlap
+                    const MIN_PX_GAP = 16;
+                    const usedPositions = Object.entries(labelPixelPositions.current)
+                      .filter(([n]) => n !== name)
+                      .map(([, py]) => py);
+                    for (let pass = 0; pass < 5; pass++) {
+                      for (const used of usedPositions) {
+                        if (Math.abs(y - used) < MIN_PX_GAP) {
+                          y = y < used ? used - MIN_PX_GAP : used + MIN_PX_GAP;
+                        }
+                      }
+                    }
+                    labelPixelPositions.current[name] = y;
                     const isActive = !effectiveHighlight || effectiveHighlight === name;
                     return (
                       <text
