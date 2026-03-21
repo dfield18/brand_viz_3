@@ -83,7 +83,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
               ? `Other organizations AI mentions alongside ${brandName || "this brand"} in this space`
               : `How ${brandName || "this brand"} stacks up against top competitors in AI responses`}
           </p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+          <p className="text-xs text-muted-foreground/70 mt-1">
             Bars show share of voice — each brand&apos;s share of all entity mentions
           </p>
         </div>
