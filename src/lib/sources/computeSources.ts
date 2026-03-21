@@ -347,12 +347,14 @@ export function computeOfficialSiteCitations(
   const results: OfficialSiteCitation[] = [];
 
   for (const entityId of entityIds) {
-    // Find the official domain for this entity
-    const officialDomain = allDomains.find((d) => isOfficialDomain(d, entityId));
-    if (!officialDomain) continue; // skip entities with no official site in citations
+    // Find ALL official domains for this entity (e.g., microsoft.com, azure.microsoft.com)
+    const officialDomains = allDomains.filter((d) => isOfficialDomain(d, entityId));
+    if (officialDomains.length === 0) continue;
+    const officialDomain = officialDomains[0]; // primary domain for display
 
-    // Collect citations for this domain
-    const domainOccs = occurrences.filter((o) => o.domain === officialDomain);
+    // Collect citations across ALL official domains
+    const officialSet = new Set(officialDomains);
+    const domainOccs = occurrences.filter((o) => officialSet.has(o.domain));
     if (domainOccs.length === 0) continue;
 
     const models = [...new Set(domainOccs.map((o) => o.model))];
