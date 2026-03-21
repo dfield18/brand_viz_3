@@ -601,7 +601,6 @@ function CompetitorPerceptionSection({
             <CompetitorNarrativeCards
               narratives={narratives}
               competitors={competitors}
-              selectedEntityId={selectedEntity}
             />
           </div>
         </>
