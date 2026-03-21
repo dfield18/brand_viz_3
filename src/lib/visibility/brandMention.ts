@@ -20,7 +20,7 @@ function wordBoundaryRegex(term: string): RegExp {
  * Find the index of a word-boundary match for a term in text (case-insensitive).
  * Returns -1 if not found.
  */
-function wordBoundaryIndex(text: string, term: string): number {
+export function wordBoundaryIndex(text: string, term: string): number {
   const match = wordBoundaryRegex(term).exec(text);
   return match ? match.index : -1;
 }
