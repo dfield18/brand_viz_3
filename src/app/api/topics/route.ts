@@ -18,6 +18,7 @@ import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import type { TopicModelSplitRow } from "@/types/api";
 import { buildEntityDisplayNames, expandPromptPlaceholders } from "@/lib/utils";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 
 const TOPIC_LABEL_MAP: Record<string, string> = {};
 for (const t of TOPIC_TAXONOMY) {
@@ -41,12 +42,12 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 
-  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown };
+  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown; rawResponseText: string };
   const result = await fetchBrandRuns<MinimalRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true, rawResponseText: true } },
   });
   if (!result.ok) return result.response;
   const { brand, job, runs, rangeCutoff } = result;
@@ -121,8 +122,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Bulk query EntityResponseMetric
-    const metrics = await prisma.entityResponseMetric.findMany({
+    // Bulk query EntityResponseMetric (for entity detection)
+    const rawMetrics = await prisma.entityResponseMetric.findMany({
       where: { runId: { in: classifiedRunIds } },
       select: {
         runId: true,
@@ -133,9 +134,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Map to TopicMetricInput
+    // Compute text-order ranks for brand (consistent with other tabs)
+    const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+    const brandTextRanks = new Map<string, number | null>();
+    for (const r of runs) {
+      brandTextRanks.set(r.id, computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases));
+    }
+
+    // Map to TopicMetricInput, replacing brand's rankPosition with text-order
     const runDateMap = new Map(runs.map((r) => [r.id, r.createdAt]));
-    const topicMetrics: TopicMetricInput[] = metrics
+    const topicMetrics: TopicMetricInput[] = rawMetrics
       .filter((m) => promptTopicMap.has(m.promptId))
       .map((m) => ({
         runId: m.runId,
@@ -143,7 +151,7 @@ export async function GET(req: NextRequest) {
         topicKey: promptTopicMap.get(m.promptId)!,
         entityId: m.entityId,
         model: m.model,
-        rankPosition: m.rankPosition,
+        rankPosition: m.entityId === brand.slug ? (brandTextRanks.get(m.runId) ?? null) : m.rankPosition,
         createdAt: runDateMap.get(m.runId) ?? new Date(),
       }));
 

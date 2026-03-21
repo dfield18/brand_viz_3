@@ -88,8 +88,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ hasData: false, reason: "no_runs_in_range" });
     }
 
-    // Bulk query EntityResponseMetric for those runs
-    const metrics = await prisma.entityResponseMetric.findMany({
+    // Bulk query EntityResponseMetric for entity detection
+    const rawMetrics = await prisma.entityResponseMetric.findMany({
       where: { runId: { in: runIds } },
       select: {
         runId: true,
@@ -99,6 +99,30 @@ export async function GET(req: NextRequest) {
         rankPosition: true,
       },
     });
+
+    // Recompute rankPosition using text-order (first mentioned = #1) for consistency
+    // Build a map of runId → text-order ranks for all entities in that run
+    const runTextRanks = new Map<string, Map<string, number>>();
+    for (const run of runs) {
+      const entitiesInRun = rawMetrics.filter((m) => m.runId === run.id);
+      if (entitiesInRun.length === 0) continue;
+      const positions: { entityId: string; pos: number }[] = [];
+      for (const m of entitiesInRun) {
+        const name = m.entityId === brand.slug ? brand.name : resolveEntityName(m.entityId, entityDisplayNames);
+        const pos = wordBoundaryIndex(run.rawResponseText, name);
+        if (pos >= 0) positions.push({ entityId: m.entityId, pos });
+      }
+      positions.sort((a, b) => a.pos - b.pos);
+      const rankMap = new Map<string, number>();
+      positions.forEach((p, i) => rankMap.set(p.entityId, i + 1));
+      runTextRanks.set(run.id, rankMap);
+    }
+
+    // Replace prominence-based rankPosition with text-order rank
+    const metrics = rawMetrics.map((m) => ({
+      ...m,
+      rankPosition: runTextRanks.get(m.runId)?.get(m.entityId) ?? null,
+    }));
 
     // Group metrics by entityId
     type Metric = (typeof metrics)[number];
