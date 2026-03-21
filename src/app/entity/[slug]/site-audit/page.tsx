@@ -507,12 +507,12 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
   sections.push({ heading: "What This Means", body: bottomLine });
 
   return (
-    <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-      <h2 className="text-sm font-semibold mb-4">AI Readiness Summary</h2>
-      <div className="space-y-5">
+    <section className="rounded-xl bg-card px-6 py-6 shadow-section">
+      <h2 className="text-base font-semibold mb-5">AI Readiness Summary</h2>
+      <div className="space-y-6">
         {sections.map((sec, i) => (
           <div key={i}>
-            <h3 className="text-sm font-medium text-foreground mb-1">{sec.heading}</h3>
+            <h3 className="text-base font-semibold text-foreground mb-2">{sec.heading}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{sec.body}</p>
           </div>
         ))}
@@ -621,8 +621,14 @@ function SiteAuditInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-6 xl:max-w-[1060px]">
+      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         <Header brandName={brandName} url={audit.url} />
+
+        <div className="px-5 py-4">
+          <p className="text-base text-muted-foreground leading-relaxed">
+            How well is {brandName}&apos;s website optimized for AI platforms? This audit checks whether AI crawlers like ChatGPT, Gemini, and Perplexity can access, read, and understand the site&apos;s content — and suggests improvements to increase {brandName}&apos;s visibility in AI-generated answers.
+          </p>
+        </div>
 
         {/* URL bar with re-audit option */}
         <div className="flex items-center gap-3">
@@ -654,11 +660,11 @@ function SiteAuditInner() {
         </div>
 
         {/* ── Technical Details ─────────────────────────────────── */}
-        <div id="technical-details" className="scroll-mt-24 space-y-6">
+        <div id="technical-details" className="scroll-mt-24 space-y-8">
           <div>
             <h2 className="text-lg font-semibold">Technical Details</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Detailed check results for each audit category.
+            <p className="text-sm text-muted-foreground mt-1">
+              Detailed check results for each audit category — expand each section to see specific findings and recommendations.
             </p>
           </div>
 
