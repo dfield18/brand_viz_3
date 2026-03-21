@@ -50,7 +50,7 @@ function FullDataInner() {
       r.prompt.cluster,
       r.prompt.intent,
       `"${r.rawResponseText.replace(/"/g, '""')}"`,
-      new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      `"${new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}"`,
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
