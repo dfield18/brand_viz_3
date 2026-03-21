@@ -114,20 +114,24 @@ export async function GET(req: NextRequest) {
     aliasMap.set(brand.slug, brand.slug);
     byEntity = mergeEntityMetrics(byEntity, aliasMap);
 
+    // Propagate display names to canonical IDs after normalization
+    for (const [entityId, canonical] of aliasMap) {
+      if (entityId !== canonical && !entityDisplayNames.has(canonical)) {
+        const aliasName = entityDisplayNames.get(entityId);
+        if (aliasName) entityDisplayNames.set(canonical, aliasName);
+      }
+    }
+
     // Find brand entity metrics
     const brandMetrics = byEntity.get(brand.slug) ?? [];
     const brandRunIds = new Set(brandMetrics.map((m) => m.runId));
 
-    // Auto-discover competitors: top N by co-occurrence with brand
+    // Auto-discover competitors: top N by total appearances (not just co-occurrence with brand)
+    // This ensures competitors are shown even when the brand has low mention rate
     const cooccurrence: { entityId: string; count: number }[] = [];
     for (const [entityId, entityMetrics] of byEntity) {
       if (entityId === brand.slug) continue;
-      const coCount = entityMetrics.filter(
-        (m) => brandRunIds.has(m.runId),
-      ).length;
-      if (coCount > 0) {
-        cooccurrence.push({ entityId, count: coCount });
-      }
+      cooccurrence.push({ entityId, count: entityMetrics.length });
     }
     cooccurrence.sort((a, b) => b.count - a.count);
     // Take extra candidates so we still have enough after filtering unrelated ones
