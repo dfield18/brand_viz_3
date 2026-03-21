@@ -83,6 +83,9 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
               ? `Other organizations AI mentions alongside ${brandName || "this brand"} in this space`
               : `How ${brandName || "this brand"} stacks up against top competitors in AI responses`}
           </p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+            Bars show share of voice — each brand&apos;s share of all entity mentions
+          </p>
         </div>
       </div>
 
@@ -116,8 +119,8 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
-                  <span className="text-xs tabular-nums text-muted-foreground w-10 text-right shrink-0">
-                    {Number(row.mentionShare).toFixed(1)}%
+                  <span className="text-xs tabular-nums text-muted-foreground text-right shrink-0">
+                    {Number(row.mentionShare).toFixed(1)}% <span className="text-muted-foreground/50">SoV</span>
                   </span>
                 </div>
               </div>
