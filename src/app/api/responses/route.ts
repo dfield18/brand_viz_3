@@ -32,13 +32,14 @@ export async function GET(req: NextRequest) {
     createdAt: Date;
     rawResponseText: string;
     promptTextHash: string | null;
+    analysisJson: unknown;
     prompt: { text: string; cluster: string | null; intent: string | null };
   };
   const result = await fetchBrandRuns<ResponseRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { include: { prompt: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, rawResponseText: true, promptTextHash: true, analysisJson: true, prompt: { select: { text: true, cluster: true, intent: true } } } },
     disableAllModel: false,
   });
   if (!result.ok) return result.response;
@@ -55,7 +56,13 @@ export async function GET(req: NextRequest) {
 
     const runData = runs.map((run) => {
       const pricing = MODEL_PRICING[run.model] ?? defaultPricing;
-      const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+      let promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
+      if (brand.industry) promptText = promptText.replace(/\bthe industry\b/gi, `the ${brand.industry} industry`);
+      if (promptText.includes("{competitor}")) {
+        const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
+        const topComp = analysis?.competitors?.[0]?.name ?? "competitors";
+        promptText = promptText.replace(/\{competitor\}/gi, topComp);
+      }
       const fullInput = RESPONSE_SYSTEM_PREFIX + promptText;
 
       // Response generation tokens
@@ -79,7 +86,7 @@ export async function GET(req: NextRequest) {
         id: run.id,
         model: run.model,
         prompt: {
-          text: run.prompt.text,
+          text: promptText,
           cluster: run.prompt.cluster,
           intent: run.prompt.intent,
         },
