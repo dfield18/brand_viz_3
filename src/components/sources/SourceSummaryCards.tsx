@@ -145,7 +145,7 @@ export default function SourceSummaryCards({ scope, summary, emerging, topDomain
       .sort((a, b) => b.citations - a.citations);
   }, [topDomains]);
 
-  const topType = typeBreakdown[0];
+  const topType = typeBreakdown.find((t) => t.category !== "other") ?? typeBreakdown[0];
 
   // Normalize citation density to 0-100 for donut (cap at 10 citations/response = 100%)
   const citationDensityPct = Math.min((summary.citationsPerResponse / 10) * 100, 100);
