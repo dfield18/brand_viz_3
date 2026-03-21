@@ -176,7 +176,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
         {/* Left: Overall horizontal bar chart */}
         <div>
           <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
-            Overall Distribution
+            How Often Each Theme Appears
           </h3>
           <ResponsiveContainer width="100%" height={barChartHeight}>
             <BarChart
@@ -232,10 +232,10 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
         {/* Right: Radar chart */}
         <div>
           <h3 className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">
-            Frame Profile
+            Theme Comparison by Platform
           </h3>
           <p className="text-[11px] text-muted-foreground mb-3">
-            Larger area = more AI responses use this narrative
+            Bigger shape means AI talks about that theme more often
           </p>
           <ResponsiveContainer width="100%" height={radarHeight}>
             <RadarChart cx="50%" cy="50%" outerRadius="42%" data={data}>
@@ -276,7 +276,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-        Each bar represents a recurring theme in how AI describes you (e.g., &quot;Reliability,&quot; &quot;Innovation&quot;). Percentages show how often each theme appears in AI responses from the selected platform.
+        Each bar represents a recurring theme in how AI describes {brandName}. Percentages show how often each theme appears in AI responses from the selected platform.
       </p>
     </section>
   );

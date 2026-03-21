@@ -145,7 +145,7 @@ export function OverviewScorecard({
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
       description: dominantFrames.length > 1
         ? `${dominantFrames.length} themes tied at ${topFrame?.percentage}% of responses`
-        : "The main theme AI uses to describe you",
+        : "The main theme AI uses to describe this brand",
       tooltip: "The most common narrative frame AI models use when discussing this brand, based on structured analysis of AI responses.",
       isNarrative: true,
       narrativeFrames: dominantFrames.length > 0 ? dominantFrames : undefined,

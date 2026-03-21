@@ -102,7 +102,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                   </span>
                   {row.avgRank !== null && (
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
-                      Avg #{row.avgRank.toFixed(1)}
+                      Avg position: #{row.avgRank.toFixed(1)}
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-48 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                         Average ranking position in AI responses. #1 means {isOrg ? "the organization" : "the brand"} is typically mentioned first.
                       </span>

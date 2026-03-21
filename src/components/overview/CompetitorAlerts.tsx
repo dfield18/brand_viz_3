@@ -84,7 +84,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               </span>
               {!isStable && (
                 <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
-                  {isRising ? "+" : ""}{alert.mentionRateChange.toFixed(1)} pts <span className="text-muted-foreground/60">vs. {periodLabel}</span>
+                  {isRising ? "+" : ""}{Math.round(alert.mentionRateChange)} points <span className="text-muted-foreground/60">vs. {periodLabel}</span>
                 </span>
               )}
             </div>
