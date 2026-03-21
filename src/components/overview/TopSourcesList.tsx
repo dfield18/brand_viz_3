@@ -8,16 +8,16 @@ import { MODEL_LABELS } from "@/lib/constants";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reviews: "Reviews",
-  news_media: "News",
+  news_media: "News & Media",
   video: "Video",
   ecommerce: "E-commerce",
   reference: "Reference",
-  social_media: "Social",
-  government: "Gov",
+  social_media: "Social Media",
+  government: "Government",
   academic: "Academic",
-  blog_forum: "Blog",
-  brand_official: "Official",
-  technology: "Tech",
+  blog_forum: "Blog / Forum",
+  brand_official: "Brand / Official",
+  technology: "Technology",
   other: "Other",
 };
 
@@ -79,14 +79,32 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
       total += d.citations;
     }
     if (total === 0) return { pieData: [], totalCitations: 0 };
-    const slices = Object.entries(counts)
+    const rawSlices = Object.entries(counts)
       .map(([key, value]) => ({
         key,
         name: CATEGORY_LABELS[key] ?? key,
         value,
-        pct: Math.round((value / total) * 100),
+        pct: total > 0 ? (value / total) * 100 : 0,
       }))
       .sort((a, b) => b.value - a.value);
+    // Roll up categories under 5% into "Other" (matches sources tab)
+    let otherValue = 0;
+    const slices: typeof rawSlices = [];
+    for (const slice of rawSlices) {
+      if (slice.pct < 5 || slice.key === "other") {
+        otherValue += slice.value;
+      } else {
+        slices.push({ ...slice, pct: Math.round(slice.pct) });
+      }
+    }
+    if (otherValue > 0) {
+      slices.push({
+        key: "other",
+        name: "Other",
+        value: otherValue,
+        pct: total > 0 ? Math.round((otherValue / total) * 100) : 0,
+      });
+    }
     return { pieData: slices, totalCitations: total };
   }, [topDomains]);
 
