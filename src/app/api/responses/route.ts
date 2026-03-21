@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
-import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -102,11 +102,25 @@ export async function GET(req: NextRequest) {
       totalInputTokens += respInputTokens + extractInputTokens;
       totalOutputTokens += respOutputTokens + extractOutputTokens;
 
-      // Extract top 5 brand names for industry-cluster runs
+      // Extract top 5 brands by text order for industry-cluster runs
+      // Uses same text-order methodology as avg position/ranking
       const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
-      const topBrands = run.prompt.cluster === "industry"
-        ? (analysis?.competitors ?? []).slice(0, 5).map((c) => c.name)
-        : [];
+      let topBrands: string[] = [];
+      if (run.prompt.cluster === "industry") {
+        const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+        const allEntities: { name: string; pos: number }[] = [];
+        // Add the searched brand
+        const brandPos = wordBoundaryIndex(run.rawResponseText, brandName);
+        if (brandPos >= 0) allEntities.push({ name: brandName, pos: brandPos });
+        // Add competitors
+        for (const c of (analysis?.competitors ?? [])) {
+          const pos = wordBoundaryIndex(run.rawResponseText, c.name);
+          if (pos >= 0) allEntities.push({ name: c.name, pos });
+        }
+        // Sort by text position (first mentioned = rank #1)
+        allEntities.sort((a, b) => a.pos - b.pos);
+        topBrands = allEntities.slice(0, 5).map((e) => e.name);
+      }
 
       return {
         id: run.id,
