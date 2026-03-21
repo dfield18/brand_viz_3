@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import type { CompetitorNarrative, CompetitorRow } from "@/types/api";
 import { StrengthsWeaknesses } from "@/components/narrative/StrengthsWeaknesses";
 
@@ -9,6 +9,7 @@ interface CompetitorNarrativeCardsProps {
   narratives: CompetitorNarrative[];
   competitors: CompetitorRow[];
   selectedEntityId?: string;
+  onViewResponse?: (runId: string) => void;
 }
 
 const SENTIMENT_COLOR: Record<string, string> = {
@@ -27,7 +28,7 @@ const THEME_COLORS = [
   "bg-rose-100 text-rose-800",
 ];
 
-export function CompetitorNarrativeCards({ narratives, competitors, selectedEntityId }: CompetitorNarrativeCardsProps) {
+export function CompetitorNarrativeCards({ narratives, competitors, selectedEntityId, onViewResponse }: CompetitorNarrativeCardsProps) {
   const [prevSelected, setPrevSelected] = useState(selectedEntityId);
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     if (selectedEntityId) return new Set([selectedEntityId]);
@@ -160,6 +161,28 @@ export function CompetitorNarrativeCards({ narratives, competitors, selectedEnti
                       weaknesses={narrative.weaknesses}
                       brandName={narrative.name}
                     />
+                  </div>
+                )}
+
+                {/* View sample responses */}
+                {onViewResponse && narrative.sampleRunIds && narrative.sampleRunIds.length > 0 && (
+                  <div className="pt-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2">
+                      View AI Responses Mentioning {narrative.name}
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {narrative.sampleRunIds.slice(0, 3).map((runId, i) => (
+                        <button
+                          key={runId}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onViewResponse(runId); }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Response {i + 1}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -868,6 +868,10 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
+      // Collect sample run IDs where this competitor appears (for click-through)
+      const eRunIdSet = entityRunIds.get(entityId);
+      const sampleRunIds = eRunIdSet ? [...eRunIdSet].slice(0, 5) : [];
+
       competitorNarratives.push({
         entityId,
         name: comp.name,
@@ -875,6 +879,7 @@ export async function GET(req: NextRequest) {
         strengths,
         weaknesses,
         descriptors,
+        sampleRunIds,
       });
     }
 

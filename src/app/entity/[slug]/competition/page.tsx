@@ -21,6 +21,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { useResponseDetail } from "@/lib/useResponseDetail";
 
 interface ApiResponse {
   hasData: boolean;
@@ -536,6 +537,7 @@ function CompetitorPerceptionSection({
   const [model, setModel] = useState(pageModel);
   const defaultEntity = useDefaultCompetitorEntity(initialNarratives, initialCompetitors);
   const [selectedEntity, setSelectedEntity] = useState(defaultEntity);
+  const { openByRunId } = useResponseDetail(brandSlug);
 
   const url =
     model !== pageModel
@@ -601,6 +603,7 @@ function CompetitorPerceptionSection({
             <CompetitorNarrativeCards
               narratives={narratives}
               competitors={competitors}
+              onViewResponse={(runId) => openByRunId(runId, { brandName })}
             />
           </div>
         </>

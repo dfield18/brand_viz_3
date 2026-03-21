@@ -407,6 +407,7 @@ export interface CompetitorNarrative {
   strengths: NarrativeClaim[];
   weaknesses: NarrativeClaim[];
   descriptors: NarrativeDescriptor[];
+  sampleRunIds?: string[];
 }
 
 export interface CompetitiveSentimentTrendPoint {
