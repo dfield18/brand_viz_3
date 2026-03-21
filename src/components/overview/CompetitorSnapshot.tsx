@@ -120,7 +120,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                     />
                   </div>
                   <span className="text-xs tabular-nums text-muted-foreground text-right shrink-0">
-                    {Number(row.mentionShare).toFixed(1)}% <span className="text-muted-foreground/50">SoV</span>
+                    {Number(row.mentionShare).toFixed(1)}% <span className="text-muted-foreground/50">share of voice</span>
                   </span>
                 </div>
               </div>
