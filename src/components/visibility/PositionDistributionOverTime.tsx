@@ -112,6 +112,9 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
           <p className="text-sm text-muted-foreground mt-1">
             When AI recommends brands in this space, where does {brandName} appear in the list? Position #1 means AI mentions {brandName} first. Lower positions mean competitors are being recommended ahead of {brandName}.
           </p>
+          <p className="text-[11px] text-muted-foreground/60 mt-1">
+            Note: Only includes responses where {brandName} is actually mentioned. Responses that don&apos;t mention {brandName} at all are excluded.
+          </p>
         </div>
         <select
           value={selectedModel}
