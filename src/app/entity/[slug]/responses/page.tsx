@@ -20,6 +20,7 @@ interface RunData {
   model: string;
   prompt: { text: string; cluster: string; intent: string };
   rawResponseText: string;
+  topBrands?: string[];
   createdAt: string;
   cached: boolean;
   cost: RunCost;
@@ -61,16 +62,24 @@ function ResponsesInner() {
   const { data: apiData, loading, error } = useCachedFetch<ApiResponse>(url);
 
   const exportCSV = useCallback((runs: RunData[]) => {
-    const headers = ["Model", "Prompt", "Cluster", "Intent", "Response", "Date", "Cost"];
-    const rows = runs.map((r) => [
-      MODEL_LABELS[r.model] ?? r.model,
-      `"${r.prompt.text.replace(/"/g, '""')}"`,
-      r.prompt.cluster,
-      r.prompt.intent,
-      `"${r.rawResponseText.replace(/"/g, '""')}"`,
-      `"${new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}"`,
-      r.cost.total.toFixed(4),
-    ]);
+    const headers = ["Model", "Prompt", "Cluster", "Intent", "Response", "Date", "Cost", "Brand 1", "Brand 2", "Brand 3", "Brand 4", "Brand 5"];
+    const rows = runs.map((r) => {
+      const brands = r.topBrands ?? [];
+      return [
+        MODEL_LABELS[r.model] ?? r.model,
+        `"${r.prompt.text.replace(/"/g, '""')}"`,
+        r.prompt.cluster,
+        r.prompt.intent,
+        `"${r.rawResponseText.replace(/"/g, '""')}"`,
+        `"${new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}"`,
+        r.cost.total.toFixed(4),
+        brands[0] ?? "n/a",
+        brands[1] ?? "n/a",
+        brands[2] ?? "n/a",
+        brands[3] ?? "n/a",
+        brands[4] ?? "n/a",
+      ];
+    });
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

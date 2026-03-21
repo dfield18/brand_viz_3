@@ -102,6 +102,12 @@ export async function GET(req: NextRequest) {
       totalInputTokens += respInputTokens + extractInputTokens;
       totalOutputTokens += respOutputTokens + extractOutputTokens;
 
+      // Extract top 5 brand names for industry-cluster runs
+      const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
+      const topBrands = run.prompt.cluster === "industry"
+        ? (analysis?.competitors ?? []).slice(0, 5).map((c) => c.name)
+        : [];
+
       return {
         id: run.id,
         model: run.model,
@@ -111,6 +117,7 @@ export async function GET(req: NextRequest) {
           intent: run.prompt.intent,
         },
         rawResponseText: run.rawResponseText,
+        topBrands,
         createdAt: run.createdAt.toISOString(),
         cached: !!run.promptTextHash,
         cost: {
