@@ -738,7 +738,7 @@ function CompetitorAlertsSection({
                   <ArrowDown className="h-4 w-4" />
                 ) : null}
                 {alert.mentionRateChange > 0 ? "+" : ""}
-                {(alert.mentionRateChange * 100).toFixed(1)} pts
+                {Math.round(alert.mentionRateChange * 100)} pts
               </div>
             </div>
             <div className="mt-2">
@@ -997,7 +997,7 @@ function DecliningMetricsSection({
               >
                 {m.change > 0 ? "+" : ""}
                 {isRate
-                  ? `${(m.change * 100).toFixed(1)} pts`
+                  ? `${Math.round(m.change * 100)} pts`
                   : m.change.toFixed(2)} {isDeclining ? "worse" : "better"}
               </span>
             </div>
