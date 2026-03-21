@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { buildEntityDisplayNames } from "@/lib/utils";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 import {
   computeSourceSummary,
   computeTopDomains,
@@ -23,12 +24,12 @@ export async function GET(req: NextRequest) {
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
   const cluster = req.nextUrl.searchParams.get("cluster") ?? "";
 
-  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown };
+  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown; rawResponseText: string };
   const result = await fetchBrandRuns<MinimalRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true, rawResponseText: true } },
   });
   if (!result.ok) return result.response;
   const { brand, job, runs, rangeCutoff } = result;
@@ -101,29 +102,12 @@ export async function GET(req: NextRequest) {
       createdAt: o.createdAt,
     }));
 
-    // Bulk query EntityResponseMetric for brand (across all runs in range)
-    const rawMetrics = await prisma.entityResponseMetric.findMany({
-      where: {
-        run: {
-          brandId: brand.id,
-          createdAt: { gte: rangeCutoff },
-          job: { status: "done" },
-          ...modelFilter,
-        },
-        entityId: brand.slug,
-        ...clusterPromptFilter,
-      },
-      select: {
-        runId: true,
-        entityId: true,
-        rankPosition: true,
-      },
+    // Compute text-order ranks for brand (consistent with competition tab)
+    const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+    const entityMetrics: EntityMetricInput[] = runs.map((r) => {
+      const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
+      return { runId: r.id, entityId: brand.slug, rankPosition: rank };
     });
-    const entityMetrics: EntityMetricInput[] = rawMetrics.map((m) => ({
-      runId: m.runId,
-      entityId: m.entityId,
-      rankPosition: m.rankPosition,
-    }));
 
     // Compute midpoint
     const midpoint = new Date(
