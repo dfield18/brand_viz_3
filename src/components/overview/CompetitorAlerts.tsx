@@ -62,7 +62,7 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
       <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-3">
-        Brand recall and how it&apos;s changing over time
+        How often each {entityWord} appears in AI answers to general industry questions — where no brand is named in the query
       </p>
       <div className="space-y-2.5">
         {movers.map((alert) => {
