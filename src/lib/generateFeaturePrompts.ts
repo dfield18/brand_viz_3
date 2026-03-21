@@ -134,9 +134,19 @@ Rules:
 
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.every((a: unknown) => typeof a === "string")) {
-      // Filter out any alias that's identical to the brand name (case-insensitive)
+      // Filter out aliases that are identical to brand name, too short, or too generic
       const lowerName = brandName.toLowerCase();
-      return parsed.filter((a: string) => a.toLowerCase() !== lowerName).slice(0, 8);
+      const GENERIC_WORDS = new Set(["the", "inc", "corp", "company", "group", "brand", "store", "shop"]);
+      return parsed
+        .filter((a: string) => {
+          const lower = a.toLowerCase().trim();
+          if (lower === lowerName) return false;
+          if (a.length < 3) return false; // Too short — causes false positives
+          // Single-word alias must not be a generic word
+          if (!a.includes(" ") && GENERIC_WORDS.has(lower)) return false;
+          return true;
+        })
+        .slice(0, 8);
     }
     return [];
   } catch {

@@ -40,6 +40,8 @@ export function isBrandMentioned(
   if (wordBoundaryRegex(brandSlug).test(text)) return true;
   if (aliases) {
     for (const alias of aliases) {
+      // Skip very short aliases (< 3 chars) to avoid false positives
+      if (alias.length < 3) continue;
       if (wordBoundaryRegex(alias).test(text)) return true;
     }
   }
