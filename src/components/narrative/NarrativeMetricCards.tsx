@@ -314,7 +314,7 @@ export function NarrativeMetricCards({
       </div>
     ) : undefined,
     delta: narrativeDeltas?.sentimentPositive ?? null,
-    deltaFormat: (v) => `${v > 0 ? "+" : ""}${Math.round(v)} pts`,
+    deltaFormat: (v) => `${v > 0 ? "+" : ""}${Math.round(v)} pts positive`,
     sparkData: sentimentSparkline,
     scrollTarget: "sentiment-trend",
   });
