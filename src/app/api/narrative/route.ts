@@ -652,12 +652,17 @@ Rules:
         }
         return total > 0 ? Math.round((hedged / total) * 100) : 0;
       };
-      const currentConfidence = 100 - hedgingFor(recentNarrativeRuns);
-      const priorConfidence = 100 - hedgingFor(priorNarrativeRuns);
+      // Only compute confidence delta if both periods have data
+      let confidenceDelta = 0;
+      if (recentNarrativeRuns.length > 0 && priorNarrativeRuns.length > 0) {
+        const currentConfidence = 100 - hedgingFor(recentNarrativeRuns);
+        const priorConfidence = 100 - hedgingFor(priorNarrativeRuns);
+        confidenceDelta = currentConfidence - priorConfidence;
+      }
 
       narrativeDeltas = {
         sentimentPositive: sentimentDelta,
-        confidence: currentConfidence - priorConfidence,
+        confidence: confidenceDelta,
       };
     }
   }
