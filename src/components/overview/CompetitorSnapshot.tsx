@@ -99,7 +99,6 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-sm truncate ${row.isBrand ? "font-semibold text-primary" : "font-medium"}`}>
                     {row.name}
-                    {row.isBrand && <span className="text-xs font-normal text-muted-foreground ml-1">(You)</span>}
                   </span>
                   {row.avgRank !== null && (
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">

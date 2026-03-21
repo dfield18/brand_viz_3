@@ -53,7 +53,7 @@ interface MetricDef {
   lowerIsBetter?: boolean;
 }
 
-export function CrossModelTable({ models, brandName = "You" }: CrossModelTableProps) {
+export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTableProps) {
   if (models.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">

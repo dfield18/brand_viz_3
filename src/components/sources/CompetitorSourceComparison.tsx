@@ -357,7 +357,7 @@ export default function CompetitorSourceComparison({
                     key={id}
                     className={`py-2.5 px-3 text-center font-medium text-xs whitespace-nowrap ${DATA_COL_W} ${id === brandSlug ? "text-primary" : "text-muted-foreground"}`}
                   >
-                    {id === brandSlug ? `${resolveEntity(id, entityNames)} (You)` : resolveEntity(id, entityNames)}
+                    {resolveEntity(id, entityNames)}
                   </th>
                 ))}
                 {hasOther && (
