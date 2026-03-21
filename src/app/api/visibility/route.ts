@@ -735,13 +735,18 @@ export async function GET(req: NextRequest) {
             const p23 = validRanks.filter((r) => r >= 2 && r <= 3).length;
             const p45 = validRanks.filter((r) => r >= 4 && r <= 5).length;
             const p6 = validRanks.filter((r) => r >= 6).length;
+            const rPos1 = Math.round((p1 / total) * 100);
+            const rPos23 = Math.round((p23 / total) * 100);
+            const rPos45 = Math.round((p45 / total) * 100);
+            // Use remainder for last band to guarantee sum = 100%
+            const rPos6 = 100 - rPos1 - rPos23 - rPos45;
             entries.push({
               date,
               model: m,
-              pos1: Math.round((p1 / total) * 100),
-              pos2_3: Math.round((p23 / total) * 100),
-              pos4_5: Math.round((p45 / total) * 100),
-              pos6plus: Math.round((p6 / total) * 100),
+              pos1: rPos1,
+              pos2_3: rPos23,
+              pos4_5: rPos45,
+              pos6plus: Math.max(0, rPos6),
             });
           }
           return entries.sort((a, b) => a.date.localeCompare(b.date) || a.model.localeCompare(b.model));
