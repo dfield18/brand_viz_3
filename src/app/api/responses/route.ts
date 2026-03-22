@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
-import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { getTopBrandsForRun } from "@/lib/visibility/rankedEntities";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -103,31 +104,17 @@ export async function GET(req: NextRequest) {
       totalOutputTokens += respOutputTokens + extractOutputTokens;
 
       // Extract top 5 brands by text order for industry-cluster runs
-      // Uses same text-order methodology as avg position/ranking
-      const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
-      let topBrands: string[] = [];
-      if (run.prompt.cluster === "industry") {
-        const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
-        const allEntities: { name: string; pos: number }[] = [];
-        // Add the searched brand
-        const brandPos = wordBoundaryIndex(run.rawResponseText, brandName);
-        if (brandPos >= 0) allEntities.push({ name: brandName, pos: brandPos });
-        // Add competitors, deduplicating name variations
-        for (const c of (analysis?.competitors ?? [])) {
-          // Skip if this is a variation of an already-added entity
-          const isDupe = allEntities.some((e) => {
-            const a = e.name.toLowerCase();
-            const b = c.name.toLowerCase();
-            return a === b || a.includes(b) || b.includes(a);
-          });
-          if (isDupe) continue;
-          const pos = wordBoundaryIndex(run.rawResponseText, c.name);
-          if (pos >= 0) allEntities.push({ name: c.name, pos });
-        }
-        // Sort by text position (first mentioned = rank #1)
-        allEntities.sort((a, b) => a.pos - b.pos);
-        topBrands = allEntities.slice(0, 5).map((e) => e.name);
-      }
+      // Uses shared helper — same logic as competitor movement
+      const topBrands = run.prompt.cluster === "industry"
+        ? getTopBrandsForRun({
+            rawResponseText: run.rawResponseText,
+            analysisJson: run.analysisJson,
+            brandName,
+            brandSlug: brand.slug,
+            includeBrand: true,
+            limit: 5,
+          })
+        : [];
 
       return {
         id: run.id,

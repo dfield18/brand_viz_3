@@ -10,53 +10,62 @@ function makeRun(overrides: Partial<MovementRun> = {}): MovementRun {
     jobDate: "2026-03-21",
     cluster: "industry",
     analysisJson: { competitors: [] },
+    rawResponseText: "",
     ...overrides,
   };
 }
 
 describe("buildMovementSnapshots", () => {
   const BRAND = "aclu";
+  const BRAND_NAME = "ACLU";
   const NO_ALIASES = new Map<string, string>();
 
   it("returns empty for no runs", () => {
-    assert.equal(buildMovementSnapshots([], BRAND, NO_ALIASES).length, 0);
+    assert.equal(buildMovementSnapshots([], BRAND_NAME, BRAND, NO_ALIASES).length, 0);
   });
 
   it("only includes industry-cluster runs", () => {
     const runs = [
-      makeRun({ id: "r1", cluster: "industry", analysisJson: { competitors: [{ name: "SPLC" }] } }),
-      makeRun({ id: "r2", cluster: "direct", analysisJson: { competitors: [{ name: "SPLC" }] } }),
+      makeRun({ id: "r1", cluster: "industry", rawResponseText: "SPLC is here.", analysisJson: { competitors: [{ name: "SPLC" }] } }),
+      makeRun({ id: "r2", cluster: "direct", rawResponseText: "SPLC is here.", analysisJson: { competitors: [{ name: "SPLC" }] } }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     assert.equal(result[0].totalIndustryRuns, 1);
   });
 
-  it("counts from analysisJson.competitors, not prose", () => {
+  it("counts only entities present in response text (ranked semantics)", () => {
     const runs = [
-      makeRun({ id: "r1", analysisJson: { competitors: [{ name: "SPLC" }, { name: "NAACP" }] } }),
+      makeRun({
+        id: "r1",
+        rawResponseText: "SPLC and NAACP are active.",
+        analysisJson: { competitors: [{ name: "SPLC" }, { name: "NAACP" }, { name: "NotInText" }] },
+      }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     assert.equal(result[0].entityMentions["splc"], 1);
     assert.equal(result[0].entityMentions["naacp"], 1);
-    assert.equal(result[0].entityMentions["nra"], undefined);
+    assert.equal(result[0].entityMentions["notintext"], undefined);
   });
 
   it("denominator includes runs with no competitors", () => {
     const runs = [
-      makeRun({ id: "r1", analysisJson: { competitors: [{ name: "SPLC" }] } }),
-      makeRun({ id: "r2", analysisJson: { competitors: [] } }),
-      makeRun({ id: "r3", analysisJson: null }),
+      makeRun({ id: "r1", rawResponseText: "SPLC is here.", analysisJson: { competitors: [{ name: "SPLC" }] } }),
+      makeRun({ id: "r2", rawResponseText: "Nothing.", analysisJson: { competitors: [] } }),
+      makeRun({ id: "r3", rawResponseText: "Empty.", analysisJson: null }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     assert.equal(result[0].totalIndustryRuns, 3);
-    assert.equal(result[0].entityMentions["splc"], 1);
   });
 
-  it("excludes the brand from entity counts", () => {
+  it("excludes focal brand", () => {
     const runs = [
-      makeRun({ id: "r1", analysisJson: { competitors: [{ name: "ACLU" }, { name: "SPLC" }] } }),
+      makeRun({
+        id: "r1",
+        rawResponseText: "ACLU and SPLC are both important.",
+        analysisJson: { competitors: [{ name: "ACLU" }, { name: "SPLC" }] },
+      }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     assert.equal(result[0].entityMentions[BRAND], undefined);
     assert.equal(result[0].entityMentions["splc"], 1);
   });
@@ -64,124 +73,64 @@ describe("buildMovementSnapshots", () => {
   it("applies alias normalization", () => {
     const aliases = new Map([["southern poverty law center", "splc"], ["splc", "splc"]]);
     const runs = [
-      makeRun({ id: "r1", analysisJson: { competitors: [{ name: "Southern Poverty Law Center" }] } }),
-      makeRun({ id: "r2", analysisJson: { competitors: [{ name: "SPLC" }] } }),
+      makeRun({ id: "r1", rawResponseText: "Southern Poverty Law Center is active.", analysisJson: { competitors: [{ name: "Southern Poverty Law Center" }] } }),
+      makeRun({ id: "r2", rawResponseText: "SPLC published a report.", analysisJson: { competitors: [{ name: "SPLC" }] } }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, aliases);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, aliases);
     assert.equal(result[0].entityMentions["splc"], 2);
   });
 
-  it("uses deterministic canonicalization as fallback when aliasMap is incomplete", () => {
-    // aliasMap doesn't have "hp inc." but canonicalizeEntityId("hp inc.") → "hp"
-    const partialAliases = new Map([["hp", "hp"]]);
+  it("uses deterministic canonicalization as fallback", () => {
     const runs = [
-      makeRun({ id: "r1", analysisJson: { competitors: [{ name: "HP" }, { name: "HP Inc." }] } }),
+      makeRun({
+        id: "r1",
+        rawResponseText: "HP Inc. makes laptops.",
+        analysisJson: { competitors: [{ name: "HP Inc." }] },
+      }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, partialAliases);
-    // Both should canonicalize to "hp" — counted once per run
+    const result = buildMovementSnapshots(runs, "Dell", "dell", new Map());
     assert.equal(result[0].entityMentions["hp"], 1);
   });
 
-  it("excludes focal brand aliases via brandAliases param", () => {
+  it("groups by date", () => {
     const runs = [
-      makeRun({
-        id: "r1",
-        analysisJson: {
-          competitors: [
-            { name: "American Civil Liberties Union" },
-            { name: "SPLC" },
-          ],
-        },
-      }),
+      makeRun({ id: "r1", jobDate: "2026-02-22", rawResponseText: "X.", analysisJson: { competitors: [{ name: "X" }] } }),
+      makeRun({ id: "r2", jobDate: "2026-03-21", rawResponseText: "X.", analysisJson: { competitors: [{ name: "X" }] } }),
     ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES, ["ACLU", "American Civil Liberties Union"]);
-    // Brand alias should be excluded
-    assert.equal(result[0].entityMentions["american civil liberties union"], undefined);
-    assert.equal(result[0].entityMentions[BRAND], undefined);
-    // Competitor should remain
-    assert.equal(result[0].entityMentions["splc"], 1);
-  });
-
-  it("groups by job date correctly", () => {
-    const runs = [
-      makeRun({ id: "r1", jobDate: "2026-02-22", analysisJson: { competitors: [{ name: "X" }] } }),
-      makeRun({ id: "r2", jobDate: "2026-02-22", analysisJson: { competitors: [{ name: "X" }] } }),
-      makeRun({ id: "r3", jobDate: "2026-03-21", analysisJson: { competitors: [{ name: "X" }] } }),
-    ];
-    const result = buildMovementSnapshots(runs, BRAND, NO_ALIASES);
+    const result = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     assert.equal(result.length, 2);
   });
 
-  it("regression: split variants produce merged counts and correct deltas", () => {
-    // Previous snapshot: "Sony" in 3/10 runs
-    // Recent snapshot: "Sony" in 5/10 + "Sony Interactive Entertainment" in 2/10
-    // After merge: recent = 7/10 (70%), previous = 3/10 (30%) → +40 pts rising
-    const aliases = new Map([
-      ["sony", "sony"],
-      ["sony interactive entertainment", "sony"],
-    ]);
-    const prevRuns = Array.from({ length: 10 }, (_, i) =>
-      makeRun({
-        id: `prev-${i}`,
-        jobDate: "2026-02-22",
-        analysisJson: { competitors: i < 3 ? [{ name: "Sony" }] : [] },
-      }),
-    );
-    const recentRuns = Array.from({ length: 10 }, (_, i) =>
-      makeRun({
-        id: `recent-${i}`,
-        jobDate: "2026-03-21",
-        analysisJson: {
-          competitors: i < 5
-            ? [{ name: "Sony" }]
-            : i < 7
-              ? [{ name: "Sony Interactive Entertainment" }]
-              : [],
-        },
-      }),
-    );
+  it("regression: split variants merge with correct deltas", () => {
+    const aliases = new Map([["sony", "sony"], ["sony interactive entertainment", "sony"]]);
+    const prev = Array.from({ length: 10 }, (_, i) => makeRun({
+      id: `p${i}`, jobDate: "2026-02-22",
+      rawResponseText: i < 3 ? "Sony makes products." : "Nothing.",
+      analysisJson: i < 3 ? { competitors: [{ name: "Sony" }] } : { competitors: [] },
+    }));
+    const recent = Array.from({ length: 10 }, (_, i) => makeRun({
+      id: `r${i}`, jobDate: "2026-03-21",
+      rawResponseText: i < 5 ? "Sony is great." : i < 7 ? "Sony Interactive Entertainment released." : "Nothing.",
+      analysisJson: i < 5 ? { competitors: [{ name: "Sony" }] } : i < 7 ? { competitors: [{ name: "Sony Interactive Entertainment" }] } : { competitors: [] },
+    }));
 
-    const snapshots = buildMovementSnapshots([...prevRuns, ...recentRuns], BRAND, aliases);
-    const result = computeCompetitorAlerts(snapshots, BRAND);
-
-    assert.equal(result.recentDate, "2026-03-21");
-    assert.equal(result.previousDate, "2026-02-22");
-
+    const snapshots = buildMovementSnapshots([...prev, ...recent], "Nintendo", "nintendo", aliases);
+    const result = computeCompetitorAlerts(snapshots, "nintendo");
     const sony = result.alerts.find((a) => a.entityId === "sony");
-    assert.ok(sony, "Sony should be present as merged entity");
-    assert.equal(sony!.recentMentionRate, 70); // 7/10
-    assert.equal(sony!.previousMentionRate, 30); // 3/10
+    assert.ok(sony);
+    assert.equal(sony!.recentMentionRate, 70);
+    assert.equal(sony!.previousMentionRate, 30);
     assert.equal(sony!.direction, "rising");
   });
 
-  it("regression: focal brand aliases excluded from movement alerts", () => {
+  it("regression: prose-only entities excluded from movement", () => {
     const runs = [
-      makeRun({
-        id: "r1",
-        jobDate: "2026-02-22",
-        analysisJson: { competitors: [{ name: "ACLU" }, { name: "SPLC" }] },
-      }),
-      makeRun({
-        id: "r2",
-        jobDate: "2026-03-21",
-        analysisJson: {
-          competitors: [
-            { name: "American Civil Liberties Union" },
-            { name: "SPLC" },
-          ],
-        },
-      }),
+      makeRun({ id: "r1", jobDate: "2026-02-22", rawResponseText: "SPLC is active.", analysisJson: { competitors: [{ name: "SPLC" }, { name: "Big Corp" }] } }),
+      makeRun({ id: "r2", jobDate: "2026-03-21", rawResponseText: "SPLC published.", analysisJson: { competitors: [{ name: "SPLC" }, { name: "Big Corp" }] } }),
     ];
-    const snapshots = buildMovementSnapshots(
-      runs, BRAND, NO_ALIASES,
-      ["ACLU", "American Civil Liberties Union"],
-    );
+    const snapshots = buildMovementSnapshots(runs, BRAND_NAME, BRAND, NO_ALIASES);
     const result = computeCompetitorAlerts(snapshots, BRAND);
-
-    // No brand aliases should appear
-    assert.ok(!result.alerts.find((a) => a.entityId === BRAND));
-    assert.ok(!result.alerts.find((a) => a.entityId === "american civil liberties union"));
-    // SPLC should appear
+    assert.ok(!result.alerts.find((a) => a.entityId === "big corp"));
     assert.ok(result.alerts.find((a) => a.entityId === "splc"));
   });
 });

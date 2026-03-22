@@ -606,7 +606,7 @@ export async function GET(req: NextRequest) {
   const alertRuns = alertJobIds.length > 0
     ? await prisma.run.findMany({
         where: { jobId: { in: alertJobIds }, prompt: { cluster: "industry" } },
-        select: { id: true, model: true, jobId: true, analysisJson: true, prompt: { select: { cluster: true } } },
+        select: { id: true, model: true, jobId: true, analysisJson: true, rawResponseText: true, prompt: { select: { cluster: true } } },
       })
     : [];
 
@@ -623,6 +623,7 @@ export async function GET(req: NextRequest) {
     jobDate: alertJobDateMap.get(r.jobId) ?? "",
     cluster: r.prompt.cluster ?? "industry",
     analysisJson: r.analysisJson,
+    rawResponseText: r.rawResponseText,
   }));
 
   // Collect all competitor names for alias normalization
@@ -647,7 +648,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Build snapshots from ranked competitor list (not EntityResponseMetric)
-  const snapshots = buildMovementSnapshots(movementRuns, brand.slug, alertAliasMap, brandAliasArr);
+  const snapshots = buildMovementSnapshots(movementRuns, brandName, brand.slug, alertAliasMap);
 
   const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
   let { comparisonPeriodLabel } = alertResult;

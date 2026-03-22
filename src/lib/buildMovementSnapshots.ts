@@ -1,14 +1,13 @@
 /**
- * Build per-date movement snapshots from analysisJson.competitors
- * (the ranked competitor list), NOT from EntityResponseMetric.
+ * Build per-date movement snapshots using the same ranked-entity
+ * semantics as the CSV export (Brand 1..5 columns).
  *
- * This ensures Movement matches the CSV/export semantics where
- * entities are counted based on the ranked competitor extraction,
- * not arbitrary prose mentions.
+ * Uses getRankedEntitiesForRun to locate entities in the response
+ * text, deduplicate, and rank by text order — matching the export.
  */
 
 import type { SnapshotData } from "./competitorAlerts";
-import { canonicalizeEntityId } from "./competition/canonicalize";
+import { getRankedEntitiesForRun } from "./visibility/rankedEntities";
 
 export interface MovementRun {
   id: string;
@@ -16,43 +15,26 @@ export interface MovementRun {
   jobDate: string; // "YYYY-MM-DD" from job.finishedAt
   cluster: string;
   analysisJson: unknown;
-}
-
-interface AnalysisCompetitor {
-  name: string;
-  mentionStrength?: number;
-}
-
-interface ParsedAnalysis {
-  competitors?: AnalysisCompetitor[];
+  rawResponseText: string;
 }
 
 /**
- * Build SnapshotData[] from scoped industry runs using
- * analysisJson.competitors as the entity source.
+ * Build SnapshotData[] from scoped industry runs using the same
+ * ranked-entity logic as the CSV export.
  *
  * @param runs - all runs in scope (already filtered by model/range)
+ * @param brandName - the searched brand's display name
  * @param brandSlug - the searched brand's slug (excluded from competitor counts)
  * @param aliasMap - entity ID normalization map (canonical forms)
- * @param brandAliases - additional brand aliases to exclude
  */
 export function buildMovementSnapshots(
   runs: MovementRun[],
+  brandName: string,
   brandSlug: string,
   aliasMap: Map<string, string>,
-  brandAliases?: string[],
 ): SnapshotData[] {
   // Filter to industry-cluster only
   const industryRuns = runs.filter((r) => r.cluster === "industry");
-
-  // Build a set of all brand-family IDs to exclude
-  const brandFamily = new Set<string>([brandSlug]);
-  if (brandAliases) {
-    for (const alias of brandAliases) {
-      brandFamily.add(alias.toLowerCase());
-      brandFamily.add(canonicalizeEntityId(alias));
-    }
-  }
 
   // Group by job date
   const byDate = new Map<string, MovementRun[]>();
@@ -69,18 +51,23 @@ export function buildMovementSnapshots(
     const entityRunCounts: Record<string, number> = {};
 
     for (const run of dateRuns) {
-      const analysis = run.analysisJson as ParsedAnalysis | null;
-      const competitors = analysis?.competitors ?? [];
+      // Use the same ranked-entity logic as the CSV export
+      const ranked = getRankedEntitiesForRun({
+        rawResponseText: run.rawResponseText,
+        analysisJson: run.analysisJson,
+        brandName,
+        brandSlug,
+        includeBrand: false, // exclude focal brand from competitor counts
+        aliasMap,
+        limit: 10, // generous limit for movement counting
+      });
+
+      // Count each canonical competitor once per run
       const seenInRun = new Set<string>();
-      for (const comp of competitors) {
-        const rawId = comp.name.toLowerCase();
-        // Use aliasMap first, fall back to deterministic canonicalization
-        const canonical = aliasMap.get(rawId) ?? canonicalizeEntityId(rawId);
-        // Exclude the focal brand and its aliases
-        if (brandFamily.has(canonical)) continue;
-        if (seenInRun.has(canonical)) continue;
-        seenInRun.add(canonical);
-        entityRunCounts[canonical] = (entityRunCounts[canonical] ?? 0) + 1;
+      for (const entity of ranked) {
+        if (seenInRun.has(entity.canonicalId)) continue;
+        seenInRun.add(entity.canonicalId);
+        entityRunCounts[entity.canonicalId] = (entityRunCounts[entity.canonicalId] ?? 0) + 1;
       }
     }
 

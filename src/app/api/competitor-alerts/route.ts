@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
       jobDate: jobDateMap.get(r.jobId) ?? "",
       cluster: r.prompt.cluster ?? "industry",
       analysisJson: r.analysisJson,
+      rawResponseText: r.rawResponseText,
     }));
 
     // Collect competitor names for alias normalization
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Build snapshots and compute alerts
-    const snapshots = buildMovementSnapshots(movementRuns, brand.slug, aliasMap, brandAliases);
+    const snapshots = buildMovementSnapshots(movementRuns, brandName, brand.slug, aliasMap);
     const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
 
     // Format response
