@@ -389,13 +389,17 @@ function PromptItem({
   onDelete?: () => void;
 }) {
   // Replace placeholders for display
+  // Use the industry label if available, otherwise show "the industry" (not the brand name)
+  const industryLabel = industry && industry.toLowerCase() !== brandName.toLowerCase()
+    ? industry
+    : null;
   let displayText = prompt.text
     .replace(/\{brand\}/g, brandName)
-    .replace(/\{industry\}/g, industry ?? "the industry")
+    .replace(/\{industry\}/gi, industryLabel ? `the ${industryLabel} industry` : "the industry")
     .replace(/\{competitor\}/g, "competitor");
   // Also replace literal "the industry" with actual industry name
-  if (industry) {
-    displayText = displayText.replace(/\bthe industry\b/gi, `the ${industry} industry`);
+  if (industryLabel) {
+    displayText = displayText.replace(/\bthe industry\b/gi, `the ${industryLabel} industry`);
   }
 
   return (

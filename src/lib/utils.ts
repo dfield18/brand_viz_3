@@ -153,11 +153,15 @@ export function expandPromptPlaceholders(
   text: string,
   opts: { brandName: string; industry?: string | null; competitor?: string | null },
 ): string {
+  // Guard: if industry is the same as brand name, don't use it
+  const industryLabel = opts.industry && opts.industry.toLowerCase() !== opts.brandName.toLowerCase()
+    ? opts.industry
+    : null;
   let expanded = text
     .replace(/\{brand\}/gi, opts.brandName)
-    .replace(/\{industry\}/gi, opts.industry || `${opts.brandName}'s industry`);
-  if (opts.industry) {
-    expanded = expanded.replace(/\bthe industry\b/gi, `the ${opts.industry} industry`);
+    .replace(/\{industry\}/gi, industryLabel ? `the ${industryLabel} industry` : `${opts.brandName}'s industry`);
+  if (industryLabel) {
+    expanded = expanded.replace(/\bthe industry\b/gi, `the ${industryLabel} industry`);
   }
   if (expanded.includes("{competitor}")) {
     expanded = expanded.replace(/\{competitor\}/gi, opts.competitor || "competitors");
