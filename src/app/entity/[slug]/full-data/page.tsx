@@ -310,6 +310,28 @@ ${runs.map((r) => `
               </div>
             </div>
 
+            {/* Brand order (industry prompts only) */}
+            {run.topBrands && run.topBrands.length > 0 && (
+              <div className="px-5 pt-3 pb-0">
+                <p className="text-[11px] text-muted-foreground mb-1.5">Brands mentioned (in order of appearance):</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {run.topBrands.map((b, i) => (
+                    <span
+                      key={i}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        b.toLowerCase() === brandName.toLowerCase()
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      <span className="text-[10px] tabular-nums opacity-60">#{i + 1}</span>
+                      {b}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Formatted response body */}
             <div className="px-5 py-4">
               <FormattedResponse text={run.rawResponseText} brandName={brandName} />
