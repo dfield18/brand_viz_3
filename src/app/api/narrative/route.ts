@@ -311,12 +311,14 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-  // Drift + trend: fetch historical runs, then apply the same brand-scope filter
-  // so trend charts are consistent with the top-of-page metrics.
+  // Drift + trend: fetch historical runs using the same scope rule as the cards.
+  // If cards use industry runs, trends use industry runs. If cards fell back
+  // to all-scoped runs, trends also use all-scoped runs.
+  const useIndustryScope = industryRuns.length > 0;
   type TrendRun = { rawResponseText: string; narrativeJson: unknown; analysisJson: unknown; createdAt: Date; model: string; prompt: { cluster: string } };
   const trendRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, prompt: { cluster: "industry" } }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, prompt: { cluster: "industry" } };
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...(useIndustryScope ? { prompt: { cluster: "industry" } } : {}) }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...(useIndustryScope ? { prompt: { cluster: "industry" } } : {}) };
   const rawTrendRuns = await prisma.run.findMany({
     where: trendRunWhere,
     select: { rawResponseText: true, narrativeJson: true, analysisJson: true, createdAt: true, model: true, prompt: { select: { cluster: true } } },

@@ -53,13 +53,16 @@ async function getModelOverviewData(
     select: { jobId: true, model: true, analysisJson: true, rawResponseText: true, prompt: { select: { cluster: true } } },
   });
 
-  // Filter out stub/dummy runs
+  // Filter out stub/dummy runs, then apply brand-scope filtering
   const realRuns = allRuns.filter((r) => isRealRun(r.rawResponseText));
   if (realRuns.length === 0) return null;
+  const scopedIdentity = { brandName, brandSlug, aliases };
+  const scopedRealRuns = filterRunsToBrandScope(realRuns, scopedIdentity);
+  if (scopedRealRuns.length === 0) return null;
 
   const analysesByJob = new Map<string, RunAnalysis[]>();
   const industryAnalysesByJob = new Map<string, RunAnalysis[]>();
-  for (const run of realRuns) {
+  for (const run of scopedRealRuns) {
     const parsed = parseAnalysis(run.analysisJson);
     if (parsed) {
       const list = analysesByJob.get(run.jobId) ?? [];
@@ -77,7 +80,7 @@ async function getModelOverviewData(
   if (latestAnalyses.length === 0) return null;
 
   // Cluster-level stats from latest job runs
-  const latestRealRunsFull = realRuns.filter((r) => r.jobId === latestJob.id);
+  const latestRealRunsFull = scopedRealRuns.filter((r) => r.jobId === latestJob.id);
   const clusterStats = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
   for (const run of latestRealRunsFull) {
     const cluster = run.prompt.cluster;
@@ -133,7 +136,7 @@ async function getModelOverviewData(
     industryLatestAnalyses: industryAnalysesByJob.get(latestJob.id) ?? [],
     trendData,
     industryTrendData,
-    totalRuns: latestRealRunsFull.length,
+    totalRuns: scopedRealRuns.filter((r) => r.jobId === latestJob.id).length,
     analyzedRuns: latestAnalyses.length,
     clusterStats,
     avgRank,
@@ -525,12 +528,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Sentiment split (from deduplicated fetchBrandRuns, matching narrative tab) ---
+  // --- Sentiment split (from scoped runs, matching narrative tab) ---
+  // Reuse the brand-scoped visRuns from the KPI block above (not raw visResult.runs)
   let sentimentSplit: { positive: number; neutral: number; negative: number } | null = null;
   if (visResult && visResult.ok) {
-    const { runs: visRuns } = visResult;
+    const scopedVisRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
     let pos = 0, neu = 0, neg = 0;
-    for (const r of visRuns) {
+    for (const r of scopedVisRuns) {
       const nj = r.narrativeJson as Record<string, unknown> | null;
       if (!nj) continue;
       const sent = nj.sentiment as { label?: string } | undefined;
@@ -549,18 +553,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Recompute frames & model comparison from deduped runs (matches narrative tab exactly) ---
+  // --- Recompute frames & model comparison from scoped runs (matches narrative tab exactly) ---
   if (visResult && visResult.ok) {
-    const { runs: visRuns, isAll } = visResult;
+    const { isAll } = visResult;
+    const scopedFrameRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+    // Use industry-cluster when available (matches narrative tab methodology)
+    const industryFrameRuns = scopedFrameRuns.filter((r) => r.prompt.cluster === "industry");
+    const frameRuns = industryFrameRuns.length > 0 ? industryFrameRuns : scopedFrameRuns;
 
-    // Parse all deduped analyses
-    const dedupedAnalyses = visRuns
+    // Parse analyses from scoped runs
+    const dedupedAnalyses = frameRuns
       .map((r) => parseAnalysis(r.analysisJson))
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
     // Group by model for per-model breakdowns
     const dedupedByModel = new Map<string, RunAnalysis[]>();
-    for (const r of visRuns) {
+    for (const r of frameRuns) {
       const parsed = parseAnalysis(r.analysisJson);
       if (!parsed) continue;
       const list = dedupedByModel.get(r.model) ?? [];
@@ -592,7 +600,7 @@ export async function GET(req: NextRequest) {
       // Compute per-model frame percentages (same as narrative tab)
       const modelRunCounts: Record<string, number> = {};
       const modelFrameCounts: Record<string, Record<string, number>> = {};
-      for (const r of visRuns) {
+      for (const r of frameRuns) {
         const a = parseAnalysis(r.analysisJson);
         if (!a) continue;
         modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
@@ -617,9 +625,9 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await validateFrames(overview.topFrames, brandName);
 
       // Fallback: synthesize from raw responses if empty
-      if (overview.topFrames.length === 0 && visRuns.length > 0) {
+      if (overview.topFrames.length === 0 && frameRuns.length > 0) {
         overview.topFrames = await synthesizeFramesFromResponses(
-          visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+          frameRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
           brandName,
           isAll ? "all" : model,
         );
@@ -629,14 +637,13 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await ensureMinimumFrames(
         overview.topFrames,
         brandName,
-        visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+        frameRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
       );
     }
 
-    // Recompute model comparison sentiment/authority/stability from deduped data
-    // Group visRuns by model for narrative-based sentiment
-    const runsByModel = new Map<string, typeof visRuns>();
-    for (const r of visRuns) {
+    // Recompute model comparison sentiment/authority/stability from scoped data
+    const runsByModel = new Map<string, typeof scopedFrameRuns>();
+    for (const r of scopedFrameRuns) {
       if (!runsByModel.has(r.model)) runsByModel.set(r.model, []);
       runsByModel.get(r.model)!.push(r);
     }

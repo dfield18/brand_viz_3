@@ -218,14 +218,15 @@ export async function GET(req: NextRequest) {
     });
 
     // Build model breakdown: stats per LLM across all models for this brand
-    const allModelRuns = await prisma.run.findMany({
+    const rawModelRuns = await prisma.run.findMany({
       where: { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" } },
       include: { prompt: true },
       orderBy: { createdAt: "desc" },
     });
-    // Dedupe: latest run per model+prompt
+    // Apply brand-scope filter, then dedupe
+    const scopedModelRuns = filterRunsToBrandScope(rawModelRuns, brandIdentity);
     const seenModelPrompts = new Set<string>();
-    const dedupedModelRuns = allModelRuns.filter((r) => {
+    const dedupedModelRuns = scopedModelRuns.filter((r) => {
       const key = `${r.model}|${r.promptId}`;
       if (seenModelPrompts.has(key)) return false;
       seenModelPrompts.add(key);

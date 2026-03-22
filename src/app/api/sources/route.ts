@@ -122,18 +122,31 @@ export async function GET(req: NextRequest) {
     const summary = computeSourceSummary(occurrences, entityMetrics, brand.slug, totalResponses);
     const rawTopDomains = computeTopDomains(occurrences, entityMetrics, brand.slug, totalResponses);
 
-    // Override firstSeen with the earliest occurrence across ALL time (not just current range)
+    // Override firstSeen with the earliest occurrence from scoped runs only
+    // (do NOT query all brandId history — that reintroduces ambiguous-brand contamination)
     const topDomainNames = rawTopDomains.map((d) => d.domain);
     if (topDomainNames.length > 0) {
+      // Fetch historical runs for the brand, then scope-filter them
+      const historicalRuns = await prisma.run.findMany({
+        where: {
+          brandId: brand.id,
+          job: { status: "done" },
+          ...(model && model !== "all" ? { model } : {}),
+        },
+        select: { id: true, rawResponseText: true, analysisJson: true, narrativeJson: true },
+      });
+      const scopedHistoricalIds = new Set(
+        filterRunsToBrandScope(historicalRuns, brandIdentity).map((r) => r.id),
+      );
+
       const earliestByDomain = await prisma.sourceOccurrence.groupBy({
         by: ["sourceId"],
         where: {
           source: { domain: { in: topDomainNames } },
-          run: { brandId: brand.id, job: { status: "done" }, ...modelFilter },
+          runId: { in: [...scopedHistoricalIds] },
         },
         _min: { createdAt: true },
       });
-      // sourceId → domain lookup
       const sourceIds = [...new Set(earliestByDomain.map((e) => e.sourceId))];
       const sources = sourceIds.length > 0
         ? await prisma.source.findMany({

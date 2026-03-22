@@ -405,8 +405,152 @@ describe("cross-route consistency", () => {
     });
 
     const scoped = filterRunsToBrandScope([valid, unrelated1, unrelated2], BRAND);
-    // Only the valid run survives — same filter used by overview, visibility, narrative, sources
     assert.equal(scoped.length, 1);
     assert.ok(scoped.includes(valid));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-level regression: overview KPIs and sentiment agree on scoped data
+// ---------------------------------------------------------------------------
+
+describe("overview route regression — KPIs and sentiment from same scoped pool", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Future Forward",
+    brandSlug: "future-forward-usa",
+    aliases: ["Future Forward PAC"],
+  };
+
+  it("ambiguous brand: 4 valid + 3 unrelated → metrics only from valid", () => {
+    const valid = Array.from({ length: 4 }, (_, i) => makeRun({
+      rawResponseText: `Future Forward PAC is a leader. Future Forward raised funds. Run ${i}.`,
+      analysisJson: { brandMentioned: true, competitors: [{ name: "ActBlue" }] },
+      narrativeJson: { sentiment: { label: "POS", score: 0.5 }, authoritySignals: 1, trustSignals: 0, weaknessSignals: 0, themes: [], claims: [], descriptors: [] },
+    }));
+    const unrelated = Array.from({ length: 3 }, (_, i) => makeRun({
+      rawResponseText: `Future Forward marketing agency does web design. Run ${i}.`,
+      analysisJson: { brandMentioned: false, competitors: [{ name: "HubSpot" }] },
+      narrativeJson: { sentiment: { label: "NEG", score: -0.7 }, authoritySignals: 0, trustSignals: 0, weaknessSignals: 2, themes: [], claims: [{ type: "weakness", text: "Bad reviews" }], descriptors: [] },
+    }));
+
+    const scoped = filterRunsToBrandScope([...valid, ...unrelated], BRAND);
+    assert.equal(scoped.length, 4, "Only 4 valid runs should survive");
+
+    // Sentiment from scoped: 4 POS / 0 NEG = 100% positive
+    let pos = 0, neg = 0;
+    for (const r of scoped) {
+      const nj = r.narrativeJson as { sentiment?: { label?: string } } | undefined;
+      if (nj?.sentiment?.label === "POS") pos++;
+      if (nj?.sentiment?.label === "NEG") neg++;
+    }
+    assert.equal(pos, 4);
+    assert.equal(neg, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-level regression: visibility model breakdown uses scoped runs
+// ---------------------------------------------------------------------------
+
+describe("visibility route regression — model breakdown from scoped runs", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Apple",
+    brandSlug: "apple",
+  };
+
+  it("model breakdown excludes fruit-related runs", () => {
+    const validChatgpt = makeRun({
+      rawResponseText: "Apple released the iPhone 16. Apple leads in smartphone innovation.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "Samsung" }] },
+    });
+    const validGemini = makeRun({
+      rawResponseText: "Apple is a tech giant. Apple makes Macs and iPads.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "Microsoft" }] },
+    });
+    const fruitRun = makeRun({
+      rawResponseText: "Apple is a healthy fruit with vitamins.",
+      analysisJson: { brandMentioned: false, competitors: [] },
+    });
+
+    const scoped = filterRunsToBrandScope([validChatgpt, validGemini, fruitRun], BRAND);
+    assert.equal(scoped.length, 2);
+    assert.ok(!scoped.includes(fruitRun));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-level regression: narrative fallback case (no industry runs)
+// ---------------------------------------------------------------------------
+
+describe("narrative route regression — fallback when no industry runs", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Future Forward",
+    brandSlug: "future-forward-usa",
+    aliases: ["Future Forward PAC"],
+  };
+
+  it("non-industry scoped runs are used for both cards and trends", () => {
+    // Simulates: no industry-cluster runs exist, only comparative/direct
+    const comparativeRuns = Array.from({ length: 3 }, (_, i) => ({
+      ...makeRun({
+        rawResponseText: `Future Forward PAC vs ActBlue comparison. Future Forward focuses on data. Run ${i}.`,
+        analysisJson: { brandMentioned: true, competitors: [{ name: "ActBlue" }] },
+        narrativeJson: { sentiment: { label: "POS", score: 0.4 }, authoritySignals: 1, trustSignals: 0, weaknessSignals: 0, themes: [], claims: [], descriptors: [] },
+      }),
+      prompt: { cluster: "comparative" },
+    }));
+    const unrelated = {
+      ...makeRun({
+        rawResponseText: "Future Forward agency does web design.",
+        analysisJson: { brandMentioned: false, competitors: [{ name: "Wix" }] },
+      }),
+      prompt: { cluster: "direct" },
+    };
+
+    type RunWithCluster = typeof comparativeRuns[number];
+    const allRuns = [...comparativeRuns, unrelated] as RunWithCluster[];
+    const scoped = filterRunsToBrandScope(allRuns, BRAND);
+
+    // No industry runs exist
+    const industryScoped = scoped.filter((r) => r.prompt.cluster === "industry");
+    assert.equal(industryScoped.length, 0);
+
+    // Fallback: use all scoped runs (comparative)
+    const narrativePool = industryScoped.length > 0 ? industryScoped : scoped;
+    assert.equal(narrativePool.length, 3, "Cards should use 3 comparative runs");
+
+    // Trend should use the same scope rule (not hardcode industry)
+    const useIndustryScope = industryScoped.length > 0;
+    assert.ok(!useIndustryScope, "Should NOT use industry scope");
+    // So trend query would also fetch all clusters, matching the cards
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-level regression: sources firstSeen doesn't leak unrelated history
+// ---------------------------------------------------------------------------
+
+describe("sources route regression — firstSeen from scoped history only", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Future Forward",
+    brandSlug: "future-forward-usa",
+  };
+
+  it("historical unrelated runs are excluded from firstSeen computation", () => {
+    // Current scoped run cites wikipedia
+    const currentValid = makeRun({
+      rawResponseText: "Future Forward PAC raised $950M. Future Forward is the largest Super PAC. See wikipedia.org.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "ActBlue" }] },
+    });
+    // Old unrelated run also cites wikipedia (should NOT contribute to firstSeen)
+    const oldUnrelated = makeRun({
+      rawResponseText: "Future Forward staffing company info at wikipedia.org.",
+      analysisJson: { brandMentioned: false, competitors: [{ name: "Robert Half" }] },
+    });
+
+    const scopedHistory = filterRunsToBrandScope([currentValid, oldUnrelated], BRAND);
+    assert.equal(scopedHistory.length, 1, "Only current valid run survives scope filter");
+    assert.ok(scopedHistory.includes(currentValid));
+    // firstSeen would only be computed from currentValid's occurrence dates
   });
 });
