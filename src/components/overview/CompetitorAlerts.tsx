@@ -12,10 +12,11 @@ interface CompetitorAlert {
   direction: "rising" | "falling" | "stable";
 }
 
-interface RecsApiResponse {
+interface AlertsApiResponse {
   hasData: boolean;
   competitorAlerts?: CompetitorAlert[];
   comparisonPeriodLabel?: string;
+  error?: string;
 }
 
 interface Props {
@@ -26,8 +27,8 @@ interface Props {
 }
 
 export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Props) {
-  const url = `/api/recommendations?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
-  const { data, loading } = useCachedFetch<RecsApiResponse>(url, { alwaysRefetchOnMount: true });
+  const url = `/api/competitor-alerts?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
+  const { data, loading, error } = useCachedFetch<AlertsApiResponse>(url, { staleMs: 60_000 });
 
   if (loading) {
     return (
@@ -35,6 +36,15 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
         <div className="h-4 w-48 bg-muted rounded mb-3" />
         <div className="h-16 bg-muted/40 rounded" />
       </div>
+    );
+  }
+
+  if (error || data?.error) {
+    return (
+      <section className="rounded-xl bg-card px-5 py-4 shadow-section">
+        <h2 className="text-sm font-semibold">Competitor Movement</h2>
+        <p className="text-xs text-muted-foreground mt-2">Movement data unavailable</p>
+      </section>
     );
   }
 
