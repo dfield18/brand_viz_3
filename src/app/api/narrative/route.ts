@@ -318,11 +318,11 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "asc" },
   });
 
-  // Also fetch ALL runs with analysisJson for frame trend + sentiment fallback
-  // (older runs may have analysisJson but no narrativeJson)
+  // Fetch industry-cluster runs with analysisJson for frame trend + sentiment
+  // Industry-only matches the scorecard methodology; job status filter avoids partial data
   const allTrendRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull } }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull } };
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull }, prompt: { cluster: "industry" }, job: { status: "done" } }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull }, prompt: { cluster: "industry" }, job: { status: "done" } };
   const allTrendRuns = await prisma.run.findMany({
     where: allTrendRunWhere,
     select: { narrativeJson: true, analysisJson: true, createdAt: true, model: true },

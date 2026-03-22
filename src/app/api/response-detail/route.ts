@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
     if (minPos !== null) {
       const isNotMentioned = minPos === -1;
       const filtered = runs.filter((r) => {
-        const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
+        const rank = computeBrandRank(r.rawResponseText, brandName, brand.slug, r.analysisJson, brandAliases);
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
       });

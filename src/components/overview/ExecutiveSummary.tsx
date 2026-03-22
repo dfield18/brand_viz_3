@@ -68,25 +68,21 @@ export function ExecutiveSummary({
 
   // Sentiment — what is AI saying about the brand?
   if (sentimentSplit) {
-    if (sentimentSplit.positive >= 70) {
+    if (sentimentSplit.positive >= 60) {
       parts.push(
-        `The good news: when AI does talk about ${brandName}, the tone is very positive — ${sentimentSplit.positive}% of responses describe it favorably.`,
+        `The good news: when AI does talk about ${brandName}, the tone is strongly positive — ${sentimentSplit.positive}% of responses describe it favorably.`,
       );
-    } else if (sentimentSplit.positive >= 50) {
+    } else if (sentimentSplit.positive >= 40) {
       parts.push(
-        `When AI discusses ${brandName}, the tone is generally positive (${sentimentSplit.positive}% favorable)${sentimentSplit.negative > 0 ? `, though ${sentimentSplit.negative}% of responses raise concerns worth keeping an eye on` : ""}.`,
+        `When AI discusses ${brandName}, the tone is mostly positive (${sentimentSplit.positive}% favorable)${sentimentSplit.negative > 0 ? `, though ${sentimentSplit.negative}% of responses raise concerns worth keeping an eye on` : ""}.`,
       );
-    } else if (sentimentSplit.negative >= 30) {
+    } else if (sentimentSplit.negative >= 40) {
       parts.push(
         `A note of caution: ${sentimentSplit.negative}% of AI responses describe ${brandName} in a negative light. Since people increasingly trust AI recommendations, it's worth understanding what's driving this and whether ${brandName}'s messaging can address it.`,
       );
     } else if (sentimentSplit.neutral >= 50) {
       parts.push(
         `AI mostly takes a neutral tone when discussing ${brandName} (${sentimentSplit.neutral}% neutral). This means AI doesn't have a strong opinion either way — there may be an opportunity to shape a more positive narrative.`,
-      );
-    } else if (sentimentSplit.positive >= 40) {
-      parts.push(
-        `Sentiment leans positive (${sentimentSplit.positive}% favorable, ${sentimentSplit.neutral}% neutral). There's room to strengthen ${brandName}'s narrative to push sentiment higher.`,
       );
     } else {
       parts.push(

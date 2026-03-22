@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
         runId: run.id,
         model: run.model,
         promptId: run.promptId,
-        brandName: brand.name,
+        brandName,
         brandSlug: brand.slug,
         responseText: useText,
         analysisJson: run.analysisJson,
