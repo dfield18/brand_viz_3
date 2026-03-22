@@ -15,8 +15,8 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
-import { classifyDomains } from "@/lib/sources/classifyDomain";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
+import { computeTopSourceType } from "@/lib/sources/topSourceType";
 
 // A run is considered "real" (not stub/dummy) when its response doesn't start
 // with the stub prefix used by the backfill and process routes.
@@ -267,46 +267,9 @@ export async function GET(req: NextRequest) {
   // NOTE: Frame computation deferred until after fetchBrandRuns resolves,
   // so we use the same deduped runs as the narrative tab. See below.
 
-  // Override Visibility Score and Mention Rate KPIs with industry-only data
-  // Use the scope-aware industryMentionRate from getModelOverviewData (not parsed.brandMentioned)
-  if (mergedIndustryLatest.length > 0) {
-    const industryVis = Math.round(avgArr(mergedIndustryLatest.map((a) => a.brandMentionStrength)));
-    // Merge per-model industryMentionRate (already uses isRunInBrandScope)
-    const industryMR = withData.length > 0
-      ? Math.round(avgArr(withData.map((w) => w.data!.industryMentionRate)))
-      : 0;
-
-    // Compute industry visibility delta from ~7 days ago
-    const sevenDaysAgo = Date.now() - 7 * 86_400_000;
-    const prevIndustry = Array.from(mergedIndustryTrendMap.values())
-      .filter((td) => td.date.getTime() <= sevenDaysAgo && td.analyses.length > 0)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-    const prevVis = prevIndustry.length > 0
-      ? Math.round(avgArr(prevIndustry[0].analyses.map((a) => a.brandMentionStrength)))
-      : null;
-
-    for (const kpi of overview.kpis) {
-      if (kpi.label === "Visibility Score") {
-        kpi.value = industryVis;
-        kpi.delta = prevVis !== null ? industryVis - prevVis : 0;
-      }
-      if (kpi.label === "Mention Rate") {
-        kpi.value = industryMR;
-      }
-    }
-
-    // Override trend visibility with industry-only data
-    const industryByDate = new Map<string, RunAnalysis[]>();
-    for (const [key, val] of mergedIndustryTrendMap) {
-      industryByDate.set(key, val.analyses);
-    }
-    for (const point of overview.trend) {
-      const indAnalyses = industryByDate.get(point.date);
-      point.visibility = indAnalyses && indAnalyses.length > 0
-        ? Math.round(avgArr(indAnalyses.map((a) => a.brandMentionStrength)))
-        : 0;
-    }
-  }
+  // NOTE: overview.kpis "Visibility Score" and "Mention Rate" are populated by
+  // aggregateOverview from raw analyses. They are overridden AFTER the visibilityKpis
+  // block below so they match the scope-aware values. See "Sync overview.kpis" block.
 
   // Merge cluster stats across models
   const mergedClusters = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
@@ -388,20 +351,8 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Top source type: query ALL runs in range (matching sources tab)
-  const sourceOccurrences = visResult && visResult.ok
-    ? await prisma.sourceOccurrence.findMany({
-        where: {
-          run: {
-            brandId: brand.id,
-            createdAt: { gte: new Date(Date.now() - range * 86_400_000) },
-            job: { status: "done" },
-            ...(model !== "all" ? { model } : {}),
-          },
-        },
-        select: { source: { select: { domain: true } } },
-      }).catch((e) => { console.error("Source type error:", e); return [] as { source: { domain: string } }[]; })
-    : [];
+  // Top source type: computed from scoped run IDs (matching Sources API)
+  // Deferred until after visResult is available — see topSourceType block below.
 
   // --- Visibility KPIs + Competitive Rank (from single visResult) ---
   let overallMentionRate = 0;
@@ -679,34 +630,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Top cited source type (matches sources tab exactly: top 25 domains, classifyDomains, aggregate) ---
+  // --- Top cited source type from scoped runs (matches Sources API) ---
   let topSourceType: { category: string; count: number; totalSources: number } | null = null;
-  if (sourceOccurrences.length > 0) {
-    // Group by domain → count citations per domain
-    const domainCitationCounts = new Map<string, number>();
-    for (const s of sourceOccurrences) {
-      domainCitationCounts.set(s.source.domain, (domainCitationCounts.get(s.source.domain) ?? 0) + 1);
-    }
-    // Keep only top 25 domains by citation count (same as computeTopDomains limit=25)
-    const top25Domains = [...domainCitationCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 25);
-    // Classify domains using same pipeline as sources tab (DB cache → static map → GPT)
-    const domainNames = top25Domains.map(([d]) => d);
-    const categories = await classifyDomains(domainNames);
-    // Aggregate citations by category from top 25 (same as SourceSummaryCards/SourceTypeDonut)
-    const catCitations: Record<string, number> = {};
-    let totalCitations = 0;
-    for (const [domain, count] of top25Domains) {
-      const cat = categories[domain] ?? "other";
-      catCitations[cat] = (catCitations[cat] ?? 0) + count;
-      totalCitations += count;
-    }
-    const sorted = Object.entries(catCitations).sort((a, b) => b[1] - a[1]);
-    const top = sorted.find(([cat]) => cat !== "other") ?? sorted[0];
-    if (top) {
-      topSourceType = { category: top[0], count: top[1], totalSources: totalCitations };
-    }
+  if (visResult && visResult.ok) {
+    const scopedSourceRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+    const scopedSourceRunIds = scopedSourceRuns.map((r) => r.id);
+    topSourceType = await computeTopSourceType(scopedSourceRunIds).catch((e) => {
+      console.error("Source type error:", e);
+      return null;
+    });
+  }
+
+  // --- Sync overview.kpis with visibilityKpis so the payload never disagrees ---
+  // visibilityKpis is the authoritative scope-aware source; override the
+  // analysis-derived values that aggregateOverview initially populated.
+  for (const kpi of overview.kpis) {
+    if (kpi.label === "Mention Rate") kpi.value = overallMentionRate;
+    if (kpi.label === "Visibility Score") kpi.value = overallMentionRate; // alias
   }
 
   // ── Generate AI summary using GPT-4o-mini ──
