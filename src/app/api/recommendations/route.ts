@@ -5,6 +5,7 @@ import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
+import { computeCompetitorAlerts, type SnapshotData } from "@/lib/competitorAlerts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -582,141 +583,104 @@ export async function GET(req: NextRequest) {
     .filter((c) => c.promptsWhereCompetitorOutranks > 0);
 
   // -----------------------------------------------------------------------
-  // 5. competitorAlerts
+  // 5. competitorAlerts — latest snapshot vs immediately previous snapshot
   // -----------------------------------------------------------------------
-  // The deduped `runs` set only contains the latest run per model+prompt,
-  // so all runs share the same date and week-over-week comparison fails.
-  // Fetch ALL historical runs (un-deduped) grouped by job date to compare
-  // earlier vs recent periods properly.
+  // Respects the selected model and range. Builds per-date snapshots of
+  // entity mention rates from industry-cluster runs, then uses the pure
+  // computeCompetitorAlerts helper for the comparison.
+  const rangeCutoff = new Date(Date.now() - viewRange * 86_400_000);
+  const alertModelFilter = model !== "all" ? { model } : {};
   const alertJobs = await prisma.job.findMany({
-    where: { brandId: brand.id, status: "done", finishedAt: { not: null } },
+    where: {
+      brandId: brand.id,
+      status: "done",
+      finishedAt: { not: null, gte: rangeCutoff },
+      ...alertModelFilter,
+    },
     orderBy: { finishedAt: "asc" },
     select: { id: true, finishedAt: true },
   });
 
-  const competitorAlerts: {
-    entityId: string;
-    displayName: string;
-    mentionRateChange: number;
-    recentMentionRate: number;
-    previousMentionRate: number;
-    direction: "rising" | "falling" | "stable";
-  }[] = [];
-  let comparisonPeriodLabel = "prior period";
+  // Build per-date snapshots from industry-cluster EntityResponseMetric
+  const alertJobIds = alertJobs.filter((j) => j.finishedAt).map((j) => j.id);
+  const alertMetrics = alertJobIds.length > 0
+    ? await prisma.entityResponseMetric.findMany({
+        where: { run: { jobId: { in: alertJobIds }, prompt: { cluster: "industry" } } },
+        select: { entityId: true, runId: true, run: { select: { jobId: true } } },
+      })
+    : [];
 
-  if (alertJobs.length >= 2) {
-    const jobDates = alertJobs.map((j) => j.finishedAt!.toISOString().slice(0, 10));
-    const uniqueDates = [...new Set(jobDates)].sort();
-    const midpoint = Math.floor(uniqueDates.length / 2);
-    const recentDates = new Set(uniqueDates.slice(midpoint));
-    const earlierDates = new Set(uniqueDates.slice(0, midpoint));
+  // Map jobId → date
+  const alertJobDateMap = new Map<string, string>();
+  for (const j of alertJobs) {
+    if (j.finishedAt) alertJobDateMap.set(j.id, j.finishedAt.toISOString().slice(0, 10));
+  }
 
-    // Compute the comparison period label
-    const recentArr = uniqueDates.slice(midpoint);
-    const earlierArr = uniqueDates.slice(0, midpoint);
-    if (recentArr.length > 0 && earlierArr.length > 0) {
-      const recentStart = new Date(recentArr[0]);
-      const earlierStart = new Date(earlierArr[0]);
-      const spanDays = Math.round((recentStart.getTime() - earlierStart.getTime()) / 86_400_000);
-      if (spanDays <= 10) comparisonPeriodLabel = "prior week";
-      else if (spanDays <= 35) comparisonPeriodLabel = "prior month";
-      else if (spanDays <= 100) comparisonPeriodLabel = "prior quarter";
-      else comparisonPeriodLabel = `prior ${Math.round(spanDays / 30)} months`;
-    }
+  // Count industry runs per date for the denominator
+  const alertRunsByDate = new Map<string, Set<string>>();
+  for (const m of alertMetrics) {
+    const jobId = m.run.jobId;
+    const date = alertJobDateMap.get(jobId);
+    if (!date) continue;
+    if (!alertRunsByDate.has(date)) alertRunsByDate.set(date, new Set());
+    alertRunsByDate.get(date)!.add(m.runId);
+  }
 
-    const recentJobIds = alertJobs.filter((j) => recentDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
-    const earlierJobIds = alertJobs.filter((j) => earlierDates.has(j.finishedAt!.toISOString().slice(0, 10))).map((j) => j.id);
+  // Count entity mentions per date
+  const alertEntityByDate = new Map<string, Map<string, Set<string>>>();
+  for (const m of alertMetrics) {
+    const jobId = m.run.jobId;
+    const date = alertJobDateMap.get(jobId);
+    if (!date) continue;
+    if (!alertEntityByDate.has(date)) alertEntityByDate.set(date, new Map());
+    const dateMap = alertEntityByDate.get(date)!;
+    if (!dateMap.has(m.entityId)) dateMap.set(m.entityId, new Set());
+    dateMap.get(m.entityId)!.add(m.runId);
+  }
 
-    // Fetch prominence metrics for both halves — industry-cluster runs only
-    // so we only track competitors in the same competitive space
-    const [recentMetrics, earlierMetrics] = await Promise.all([
-      recentJobIds.length > 0
-        ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } } },
-            select: { entityId: true, runId: true },
-          })
-        : Promise.resolve([]),
-      earlierJobIds.length > 0
-        ? prisma.entityResponseMetric.findMany({
-            where: { run: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } } },
-            select: { entityId: true, runId: true },
-          })
-        : Promise.resolve([]),
-    ]);
+  // Normalize entity IDs before building snapshots
+  const allAlertEntityIds = new Set<string>();
+  for (const [, dateMap] of alertEntityByDate) {
+    for (const id of dateMap.keys()) allAlertEntityIds.add(id);
+  }
+  const alertAliasMap = allAlertEntityIds.size > 0
+    ? await normalizeEntityIds([...allAlertEntityIds].filter((id) => id !== brand.slug), brand.slug)
+    : new Map<string, string>();
 
-    // Count industry-cluster runs per period for rate denominator
-    const [recentRunCount, earlierRunCount] = await Promise.all([
-      recentJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: recentJobIds }, prompt: { cluster: "industry" } } }) : Promise.resolve(0),
-      earlierJobIds.length > 0 ? prisma.run.count({ where: { jobId: { in: earlierJobIds }, prompt: { cluster: "industry" } } }) : Promise.resolve(0),
-    ]);
-
-    // Count distinct runs per entity in each period
-    let recentEntityRuns = new Map<string, Set<string>>();
-    for (const m of recentMetrics) {
-      if (m.entityId === brand.slug) continue;
-      if (!recentEntityRuns.has(m.entityId)) recentEntityRuns.set(m.entityId, new Set());
-      recentEntityRuns.get(m.entityId)!.add(m.runId);
-    }
-    let earlierEntityRuns = new Map<string, Set<string>>();
-    for (const m of earlierMetrics) {
-      if (m.entityId === brand.slug) continue;
-      if (!earlierEntityRuns.has(m.entityId)) earlierEntityRuns.set(m.entityId, new Set());
-      earlierEntityRuns.get(m.entityId)!.add(m.runId);
-    }
-
-    // Normalize entity IDs: merge duplicates like "the walt disney company" + "disney"
-    const rawEntityIds = [...new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()])];
-    const aliasMap = await normalizeEntityIds(rawEntityIds, brand.slug);
-
-    // Update display names so canonical IDs inherit the best name from all aliases
-    for (const [entityId, canonical] of aliasMap) {
-      if (entityId !== canonical && !entityDisplayNames.has(canonical)) {
-        const aliasName = entityDisplayNames.get(entityId);
-        if (aliasName) entityDisplayNames.set(canonical, aliasName);
-      }
-    }
-
-    // Merge run sets by canonical entity ID
-    function mergeRunSets(source: Map<string, Set<string>>): Map<string, Set<string>> {
-      const merged = new Map<string, Set<string>>();
-      for (const [entityId, runSet] of source) {
-        const canonical = aliasMap.get(entityId) ?? entityId;
-        if (!merged.has(canonical)) merged.set(canonical, new Set());
-        for (const runId of runSet) merged.get(canonical)!.add(runId);
-      }
-      return merged;
-    }
-    recentEntityRuns = mergeRunSets(recentEntityRuns);
-    earlierEntityRuns = mergeRunSets(earlierEntityRuns);
-
-    const allEntityIds = new Set([...recentEntityRuns.keys(), ...earlierEntityRuns.keys()]);
-    for (const entityId of allEntityIds) {
-      const recentMentions = recentEntityRuns.get(entityId)?.size ?? 0;
-      const earlierMentions = earlierEntityRuns.get(entityId)?.size ?? 0;
-      const recentRate = recentRunCount > 0 ? recentMentions / recentRunCount : 0;
-      const previousRate = earlierRunCount > 0 ? earlierMentions / earlierRunCount : 0;
-      const changePts = (recentRate - previousRate) * 100;
-      const recentPct = Math.round(recentRate * 100);
-      const previousPct = Math.round(previousRate * 100);
-
-      if (Math.abs(changePts) > 1 || recentMentions > 0) {
-        const direction: "rising" | "falling" | "stable" =
-          changePts > 2 ? "rising" : changePts < -2 ? "falling" : "stable";
-
-        competitorAlerts.push({
-          entityId,
-          displayName: resolveEntityName(entityId, entityDisplayNames),
-          mentionRateChange: Math.round(changePts * 10) / 10,
-          recentMentionRate: recentPct,
-          previousMentionRate: previousPct,
-          direction,
-        });
-      }
+  // Update display names for canonical IDs
+  for (const [entityId, canonical] of alertAliasMap) {
+    if (entityId !== canonical && !entityDisplayNames.has(canonical)) {
+      const aliasName = entityDisplayNames.get(entityId);
+      if (aliasName) entityDisplayNames.set(canonical, aliasName);
     }
   }
 
-  competitorAlerts.sort((a, b) => Math.abs(b.mentionRateChange) - Math.abs(a.mentionRateChange));
-  competitorAlerts.splice(15);
+  // Build SnapshotData[] with normalized entity IDs
+  const snapshots: SnapshotData[] = [];
+  for (const [date, dateEntityMap] of alertEntityByDate) {
+    const totalIndustryRuns = alertRunsByDate.get(date)?.size ?? 0;
+    const entityMentions: Record<string, number> = {};
+    for (const [rawEntityId, runSet] of dateEntityMap) {
+      const canonical = alertAliasMap.get(rawEntityId) ?? rawEntityId;
+      entityMentions[canonical] = (entityMentions[canonical] ?? 0) + runSet.size;
+    }
+    snapshots.push({ date, entityMentions, totalIndustryRuns });
+  }
+
+  const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
+  let { comparisonPeriodLabel } = alertResult;
+
+  // Map to the format expected by the UI (add displayName)
+  const competitorAlerts = alertResult.alerts
+    .slice(0, 15)
+    .map((a) => ({
+      entityId: a.entityId,
+      displayName: resolveEntityName(a.entityId, entityDisplayNames),
+      mentionRateChange: a.mentionRateChange,
+      recentMentionRate: a.recentMentionRate,
+      previousMentionRate: a.previousMentionRate,
+      direction: a.direction,
+    }));
 
   // ── GPT-based relevance filter: keep only same-industry competitors ────
   if (competitorAlerts.length > 0) {
@@ -740,22 +704,14 @@ export async function GET(req: NextRequest) {
         ],
       });
       const raw = filterResp.choices[0]?.message?.content?.trim() ?? "[]";
-      // Parse the JSON array — strip markdown fences if present
       const cleaned = raw.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
       const keepSet = new Set<string>(JSON.parse(cleaned) as string[]);
-      // Remove alerts whose displayName was not in the keep list
-      const before = competitorAlerts.length;
       for (let i = competitorAlerts.length - 1; i >= 0; i--) {
         if (!keepSet.has(competitorAlerts[i].displayName)) {
           competitorAlerts.splice(i, 1);
         }
       }
-      if (before !== competitorAlerts.length) {
-        // eslint-disable-next-line no-console
-        console.log(`[competitorAlerts] GPT filter: ${before} → ${competitorAlerts.length} (removed ${before - competitorAlerts.length} irrelevant)`);
-      }
     } catch (err) {
-      // If GPT call fails, keep all alerts (graceful degradation)
       // eslint-disable-next-line no-console
       console.warn("[competitorAlerts] GPT filter failed, keeping all:", err);
     }
