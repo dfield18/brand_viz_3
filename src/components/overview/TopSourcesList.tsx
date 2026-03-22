@@ -69,8 +69,8 @@ const DONUT_COLORS: Record<string, string> = {
 
 /* ─── Mini Donut ──────────────────────────────────────────────────── */
 
-function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
-  const { pieData, totalCitations } = useMemo(() => {
+function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: TopDomainRow[]; overallTotalCitations: number }) {
+  const { pieData } = useMemo(() => {
     const counts: Record<string, number> = {};
     let total = 0;
     for (const d of topDomains) {
@@ -105,7 +105,7 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
         pct: total > 0 ? Math.round((otherValue / total) * 100) : 0,
       });
     }
-    return { pieData: slices, totalCitations: total };
+    return { pieData: slices };
   }, [topDomains]);
 
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
@@ -114,7 +114,10 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-sm font-semibold mb-3">Source Types</p>
+      <p className="text-sm font-semibold mb-1">Source Types</p>
+      <p className="text-[10px] text-muted-foreground/60 mb-2 text-center leading-snug">
+        Center shows all normalized citations. Slices show category mix of top sources.
+      </p>
       <div className="relative" style={{ width: 200, height: 200, margin: "0 auto" }}>
         <ResponsiveContainer width={200} height={200}>
           <PieChart>
@@ -168,8 +171,8 @@ function SourceTypeDonut({ topDomains }: { topDomains: TopDomainRow[] }) {
             </>
           ) : (
             <>
-              <span className="text-lg font-bold tabular-nums">{totalCitations}</span>
-              <span className="text-[10px] text-muted-foreground">total URL citations</span>
+              <span className="text-lg font-bold tabular-nums">{overallTotalCitations}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight text-center">total citations</span>
             </>
           )}
         </div>
@@ -304,14 +307,17 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
           {apiData.sources.topDomains.length > 5 && (
             <p className="text-[11px] text-muted-foreground mt-3">
               +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details.
-              Donut chart includes all {apiData.sources.topDomains.length} sources.
+              Category breakdown shows top {apiData.sources.topDomains.length} domains. Citations are deduplicated by normalized URL per response.
             </p>
           )}
         </div>
 
         {/* Right: source type donut (45%) */}
         <div className="hidden sm:block" style={{ flex: "0 1 45%" }}>
-          <SourceTypeDonut topDomains={apiData.sources.topDomains} />
+          <SourceTypeDonut
+            topDomains={apiData.sources.topDomains}
+            overallTotalCitations={apiData.sources.summary.totalCitations}
+          />
         </div>
       </div>
     </section>

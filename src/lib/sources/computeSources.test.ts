@@ -116,6 +116,26 @@ describe("computeTopDomains", () => {
     assert.equal(computeTopDomains([], [], "nike", 0).length, 0);
   });
 
+  it("totalCitations counts all occurrences while topDomains is capped", () => {
+    // Create 30 domains with 1 citation each — only 25 should appear in topDomains
+    const occ = Array.from({ length: 30 }, (_, i) =>
+      makeOcc({ domain: `domain${i}.com`, runId: `r${i}` }),
+    );
+    const summary = computeSourceSummary(occ, [], "nike", 30);
+    const topDomains = computeTopDomains(occ, [], "nike", 30, 25);
+
+    // summary.totalCitations should reflect ALL 30 occurrences
+    assert.equal(summary.totalCitations, 30);
+
+    // topDomains should be capped at 25
+    assert.equal(topDomains.length, 25);
+
+    // Sum of topDomains citations (25) is less than totalCitations (30)
+    const topDomainSum = topDomains.reduce((s, d) => s + d.citations, 0);
+    assert.equal(topDomainSum, 25);
+    assert.ok(topDomainSum < summary.totalCitations, "topDomains sum must be less than totalCitations when domains exceed limit");
+  });
+
   it("computes firstSeen and lastSeen", () => {
     const occ = [
       makeOcc({ runId: "r1", domain: "a.com", createdAt: new Date("2024-01-01") }),
