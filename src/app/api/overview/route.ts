@@ -10,7 +10,7 @@ import {
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
-import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
@@ -53,16 +53,13 @@ async function getModelOverviewData(
     select: { jobId: true, model: true, analysisJson: true, rawResponseText: true, prompt: { select: { cluster: true } } },
   });
 
-  // Filter out stub/dummy runs, then apply brand-scope filtering
+  // Filter out stub/dummy runs — keep all for denominator
   const realRuns = allRuns.filter((r) => isRealRun(r.rawResponseText));
   if (realRuns.length === 0) return null;
-  const scopedIdentity = { brandName, brandSlug, aliases };
-  const scopedRealRuns = filterRunsToBrandScope(realRuns, scopedIdentity);
-  if (scopedRealRuns.length === 0) return null;
 
   const analysesByJob = new Map<string, RunAnalysis[]>();
   const industryAnalysesByJob = new Map<string, RunAnalysis[]>();
-  for (const run of scopedRealRuns) {
+  for (const run of realRuns) {
     const parsed = parseAnalysis(run.analysisJson);
     if (parsed) {
       const list = analysesByJob.get(run.jobId) ?? [];
@@ -80,7 +77,7 @@ async function getModelOverviewData(
   if (latestAnalyses.length === 0) return null;
 
   // Cluster-level stats from latest job runs
-  const latestRealRunsFull = scopedRealRuns.filter((r) => r.jobId === latestJob.id);
+  const latestRealRunsFull = realRuns.filter((r) => r.jobId === latestJob.id);
   const clusterStats = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
   for (const run of latestRealRunsFull) {
     const cluster = run.prompt.cluster;
@@ -122,9 +119,10 @@ async function getModelOverviewData(
       analyses: industryAnalysesByJob.get(j.id)!,
     }));
 
-  // Compute industry mention rate using isBrandMentioned (matches visibility tab)
+  // Compute industry mention rate using isRunInBrandScope (matches visibility tab)
+  const scopedIdentity = { brandName, brandSlug, aliases };
   const industryMentionCount = industryLatestRuns.filter((r) =>
-    isBrandMentioned(r.rawResponseText, brandName, brandSlug, aliases),
+    isRunInBrandScope(r, scopedIdentity),
   ).length;
   const industryMentionRate = industryLatestRuns.length > 0
     ? Math.round((industryMentionCount / industryLatestRuns.length) * 100)
@@ -136,7 +134,7 @@ async function getModelOverviewData(
     industryLatestAnalyses: industryAnalysesByJob.get(latestJob.id) ?? [],
     trendData,
     industryTrendData,
-    totalRuns: scopedRealRuns.filter((r) => r.jobId === latestJob.id).length,
+    totalRuns: latestRealRunsFull.length,
     analyzedRuns: latestAnalyses.length,
     clusterStats,
     avgRank,
@@ -410,15 +408,15 @@ export async function GET(req: NextRequest) {
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
 
   if (visResult && visResult.ok) {
-    const { brand: visBrand, runs: rawVisRuns } = visResult;
+    const { brand: visBrand, runs: visRuns } = visResult;
     const visBrandIdentity = buildBrandIdentity(visBrand);
-    const visRuns = filterRunsToBrandScope(rawVisRuns, visBrandIdentity);
+    // Keep all runs for denominator — use isRunInBrandScope for mention detection
     const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
 
-    // Mention rate
+    // Mention rate — scope-aware detection, full denominator
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+      isRunInBrandScope(r, visBrandIdentity),
     ).length;
     overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
@@ -435,7 +433,7 @@ export async function GET(req: NextRequest) {
     function computeTextSov(sovRuns: OverviewVisRun[]): number {
       let bm = 0, total = 0;
       for (const run of sovRuns) {
-        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
+        const mentioned = isRunInBrandScope(run, visBrandIdentity);
         const analysis = run.analysisJson as OverviewAnalysis | null;
         const compCount = (analysis?.competitors ?? []).length;
         if (mentioned) bm++;
@@ -503,10 +501,10 @@ export async function GET(req: NextRequest) {
 
       if (hasDelta) {
         const tmMentions = thisMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+          isRunInBrandScope(r, visBrandIdentity),
         ).length;
         const pmMentions = priorMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+          isRunInBrandScope(r, visBrandIdentity),
         ).length;
         const tmMR = computeMentionRate(tmMentions, thisMonthRuns.length);
         const pmMR = computeMentionRate(pmMentions, priorMonthRuns.length);

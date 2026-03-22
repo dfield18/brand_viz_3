@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import {
   computeAvgRank,
@@ -47,8 +47,10 @@ export async function GET(req: NextRequest) {
   const brandIdentity = buildBrandIdentity(brand);
 
   try {
-    // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
-    const allRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
+    // Keep ALL runs for denominator — use isRunInBrandScope as a smarter
+    // mention detector instead of pre-filtering. This preserves correct
+    // recall denominators (mention_count / total_runs, not mention_count / mention_count).
+    const allRuns = rawRuns;
 
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(allRuns);
@@ -78,7 +80,7 @@ export async function GET(req: NextRequest) {
     const seenWinPrompts = new Set<string>();
 
     for (const run of runs) {
-      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const mentioned = isRunInBrandScope(run, brandIdentity);
       if (mentioned) totalMentions++;
 
       const cluster = run.prompt.cluster;
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
     type ParsedAnalysis = { brandMentioned?: boolean; competitors?: AnalysisCompetitor[] };
 
     function getRunEntities(run: VisibilityRun): { brandMentioned: boolean; competitors: string[] } {
-      const brandMentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const brandMentioned = isRunInBrandScope(run, brandIdentity);
       const analysis = run.analysisJson as ParsedAnalysis | null;
       const competitors = (analysis?.competitors ?? []).map((c) => c.name);
       return { brandMentioned, competitors };
@@ -218,15 +220,14 @@ export async function GET(req: NextRequest) {
     });
 
     // Build model breakdown: stats per LLM across all models for this brand
+    // Keep all runs for denominator — use isRunInBrandScope for mention detection
     const rawModelRuns = await prisma.run.findMany({
       where: { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" } },
       include: { prompt: true },
       orderBy: { createdAt: "desc" },
     });
-    // Apply brand-scope filter, then dedupe
-    const scopedModelRuns = filterRunsToBrandScope(rawModelRuns, brandIdentity);
     const seenModelPrompts = new Set<string>();
-    const dedupedModelRuns = scopedModelRuns.filter((r) => {
+    const dedupedModelRuns = rawModelRuns.filter((r) => {
       const key = `${r.model}|${r.promptId}`;
       if (seenModelPrompts.has(key)) return false;
       seenModelPrompts.add(key);
@@ -242,7 +243,7 @@ export async function GET(req: NextRequest) {
       const ms = modelBreakdownStats[run.model];
       if (!ms) continue;
       ms.total++;
-      if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) ms.mentions++;
+      if (isRunInBrandScope(run, brandIdentity)) ms.mentions++;
       const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) ms.ranks.push(rk);
     }
@@ -268,7 +269,7 @@ export async function GET(req: NextRequest) {
       const intent = run.prompt.intent;
       if (industryIntentStats[intent]) {
         industryIntentStats[intent].runs++;
-        if (isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) {
+        if (isRunInBrandScope(run, brandIdentity)) {
           industryIntentStats[intent].mentions++;
         }
       }
@@ -284,7 +285,7 @@ export async function GET(req: NextRequest) {
     // Mention rate: industry-cluster queries only
     const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases),
+      isRunInBrandScope(r, brandIdentity),
     ).length;
     const overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
@@ -299,7 +300,7 @@ export async function GET(req: NextRequest) {
 
     function computeWeekKpis(weekRuns: VisibilityRun[]) {
       const mentions = weekRuns.filter((r) =>
-        isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases),
+        isRunInBrandScope(r, brandIdentity),
       ).length;
       const mr = computeMentionRate(mentions, weekRuns.length);
       const wRanks: (number | null)[] = [];
@@ -414,7 +415,7 @@ export async function GET(req: NextRequest) {
     const sovByRun = new Map<string, { brandMentions: number; totalMentions: number }>();
     for (const run of allTrendRuns) {
       if (run.prompt.cluster !== "industry") continue;
-      const bMentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const bMentioned = isRunInBrandScope(run, brandIdentity);
       const analysis = run.analysisJson as ParsedAnalysis | null;
       const compCount = (analysis?.competitors ?? []).length;
       sovByRun.set(run.id, {
@@ -478,7 +479,7 @@ export async function GET(req: NextRequest) {
     for (const [date, dateRuns] of dedupedTrendRuns) {
       for (const run of dateRuns) {
         if (run.prompt.cluster !== "industry") continue;
-        const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+        const mentioned = isRunInBrandScope(run, brandIdentity);
         const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
         const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
         const runSov = sovByRun.get(run.id) ?? { brandMentions: 0, totalMentions: 0 };
@@ -593,7 +594,7 @@ export async function GET(req: NextRequest) {
       }
       const bucket = promptBuckets.get(key)!;
       bucket.total++;
-      const mentioned = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const mentioned = isRunInBrandScope(run, brandIdentity);
       if (mentioned) bucket.mentions++;
       const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) bucket.ranks.push(rk);
@@ -620,7 +621,7 @@ export async function GET(req: NextRequest) {
     const sovByRunId: Record<string, { brandMentions: number; totalMentions: number }> = {};
     for (const run of runs) {
       if (run.prompt.cluster !== "industry") continue;
-      const bm = isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases);
+      const bm = isRunInBrandScope(run, brandIdentity);
       const analysis = run.analysisJson as ParsedAnalysis | null;
       const compCount = (analysis?.competitors ?? []).length;
       sovByRunId[run.id] = {
