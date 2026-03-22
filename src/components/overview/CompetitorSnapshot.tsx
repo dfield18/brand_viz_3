@@ -141,7 +141,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
             <p className="text-xs text-muted-foreground">
               {isOrg ? (
                 <>
-                  <span className="font-semibold text-foreground">{threat.name}</span> has the strongest AI visibility in this space
+                  <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer organization in AI responses
                   {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
                     <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
@@ -149,7 +149,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-foreground">{threat.name}</span> is {brandName}&apos;s biggest competitive threat
+                  <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer brand in AI responses
                   {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
                     <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
