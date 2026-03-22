@@ -25,15 +25,16 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       rawResponseText: true,
-      brand: { select: { name: true, slug: true } },
+      brand: { select: { name: true, displayName: true, slug: true } },
     },
   });
 
   let updated = 0;
   for (const run of runs) {
+    const brandName = (run.brand as unknown as { displayName?: string | null }).displayName || run.brand.name;
     const narrative = await extractNarrativeForRun(
       run.rawResponseText,
-      run.brand.name,
+      brandName,
       run.brand.slug,
     );
     await prisma.run.update({
