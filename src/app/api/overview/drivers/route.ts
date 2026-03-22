@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   if (!maybeBrand) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
-  const brand = maybeBrand;
+  // Resolve name to displayName for accurate brand detection in text
+  const brand = { ...maybeBrand, name: maybeBrand.displayName || maybeBrand.name };
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
 
   const isAll = model === "all";

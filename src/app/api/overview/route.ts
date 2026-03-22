@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
   const modelResults = await Promise.all(
     modelsToQuery.map(async (m) => ({
       model: m,
-      data: await getModelOverviewData(brand.id, m, range, brand.name, brand.slug, brandAliases),
+      data: await getModelOverviewData(brand.id, m, range, brandName, brand.slug, brandAliases),
     })),
   );
 
@@ -412,13 +412,13 @@ export async function GET(req: NextRequest) {
 
     // Mention rate
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+      isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
     ).length;
     overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
     // Ranks
     const industryRanks: (number | null)[] = industryRuns.map((r) =>
-      computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
+      computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
     );
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
@@ -429,7 +429,7 @@ export async function GET(req: NextRequest) {
     function computeTextSov(sovRuns: OverviewVisRun[]): number {
       let bm = 0, total = 0;
       for (const run of sovRuns) {
-        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
+        const mentioned = isBrandMentioned(run.rawResponseText, brandName, visBrand.slug, brandAliases);
         const analysis = run.analysisJson as OverviewAnalysis | null;
         const compCount = (analysis?.competitors ?? []).length;
         if (mentioned) bm++;
@@ -497,19 +497,19 @@ export async function GET(req: NextRequest) {
 
       if (hasDelta) {
         const tmMentions = thisMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+          isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
         ).length;
         const pmMentions = priorMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
+          isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
         ).length;
         const tmMR = computeMentionRate(tmMentions, thisMonthRuns.length);
         const pmMR = computeMentionRate(pmMentions, priorMonthRuns.length);
 
         const tmRanks = thisMonthRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
+          computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
         );
         const pmRanks = priorMonthRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
+          computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
         );
 
         kpiDeltas = {

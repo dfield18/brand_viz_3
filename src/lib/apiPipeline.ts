@@ -137,16 +137,23 @@ export async function fetchBrandRuns<R extends { model: string; promptId: string
   const rangeCutoff = computeRangeCutoff(viewRange);
 
   // Look up brand
-  const brand = await prisma.brand.findUnique({
+  const rawBrand = await prisma.brand.findUnique({
     where: { slug: brandSlug },
     select: { id: true, name: true, displayName: true, slug: true, industry: true, aliases: true },
   });
-  if (!brand) {
+  if (!rawBrand) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Brand not found" }, { status: 404 }),
     };
   }
+  // Resolve brand.name to displayName when available so downstream
+  // brand detection (isBrandMentioned, computeBrandRank) uses the
+  // correct name. E.g. displayName="Future Forward" vs name="Future Forward Usa".
+  const brand: typeof rawBrand = {
+    ...rawBrand,
+    name: rawBrand.displayName || rawBrand.name,
+  };
 
   // Find latest completed job (optional)
   let job: PipelineJob | null = null;
