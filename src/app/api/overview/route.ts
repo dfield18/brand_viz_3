@@ -77,15 +77,19 @@ async function getModelOverviewData(
   if (latestAnalyses.length === 0) return null;
 
   // Cluster-level stats from latest job runs
+  // Use isRunInBrandScope for mention detection (not parsed.brandMentioned)
+  // so ambiguous brands get the same scope-aware counting as visibilityKpis.
+  const scopedIdentity = { brandName, brandSlug, aliases };
   const latestRealRunsFull = realRuns.filter((r) => r.jobId === latestJob.id);
   const clusterStats = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
   for (const run of latestRealRunsFull) {
     const cluster = run.prompt.cluster;
     const parsed = parseAnalysis(run.analysisJson);
     if (!parsed) continue;
+    const mentioned = isRunInBrandScope(run, scopedIdentity);
     const entry = clusterStats.get(cluster) ?? { total: 0, mentioned: 0, strengths: [] };
     entry.total++;
-    if (parsed.brandMentioned) entry.mentioned++;
+    if (mentioned) entry.mentioned++;
     entry.strengths.push(parsed.brandMentionStrength);
     clusterStats.set(cluster, entry);
   }
@@ -120,7 +124,6 @@ async function getModelOverviewData(
     }));
 
   // Compute industry mention rate using isRunInBrandScope (matches visibility tab)
-  const scopedIdentity = { brandName, brandSlug, aliases };
   const industryMentionCount = industryLatestRuns.filter((r) =>
     isRunInBrandScope(r, scopedIdentity),
   ).length;
@@ -265,12 +268,13 @@ export async function GET(req: NextRequest) {
   // so we use the same deduped runs as the narrative tab. See below.
 
   // Override Visibility Score and Mention Rate KPIs with industry-only data
+  // Use the scope-aware industryMentionRate from getModelOverviewData (not parsed.brandMentioned)
   if (mergedIndustryLatest.length > 0) {
     const industryVis = Math.round(avgArr(mergedIndustryLatest.map((a) => a.brandMentionStrength)));
-    const industryMR = pctOf(
-      mergedIndustryLatest.filter((a) => a.brandMentioned).length,
-      mergedIndustryLatest.length,
-    );
+    // Merge per-model industryMentionRate (already uses isRunInBrandScope)
+    const industryMR = withData.length > 0
+      ? Math.round(avgArr(withData.map((w) => w.data!.industryMentionRate)))
+      : 0;
 
     // Compute industry visibility delta from ~7 days ago
     const sevenDaysAgo = Date.now() - 7 * 86_400_000;
