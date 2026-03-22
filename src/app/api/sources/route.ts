@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
   const cluster = req.nextUrl.searchParams.get("cluster") ?? "";
+  const latestOnly = req.nextUrl.searchParams.get("latest") === "true";
 
   type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown; rawResponseText: string };
   const result = await fetchBrandRuns<MinimalRun>({
@@ -56,14 +57,15 @@ export async function GET(req: NextRequest) {
       clusterPromptFilter = { promptId: { in: clusterPrompts.map((p) => p.id) } };
     }
 
+    // When latestOnly=true, only include sources from the deduped runs (latest per prompt)
+    // This gives a snapshot of the current state, not cumulative history
+    const runFilter = latestOnly
+      ? { id: { in: runIds } }
+      : { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...modelFilter };
+
     const rawOccurrences = await prisma.sourceOccurrence.findMany({
       where: {
-        run: {
-          brandId: brand.id,
-          createdAt: { gte: rangeCutoff },
-          job: { status: "done" },
-          ...modelFilter,
-        },
+        run: runFilter,
         ...clusterPromptFilter,
       },
       select: {
