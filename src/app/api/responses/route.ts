@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "@/lib/visibility/rankedEntities";
+import { buildEntityAliasGroups } from "@/lib/competition/canonicalize";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -75,6 +76,22 @@ export async function GET(req: NextRequest) {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
 
+    // Build deterministic alias map for consistent Brand 1..5 ranking
+    // Same dedup logic as competitor movement (corporate suffixes + brand-family variants)
+    const allCompNames = new Set<string>();
+    for (const run of runs) {
+      if (run.prompt.cluster !== "industry") continue;
+      const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
+      for (const c of (analysis?.competitors ?? [])) {
+        allCompNames.add(c.name.toLowerCase());
+      }
+    }
+    const aliasMap = buildEntityAliasGroups(
+      [...allCompNames],
+      brand.slug,
+      brand.aliases?.length ? brand.aliases : undefined,
+    );
+
     const runData = runs.map((run) => {
       const pricing = MODEL_PRICING[run.model] ?? defaultPricing;
       let promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
@@ -112,6 +129,7 @@ export async function GET(req: NextRequest) {
             brandName,
             brandSlug: brand.slug,
             includeBrand: true,
+            aliasMap,
             limit: RANKED_ENTITY_LIMIT,
           })
         : [];

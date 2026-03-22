@@ -1,13 +1,14 @@
 /**
- * Build per-date movement snapshots using the same ranked-entity
- * semantics as the CSV export (Brand 1..5 columns).
+ * Build per-date movement snapshots for competitor recall tracking.
  *
  * Uses getRankedEntitiesForRun to locate entities in the response
- * text, deduplicate, and rank by text order — matching the export.
+ * text, deduplicate, and canonicalize — but does NOT apply the
+ * top-5 limit used by the CSV export. Movement tracks whether a
+ * competitor appears at all, not just whether it's in the top 5.
  */
 
 import type { SnapshotData } from "./competitorAlerts";
-import { getRankedEntitiesForRun, RANKED_ENTITY_LIMIT } from "./visibility/rankedEntities";
+import { getRankedEntitiesForRun } from "./visibility/rankedEntities";
 
 export interface MovementRun {
   id: string;
@@ -19,8 +20,7 @@ export interface MovementRun {
 }
 
 /**
- * Build SnapshotData[] from scoped industry runs using the same
- * ranked-entity logic as the CSV export.
+ * Build SnapshotData[] from scoped industry runs.
  *
  * @param runs - all runs in scope (already filtered by model/range)
  * @param brandName - the searched brand's display name
@@ -51,16 +51,15 @@ export function buildMovementSnapshots(
     const entityRunCounts: Record<string, number> = {};
 
     for (const run of dateRuns) {
-      // Use the same ranked-entity logic as the CSV export
+      // Find all verified entities (no top-N limit — movement tracks full recall)
       const ranked = getRankedEntitiesForRun({
         rawResponseText: run.rawResponseText,
         analysisJson: run.analysisJson,
         brandName,
         brandSlug,
-        includeBrand: false, // exclude focal brand from competitor counts
+        includeBrand: false,
         aliasMap,
-        // Use same cutoff as CSV export (Brand 1..5) so movement reconciles
-        limit: RANKED_ENTITY_LIMIT,
+        limit: Infinity,
       });
 
       // Count each canonical competitor once per run
