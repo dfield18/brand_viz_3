@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import {
   computeAvgRank,
@@ -40,11 +41,15 @@ export async function GET(req: NextRequest) {
   });
   if (!result.ok) return result.response;
 
-  const { brand, job, runs: allRuns, isAll, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+  const brandIdentity = buildBrandIdentity(brand);
 
   try {
+    // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
+    const allRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
+
     // Build display name map from original GPT-extracted competitor names
     const entityDisplayNames = buildEntityDisplayNames(allRuns);
     const brandDisplayName = brand.displayName || brand.name;

@@ -42,14 +42,8 @@ export interface BrandScopeIdentity {
 // ---------------------------------------------------------------------------
 
 /**
- * Heuristic: a brand name is considered ambiguous if it is short or
- * composed of common English words that could refer to unrelated entities.
- *
- * Examples of ambiguous names:
- *   "Future Forward", "Target", "Apple", "Old Navy"
- *
- * Examples of non-ambiguous names:
- *   "Patagonia", "ACLU", "Salesforce", "Volkswagen"
+ * Multi-word names composed entirely of common English words.
+ * "Future Forward", "National Action", "General American", "Old Navy".
  */
 const COMMON_WORDS = new Set([
   "the", "a", "an", "and", "or", "of", "in", "on", "at", "to", "for",
@@ -61,14 +55,52 @@ const COMMON_WORDS = new Set([
   "target", "general", "national", "american", "united", "standard",
   "universal", "central", "modern", "prime", "core", "focus",
   "north", "south", "east", "west", "sun", "sky", "sea",
+  "navy", "express", "frontier", "pioneer", "liberty", "patriot",
 ]);
 
+/**
+ * Single-word brand names that are ordinary English words and frequently
+ * collide with unrelated uses. These are ambiguous even though they are
+ * 4+ characters. Keep this list short — only add words with known
+ * collision risk.
+ */
+const AMBIGUOUS_SINGLE_WORDS = new Set([
+  "apple", "target", "shell", "sprint", "visa", "coach",
+  "dove", "falcon", "jaguar", "puma", "swift", "uber",
+  "chase", "ally", "indeed", "snap", "square", "slack",
+  "notion", "discord", "compass", "harbor", "haven",
+  "crown", "summit", "pilot", "spark", "hive", "nest",
+]);
+
+/**
+ * Determine whether a brand name is ambiguous — i.e. likely to collide
+ * with unrelated entities or common English phrases.
+ *
+ * Ambiguous patterns:
+ * - Very short single words (< 4 chars): "Gap", "Go", "HP"
+ * - Known ambiguous single words: "Apple", "Target", "Shell"
+ * - Multi-word names where every word is a common English word:
+ *   "Future Forward", "Old Navy", "National Action"
+ *
+ * Non-ambiguous:
+ * - Distinctive coined names: "Patagonia", "Salesforce", "Volkswagen"
+ * - Acronyms with uncommon letter combos: "ACLU", "NAACP"
+ * - Names containing at least one non-common word: "Tesla Motors"
+ */
 export function isBrandNameAmbiguous(brandName: string): boolean {
   const words = brandName.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
   if (words.length === 0) return true;
-  // Single-word names under 4 chars are ambiguous (e.g. "Gap", "Go")
-  if (words.length === 1 && words[0].length < 4) return true;
-  // If every word in the name is a common English word, it's ambiguous
+
+  // Single-word names
+  if (words.length === 1) {
+    const w = words[0];
+    if (w.length < 4) return true;
+    if (AMBIGUOUS_SINGLE_WORDS.has(w)) return true;
+    if (COMMON_WORDS.has(w)) return true;
+    return false;
+  }
+
+  // Multi-word: ambiguous if every word is a common word
   return words.every((w) => COMMON_WORDS.has(w));
 }
 
@@ -210,4 +242,19 @@ export function filterRunsToBrandScope<T extends BrandScopeRun>(
   brand: BrandScopeIdentity,
 ): T[] {
   return runs.filter((run) => isRunInBrandScope(run, brand));
+}
+
+/**
+ * Build a BrandScopeIdentity from common brand fields.
+ * Convenience to avoid repeating the same object literal in every route.
+ */
+export function buildBrandIdentity(brand: {
+  name: string;
+  displayName?: string | null;
+  slug: string;
+  aliases?: string[] | null;
+}): BrandScopeIdentity {
+  const brandName = brand.displayName || brand.name;
+  const aliases = brand.aliases?.length ? brand.aliases : undefined;
+  return { brandName, brandSlug: brand.slug, aliases };
 }

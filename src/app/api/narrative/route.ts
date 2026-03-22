@@ -12,7 +12,7 @@ import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
 import { isBrandMentioned } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandScope } from "@/lib/visibility/brandScope";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -71,22 +71,25 @@ export async function GET(req: NextRequest) {
   const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
   const brandAliases = brand.aliases?.length ? brand.aliases : [];
+  const brandIdentity = buildBrandIdentity(brand);
 
   // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
-  const brandIdentity = { brandName, brandSlug: brand.slug, aliases: brandAliases.length > 0 ? brandAliases : undefined };
-  const runs = filterRunsToBrandScope(rawRuns, brandIdentity);
+  const allScopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
 
   // Check server-side cache: if run count hasn't changed and cache is fresh, return cached response
   const cacheKey = `${brandSlug}|${model}|${viewRange}`;
   const cached = narrativeCache.get(cacheKey);
-  if (cached && cached.runCount === runs.length && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && cached.runCount === allScopedRuns.length && Date.now() - cached.ts < CACHE_TTL_MS) {
     return NextResponse.json(cached.response, {
       headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
     });
   }
 
-  // Industry-only runs for frame computation (matches overview tab methodology)
-  const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
+  // One consistent narrative run pool: prefer industry-cluster when available,
+  // fall back to all scoped runs. This pool is used for frames, sentiment,
+  // themes, strengths/weaknesses, and examples.
+  const industryRuns = allScopedRuns.filter((r) => r.prompt.cluster === "industry");
+  const runs = industryRuns.length > 0 ? industryRuns : allScopedRuns;
 
   const analyses = runs
     .map((r) => parseAnalysis(r.analysisJson))
@@ -100,12 +103,9 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Aggregate frames from industry-only runs (consistent with overview tab)
-  const industryAnalyses = industryRuns
-    .map((r) => parseAnalysis(r.analysisJson))
-    .filter((a): a is NonNullable<typeof a> => a !== null);
+  // Aggregate frames from the unified scoped run pool
   const narrativeBase = aggregateNarrative(
-    industryAnalyses.length > 0 ? industryAnalyses : analyses,
+    analyses,
     brand.name,
     isAll ? "all" : model,
   );
@@ -117,8 +117,7 @@ export async function GET(req: NextRequest) {
     const STRENGTH_THRESHOLD = 20;
     const modelRunCounts: Record<string, number> = {};
     const modelFrameCounts: Record<string, Record<string, number>> = {};
-    const frameRuns = industryRuns.length > 0 ? industryRuns : runs;
-    for (const r of frameRuns) {
+    for (const r of runs) {
       const a = parseAnalysis(r.analysisJson);
       if (!a) continue;
       modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
@@ -158,10 +157,9 @@ export async function GET(req: NextRequest) {
   }
 
   // Fallback: if frames are empty after aggregation + validation, synthesize from raw responses
-  const frameRunPool = industryRuns.length > 0 ? industryRuns : runs;
-  if (narrativeBase.frames.length === 0 && frameRunPool.length > 0) {
+  if (narrativeBase.frames.length === 0 && runs.length > 0) {
     narrativeBase.frames = await synthesizeFramesFromResponses(
-      frameRunPool.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+      runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
       brandName,
       isAll ? "all" : model,
     );
@@ -171,7 +169,7 @@ export async function GET(req: NextRequest) {
   narrativeBase.frames = await ensureMinimumFrames(
     narrativeBase.frames,
     brandName,
-    frameRunPool.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+    runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
   );
 
   // --- Aggregate narrativeJson data ---
@@ -450,7 +448,7 @@ export async function GET(req: NextRequest) {
 
   // Build a run lookup for quick access
   const runById = new Map<string, NarrativeRun>();
-  for (const r of (industryRuns.length > 0 ? industryRuns : runs)) {
+  for (const r of runs) {
     runById.set(r.id, r);
   }
   const narrativeByRunId = new Map<string, NarrativeExtractionResult>();

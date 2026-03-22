@@ -10,6 +10,7 @@ import {
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
@@ -179,7 +180,7 @@ export async function GET(req: NextRequest) {
   const modelResults = await Promise.all(
     modelsToQuery.map(async (m) => ({
       model: m,
-      data: await getModelOverviewData(brand.id, m, range, brandName, brand.slug, brandAliases),
+      data: await getModelOverviewData(brand.id, m, range, brand.name, brand.slug, brandAliases),
     })),
   );
 
@@ -406,19 +407,21 @@ export async function GET(req: NextRequest) {
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
 
   if (visResult && visResult.ok) {
-    const { brand: visBrand, runs: visRuns } = visResult;
+    const { brand: visBrand, runs: rawVisRuns } = visResult;
+    const visBrandIdentity = buildBrandIdentity(visBrand);
+    const visRuns = filterRunsToBrandScope(rawVisRuns, visBrandIdentity);
     const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
 
     // Mention rate
     const industryMentions = industryRuns.filter((r) =>
-      isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
+      isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
     ).length;
     overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
 
     // Ranks
     const industryRanks: (number | null)[] = industryRuns.map((r) =>
-      computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
+      computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
     );
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
@@ -429,7 +432,7 @@ export async function GET(req: NextRequest) {
     function computeTextSov(sovRuns: OverviewVisRun[]): number {
       let bm = 0, total = 0;
       for (const run of sovRuns) {
-        const mentioned = isBrandMentioned(run.rawResponseText, brandName, visBrand.slug, brandAliases);
+        const mentioned = isBrandMentioned(run.rawResponseText, visBrand.name, visBrand.slug, brandAliases);
         const analysis = run.analysisJson as OverviewAnalysis | null;
         const compCount = (analysis?.competitors ?? []).length;
         if (mentioned) bm++;
@@ -497,19 +500,19 @@ export async function GET(req: NextRequest) {
 
       if (hasDelta) {
         const tmMentions = thisMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
+          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
         const pmMentions = priorMonthRuns.filter((r) =>
-          isBrandMentioned(r.rawResponseText, brandName, visBrand.slug, brandAliases),
+          isBrandMentioned(r.rawResponseText, visBrand.name, visBrand.slug, brandAliases),
         ).length;
         const tmMR = computeMentionRate(tmMentions, thisMonthRuns.length);
         const pmMR = computeMentionRate(pmMentions, priorMonthRuns.length);
 
         const tmRanks = thisMonthRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
+          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
         const pmRanks = priorMonthRuns.map((r) =>
-          computeBrandRank(r.rawResponseText, brandName, visBrand.slug, r.analysisJson, brandAliases),
+          computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
         );
 
         kpiDeltas = {
@@ -550,9 +553,8 @@ export async function GET(req: NextRequest) {
   if (visResult && visResult.ok) {
     const { runs: visRuns, isAll } = visResult;
 
-    // Parse industry-cluster analyses for frame computation (matches narrative tab)
-    const industryVisRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
-    const dedupedAnalyses = (industryVisRuns.length > 0 ? industryVisRuns : visRuns)
+    // Parse all deduped analyses
+    const dedupedAnalyses = visRuns
       .map((r) => parseAnalysis(r.analysisJson))
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
@@ -587,11 +589,10 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 8);
 
-      // Compute per-model frame percentages (same as narrative tab — industry runs only)
+      // Compute per-model frame percentages (same as narrative tab)
       const modelRunCounts: Record<string, number> = {};
       const modelFrameCounts: Record<string, Record<string, number>> = {};
-      const frameVisRuns = industryVisRuns.length > 0 ? industryVisRuns : visRuns;
-      for (const r of frameVisRuns) {
+      for (const r of visRuns) {
         const a = parseAnalysis(r.analysisJson);
         if (!a) continue;
         modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
@@ -616,9 +617,9 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await validateFrames(overview.topFrames, brandName);
 
       // Fallback: synthesize from raw responses if empty
-      if (overview.topFrames.length === 0 && frameVisRuns.length > 0) {
+      if (overview.topFrames.length === 0 && visRuns.length > 0) {
         overview.topFrames = await synthesizeFramesFromResponses(
-          frameVisRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+          visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
           brandName,
           isAll ? "all" : model,
         );
@@ -628,7 +629,7 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await ensureMinimumFrames(
         overview.topFrames,
         brandName,
-        frameVisRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+        visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
       );
     }
 
@@ -708,9 +709,8 @@ export async function GET(req: NextRequest) {
     const sortedFrames = [...overview.topFrames].sort((a, b) => b.percentage - a.percentage);
     const topFrame = sortedFrames[0]?.frame ?? null;
     const sentLabel = sentimentSplit
-      ? sentimentSplit.positive >= 60 ? "strongly positive"
-        : sentimentSplit.positive >= 40 ? "mostly positive"
-        : sentimentSplit.negative >= 40 ? `${sentimentSplit.negative}% negative`
+      ? sentimentSplit.positive >= 50 ? "mostly positive"
+        : sentimentSplit.negative >= 30 ? `${sentimentSplit.negative}% negative`
         : sentimentSplit.neutral >= 50 ? "mostly neutral"
         : "mixed"
       : null;

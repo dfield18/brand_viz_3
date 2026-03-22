@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { buildEntityDisplayNames } from "@/lib/utils";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandScope } from "@/lib/visibility/brandScope";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   computeSourceSummary,
   computeTopDomains,
@@ -38,12 +38,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
-    const brandName = brand.displayName || brand.name;
-    const brandIdentity = {
-      brandName,
-      brandSlug: brand.slug,
-      aliases: brand.aliases?.length ? brand.aliases : undefined,
-    };
+    const brandIdentity = buildBrandIdentity(brand);
     const runs = filterRunsToBrandScope(rawRuns, brandIdentity);
     const runIds = runs.map((r) => r.id);
     const totalResponses = runIds.length;
