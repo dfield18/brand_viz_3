@@ -27,7 +27,7 @@ interface Props {
 
 export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Props) {
   const url = `/api/recommendations?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
-  const { data, loading } = useCachedFetch<RecsApiResponse>(url);
+  const { data, loading } = useCachedFetch<RecsApiResponse>(url, { alwaysRefetchOnMount: true });
 
   if (loading) {
     return (

@@ -7,7 +7,6 @@ import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
-import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -634,8 +633,9 @@ export async function GET(req: NextRequest) {
       allCompNames.add(c.name.toLowerCase());
     }
   }
+  const brandAliasArr = brand.aliases?.length ? brand.aliases : undefined;
   const alertAliasMap = allCompNames.size > 0
-    ? await normalizeEntityIds([...allCompNames].filter((id) => id !== brand.slug), brand.slug)
+    ? await normalizeEntityIds([...allCompNames].filter((id) => id !== brand.slug), brand.slug, brandAliasArr)
     : new Map<string, string>();
 
   // Update display names for canonical IDs
@@ -647,7 +647,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Build snapshots from ranked competitor list (not EntityResponseMetric)
-  const snapshots = buildMovementSnapshots(movementRuns, brand.slug, alertAliasMap);
+  const snapshots = buildMovementSnapshots(movementRuns, brand.slug, alertAliasMap, brandAliasArr);
 
   const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
   let { comparisonPeriodLabel } = alertResult;
@@ -758,34 +758,18 @@ export async function GET(req: NextRequest) {
     }
     topicData[topicKey].totalRuns++;
 
-    // Use text-order ranking (same methodology as other tabs)
-    const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
-    const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
-    if (rank !== null) {
+    const brandMetric = run.prominenceMetrics.find((m) => m.entityId === brand.slug);
+    if (brandMetric) {
       topicData[topicKey].mentions++;
-      topicData[topicKey].ranks.push(rank);
+      if (brandMetric.rankPosition !== null) topicData[topicKey].ranks.push(brandMetric.rankPosition);
     }
 
-    // Track who ranks #1 by text order
-    if (rank !== 1 || rank === null) {
-      // Brand is NOT #1 — find who IS #1 from analysisJson.competitors
-      const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
-      const competitors = analysis?.competitors ?? [];
-      if (competitors.length > 0) {
-        // First competitor in text = the one with earliest position
-        let firstComp = "";
-        let firstPos = Infinity;
-        for (const c of competitors) {
-          const pos = wordBoundaryIndex(run.rawResponseText, c.name);
-          if (pos >= 0 && pos < firstPos) {
-            firstPos = pos;
-            firstComp = c.name.toLowerCase();
-          }
-        }
-        if (firstComp && firstComp !== brand.slug) {
-          topicData[topicKey].entityRank1[firstComp] = (topicData[topicKey].entityRank1[firstComp] ?? 0) + 1;
-        }
-      }
+    // Track who ranks #1
+    const rank1 = run.prominenceMetrics
+      .filter((m) => m.rankPosition === 1 && m.entityId !== brand.slug)
+      .map((m) => m.entityId);
+    for (const eid of rank1) {
+      topicData[topicKey].entityRank1[eid] = (topicData[topicKey].entityRank1[eid] ?? 0) + 1;
     }
   }
 

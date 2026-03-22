@@ -1,5 +1,5 @@
 import { openai } from "@/lib/openai";
-import { buildDeterministicAliasMap } from "./canonicalize";
+import { buildEntityAliasGroups } from "./canonicalize";
 
 /**
  * In-memory cache: brand slug → (entityId → canonical entityId).
@@ -26,9 +26,11 @@ const aliasCache = new Map<string, Map<string, string>>();
 export async function normalizeEntityIds(
   entityIds: string[],
   brandSlug: string,
+  brandAliases?: string[],
 ): Promise<Map<string, string>> {
   // Step 1: Always apply deterministic canonicalization first
-  const deterministicMap = buildDeterministicAliasMap(entityIds);
+  // This handles corporate suffixes AND brand-family variants
+  const deterministicMap = buildEntityAliasGroups(entityIds, brandSlug, brandAliases);
 
   // Check cache — but ensure deterministic merges override stale cache entries
   const cached = aliasCache.get(brandSlug);

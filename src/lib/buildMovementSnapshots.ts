@@ -8,6 +8,7 @@
  */
 
 import type { SnapshotData } from "./competitorAlerts";
+import { canonicalizeEntityId } from "./competition/canonicalize";
 
 export interface MovementRun {
   id: string;
@@ -33,14 +34,25 @@ interface ParsedAnalysis {
  * @param runs - all runs in scope (already filtered by model/range)
  * @param brandSlug - the searched brand's slug (excluded from competitor counts)
  * @param aliasMap - entity ID normalization map (canonical forms)
+ * @param brandAliases - additional brand aliases to exclude
  */
 export function buildMovementSnapshots(
   runs: MovementRun[],
   brandSlug: string,
   aliasMap: Map<string, string>,
+  brandAliases?: string[],
 ): SnapshotData[] {
   // Filter to industry-cluster only
   const industryRuns = runs.filter((r) => r.cluster === "industry");
+
+  // Build a set of all brand-family IDs to exclude
+  const brandFamily = new Set<string>([brandSlug]);
+  if (brandAliases) {
+    for (const alias of brandAliases) {
+      brandFamily.add(alias.toLowerCase());
+      brandFamily.add(canonicalizeEntityId(alias));
+    }
+  }
 
   // Group by job date
   const byDate = new Map<string, MovementRun[]>();
@@ -54,18 +66,18 @@ export function buildMovementSnapshots(
 
   for (const [date, dateRuns] of byDate) {
     const totalIndustryRuns = dateRuns.length;
-    // Count how many runs mention each entity in analysisJson.competitors
     const entityRunCounts: Record<string, number> = {};
 
     for (const run of dateRuns) {
       const analysis = run.analysisJson as ParsedAnalysis | null;
       const competitors = analysis?.competitors ?? [];
-      // Track which entities this run mentions (dedupe within one run)
       const seenInRun = new Set<string>();
       for (const comp of competitors) {
         const rawId = comp.name.toLowerCase();
-        const canonical = aliasMap.get(rawId) ?? rawId;
-        if (canonical === brandSlug) continue;
+        // Use aliasMap first, fall back to deterministic canonicalization
+        const canonical = aliasMap.get(rawId) ?? canonicalizeEntityId(rawId);
+        // Exclude the focal brand and its aliases
+        if (brandFamily.has(canonical)) continue;
         if (seenInRun.has(canonical)) continue;
         seenInRun.add(canonical);
         entityRunCounts[canonical] = (entityRunCounts[canonical] ?? 0) + 1;

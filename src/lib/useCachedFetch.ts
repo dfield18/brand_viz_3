@@ -68,7 +68,16 @@ interface UseCachedFetchResult<T> {
   refetch: () => void;
 }
 
-export function useCachedFetch<T>(url: string | null): UseCachedFetchResult<T> {
+interface UseCachedFetchOptions {
+  /** Override the default stale window (default: 5 minutes) */
+  staleMs?: number;
+  /** Always fetch on mount, ignoring cache freshness */
+  alwaysRefetchOnMount?: boolean;
+}
+
+export function useCachedFetch<T>(url: string | null, options?: UseCachedFetchOptions): UseCachedFetchResult<T> {
+  const staleMs = options?.staleMs ?? STALE_MS;
+  const alwaysRefetch = options?.alwaysRefetchOnMount ?? false;
   const getSnapshot = useCallback(() => {
     if (!url) return null;
     return store.get(url) ?? null;
@@ -84,8 +93,11 @@ export function useCachedFetch<T>(url: string | null): UseCachedFetchResult<T> {
 
     const existing = store.get(url);
     if (existing && existing.ts > 0) {
-      // Data exists — revalidate in background if stale
-      if (Date.now() - existing.ts > STALE_MS) {
+      if (alwaysRefetch) {
+        // Always refetch on mount — show cached data but refresh immediately
+        doFetch(url, true);
+      } else if (Date.now() - existing.ts > staleMs) {
+        // Data exists but stale — revalidate in background
         doFetch(url, true);
       }
     } else {

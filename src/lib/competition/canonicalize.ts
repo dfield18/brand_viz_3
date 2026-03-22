@@ -35,6 +35,29 @@ const CORPORATE_SUFFIXES = [
   "co",
 ];
 
+// Business-unit suffixes that can be stripped when a shorter base entity exists
+const BUSINESS_UNIT_SUFFIXES = [
+  "interactive entertainment",
+  "entertainment",
+  "interactive",
+  "gaming",
+  "games",
+  "studios",
+  "studio",
+  "media",
+  "digital",
+  "online",
+  "network",
+  "networks",
+  "services",
+  "solutions",
+  "systems",
+  "software",
+  "platforms",
+  "global",
+  "worldwide",
+];
+
 // Leading tokens to strip
 const LEADING_TOKENS = ["the"];
 
@@ -119,4 +142,75 @@ export function buildDeterministicAliasMap(
   }
 
   return map;
+}
+
+/**
+ * Higher-level alias grouping that also merges brand-family / business-unit
+ * variants when a shorter base entity exists in the set.
+ *
+ * E.g., if both "sony" and "sony interactive entertainment" are present,
+ * the longer form merges into "sony".
+ *
+ * Also maps focal brand aliases to brandSlug so they're excluded properly.
+ */
+export function buildEntityAliasGroups(
+  entityIds: string[],
+  focalBrandSlug?: string,
+  focalBrandAliases?: string[],
+): Map<string, string> {
+  // Step 1: Apply corporate-suffix canonicalization
+  const baseMap = buildDeterministicAliasMap(entityIds);
+
+  // Step 2: Map focal brand aliases to brandSlug
+  if (focalBrandSlug && focalBrandAliases) {
+    for (const alias of focalBrandAliases) {
+      const lower = alias.toLowerCase();
+      if (baseMap.has(lower)) {
+        baseMap.set(lower, focalBrandSlug);
+      }
+      // Also check canonicalized form
+      const canonical = canonicalizeEntityId(alias);
+      for (const [raw, mapped] of baseMap) {
+        if (canonicalizeEntityId(raw) === canonical && mapped !== focalBrandSlug) {
+          baseMap.set(raw, focalBrandSlug);
+        }
+      }
+    }
+    // The brand slug itself should map to itself
+    if (baseMap.has(focalBrandSlug)) {
+      baseMap.set(focalBrandSlug, focalBrandSlug);
+    }
+  }
+
+  // Step 3: Brand-family / business-unit merging
+  // Collect all current canonical values (the bases)
+  const canonicalValues = new Set(baseMap.values());
+
+  // For each canonical value, check if stripping business-unit suffixes
+  // produces a base that also exists as a canonical value
+  const familyMerges = new Map<string, string>();
+  for (const canonical of canonicalValues) {
+    let stripped = canonical;
+    for (const suffix of BUSINESS_UNIT_SUFFIXES) {
+      if (stripped.endsWith(" " + suffix)) {
+        const core = stripped.slice(0, -(suffix.length + 1)).trim();
+        if (core.length > 0 && canonicalValues.has(core)) {
+          familyMerges.set(canonical, core);
+          break;
+        }
+      }
+    }
+  }
+
+  // Apply family merges to the map
+  if (familyMerges.size > 0) {
+    for (const [raw, mapped] of baseMap) {
+      const finalTarget = familyMerges.get(mapped);
+      if (finalTarget) {
+        baseMap.set(raw, finalTarget);
+      }
+    }
+  }
+
+  return baseMap;
 }
