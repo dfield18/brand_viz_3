@@ -5,7 +5,8 @@ import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
-import { computeCompetitorAlerts, type SnapshotData } from "@/lib/competitorAlerts";
+import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
+import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -585,9 +586,8 @@ export async function GET(req: NextRequest) {
   // -----------------------------------------------------------------------
   // 5. competitorAlerts — latest snapshot vs immediately previous snapshot
   // -----------------------------------------------------------------------
-  // Respects the selected model and range. Builds per-date snapshots of
-  // entity mention rates from industry-cluster runs, then uses the pure
-  // computeCompetitorAlerts helper for the comparison.
+  // Uses analysisJson.competitors (the ranked competitor list) as the entity
+  // source — matching CSV/export semantics. Does NOT use EntityResponseMetric.
   const rangeCutoff = new Date(Date.now() - viewRange * 86_400_000);
   const alertModelFilter = model !== "all" ? { model } : {};
   const alertJobs = await prisma.job.findMany({
@@ -601,12 +601,12 @@ export async function GET(req: NextRequest) {
     select: { id: true, finishedAt: true },
   });
 
-  // Build per-date snapshots from industry-cluster EntityResponseMetric
+  // Fetch all industry runs for the scoped jobs
   const alertJobIds = alertJobs.filter((j) => j.finishedAt).map((j) => j.id);
-  const alertMetrics = alertJobIds.length > 0
-    ? await prisma.entityResponseMetric.findMany({
-        where: { run: { jobId: { in: alertJobIds }, prompt: { cluster: "industry" } } },
-        select: { entityId: true, runId: true, run: { select: { jobId: true } } },
+  const alertRuns = alertJobIds.length > 0
+    ? await prisma.run.findMany({
+        where: { jobId: { in: alertJobIds }, prompt: { cluster: "industry" } },
+        select: { id: true, model: true, jobId: true, analysisJson: true, prompt: { select: { cluster: true } } },
       })
     : [];
 
@@ -616,35 +616,25 @@ export async function GET(req: NextRequest) {
     if (j.finishedAt) alertJobDateMap.set(j.id, j.finishedAt.toISOString().slice(0, 10));
   }
 
-  // Count industry runs per date for the denominator
-  const alertRunsByDate = new Map<string, Set<string>>();
-  for (const m of alertMetrics) {
-    const jobId = m.run.jobId;
-    const date = alertJobDateMap.get(jobId);
-    if (!date) continue;
-    if (!alertRunsByDate.has(date)) alertRunsByDate.set(date, new Set());
-    alertRunsByDate.get(date)!.add(m.runId);
-  }
+  // Build MovementRun[] for the helper
+  const movementRuns: MovementRun[] = alertRuns.map((r) => ({
+    id: r.id,
+    model: r.model,
+    jobDate: alertJobDateMap.get(r.jobId) ?? "",
+    cluster: r.prompt.cluster ?? "industry",
+    analysisJson: r.analysisJson,
+  }));
 
-  // Count entity mentions per date
-  const alertEntityByDate = new Map<string, Map<string, Set<string>>>();
-  for (const m of alertMetrics) {
-    const jobId = m.run.jobId;
-    const date = alertJobDateMap.get(jobId);
-    if (!date) continue;
-    if (!alertEntityByDate.has(date)) alertEntityByDate.set(date, new Map());
-    const dateMap = alertEntityByDate.get(date)!;
-    if (!dateMap.has(m.entityId)) dateMap.set(m.entityId, new Set());
-    dateMap.get(m.entityId)!.add(m.runId);
+  // Collect all competitor names for alias normalization
+  const allCompNames = new Set<string>();
+  for (const r of movementRuns) {
+    const analysis = r.analysisJson as { competitors?: { name: string }[] } | null;
+    for (const c of (analysis?.competitors ?? [])) {
+      allCompNames.add(c.name.toLowerCase());
+    }
   }
-
-  // Normalize entity IDs before building snapshots
-  const allAlertEntityIds = new Set<string>();
-  for (const [, dateMap] of alertEntityByDate) {
-    for (const id of dateMap.keys()) allAlertEntityIds.add(id);
-  }
-  const alertAliasMap = allAlertEntityIds.size > 0
-    ? await normalizeEntityIds([...allAlertEntityIds].filter((id) => id !== brand.slug), brand.slug)
+  const alertAliasMap = allCompNames.size > 0
+    ? await normalizeEntityIds([...allCompNames].filter((id) => id !== brand.slug), brand.slug)
     : new Map<string, string>();
 
   // Update display names for canonical IDs
@@ -655,17 +645,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Build SnapshotData[] with normalized entity IDs
-  const snapshots: SnapshotData[] = [];
-  for (const [date, dateEntityMap] of alertEntityByDate) {
-    const totalIndustryRuns = alertRunsByDate.get(date)?.size ?? 0;
-    const entityMentions: Record<string, number> = {};
-    for (const [rawEntityId, runSet] of dateEntityMap) {
-      const canonical = alertAliasMap.get(rawEntityId) ?? rawEntityId;
-      entityMentions[canonical] = (entityMentions[canonical] ?? 0) + runSet.size;
-    }
-    snapshots.push({ date, entityMentions, totalIndustryRuns });
-  }
+  // Build snapshots from ranked competitor list (not EntityResponseMetric)
+  const snapshots = buildMovementSnapshots(movementRuns, brand.slug, alertAliasMap);
 
   const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
   let { comparisonPeriodLabel } = alertResult;
