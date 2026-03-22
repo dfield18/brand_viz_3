@@ -112,8 +112,15 @@ export async function GET(req: NextRequest) {
         // Add the searched brand
         const brandPos = wordBoundaryIndex(run.rawResponseText, brandName);
         if (brandPos >= 0) allEntities.push({ name: brandName, pos: brandPos });
-        // Add competitors
+        // Add competitors, deduplicating name variations
         for (const c of (analysis?.competitors ?? [])) {
+          // Skip if this is a variation of an already-added entity
+          const isDupe = allEntities.some((e) => {
+            const a = e.name.toLowerCase();
+            const b = c.name.toLowerCase();
+            return a === b || a.includes(b) || b.includes(a);
+          });
+          if (isDupe) continue;
           const pos = wordBoundaryIndex(run.rawResponseText, c.name);
           if (pos >= 0) allEntities.push({ name: c.name, pos });
         }

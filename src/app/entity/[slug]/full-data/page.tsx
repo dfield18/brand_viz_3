@@ -171,14 +171,38 @@ ${runs.map((r) => `
     if (filterCluster !== "all" && r.prompt.cluster !== filterCluster) return false;
     if (filterBrand !== "all") {
       const brands = r.topBrands ?? [];
-      if (!brands.some((b) => b.toLowerCase() === filterBrand.toLowerCase())) return false;
+      const fl = filterBrand.toLowerCase();
+      if (!brands.some((b) => {
+        const bl = b.toLowerCase();
+        return bl === fl || bl.includes(fl) || fl.includes(bl);
+      })) return false;
     }
     return true;
   });
 
   const availableModels = [...new Set(runs.map((r) => r.model))];
   const availableClusters = [...new Set(runs.map((r) => r.prompt.cluster))];
-  const availableBrands = [...new Set(runs.flatMap((r) => r.topBrands ?? []))].sort();
+  const availableBrands = (() => {
+    const raw = [...new Set(runs.flatMap((r) => r.topBrands ?? []))];
+    // Deduplicate name variations: keep the shortest form when one name contains another
+    const deduped: string[] = [];
+    for (const name of raw) {
+      const lower = name.toLowerCase();
+      const existingIdx = deduped.findIndex((d) => {
+        const dl = d.toLowerCase();
+        return dl.includes(lower) || lower.includes(dl);
+      });
+      if (existingIdx >= 0) {
+        // Keep the shorter name (e.g., "ACLU" over "American Civil Liberties Union (ACLU)")
+        if (name.length < deduped[existingIdx].length) {
+          deduped[existingIdx] = name;
+        }
+      } else {
+        deduped.push(name);
+      }
+    }
+    return deduped.sort();
+  })();
 
   return (
     <div className="space-y-8">
