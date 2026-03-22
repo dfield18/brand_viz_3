@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildMovementSnapshots, type MovementRun } from "./buildMovementSnapshots";
 import { computeCompetitorAlerts } from "./competitorAlerts";
+import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "./visibility/rankedEntities";
 
 function makeRun(overrides: Partial<MovementRun> = {}): MovementRun {
   return {
@@ -132,5 +133,100 @@ describe("buildMovementSnapshots", () => {
     const result = computeCompetitorAlerts(snapshots, BRAND);
     assert.ok(!result.alerts.find((a) => a.entityId === "big corp"));
     assert.ok(result.alerts.find((a) => a.entityId === "splc"));
+  });
+
+  it("uses same cutoff as CSV export (RANKED_ENTITY_LIMIT = 5)", () => {
+    assert.equal(RANKED_ENTITY_LIMIT, 5, "RANKED_ENTITY_LIMIT must be 5 to match Brand 1..5");
+  });
+
+  it("entities at rank 6+ do NOT count toward movement", () => {
+    // Response has 7 competitors, but only top 5 should count
+    const competitors = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Foxtrot", "Golf"];
+    const responseText = competitors.join(" is great. ") + " is great.";
+    const runs = [
+      makeRun({
+        id: "r1", jobDate: "2026-02-22",
+        rawResponseText: responseText,
+        analysisJson: { competitors: competitors.map((n) => ({ name: n })) },
+      }),
+      makeRun({
+        id: "r2", jobDate: "2026-03-21",
+        rawResponseText: responseText,
+        analysisJson: { competitors: competitors.map((n) => ({ name: n })) },
+      }),
+    ];
+    const result = buildMovementSnapshots(runs, "TestBrand", "testbrand", NO_ALIASES);
+    const recent = result.find((s) => s.date === "2026-03-21")!;
+    assert.equal(recent.entityMentions["alpha"], 1);
+    assert.equal(recent.entityMentions["epsilon"], 1);
+    assert.equal(recent.entityMentions["foxtrot"], undefined, "Rank 6 entity should NOT count");
+    assert.equal(recent.entityMentions["golf"], undefined, "Rank 7 entity should NOT count");
+  });
+
+  it("movement and CSV export agree on per-run inclusion", () => {
+    // Verify that getTopBrandsForRun and movement use the same cutoff
+    const competitors = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"];
+    const responseText = competitors.join(" is a leader. ") + " is a leader.";
+    const run = makeRun({
+      id: "r1",
+      rawResponseText: responseText,
+      analysisJson: { competitors: competitors.map((n) => ({ name: n })) },
+    });
+
+    // CSV export: top 5 competitors (excludes brand)
+    const csvBrands = getTopBrandsForRun({
+      rawResponseText: run.rawResponseText,
+      analysisJson: run.analysisJson,
+      brandName: "TestBrand",
+      brandSlug: "testbrand",
+      includeBrand: false,
+      limit: RANKED_ENTITY_LIMIT,
+    });
+
+    // Movement: build snapshot and check which entities are counted
+    const snapshots = buildMovementSnapshots([run], "TestBrand", "testbrand", NO_ALIASES);
+    const movementEntities = Object.keys(snapshots[0].entityMentions);
+
+    // Both should include exactly the same entities (top 5, Zeta excluded)
+    const csvSet = new Set(csvBrands.map((b) => b.toLowerCase()));
+    const movementSet = new Set(movementEntities);
+    assert.deepEqual(csvSet, movementSet, "CSV and movement must agree on included entities");
+    assert.equal(csvSet.size, 5, "Should be exactly 5 entities");
+    assert.ok(!csvSet.has("zeta"), "Zeta (rank 6) should be excluded");
+  });
+
+  it("regression: rank 6+ presence does not inflate movement rate", () => {
+    // Previous: TargetCorp in top 5 of 2/15 runs
+    // Recent: TargetCorp in top 5 of 6/15 runs + at rank 6+ in 2 more runs
+    // Movement should count 6/15 = 40%, NOT 8/15 = 53%
+    const top5WithTarget = [{ name: "Alpha" }, { name: "Beta" }, { name: "Gamma" }, { name: "Delta" }, { name: "TargetCorp" }];
+    const top5Without = [{ name: "Alpha" }, { name: "Beta" }, { name: "Gamma" }, { name: "Delta" }, { name: "Epsilon" }];
+    const top6WithTarget = [{ name: "Alpha" }, { name: "Beta" }, { name: "Gamma" }, { name: "Delta" }, { name: "Epsilon" }, { name: "TargetCorp" }];
+
+    const prevRuns = Array.from({ length: 15 }, (_, i) => {
+      const comps = i < 2 ? top5WithTarget : top5Without;
+      return makeRun({
+        id: `p${i}`, jobDate: "2026-02-22",
+        rawResponseText: comps.map((c) => c.name).join(" is great. ") + " is great.",
+        analysisJson: { competitors: comps },
+      });
+    });
+    const recentRuns = Array.from({ length: 15 }, (_, i) => {
+      const comps = i < 6 ? top5WithTarget : i < 8 ? top6WithTarget : top5Without;
+      return makeRun({
+        id: `r${i}`, jobDate: "2026-03-21",
+        rawResponseText: comps.map((c) => c.name).join(" is great. ") + " is great.",
+        analysisJson: { competitors: comps },
+      });
+    });
+
+    const snapshots = buildMovementSnapshots([...prevRuns, ...recentRuns], "TestBrand", "testbrand", NO_ALIASES);
+    const result = computeCompetitorAlerts(snapshots, "testbrand");
+
+    const target = result.alerts.find((a) => a.entityId === "targetcorp");
+    assert.ok(target, "TargetCorp should appear in alerts");
+    assert.equal(target!.recentMentionRate, 40, "Recent should be 6/15 = 40%, NOT 8/15");
+    assert.equal(target!.previousMentionRate, 13, "Previous should be 2/15 = 13%");
+    assert.equal(target!.direction, "rising");
   });
 });

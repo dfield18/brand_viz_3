@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
-import { getTopBrandsForRun } from "@/lib/visibility/rankedEntities";
+import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "@/lib/visibility/rankedEntities";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
             brandName,
             brandSlug: brand.slug,
             includeBrand: true,
-            limit: 5,
+            limit: RANKED_ENTITY_LIMIT,
           })
         : [];
 

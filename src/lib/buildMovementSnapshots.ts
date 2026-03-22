@@ -7,7 +7,7 @@
  */
 
 import type { SnapshotData } from "./competitorAlerts";
-import { getRankedEntitiesForRun } from "./visibility/rankedEntities";
+import { getRankedEntitiesForRun, RANKED_ENTITY_LIMIT } from "./visibility/rankedEntities";
 
 export interface MovementRun {
   id: string;
@@ -59,7 +59,8 @@ export function buildMovementSnapshots(
         brandSlug,
         includeBrand: false, // exclude focal brand from competitor counts
         aliasMap,
-        limit: 10, // generous limit for movement counting
+        // Use same cutoff as CSV export (Brand 1..5) so movement reconciles
+        limit: RANKED_ENTITY_LIMIT,
       });
 
       // Count each canonical competitor once per run

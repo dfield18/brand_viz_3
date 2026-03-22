@@ -14,6 +14,12 @@
 import { wordBoundaryIndex } from "./brandMention";
 import { canonicalizeEntityId } from "../competition/canonicalize";
 
+/**
+ * The number of ranked entities shown in the CSV export (Brand 1..5).
+ * Used by both the export and movement counting so they always agree.
+ */
+export const RANKED_ENTITY_LIMIT = 5;
+
 export interface RankedEntity {
   name: string;       // display name (original casing from analysisJson)
   canonicalId: string; // lowercased canonical form
