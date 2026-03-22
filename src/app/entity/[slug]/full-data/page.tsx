@@ -5,7 +5,7 @@ import { Suspense, useState, useCallback } from "react";
 import Link from "next/link";
 import { Download, FileText, ChevronDown } from "lucide-react";
 import { PageSkeleton } from "@/components/PageSkeleton";
-import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
+import { VALID_MODELS, MODEL_LABELS, CLUSTER_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { FormattedResponse } from "@/components/FormattedResponse";
 import { useBrandName } from "@/lib/useBrandName";
@@ -36,6 +36,8 @@ function FullDataInner() {
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
   const [filterModel, setFilterModel] = useState("all");
+  const [filterCluster, setFilterCluster] = useState("all");
+  const [filterBrand, setFilterBrand] = useState("all");
 
   const validModel = model === "all" || VALID_MODELS.includes(model);
   const url = validModel
@@ -164,11 +166,19 @@ ${runs.map((r) => `
   if (!apiData?.runs) return null;
   const { runs, job } = apiData;
 
-  const filteredRuns = filterModel === "all"
-    ? runs
-    : runs.filter((r) => r.model === filterModel);
+  const filteredRuns = runs.filter((r) => {
+    if (filterModel !== "all" && r.model !== filterModel) return false;
+    if (filterCluster !== "all" && r.prompt.cluster !== filterCluster) return false;
+    if (filterBrand !== "all") {
+      const brands = r.topBrands ?? [];
+      if (!brands.some((b) => b.toLowerCase() === filterBrand.toLowerCase())) return false;
+    }
+    return true;
+  });
 
   const availableModels = [...new Set(runs.map((r) => r.model))];
+  const availableClusters = [...new Set(runs.map((r) => r.prompt.cluster))];
+  const availableBrands = [...new Set(runs.flatMap((r) => r.topBrands ?? []))].sort();
 
   return (
     <div className="space-y-8">
@@ -184,6 +194,7 @@ ${runs.map((r) => `
 
       {/* Toolbar: filter + export */}
       <div className="flex items-center gap-3 flex-wrap">
+        {/* Model filter */}
         {model === "all" && availableModels.length > 1 && (
           <div className="relative">
             <select
@@ -196,6 +207,42 @@ ${runs.map((r) => `
                 <option key={m} value={m}>
                   {MODEL_LABELS[m] ?? m} ({runs.filter((r) => r.model === m).length})
                 </option>
+              ))}
+            </select>
+            <ChevronDown className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          </div>
+        )}
+
+        {/* Prompt type filter */}
+        {availableClusters.length > 1 && (
+          <div className="relative">
+            <select
+              value={filterCluster}
+              onChange={(e) => setFilterCluster(e.target.value)}
+              className="text-xs border border-border rounded-md px-2.5 py-1.5 pr-7 bg-card text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring appearance-none"
+            >
+              <option value="all">All Question Types</option>
+              {availableClusters.map((c) => (
+                <option key={c} value={c}>
+                  {CLUSTER_LABELS[c] ?? c} ({runs.filter((r) => r.prompt.cluster === c).length})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          </div>
+        )}
+
+        {/* Brand mentioned filter */}
+        {availableBrands.length > 0 && (
+          <div className="relative">
+            <select
+              value={filterBrand}
+              onChange={(e) => setFilterBrand(e.target.value)}
+              className="text-xs border border-border rounded-md px-2.5 py-1.5 pr-7 bg-card text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring appearance-none"
+            >
+              <option value="all">All Brands Mentioned</option>
+              {availableBrands.map((b) => (
+                <option key={b} value={b}>{b}</option>
               ))}
             </select>
             <ChevronDown className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -221,7 +268,7 @@ ${runs.map((r) => `
       </div>
 
       {/* Showing count */}
-      {filterModel !== "all" && (
+      {(filterModel !== "all" || filterCluster !== "all" || filterBrand !== "all") && (
         <p className="text-xs text-muted-foreground">
           Showing {filteredRuns.length} of {runs.length} responses
         </p>
