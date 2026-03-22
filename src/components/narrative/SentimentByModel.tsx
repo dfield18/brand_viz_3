@@ -26,9 +26,10 @@ function scoreLabel(score: number, split?: { positive: number; neutral: number; 
     if (split.neutral >= 50) return "Mostly neutral";
     return "Mixed";
   }
+  // Fallback when no split available: approximate from % positive
   if (score >= 60) return "Strongly positive";
   if (score >= 40) return "Mostly positive";
-  if (score <= 10 && score > 0) return "Mostly negative";
+  if (score <= 20) return "Mostly negative";
   return "Mixed";
 }
 

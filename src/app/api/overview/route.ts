@@ -550,8 +550,9 @@ export async function GET(req: NextRequest) {
   if (visResult && visResult.ok) {
     const { runs: visRuns, isAll } = visResult;
 
-    // Parse all deduped analyses
-    const dedupedAnalyses = visRuns
+    // Parse industry-cluster analyses for frame computation (matches narrative tab)
+    const industryVisRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
+    const dedupedAnalyses = (industryVisRuns.length > 0 ? industryVisRuns : visRuns)
       .map((r) => parseAnalysis(r.analysisJson))
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
@@ -586,10 +587,11 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 8);
 
-      // Compute per-model frame percentages (same as narrative tab)
+      // Compute per-model frame percentages (same as narrative tab — industry runs only)
       const modelRunCounts: Record<string, number> = {};
       const modelFrameCounts: Record<string, Record<string, number>> = {};
-      for (const r of visRuns) {
+      const frameVisRuns = industryVisRuns.length > 0 ? industryVisRuns : visRuns;
+      for (const r of frameVisRuns) {
         const a = parseAnalysis(r.analysisJson);
         if (!a) continue;
         modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
@@ -614,9 +616,9 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await validateFrames(overview.topFrames, brandName);
 
       // Fallback: synthesize from raw responses if empty
-      if (overview.topFrames.length === 0 && visRuns.length > 0) {
+      if (overview.topFrames.length === 0 && frameVisRuns.length > 0) {
         overview.topFrames = await synthesizeFramesFromResponses(
-          visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+          frameVisRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
           brandName,
           isAll ? "all" : model,
         );
@@ -626,7 +628,7 @@ export async function GET(req: NextRequest) {
       overview.topFrames = await ensureMinimumFrames(
         overview.topFrames,
         brandName,
-        visRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
+        frameVisRuns.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
       );
     }
 
@@ -706,8 +708,9 @@ export async function GET(req: NextRequest) {
     const sortedFrames = [...overview.topFrames].sort((a, b) => b.percentage - a.percentage);
     const topFrame = sortedFrames[0]?.frame ?? null;
     const sentLabel = sentimentSplit
-      ? sentimentSplit.positive >= 50 ? "mostly positive"
-        : sentimentSplit.negative >= 30 ? `${sentimentSplit.negative}% negative`
+      ? sentimentSplit.positive >= 60 ? "strongly positive"
+        : sentimentSplit.positive >= 40 ? "mostly positive"
+        : sentimentSplit.negative >= 40 ? `${sentimentSplit.negative}% negative`
         : sentimentSplit.neutral >= 50 ? "mostly neutral"
         : "mixed"
       : null;
