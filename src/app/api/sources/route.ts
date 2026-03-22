@@ -57,11 +57,9 @@ export async function GET(req: NextRequest) {
       clusterPromptFilter = { promptId: { in: clusterPrompts.map((p) => p.id) } };
     }
 
-    // When latestOnly=true, only include sources from the deduped runs (latest per prompt)
-    // This gives a snapshot of the current state, not cumulative history
-    const runFilter = latestOnly
-      ? { id: { in: runIds } }
-      : { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...modelFilter };
+    // Use deduped runs (latest per prompt) for source metrics — shows current snapshot
+    // Full historical data is only used for trend charts (domainOverTime, categoryOverTime)
+    const runFilter = { id: { in: runIds } };
 
     const rawOccurrences = await prisma.sourceOccurrence.findMany({
       where: {
