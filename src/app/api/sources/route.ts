@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { buildEntityDisplayNames } from "@/lib/utils";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandScope } from "@/lib/visibility/brandScope";
 import {
   computeSourceSummary,
   computeTopDomains,
@@ -33,9 +34,17 @@ export async function GET(req: NextRequest) {
     runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true, rawResponseText: true } },
   });
   if (!result.ok) return result.response;
-  const { brand, job, runs, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, rangeCutoff } = result;
 
   try {
+    // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
+    const brandName = brand.displayName || brand.name;
+    const brandIdentity = {
+      brandName,
+      brandSlug: brand.slug,
+      aliases: brand.aliases?.length ? brand.aliases : undefined,
+    };
+    const runs = filterRunsToBrandScope(rawRuns, brandIdentity);
     const runIds = runs.map((r) => r.id);
     const totalResponses = runIds.length;
 

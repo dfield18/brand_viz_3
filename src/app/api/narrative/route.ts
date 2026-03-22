@@ -12,6 +12,7 @@ import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
 import { isBrandMentioned } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandScope } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -67,8 +68,13 @@ export async function GET(req: NextRequest) {
     },
   });
   if (!result.ok) return result.response;
-  const { brand, job, runs, isAll, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : [];
+
+  // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
+  const brandIdentity = { brandName, brandSlug: brand.slug, aliases: brandAliases.length > 0 ? brandAliases : undefined };
+  const runs = filterRunsToBrandScope(rawRuns, brandIdentity);
 
   // Check server-side cache: if run count hasn't changed and cache is fresh, return cached response
   const cacheKey = `${brandSlug}|${model}|${viewRange}`;
@@ -307,27 +313,21 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-  // Drift: group ALL runs (not just latest per prompt) by week → theme counts per week
-  // Fetch runs with narrativeJson for drift/sentiment (strict)
-  const driftRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, narrativeJson: { not: Prisma.DbNull } }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, narrativeJson: { not: Prisma.DbNull } };
-  const driftRuns = await prisma.run.findMany({
-    where: driftRunWhere,
-    select: { narrativeJson: true, analysisJson: true, createdAt: true, model: true },
+  // Drift + trend: fetch historical runs, then apply the same brand-scope filter
+  // so trend charts are consistent with the top-of-page metrics.
+  type TrendRun = { rawResponseText: string; narrativeJson: unknown; analysisJson: unknown; createdAt: Date; model: string; prompt: { cluster: string } };
+  const trendRunWhere = isAll
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, prompt: { cluster: "industry" } }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, prompt: { cluster: "industry" } };
+  const rawTrendRuns = await prisma.run.findMany({
+    where: trendRunWhere,
+    select: { rawResponseText: true, narrativeJson: true, analysisJson: true, createdAt: true, model: true, prompt: { select: { cluster: true } } },
     orderBy: { createdAt: "asc" },
-  });
+  }) as TrendRun[];
 
-  // Fetch industry-cluster runs with analysisJson for frame trend + sentiment
-  // Industry-only matches the scorecard methodology; job status filter avoids partial data
-  const allTrendRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull }, prompt: { cluster: "industry" }, job: { status: "done" } }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, analysisJson: { not: Prisma.DbNull }, prompt: { cluster: "industry" }, job: { status: "done" } };
-  const allTrendRuns = await prisma.run.findMany({
-    where: allTrendRunWhere,
-    select: { narrativeJson: true, analysisJson: true, createdAt: true, model: true },
-    orderBy: { createdAt: "asc" },
-  });
+  // Apply brand-scope filter to trend runs (same disambiguation as top-of-page)
+  const allTrendRuns = filterRunsToBrandScope(rawTrendRuns, brandIdentity);
+  const driftRuns = allTrendRuns.filter((r) => r.narrativeJson != null);
 
   const weekBuckets: Record<string, Record<string, number>> = {};
   for (const dr of driftRuns) {
@@ -354,9 +354,9 @@ export async function GET(req: NextRequest) {
   const sentimentBuckets: Record<string, Record<string, { pos: number; count: number }>> = {};
   for (const dr of allTrendRuns) {
     const narr = parseNarrative(dr.narrativeJson);
-    // Use POS/NEU/NEG label from narrativeJson only (same as scorecard sentimentSplit)
-    // Do NOT fall back to analysisJson.sentiment.legitimacy — legitimacy measures
-    // credibility, not positive/negative sentiment, so the mapping is wrong.
+    // Use POS/NEU/NEG label from narrativeJson only (same as scorecard sentimentSplit).
+    // Do NOT fall back to analysisJson.sentiment.legitimacy — that measures
+    // credibility, not positive/negative sentiment.
     if (!narr) continue;
     const label = narr.sentiment.label;
 
@@ -447,7 +447,6 @@ export async function GET(req: NextRequest) {
   // Examples: use the frameRunIds map built during aggregation
   // This guarantees quotes come from runs that EXACTLY match the frame name
   const topFrameNames = narrativeBase.frames.slice(0, 5).map((f: { frame: string }) => f.frame);
-  const brandAliases = brand.aliases?.length ? brand.aliases : [];
 
   // Build a run lookup for quick access
   const runById = new Map<string, NarrativeRun>();
