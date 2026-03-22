@@ -1,4 +1,4 @@
-export const VALID_MODELS: string[] = ["chatgpt", "gemini"];
+export const VALID_MODELS: string[] = ["chatgpt", "gemini", "claude", "perplexity", "google"];
 export const VALID_RANGES: number[] = [7, 30, 90];
 
 export const MODEL_LABELS: Record<string, string> = {
