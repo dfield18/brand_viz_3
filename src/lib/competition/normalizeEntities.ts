@@ -1,4 +1,5 @@
 import { openai } from "@/lib/openai";
+import { buildDeterministicAliasMap } from "./canonicalize";
 
 /**
  * In-memory cache: brand slug → (entityId → canonical entityId).
@@ -7,42 +8,70 @@ import { openai } from "@/lib/openai";
 const aliasCache = new Map<string, Map<string, string>>();
 
 /**
- * Given a list of entity IDs (lowercase competitor names), use GPT-4o-mini
- * to identify groups that represent the same company.
+ * Given a list of entity IDs (lowercase competitor names), merge
+ * obvious name variants deterministically, then use GPT-4o-mini
+ * for harder cases.
  *
- * Returns a mapping from each entityId to its canonical (shortest/simplest) form.
- * Entity IDs that aren't duplicates map to themselves.
+ * Two-layer approach:
+ * 1. Deterministic: strips corporate suffixes (Inc., Corp., Group, etc.)
+ *    so "HP" and "HP Inc." always merge without GPT.
+ * 2. GPT: handles abbreviations, parent/subsidiary, and non-obvious
+ *    aliases that deterministic rules can't catch.
  *
- * Results are cached per brand slug so subsequent calls are free.
+ * If GPT fails, deterministic results still provide useful merging.
+ *
+ * Returns a mapping from each entityId to its canonical form.
+ * Results are cached per brand slug.
  */
 export async function normalizeEntityIds(
   entityIds: string[],
   brandSlug: string,
 ): Promise<Map<string, string>> {
-  // Check cache first
+  // Step 1: Always apply deterministic canonicalization first
+  const deterministicMap = buildDeterministicAliasMap(entityIds);
+
+  // Check cache — but ensure deterministic merges override stale cache entries
   const cached = aliasCache.get(brandSlug);
   if (cached) {
-    // Verify all requested IDs are in the cache
     const allCached = entityIds.every((id) => cached.has(id));
-    if (allCached) return cached;
+    if (allCached) {
+      // Merge deterministic results into cached results
+      const merged = new Map(cached);
+      for (const [raw, detCanonical] of deterministicMap) {
+        const cachedCanonical = merged.get(raw) ?? raw;
+        // If deterministic merge groups two IDs that cache kept separate, use deterministic
+        if (detCanonical !== raw && cachedCanonical === raw) {
+          merged.set(raw, detCanonical);
+        }
+      }
+      return merged;
+    }
   }
 
-  // Too few entities to have duplicates
+  // Too few entities to need GPT
   if (entityIds.length <= 1) {
-    const map = new Map(entityIds.map((id) => [id, id]));
+    const map = new Map<string, string>();
+    for (const [k, v] of deterministicMap) map.set(k, v);
     aliasCache.set(brandSlug, map);
     return map;
   }
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0,
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "system",
-          content: `You are given a list of company/brand names (lowercased). Some may refer to the same entity (e.g. "volkswagen" and "volkswagen group", or "toyota" and "toyota motor corporation").
+  // Step 2: Send unique canonical IDs (after deterministic merge) to GPT
+  const map = new Map<string, string>();
+  for (const [k, v] of deterministicMap) map.set(k, v);
+
+  const uniqueCanonicals = [...new Set(deterministicMap.values())];
+
+  if (uniqueCanonicals.length >= 2) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "system",
+            content: `You are given a list of company/brand names (lowercased). Some may refer to the same entity (e.g. "volkswagen" and "volkswagen group", or "toyota" and "toyota motor corporation").
 
 Group names that clearly refer to the same company. For each group, pick the shortest common name as the canonical form. Consider full legal names, abbreviations, parent/subsidiary relationships, and "the" prefixes.
 
@@ -52,36 +81,40 @@ Example input: ["volkswagen", "volkswagen group", "the walt disney company", "di
 Example output: {"volkswagen":"volkswagen","volkswagen group":"volkswagen","the walt disney company":"disney","disney":"disney","toyota motor corporation":"toyota","toyota":"toyota","honda":"honda"}
 
 Return ONLY the JSON object, no other text.`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify(entityIds),
-        },
-      ],
-    });
+          },
+          {
+            role: "user",
+            content: JSON.stringify(uniqueCanonicals),
+          },
+        ],
+      });
 
-    const content = response.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error("Empty response");
-
-    const parsed = JSON.parse(content) as Record<string, string>;
-    const map = new Map<string, string>();
-    // Preserve any existing cache entries not in this batch
-    const existing = aliasCache.get(brandSlug);
-    if (existing) {
-      for (const [k, v] of existing) map.set(k, v);
+      const content = response.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        const parsed = JSON.parse(content) as Record<string, string>;
+        // Apply GPT merges on top of deterministic results
+        for (const [raw, detCanonical] of deterministicMap) {
+          const gptCanonical = parsed[detCanonical] ?? detCanonical;
+          map.set(raw, gptCanonical);
+        }
+      }
+    } catch (err) {
+      console.error("[normalizeEntityIds] GPT grouping failed, using deterministic only:", err);
+      // Deterministic results already in map — no further action needed
     }
-    for (const id of entityIds) {
-      map.set(id, parsed[id] ?? id);
-    }
-
-    aliasCache.set(brandSlug, map);
-    return map;
-  } catch (err) {
-    console.error("[normalizeEntityIds] GPT grouping failed, using identity mapping:", err);
-    const map = new Map(entityIds.map((id) => [id, id]));
-    aliasCache.set(brandSlug, map);
-    return map;
   }
+
+  // Preserve any existing cache entries not in this batch
+  const existing = aliasCache.get(brandSlug);
+  if (existing) {
+    const merged = new Map(existing);
+    for (const [k, v] of map) merged.set(k, v);
+    aliasCache.set(brandSlug, merged);
+  } else {
+    aliasCache.set(brandSlug, map);
+  }
+
+  return map;
 }
 
 /**
