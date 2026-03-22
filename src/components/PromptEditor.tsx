@@ -399,7 +399,7 @@ function PromptItem({
   }
 
   return (
-    <div className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors ${prompt.enabled ? "bg-muted/30" : "bg-transparent opacity-60"}`}>
+    <div className={`group flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors ${prompt.enabled ? "bg-muted/30" : "bg-transparent opacity-60"}`}>
       {/* Toggle */}
       <button
         type="button"
