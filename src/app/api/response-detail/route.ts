@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 /**
  * GET /api/response-detail?brandSlug=...&promptText=...&model=...
@@ -93,9 +93,9 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const runs = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
+    const scopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
 
-    return respondWith(brandName, runs.slice(0, 4), brandIndustry);
+    return respondWith(brandName, scopedRuns.slice(0, 4), brandIndustry);
   }
 
   // Mode 2: By model + position range (for dot chart drill-down)
@@ -120,12 +120,12 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const posRuns = filterRunsToBrandQueryUniverse(rawPosRuns, brandIdentity);
+    const scopedPosRuns = filterRunsToBrandScope(rawPosRuns, brandIdentity);
 
     // Filter by position range client-side
     if (minPos !== null) {
       const isNotMentioned = minPos === -1;
-      const filtered = posRuns.filter((r) => {
+      const filtered = scopedPosRuns.filter((r) => {
         const rank = computeBrandRank(r.rawResponseText, brandName, brand.slug, r.analysisJson, brandAliases);
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
       return respondWith(brandName, filtered.slice(0, 4), brandIndustry);
     }
 
-    return respondWith(brandName, posRuns.slice(0, 4), brandIndustry);
+    return respondWith(brandName, scopedPosRuns.slice(0, 4), brandIndustry);
   }
 
   return NextResponse.json({ error: "Provide promptText or model with position range" }, { status: 400 });

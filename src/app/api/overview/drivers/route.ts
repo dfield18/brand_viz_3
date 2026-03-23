@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
 import { parseAnalysis } from "@/lib/aggregateAnalysis";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { isRunInBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   decomposeKpi,
   type DecomposedRun,
@@ -32,9 +33,9 @@ export async function GET(req: NextRequest) {
   if (!maybeBrand) {
     return NextResponse.json({ error: "Brand not found" }, { status: 404 });
   }
-  // Resolve name to displayName for accurate brand detection in text
   const brand = { ...maybeBrand, name: maybeBrand.displayName || maybeBrand.name };
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+  const brandIdentity = buildBrandIdentity(brand);
 
   const isAll = model === "all";
   const modelFilter = isAll ? {} : { model };
@@ -95,7 +96,8 @@ export async function GET(req: NextRequest) {
           model: r.model,
           cluster: r.prompt.cluster,
           topic: r.prompt.topicKey ?? "other",
-          brandMentioned: analysis?.brandMentioned ?? false,
+          // Use scope-aware mention detection (not stale analysis.brandMentioned)
+          brandMentioned: isRunInBrandScope(r, brandIdentity),
           brandMentionStrength: analysis?.brandMentionStrength ?? 0,
           rank: computeBrandRank(
             r.rawResponseText,

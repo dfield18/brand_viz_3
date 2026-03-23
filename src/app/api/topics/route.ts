@@ -52,8 +52,6 @@ export async function GET(req: NextRequest) {
   });
   if (!result.ok) return result.response;
   const { brand, job, runs: rawRuns, rangeCutoff } = result;
-
-  // Query-universe scope: removes ambiguous false positives, keeps absent-brand runs
   const runs = filterRunsToBrandQueryUniverse(rawRuns, buildBrandIdentity(brand));
 
   try {
