@@ -117,9 +117,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // KPI metrics: industry-cluster only
-    const avgRankScore = computeAvgRank(industryRanks) ?? 0;
-    const firstMentionRate = computeRank1RateAll(industryRanks);
+    // KPI metrics: latest snapshot only (not full period)
+    // Find the most recent createdAt date among industry runs
+    const latestDate = runs
+      .filter((r) => r.prompt.cluster === "industry")
+      .reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+    // Latest snapshot = runs from the same date (within 24h of the latest)
+    const latestCutoff = new Date(latestDate.getTime() - 24 * 60 * 60 * 1000);
+    const latestIndustryRuns = runs.filter(
+      (r) => r.prompt.cluster === "industry" && r.createdAt >= latestCutoff,
+    );
+    const latestIndustryRanks: (number | null)[] = latestIndustryRuns.map((r) =>
+      computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
+    );
+    const avgRankScore = computeAvgRank(latestIndustryRanks) ?? 0;
+    const firstMentionRate = computeRank1RateAll(latestIndustryRanks);
 
     // --- Text-based entity counting from analysisJson (no EntityResponseMetric dependency) ---
     type AnalysisCompetitor = { name: string; mentionStrength?: number };
@@ -136,8 +148,8 @@ export async function GET(req: NextRequest) {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
 
-    // Share of Voice: text-based entity counting across industry-cluster runs
-    const industryRuns2 = runs.filter((r) => r.prompt.cluster === "industry");
+    // Share of Voice: text-based entity counting across latest-snapshot industry runs
+    const industryRuns2 = latestIndustryRuns;
     let sovBrandMentions = 0;
     let sovTotalEntityMentions = 0;
     // Also build entity run sets for visibility ranking + opportunity prompts
@@ -283,19 +295,19 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Mention rate: industry-cluster queries only
-    const industryRuns = runs.filter((r) => r.prompt.cluster === "industry");
-    const industryMentions = industryRuns.filter((r) =>
+    // Mention rate: latest snapshot industry-cluster only (matches scorecard scope)
+    const latestIndustryMentions = latestIndustryRuns.filter((r) =>
       isRunInBrandScope(r, brandIdentity),
     ).length;
-    const overallMentionRate = computeMentionRate(industryMentions, industryRuns.length);
+    const overallMentionRate = computeMentionRate(latestIndustryMentions, latestIndustryRuns.length);
 
-    // Month-over-month KPI deltas (most recent 30 days vs prior 30 days)
+    // Month-over-month KPI deltas (full period industry runs, not just latest snapshot)
+    const allIndustryRuns = runs.filter((r) => r.prompt.cluster === "industry");
     const now = new Date();
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const thisMonthIndustry = industryRuns.filter((r) => r.createdAt >= oneMonthAgo);
-    const priorMonthIndustry = industryRuns.filter(
+    const thisMonthIndustry = allIndustryRuns.filter((r) => r.createdAt >= oneMonthAgo);
+    const priorMonthIndustry = allIndustryRuns.filter(
       (r) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
     );
 
@@ -345,7 +357,7 @@ export async function GET(req: NextRequest) {
     // Worst-performing prompts: industry runs where brand ranks poorly or is absent
     const worstPrompts: { prompt: string; rank: number | null; competitors: string[] }[] = [];
     const seenWorstPrompts = new Set<string>();
-    for (const run of industryRuns) {
+    for (const run of allIndustryRuns) {
       const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
       if (seenWorstPrompts.has(promptText)) continue;
       seenWorstPrompts.add(promptText);
@@ -357,7 +369,7 @@ export async function GET(req: NextRequest) {
     // Enrich with top 5 competitors from analysisJson
     if (worstPrompts.length > 0) {
       const worstRunMap = new Map<string, VisibilityRun>(); // promptText → run
-      for (const run of industryRuns) {
+      for (const run of allIndustryRuns) {
         const pt = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
         if (!worstRunMap.has(pt)) worstRunMap.set(pt, run);
       }
@@ -537,40 +549,48 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => a.date.localeCompare(b.date) || a.model.localeCompare(b.model));
 
-    // Build rank distribution — industry-cluster only (non-null ranks only)
-    const nonNullIndustryRanks = industryRanks.filter((r): r is number => r !== null);
+    // Build rank distribution — latest snapshot only (matches scorecard)
+    const latestNonNullRanks = latestIndustryRanks.filter((r): r is number => r !== null);
     const rankCounts: Record<number, number> = {};
-    for (const r of nonNullIndustryRanks) {
+    for (const r of latestNonNullRanks) {
       rankCounts[r] = (rankCounts[r] || 0) + 1;
     }
     const rankDistribution = Object.entries(rankCounts)
       .map(([rank, count]) => ({
         rank: Number(rank),
         count,
-        percentage: computeMentionRate(count, nonNullIndustryRanks.length),
+        percentage: computeMentionRate(count, latestNonNullRanks.length),
       }))
       .sort((a, b) => a.rank - b.rank);
 
-    // Industry-only position distribution for brand — "all" + per-model
-    const buildPosDist = (ranks: number[], modelLabel: string) => {
+    // Position distribution — latest snapshot, "all" + per-model
+    const buildPosDist = (posRanks: number[], modelLabel: string) => {
       const counts: Record<number, number> = {};
-      for (const r of ranks) counts[r] = (counts[r] || 0) + 1;
+      for (const r of posRanks) counts[r] = (counts[r] || 0) + 1;
       return Object.entries(counts)
         .map(([pos, count]) => ({
           position: Number(pos),
           model: modelLabel,
           count,
-          percentage: ranks.length > 0 ? Math.round((count / ranks.length) * 100) : 0,
+          percentage: posRanks.length > 0 ? Math.round((count / posRanks.length) * 100) : 0,
         }))
         .sort((a, b) => a.position - b.position);
     };
-    const nonNullIndustryRanksByModel: Record<string, number[]> = {};
-    for (const [m, ranks] of Object.entries(industryRanksByModel)) {
-      nonNullIndustryRanksByModel[m] = ranks.filter((r): r is number => r !== null);
+    // Build per-model latest ranks
+    const latestRanksByModel: Record<string, (number | null)[]> = {};
+    for (const r of latestIndustryRuns) {
+      if (!latestRanksByModel[r.model]) latestRanksByModel[r.model] = [];
+      latestRanksByModel[r.model].push(
+        computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
+      );
+    }
+    const latestNonNullByModel: Record<string, number[]> = {};
+    for (const [m, mRanks] of Object.entries(latestRanksByModel)) {
+      latestNonNullByModel[m] = mRanks.filter((r): r is number => r !== null);
     }
     const positionDistribution = [
-      ...buildPosDist(nonNullIndustryRanks, "all"),
-      ...Object.entries(nonNullIndustryRanksByModel).flatMap(([m, ranks]) => buildPosDist(ranks, m)),
+      ...buildPosDist(latestNonNullRanks, "all"),
+      ...Object.entries(latestNonNullByModel).flatMap(([m, mRanks]) => buildPosDist(mRanks, m)),
     ];
 
     // Results by Question: per-prompt metrics across all models, industry-only
