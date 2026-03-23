@@ -599,10 +599,12 @@ export async function GET(req: NextRequest) {
     const scopedBrandTrendRuns = filterRunsToBrandQueryUniverse(rawBrandTrendRunsEarly, brandIdentity);
     const scopedTrendRunIds = new Set(scopedBrandTrendRuns.map((r) => r.id));
 
-    // Index metrics by jobId, restricting to scoped trend run IDs
-    const trendMetricsByJob = new Map<string, typeof allTrendMetrics>();
-    for (const m of allTrendMetrics) {
-      if (!scopedTrendRunIds.has(m.runId)) continue; // exclude out-of-scope runs
+    // Build one scoped metric collection — used by ALL downstream trend computations
+    const scopedTrendMetrics = allTrendMetrics.filter((m) => scopedTrendRunIds.has(m.runId));
+
+    // Index scoped metrics by jobId
+    const trendMetricsByJob = new Map<string, typeof scopedTrendMetrics>();
+    for (const m of scopedTrendMetrics) {
       const list = trendMetricsByJob.get(m.run.jobId) ?? [];
       list.push(m);
       trendMetricsByJob.set(m.run.jobId, list);
@@ -717,25 +719,25 @@ export async function GET(req: NextRequest) {
     }
 
     // --- Sentiment Trend: per-entity sentiment score per date ---
-    // Fetch raw text for trend runs
-    const trendRunIds = new Set<string>();
-    for (const m of allTrendMetrics) {
+    // Use scopedTrendMetrics (not raw allTrendMetrics) for the run universe
+    const sentimentTrendRunIds = new Set<string>();
+    for (const m of scopedTrendMetrics) {
       if (trendEntitySet.has(m.entityId)) {
-        trendRunIds.add(m.runId);
+        sentimentTrendRunIds.add(m.runId);
       }
     }
-    const trendRuns = trendRunIds.size > 0
+    const scopedSentimentRuns = sentimentTrendRunIds.size > 0
       ? await prisma.run.findMany({
-          where: { id: { in: [...trendRunIds] } },
+          where: { id: { in: [...sentimentTrendRunIds] } },
           select: { id: true, rawResponseText: true, jobId: true },
         })
       : [];
     const trendRunTextMap = new Map<string, string>();
-    for (const r of trendRuns) trendRunTextMap.set(r.id, r.rawResponseText);
+    for (const r of scopedSentimentRuns) trendRunTextMap.set(r.id, r.rawResponseText);
 
-    // Map runId → jobId for date lookup
+    // Map runId → jobId for date lookup (scoped runs only)
     const runJobMap = new Map<string, string>();
-    for (const r of trendRuns) runJobMap.set(r.id, r.jobId);
+    for (const r of scopedSentimentRuns) runJobMap.set(r.id, r.jobId);
     const jobDateMap = new Map<string, string>();
     for (const tj of allTrendJobs) {
       if (tj.finishedAt) jobDateMap.set(tj.id, tj.finishedAt.toISOString().slice(0, 10));
@@ -756,7 +758,7 @@ export async function GET(req: NextRequest) {
       return cached;
     }
 
-    for (const m of allTrendMetrics) {
+    for (const m of scopedTrendMetrics) {
       if (!trendEntitySet.has(m.entityId)) continue;
       const jobId = runJobMap.get(m.runId);
       if (!jobId) continue;
