@@ -391,7 +391,7 @@ function DecliningMetricsSection({ data, brandName }: { data: ApiResponse["decli
 
 function SectionBlock({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} className="scroll-mt-24">
+    <div id={id} className="scroll-mt-24 rounded-xl bg-card border border-border shadow-sm px-6 py-5">
       <h3 className="text-lg font-bold mb-3">{title}</h3>
       {children}
     </div>
