@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -11,16 +12,19 @@ export async function GET(req: NextRequest) {
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 
   try {
-    const result = await fetchBrandRuns<{ id: string; model: string; promptId: string; rawResponseText: string; prompt: { text: string } }>({
+    const result = await fetchBrandRuns<{ id: string; model: string; promptId: string; rawResponseText: string; analysisJson: unknown; prompt: { text: string } }>({
       brandSlug,
       model,
       viewRange,
-      runQuery: { include: { prompt: true } },
+      runQuery: { select: { id: true, model: true, promptId: true, rawResponseText: true, analysisJson: true, prompt: { select: { text: true } } } },
       skipJobCheck: true,
     });
     if (!result.ok) return result.response;
-    const { brand, runs } = result;
+    const { brand, runs: rawRuns } = result;
     const brandName = brand.displayName || brand.name;
+
+    // Content scope: quotes must be about the actual brand, not colliding entities
+    const runs = filterRunsToBrandScope(rawRuns, buildBrandIdentity(brand));
 
     if (runs.length === 0) {
       return NextResponse.json({ quotes: [] });
