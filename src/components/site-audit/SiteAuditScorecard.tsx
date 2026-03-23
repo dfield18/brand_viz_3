@@ -46,32 +46,35 @@ function getColor(score: number): string {
 
 function getTooltips(name: string): Record<string, string> {
   return {
-    overall: "Weighted average of all category scores. Higher is better.",
-    llmAccessibility: `Can AI crawlers (GPTBot, ClaudeBot, etc.) access ${name}'s site? Checks robots.txt rules and sitemap availability.`,
-    metaQuality: `Quality of HTML meta tags (title, description, Open Graph) that help AI models understand ${name}'s content.`,
-    structuredData: `Presence of JSON-LD/Schema.org markup that provides machine-readable context about ${name}.`,
-    contentStructure: `How well ${name}'s content is organized with headings, alt text, and logical hierarchy.`,
-    technicalHealth: "HTTPS, sitemap, canonical URLs, and page load performance.",
+    overall: `Combined score across all categories. Shows how well ${name}'s website is set up for AI platforms to find, read, and recommend it.`,
+    llmAccessibility: `Whether AI crawlers like GPTBot and ClaudeBot are allowed to access ${name}'s website. If they're blocked, AI platforms can't learn about your content.`,
+    metadataSchema: `How well ${name}'s website describes itself to machines — including page titles, descriptions, and structured data markup that help AI understand what the site is about.`,
+    contentStructure: `How well ${name}'s content is organized — clear headings, image descriptions, FAQ sections, and logical page structure that AI can easily parse.`,
+    technicalHealth: `Core technical fundamentals — secure connection (HTTPS), fast loading speed, sitemap availability, and proper URL configuration.`,
   };
 }
 
 export function SiteAuditScorecard(props: Props) {
-  const TOOLTIPS = getTooltips(props.brandName || "this site");
+  const name = props.brandName || "this site";
+  const TOOLTIPS = getTooltips(name);
+
+  // Merge Meta Tag Quality + Structured Data into one score
+  const metadataSchemaScore = Math.round((props.metaQuality + props.structuredData) / 2);
+
   const cards: {
     key: string;
     label: string;
     score: number;
   }[] = [
-    { key: "overall", label: "Overall AI-Readiness", score: props.overall },
-    { key: "llmAccessibility", label: "LLM Accessibility", score: props.llmAccessibility },
-    { key: "metaQuality", label: "Meta Tag Quality", score: props.metaQuality },
-    { key: "structuredData", label: "Structured Data", score: props.structuredData },
-    { key: "contentStructure", label: "Content Structure", score: props.contentStructure },
-    { key: "technicalHealth", label: "Technical Health", score: props.technicalHealth },
+    { key: "overall", label: "AI Readiness", score: props.overall },
+    { key: "llmAccessibility", label: "Can AI Find You?", score: props.llmAccessibility },
+    { key: "metadataSchema", label: "How AI Reads Your Site", score: metadataSchemaScore },
+    { key: "contentStructure", label: "Content Organization", score: props.contentStructure },
+    { key: "technicalHealth", label: "Site Performance & Security", score: props.technicalHealth },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {cards.map((card) => {
         const badge = getBadge(card.score);
         const color = getColor(card.score);
