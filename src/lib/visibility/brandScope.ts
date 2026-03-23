@@ -112,6 +112,10 @@ const ACRONYM_COLLISION_RULES = new Map<string, AcronymCollisionRule>([
       "investment portfolio", "index fund", "compound interest",
       "financial freedom", "financially independent", "passive income",
       "side hustle", "emergency fund", "withdrawal rate",
+      "budgeting", "discretionary spending", "save 50%", "save 70%",
+      "save 75%", "financial planner", "financial planning",
+      "lifestyle changes", "spending habits", "income savings",
+      "accumulate sufficient assets", "retirement savings",
     ],
   }],
 ]);
