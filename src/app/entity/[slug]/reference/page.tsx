@@ -394,10 +394,9 @@ function ReferenceInner() {
       )}
 
       {/* Competitor-Only Sources — Full List */}
-      {sourcesData?.hasData && sourcesData.sources?.crossCitation && sourcesData.sources.crossCitation.length > 0 && (
+      {sourcesData?.hasData && sourcesData.sources?.domainsNotCitingBrand && sourcesData.sources.domainsNotCitingBrand.length > 0 && (
         <CompetitorOnlySourcesTable
-          crossCitation={sourcesData.sources.crossCitation}
-          brandSlug={params.slug}
+          rows={sourcesData.sources.domainsNotCitingBrand}
           brandName={brandName}
         />
       )}

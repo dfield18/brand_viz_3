@@ -681,6 +681,7 @@ export interface SourcesResponse {
   modelSplit: SourceModelSplitRow[];
   emerging: EmergingSource[];
   crossCitation: CompetitorCrossCitation[];
+  domainsNotCitingBrand?: { domain: string; citations: number; competitors: [string, number][] }[];
   officialSites: OfficialSiteCitation[];
   sourcePromptMatrix: SourcePromptMatrixRow[];
   matrixPrompts: SourceMatrixPrompt[];

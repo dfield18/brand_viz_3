@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import type { CompetitorCrossCitation } from "@/types/api";
+import type { DomainNotCitingBrand } from "@/lib/sources/computeSources";
 
 import { titleCase } from "@/lib/utils";
 
 interface Props {
-  crossCitation: CompetitorCrossCitation[];
-  brandSlug: string;
+  /** Pre-computed rows from the backend — run-level brand mention semantics */
+  rows?: DomainNotCitingBrand[];
   brandName: string;
   onDomainClick?: (domain: string) => void;
   entityNames?: Record<string, string>;
@@ -30,30 +30,9 @@ const COMP_COLORS = [
   "hsl(142, 40%, 48%)", // green
 ];
 
-function useCompetitorOnlyRows(crossCitation: CompetitorCrossCitation[], brandSlug: string) {
-  return useMemo(() => {
-    return crossCitation
-      .filter((row) => {
-        const brandCount = row.entityCounts[brandSlug] ?? 0;
-        const otherTotal = Object.entries(row.entityCounts)
-          .filter(([id]) => id !== brandSlug)
-          .reduce((s, [, v]) => s + v, 0);
-        return brandCount === 0 && otherTotal > 0;
-      })
-      .map((row) => {
-        const competitors = Object.entries(row.entityCounts)
-          .filter(([id]) => id !== brandSlug)
-          .sort((a, b) => b[1] - a[1]);
-        const total = competitors.reduce((s, [, v]) => s + v, 0);
-        return { domain: row.domain, competitors, total };
-      })
-      .sort((a, b) => b.total - a.total);
-  }, [crossCitation, brandSlug]);
-}
-
 /** Chart-only view — stays in Source Overview */
-export default function CompetitorOnlySources({ crossCitation, brandSlug, brandName, entityNames, isOrg }: Props) {
-  const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
+export default function CompetitorOnlySources({ rows, brandName, entityNames, isOrg }: Props) {
+  if (!rows || rows.length === 0) return null;
 
   const top = rows.slice(0, 15);
 
@@ -70,9 +49,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
     return cMap;
   }, [top]);
 
-  if (rows.length === 0) return null;
-
-  const maxTotal = Math.max(...top.map((r) => r.total), 1);
+  const maxTotal = Math.max(...top.map((r) => r.citations), 1);
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
@@ -83,7 +60,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
 
       <div className="space-y-3">
         {top.map((row, i) => {
-          const barPct = (row.total / maxTotal) * 100;
+          const barPct = (row.citations / maxTotal) * 100;
 
           return (
             <div key={row.domain} className="group">
@@ -102,7 +79,7 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
                   />
                 </div>
                 <span className="text-xs tabular-nums text-muted-foreground shrink-0 w-20 text-right">
-                  {row.total} citation{row.total !== 1 ? "s" : ""}
+                  {row.citations} citation{row.citations !== 1 ? "s" : ""}
                 </span>
               </div>
 
@@ -140,10 +117,8 @@ export default function CompetitorOnlySources({ crossCitation, brandSlug, brandN
 }
 
 /** Table-only view — for the reference / deep dive section */
-export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName, onDomainClick, entityNames, isOrg }: Props) {
-  const rows = useCompetitorOnlyRows(crossCitation, brandSlug);
-
-  if (rows.length === 0) return null;
+export function CompetitorOnlySourcesTable({ rows, brandName, onDomainClick, entityNames, isOrg }: Props) {
+  if (!rows || rows.length === 0) return null;
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
@@ -186,7 +161,7 @@ export function CompetitorOnlySourcesTable({ crossCitation, brandSlug, brandName
               )}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-auto whitespace-nowrap">
-              {row.total} citations
+              {row.citations} citations
             </span>
           </div>
         ))}

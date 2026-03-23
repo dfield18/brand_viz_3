@@ -7,6 +7,7 @@ import {
   detectEmergingSources,
   computeCompetitorCrossCitation,
   computeOfficialSiteCitations,
+  computeDomainsNotCitingBrand,
   type SourceOccurrenceInput,
   type EntityMetricInput,
 } from "./computeSources";
@@ -386,5 +387,68 @@ describe("computeOfficialSiteCitations", () => {
       displayName: "FIRE",
     });
     assert.equal(result.length, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeDomainsNotCitingBrand
+// ---------------------------------------------------------------------------
+
+describe("computeDomainsNotCitingBrand", () => {
+  it("excludes domain that appears in a brand-mentioned run (even if attributed to competitor)", () => {
+    const brandRunId = "brand-run-1";
+    const compRunId = "comp-run-1";
+    const brandMentionedRunIds = new Set([brandRunId]);
+
+    const occ = [
+      makeOcc({ runId: brandRunId, domain: "jstreet.org", entityId: "j_street", normalizedUrl: "https://jstreet.org/page" }),
+      makeOcc({ runId: compRunId, domain: "jstreet.org", entityId: "j_street", normalizedUrl: "https://jstreet.org/other" }),
+    ];
+
+    const result = computeDomainsNotCitingBrand(occ, brandMentionedRunIds);
+    assert.equal(result.length, 0);
+  });
+
+  it("includes domain cited only in non-brand-mentioned runs", () => {
+    const brandMentionedRunIds = new Set(["brand-run"]);
+
+    const occ = [
+      makeOcc({ runId: "comp-run-1", domain: "competitor-only.org", entityId: "comp_a", normalizedUrl: "https://competitor-only.org/" }),
+      makeOcc({ runId: "comp-run-2", domain: "competitor-only.org", entityId: "comp_b", normalizedUrl: "https://competitor-only.org/page" }),
+    ];
+
+    const result = computeDomainsNotCitingBrand(occ, brandMentionedRunIds);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].domain, "competitor-only.org");
+    assert.equal(result[0].citations, 2);
+    assert.equal(result[0].competitors.length, 2);
+  });
+
+  it("excludes domain based on run-level presence, not entity attribution", () => {
+    const brandMentionedRunIds = new Set(["brand-run"]);
+
+    const occ = [
+      makeOcc({ runId: "brand-run", domain: "shared.org", entityId: "competitor_x", normalizedUrl: "https://shared.org/" }),
+      makeOcc({ runId: "other-run", domain: "shared.org", entityId: "competitor_y", normalizedUrl: "https://shared.org/other" }),
+    ];
+
+    const result = computeDomainsNotCitingBrand(occ, brandMentionedRunIds);
+    assert.equal(result.length, 0);
+  });
+
+  it("sorts by citation count descending", () => {
+    const brandMentionedRunIds = new Set(["brand-run"]);
+
+    const occ = [
+      makeOcc({ runId: "r1", domain: "few.org", entityId: "comp", normalizedUrl: "https://few.org/" }),
+      makeOcc({ runId: "r2", domain: "many.org", entityId: "comp", normalizedUrl: "https://many.org/1" }),
+      makeOcc({ runId: "r3", domain: "many.org", entityId: "comp", normalizedUrl: "https://many.org/2" }),
+      makeOcc({ runId: "r4", domain: "many.org", entityId: "comp", normalizedUrl: "https://many.org/3" }),
+    ];
+
+    const result = computeDomainsNotCitingBrand(occ, brandMentionedRunIds);
+    assert.equal(result.length, 2);
+    assert.equal(result[0].domain, "many.org");
+    assert.equal(result[1].domain, "few.org");
   });
 });

@@ -290,6 +290,69 @@ export function computeCompetitorCrossCitation(
 }
 
 // ---------------------------------------------------------------------------
+// Domains Not Citing Brand (run-level, not attribution-level)
+// ---------------------------------------------------------------------------
+
+export interface DomainNotCitingBrand {
+  domain: string;
+  /** Total citations in non-brand-mentioned runs */
+  citations: number;
+  /** Entity attribution counts from non-brand-mentioned runs */
+  competitors: [string, number][];
+}
+
+/**
+ * Find domains cited in AI responses that do NOT mention the selected brand.
+ *
+ * Uses run-level brand mention, NOT occurrence-level entity attribution.
+ * A domain is excluded from this list if it appears in ANY run where the
+ * brand is mentioned — even if the occurrence is attributed to a competitor.
+ *
+ * @param occurrences - all source occurrences in scope
+ * @param brandMentionedRunIds - set of run IDs where the brand is mentioned
+ */
+export function computeDomainsNotCitingBrand(
+  occurrences: SourceOccurrenceInput[],
+  brandMentionedRunIds: Set<string>,
+): DomainNotCitingBrand[] {
+  // Group occurrences by domain
+  const byDomain = new Map<string, SourceOccurrenceInput[]>();
+  for (const o of occurrences) {
+    const list = byDomain.get(o.domain) ?? [];
+    list.push(o);
+    byDomain.set(o.domain, list);
+  }
+
+  const results: DomainNotCitingBrand[] = [];
+
+  for (const [domain, domainOccs] of byDomain) {
+    // Check if this domain appears in ANY brand-mentioned run
+    const appearsInBrandRun = domainOccs.some((o) => brandMentionedRunIds.has(o.runId));
+    if (appearsInBrandRun) continue;
+
+    // Only include occurrences from non-brand-mentioned runs (all of them, since we passed the check)
+    const entityCounts = new Map<string, number>();
+    for (const o of domainOccs) {
+      if (o.entityId) {
+        entityCounts.set(o.entityId, (entityCounts.get(o.entityId) ?? 0) + 1);
+      }
+    }
+
+    // Skip if no entity attributions at all
+    if (entityCounts.size === 0) continue;
+
+    const competitors = [...entityCounts.entries()].sort((a, b) => b[1] - a[1]);
+    results.push({
+      domain,
+      citations: domainOccs.length,
+      competitors,
+    });
+  }
+
+  return results.sort((a, b) => b.citations - a.citations);
+}
+
+// ---------------------------------------------------------------------------
 // Official Site Citations
 // ---------------------------------------------------------------------------
 

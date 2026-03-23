@@ -11,6 +11,7 @@ import {
   detectEmergingSources,
   computeCompetitorCrossCitation,
   computeOfficialSiteCitations,
+  computeDomainsNotCitingBrand,
   type SourceOccurrenceInput,
   type EntityMetricInput,
 } from "@/lib/sources/computeSources";
@@ -206,6 +207,19 @@ export async function GET(req: NextRequest) {
       occurrences,
       rawTopDomains.slice(0, 15).map((d) => d.domain),
     );
+
+    // "Sources Not Citing Brand": uses ALL rawRuns occurrences (not just content-scoped)
+    // to find domains cited only in non-brand-mentioned responses.
+    // brandMentionedRunIds = the content-scoped run IDs (runs where brand is genuinely mentioned)
+    const brandMentionedRunIds = new Set(runIds);
+    const allRawRunIds = rawRuns.map((r) => r.id);
+    const rawRunOccurrences = allRawRunIds.length > runIds.length
+      ? await prisma.sourceOccurrence.findMany({
+          where: { run: { id: { in: allRawRunIds } }, ...clusterPromptFilter },
+          select: { runId: true, promptId: true, model: true, entityId: true, normalizedUrl: true, createdAt: true, source: { select: { domain: true } } },
+        }).then((rows) => rows.map((o) => ({ runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId, domain: o.source.domain, normalizedUrl: o.normalizedUrl, createdAt: o.createdAt })))
+      : occurrences; // if no difference, reuse existing
+    const domainsNotCitingBrand = computeDomainsNotCitingBrand(rawRunOccurrences, brandMentionedRunIds);
 
     // Classify domains (uses DB cache → static map → GPT fallback)
     // Classify top domains via GPT, then bulk-fetch cached categories for all others
@@ -419,6 +433,7 @@ export async function GET(req: NextRequest) {
         modelSplit,
         emerging,
         crossCitation,
+        domainsNotCitingBrand,
         officialSites,
         sourcePromptMatrix,
         matrixPrompts: matrixPromptList,

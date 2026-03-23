@@ -156,9 +156,9 @@ function SourcesInner() {
         )}
 
         {/* Competitor-Only Sources */}
-        {data.crossCitation && data.crossCitation.length > 0 && (
+        {data.domainsNotCitingBrand && data.domainsNotCitingBrand.length > 0 && (
           <div id="competitor-only" className="scroll-mt-24">
-            <CompetitorOnlySources crossCitation={data.crossCitation} brandSlug={params.slug} brandName={brandName} entityNames={apiData.entityNames} isOrg={isOrg} />
+            <CompetitorOnlySources rows={data.domainsNotCitingBrand} brandName={brandName} entityNames={apiData.entityNames} isOrg={isOrg} />
           </div>
         )}
 
