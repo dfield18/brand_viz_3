@@ -719,6 +719,24 @@ describe("acronym collision — FIRE organization vs FIRE movement", () => {
     assert.ok(!isRunInBrandScope(run, FIRE_ORG));
   });
 
+  it("rejects brandMentioned=true with no confirm phrases (ambiguous acronym)", () => {
+    // GPT flags brandMentioned but response is about retirement with no reject phrases either
+    const run = makeRun({
+      rawResponseText: "FIRE offers benefits like increased time flexibility and reduced financial anxiety. However FIRE also presents challenges such as potential for radical frugality.",
+      analysisJson: { brandMentioned: true },
+    });
+    // "frugality" is now a reject phrase
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("rejects savings-rate content without explicit retire-early phrase", () => {
+    const run = makeRun({
+      rawResponseText: "FIRE emphasizes high savings rates, often 50% to 70% of income, and disciplined investing to accumulate sufficient assets for early retirement.",
+      analysisJson: { brandMentioned: true },
+    });
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
   it("FIRE retirement run stays in query universe (absent-brand valid)", () => {
     // A FIRE/retirement run with the acronym should be excluded from query universe
     // because it mentions the phrase and fails content scope

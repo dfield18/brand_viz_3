@@ -101,12 +101,17 @@ const ACRONYM_COLLISION_RULES = new Map<string, AcronymCollisionRule>([
       "individual rights", "foundation for individual rights",
       "civil liberties", "student rights", "faculty rights",
       "speech code", "due process", "censorship",
+      "thefire.org", "fire.org",
     ],
     rejectPhrases: [
       "retire early", "financial independence", "4% rule", "safe withdrawal",
       "lean fire", "fat fire", "barista fire", "coast fire",
       "fire movement", "fire number", "fire calculator",
       "early retirement", "retire by", "nest egg",
+      "savings rate", "frugality", "frugal", "retirement portfolio",
+      "investment portfolio", "index fund", "compound interest",
+      "financial freedom", "financially independent", "passive income",
+      "side hustle", "emergency fund", "withdrawal rate",
     ],
   }],
 ]);
@@ -277,10 +282,22 @@ export function isRunInBrandScope(
       }
     }
 
-    // Accept if analysisJson has strong evidence (brandMentioned or alias in competitors)
-    if (hasAnalysisEvidence(run.analysisJson, brand)) return true;
+    // For acronym brands, brandMentioned alone is NOT reliable — GPT cannot
+    // distinguish between different meanings of the same acronym.
+    // Only accept if the competitor list contains a known alias (stronger signal).
+    if (run.analysisJson && typeof run.analysisJson === "object") {
+      const a = run.analysisJson as ParsedAnalysis;
+      if (Array.isArray(a.competitors) && brand.aliases) {
+        const aliasLower = new Set(brand.aliases.filter((al) => al.length >= 6).map((al) => al.toLowerCase()));
+        for (const comp of a.competitors) {
+          if (comp && typeof comp === "object" && "name" in comp) {
+            if (aliasLower.has(String(comp.name).toLowerCase())) return true;
+          }
+        }
+      }
+    }
 
-    // No confirm phrases, no reject phrases, no structured evidence → reject
+    // No confirm phrases, no alias in text/competitors → reject
     // The acronym alone is too ambiguous without contextual support
     return false;
   }
