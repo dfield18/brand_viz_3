@@ -589,9 +589,20 @@ export async function GET(req: NextRequest) {
         })
       : [];
 
-    // Index metrics by jobId
+    // Fetch + scope industry trend runs for brand metrics (needed before metric indexing)
+    const rawBrandTrendRunsEarly = trendJobIds.length > 0
+      ? await prisma.run.findMany({
+          where: { jobId: { in: trendJobIds }, prompt: { cluster: "industry" } },
+          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true },
+        })
+      : [];
+    const scopedBrandTrendRuns = filterRunsToBrandQueryUniverse(rawBrandTrendRunsEarly, brandIdentity);
+    const scopedTrendRunIds = new Set(scopedBrandTrendRuns.map((r) => r.id));
+
+    // Index metrics by jobId, restricting to scoped trend run IDs
     const trendMetricsByJob = new Map<string, typeof allTrendMetrics>();
     for (const m of allTrendMetrics) {
+      if (!scopedTrendRunIds.has(m.runId)) continue; // exclude out-of-scope runs
       const list = trendMetricsByJob.get(m.run.jobId) ?? [];
       list.push(m);
       trendMetricsByJob.set(m.run.jobId, list);
@@ -628,14 +639,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Fetch industry runs per trend job for text-based brand metrics (matches visibility tab)
-    const brandTrendRuns = trendJobIds.length > 0
-      ? await prisma.run.findMany({
-          where: { jobId: { in: trendJobIds }, prompt: { cluster: "industry" } },
-          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true },
-        })
-      : [];
-    // Group trend runs by job date
+    // Group scoped trend runs by job date (already fetched + scoped above)
+    const brandTrendRuns = scopedBrandTrendRuns;
     const trendRunsByDate = new Map<string, typeof brandTrendRuns>();
     for (const r of brandTrendRuns) {
       const tj = allTrendJobs.find((j) => j.id === r.jobId);

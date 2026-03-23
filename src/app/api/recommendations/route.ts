@@ -628,8 +628,11 @@ export async function GET(req: NextRequest) {
     if (j.finishedAt) alertJobDateMap.set(j.id, j.finishedAt.toISOString().slice(0, 10));
   }
 
+  // Filter alert runs through query-universe scope (matches /api/competitor-alerts)
+  const scopedAlertRuns = filterRunsToBrandQueryUniverse(alertRuns, brandIdentity);
+
   // Build MovementRun[] for the helper
-  const movementRuns: MovementRun[] = alertRuns.map((r) => ({
+  const movementRuns: MovementRun[] = scopedAlertRuns.map((r) => ({
     id: r.id,
     model: r.model,
     jobDate: alertJobDateMap.get(r.jobId) ?? "",
