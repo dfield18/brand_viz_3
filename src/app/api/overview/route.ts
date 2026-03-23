@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
-import { parseAnalysis, aggregateOverview, computeStability } from "@/lib/aggregateAnalysis";
+import { parseAnalysis, computeStability } from "@/lib/aggregateAnalysis";
 import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
 import {
   computeAvgRank,
@@ -202,55 +202,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ hasData: false, reason: "no_completed_job" });
   }
 
-  // Merge analyses across all models with real data
-  const mergedLatestAnalyses: RunAnalysis[] = [];
-  const mergedTrendMap = new Map<string, { date: Date; analyses: RunAnalysis[] }>();
+  // Collect totals across models
   let totalRuns = 0;
   let totalAnalyzed = 0;
   let latestFinished: Date | null = null;
+  let hasAnalyses = false;
 
   for (const { data } of withData) {
     if (!data) continue;
-
-    mergedLatestAnalyses.push(...data.latestAnalyses);
     totalRuns += data.totalRuns;
     totalAnalyzed += data.analyzedRuns;
-
+    if (data.latestAnalyses.length > 0) hasAnalyses = true;
     const jobFinished = data.latestJob.finishedAt;
     if (jobFinished && (!latestFinished || jobFinished > latestFinished)) {
       latestFinished = jobFinished;
     }
-
-    // Merge trend data — group by date string so overlapping dates get combined
-    for (const td of data.trendData) {
-      const key = td.date.toISOString().slice(0, 10);
-      const existing = mergedTrendMap.get(key);
-      if (existing) {
-        existing.analyses.push(...td.analyses);
-      } else {
-        mergedTrendMap.set(key, { date: td.date, analyses: [...td.analyses] });
-      }
-    }
   }
 
-  // Merge industry-only analyses across models
-  const mergedIndustryLatest: RunAnalysis[] = [];
-  const mergedIndustryTrendMap = new Map<string, { date: Date; analyses: RunAnalysis[] }>();
-  for (const { data } of withData) {
-    if (!data) continue;
-    mergedIndustryLatest.push(...data.industryLatestAnalyses);
-    for (const td of data.industryTrendData) {
-      const key = td.date.toISOString().slice(0, 10);
-      const existing = mergedIndustryTrendMap.get(key);
-      if (existing) {
-        existing.analyses.push(...td.analyses);
-      } else {
-        mergedIndustryTrendMap.set(key, { date: td.date, analyses: [...td.analyses] });
-      }
-    }
-  }
-
-  if (mergedLatestAnalyses.length === 0) {
+  if (!hasAnalyses) {
     return NextResponse.json({
       hasData: false,
       reason: "no_analysis_data",
@@ -258,18 +227,16 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const mergedTrendData = Array.from(mergedTrendMap.values()).sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  );
-
-  const overview = aggregateOverview(mergedLatestAnalyses, brandName, mergedTrendData);
-
-  // NOTE: Frame computation deferred until after fetchBrandRuns resolves,
-  // so we use the same deduped runs as the narrative tab. See below.
-
-  // NOTE: overview.kpis "Visibility Score" and "Mention Rate" are populated by
-  // aggregateOverview from raw analyses. They are overridden AFTER the visibilityKpis
-  // block below so they match the scope-aware values. See "Sync overview.kpis" block.
+  // Build overview object explicitly instead of using aggregateOverview().
+  // This avoids mixing raw-analysis values with later scoped overrides.
+  // KPIs, frames, and trend are populated in dedicated blocks below.
+  const overview: import("@/types/api").OverviewResponse = {
+    kpis: [],        // populated after visibilityKpis + scoped content blocks
+    topFrames: [],   // populated from scoped frame computation
+    trend: [],       // populated from scoped trend computation
+    clusterVisibility: [],
+    modelComparison: [],
+  };
 
   // Merge cluster stats across models
   const mergedClusters = new Map<string, { total: number; mentioned: number; strengths: number[] }>();
@@ -296,20 +263,18 @@ export async function GET(req: NextRequest) {
     });
   overview.clusterVisibility = clusterVisibility;
 
-  // Per-model comparison (visibility uses industry-only data)
-  // Initial sentiment uses legitimacy; will be recomputed from narrativeJson in the deduped block below
-  const modelComparison = withData.map(({ model: m, data }) => {
-    const allAnalyses = data!.latestAnalyses;
-    return {
-      model: m,
-      mentionRate: data!.industryMentionRate,
-      controversy: Math.round(avgArr(allAnalyses.map((a) => a.sentiment.controversy))),
-      authority: parseFloat(avgArr(allAnalyses.map((a) => a.authorityScore)).toFixed(2)),
-      sentiment: 0, // placeholder — recomputed from narrativeJson below
-      narrativeStability: computeStability(allAnalyses),
-      avgRank: data!.avgRank,
-    };
-  });
+  // Per-model comparison: mentionRate and avgRank from denominator-aware data,
+  // content metrics (controversy, authority, stability, sentiment) recomputed
+  // from scoped runs in the frame/model-comparison block below.
+  const modelComparison = withData.map(({ model: m, data }) => ({
+    model: m,
+    mentionRate: data!.industryMentionRate,
+    controversy: 0,           // recomputed from scoped analyses below
+    authority: 0,             // recomputed from scoped analyses below
+    sentiment: 0,             // recomputed from scoped narrativeJson below
+    narrativeStability: 80,   // recomputed from scoped analyses below
+    avgRank: data!.avgRank,
+  }));
   overview.modelComparison = modelComparison;
 
   const activeModels = withData.map((r) => r.model);
@@ -641,12 +606,78 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // --- Sync overview.kpis with visibilityKpis so the payload never disagrees ---
-  // visibilityKpis is the authoritative scope-aware source; override the
-  // analysis-derived values that aggregateOverview initially populated.
-  for (const kpi of overview.kpis) {
-    if (kpi.label === "Mention Rate") kpi.value = overallMentionRate;
-    if (kpi.label === "Visibility Score") kpi.value = overallMentionRate; // alias
+  // --- Assemble overview.kpis from the correct scoped/denominator sources ---
+  // Visibility KPIs: from denominator-aware logic (all runs + isRunInBrandScope)
+  // Content KPIs: from scoped analyses only
+  {
+    // Content KPIs from scoped analyses
+    let scopedControversy = 0;
+    let scopedStability = 80;
+    let scopedDominantFrame: { frame: string; percentage: number } | null = null;
+    if (visResult && visResult.ok) {
+      const scopedContentRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+      const industryContentRuns = scopedContentRuns.filter((r) => r.prompt.cluster === "industry");
+      const contentRuns = industryContentRuns.length > 0 ? industryContentRuns : scopedContentRuns;
+      const contentAnalyses = contentRuns
+        .map((r) => parseAnalysis(r.analysisJson))
+        .filter((a): a is NonNullable<typeof a> => a !== null);
+      if (contentAnalyses.length > 0) {
+        scopedControversy = Math.round(avgArr(contentAnalyses.map((a) => a.sentiment.controversy)));
+        scopedStability = computeStability(contentAnalyses);
+      }
+      // Dominant frame from already-computed scoped topFrames
+      if (overview.topFrames.length > 0) {
+        const top = overview.topFrames[0];
+        scopedDominantFrame = { frame: top.frame, percentage: top.percentage };
+      }
+    }
+
+    // Find tied top frames
+    const tiedTopFrames = scopedDominantFrame && overview.topFrames.length > 0
+      ? overview.topFrames.filter((f) => f.percentage === scopedDominantFrame!.percentage)
+      : [];
+
+    overview.kpis = [
+      { label: "Visibility Score", value: overallMentionRate, unit: "score", delta: kpiDeltas?.mentionRate ?? 0 },
+      { label: "Mention Rate", value: overallMentionRate, unit: "%", delta: kpiDeltas?.mentionRate ?? 0 },
+      {
+        label: "Dominant Narrative Frame",
+        value: scopedDominantFrame?.percentage ?? 0,
+        unit: "score",
+        delta: 0,
+        displayText: tiedTopFrames.length > 1
+          ? tiedTopFrames.map((f) => f.frame).join(" & ")
+          : scopedDominantFrame?.frame ?? "—",
+        barPct: scopedDominantFrame?.percentage ?? 0,
+      },
+      { label: "Controversy Index", value: scopedControversy, unit: "score", delta: 0 },
+      { label: "Narrative Stability", value: scopedStability, unit: "score", delta: 0 },
+    ];
+  }
+
+  // --- Assemble overview.trend from scoped content data ---
+  if (visResult && visResult.ok) {
+    const scopedTrendRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+    const industryTrendRuns = scopedTrendRuns.filter((r) => r.prompt.cluster === "industry");
+    const trendRunPool = industryTrendRuns.length > 0 ? industryTrendRuns : scopedTrendRuns;
+    // Group by date (from createdAt)
+    const trendByDate = new Map<string, { analyses: RunAnalysis[] }>();
+    for (const r of trendRunPool) {
+      const date = r.createdAt.toISOString().slice(0, 10);
+      const entry = trendByDate.get(date) ?? { analyses: [] };
+      const parsed = parseAnalysis(r.analysisJson);
+      if (parsed) entry.analyses.push(parsed);
+      trendByDate.set(date, entry);
+    }
+    overview.trend = [...trendByDate.entries()]
+      .filter(([, v]) => v.analyses.length > 0)
+      .map(([date, { analyses }]) => ({
+        date,
+        visibility: Math.round(avgArr(analyses.map((a) => a.brandMentionStrength))),
+        controversy: Math.round(avgArr(analyses.map((a) => a.sentiment.controversy))),
+        authority: Math.round(avgArr(analyses.map((a) => a.authorityScore))),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   // ── Generate AI summary using GPT-4o-mini ──
