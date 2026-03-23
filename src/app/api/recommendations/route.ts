@@ -7,6 +7,7 @@ import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdent
 import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
+import { computeDomainsNotCitingBrand, type SourceOccurrenceInput } from "@/lib/sources/computeSources";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
 
 // ---------------------------------------------------------------------------
@@ -716,46 +717,47 @@ export async function GET(req: NextRequest) {
   }
 
   // -----------------------------------------------------------------------
-  // 6. sourceGapOpportunities
+  // 6. sourceGapOpportunities — uses run-level brand mention (same as Sources tab)
   // -----------------------------------------------------------------------
-  const domainEntities: Record<string, { category: string | null; entities: Set<string>; total: number }> = {};
-
+  // Build source occurrences from the query-universe runs
+  const sourceOccurrences: SourceOccurrenceInput[] = [];
+  const domainCategoryMap = new Map<string, string | null>();
   for (const run of runs) {
     for (const so of run.sourceOccurrences) {
-      const domain = so.source.domain;
-      if (!domainEntities[domain]) {
-        domainEntities[domain] = { category: so.source.category, entities: new Set(), total: 0 };
+      sourceOccurrences.push({
+        runId: run.id,
+        promptId: run.promptId,
+        model: run.model,
+        entityId: so.entityId,
+        domain: so.source.domain,
+        normalizedUrl: so.normalizedUrl,
+        createdAt: run.createdAt,
+      });
+      if (!domainCategoryMap.has(so.source.domain)) {
+        domainCategoryMap.set(so.source.domain, so.source.category);
       }
-      domainEntities[domain].total++;
-      if (so.entityId) domainEntities[domain].entities.add(so.entityId);
     }
   }
 
-  const sourceGapOpportunities: {
-    domain: string;
-    category: string | null;
-    competitorsCited: string[];
-    totalCitations: number;
-    suggestion: string;
-  }[] = [];
+  // Brand-mentioned run IDs = content-scoped runs (same basis as Sources tab)
+  const brandMentionedRunIds = new Set(contentScopedRuns.map((r) => r.id));
 
-  for (const [domain, data] of Object.entries(domainEntities)) {
-    if (data.entities.has(brand.slug)) continue; // Brand is already cited
-    const competitors = [...data.entities].filter((e) => e !== brand.slug);
-    if (competitors.length === 0) continue;
+  // Use the same helper as Sources tab — run-level brand mention, not attribution
+  const notCitingRows = computeDomainsNotCitingBrand(sourceOccurrences, brandMentionedRunIds);
 
-    const compNames = competitors.slice(0, 5).map((e) => resolveEntityName(e, entityDisplayNames)).join(", ");
-    sourceGapOpportunities.push({
-      domain,
-      category: data.category,
-      competitorsCited: competitors.map((e) => resolveEntityName(e, entityDisplayNames)),
-      totalCitations: data.total,
-      suggestion: `Get coverage on ${domain}${data.category ? ` (${data.category})` : ""} \u2014 currently cites ${compNames} but not ${brandName}`,
+  const sourceGapOpportunities = notCitingRows
+    .slice(0, 15)
+    .map((row) => {
+      const compNames = row.competitors.slice(0, 5).map(([id]) => resolveEntityName(id, entityDisplayNames));
+      const category = domainCategoryMap.get(row.domain) ?? null;
+      return {
+        domain: row.domain,
+        category,
+        competitorsCited: row.competitors.map(([id]) => resolveEntityName(id, entityDisplayNames)),
+        totalCitations: row.citations,
+        suggestion: `Get coverage on ${row.domain}${category ? ` (${category})` : ""} \u2014 currently cites ${compNames.join(", ")} but not ${brandName}`,
+      };
     });
-  }
-
-  sourceGapOpportunities.sort((a, b) => b.totalCitations - a.totalCitations);
-  sourceGapOpportunities.splice(15);
 
   // -----------------------------------------------------------------------
   // 7. topicCoverageGaps
