@@ -86,30 +86,71 @@ interface ApiResponse {
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
+/** Extract a readable domain name from a URL: "https://en.wikipedia.org/wiki/..." → "Wikipedia" */
+function urlToDomainLabel(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    // Known friendly names
+    const KNOWN: Record<string, string> = {
+      "en.wikipedia.org": "Wikipedia", "wikipedia.org": "Wikipedia",
+      "nytimes.com": "NY Times", "washingtonpost.com": "Washington Post",
+      "theguardian.com": "The Guardian", "bbc.com": "BBC", "bbc.co.uk": "BBC",
+      "reuters.com": "Reuters", "bloomberg.com": "Bloomberg", "forbes.com": "Forbes",
+      "cnn.com": "CNN", "wsj.com": "WSJ",
+    };
+    if (KNOWN[hostname]) return KNOWN[hostname];
+    // Strip TLD: "example.org" → "Example"
+    const parts = hostname.split(".");
+    const name = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return url;
+  }
+}
+
+/** Convert markdown links to readable domain labels, strip remaining markdown */
 function stripMarkdown(text: string): string {
   return text
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // [label](url) → keep label if not a URL, otherwise show domain name
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, (_, label: string, url: string) => {
+      if (/^(https?:\/\/|www\.)/.test(label)) return urlToDomainLabel(label);
+      return label;
+    })
+    // (url) in parens → domain label
+    .replace(/\((?:https?:\/\/[^)]+)\)/g, (match) => {
+      const url = match.slice(1, -1);
+      return `(${urlToDomainLabel(url)})`;
+    })
     .replace(/\*\*/g, "")
     .replace(/\*/g, "")
     .replace(/^#+\s+/gm, "")
     .replace(/`/g, "")
     .replace(/~~/g, "")
     .replace(/\(\s*\)/g, "")
-    .replace(/https?:\/\/\S+/g, "")
+    // Bare URLs → domain label
+    .replace(/https?:\/\/\S+/g, (url) => urlToDomainLabel(url.replace(/[.,;:!?)]+$/, "")))
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
+/** Clean text for headlines — convert URLs to domain labels, strip formatting */
 function clean(text: string): string {
   return text
     .replace(/\*+/g, "")
     .replace(/^[·•\-\s]+/, "")
     .replace(/[·•]+\s*$/, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, (_, label: string) =>
-      /^(https?:\/\/|www\.)/.test(label) ? "" : label,
-    )
-    .replace(/\(https?:\/\/[^)]*\)/g, "")
-    .replace(/https?:\/\/\S+/g, "")
+    // [label](url) → keep label or domain label
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label: string, url: string) => {
+      if (/^(https?:\/\/|www\.)/.test(label)) return urlToDomainLabel(label);
+      return label;
+    })
+    // (url) → (domain label)
+    .replace(/\((?:https?:\/\/[^)]+)\)/g, (match) => {
+      const url = match.slice(1, -1);
+      return `(${urlToDomainLabel(url)})`;
+    })
+    // Bare URLs → domain label
+    .replace(/https?:\/\/\S+/g, (url) => urlToDomainLabel(url.replace(/[.,;:!?)]+$/, "")))
     .replace(/\(\s*\)/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
