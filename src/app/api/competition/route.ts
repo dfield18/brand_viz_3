@@ -13,6 +13,7 @@ import {
   computeMentionRate,
 } from "@/lib/competition/computeCompetition";
 import { computeBrandRank, isBrandMentioned, wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -66,14 +67,18 @@ export async function GET(req: NextRequest) {
   });
   if (!result.ok) return result.response;
 
-  const { brand, job, runs: allRuns, isAll, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+  const brandIdentity = buildBrandIdentity(brand);
+  // Filter to query universe first (removes ambiguous false positives),
+  // then apply cluster/prompt selection
+  const queryUniverseRuns = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
   const runs = promptId
-    ? allRuns.filter((r) => r.promptId === promptId)
+    ? queryUniverseRuns.filter((r) => r.promptId === promptId)
     : cluster && cluster !== "all"
-      ? allRuns.filter((r) => r.prompt.cluster === cluster)
-      : allRuns.filter((r) => r.prompt.cluster === "industry");
+      ? queryUniverseRuns.filter((r) => r.prompt.cluster === cluster)
+      : queryUniverseRuns.filter((r) => r.prompt.cluster === "industry");
 
   try {
     // Build display name map from original GPT-extracted competitor names
@@ -214,8 +219,8 @@ export async function GET(req: NextRequest) {
         textRanksByEntity.get(entityId)!.push(idx >= 0 ? idx + 1 : null);
       }
 
-      // Brand-specific metrics for SoV
-      const mentioned = isBrandMentioned(text, brand.name, brand.slug, brandAliases);
+      // Brand-specific metrics for SoV — scope-aware for ambiguous brands
+      const mentioned = isRunInBrandScope(run, brandIdentity);
       if (mentioned) brandTextMentions++;
       sovTotalEntityMentions += (mentioned ? 1 : 0) + compNames.length;
     }
@@ -673,7 +678,7 @@ export async function GET(req: NextRequest) {
           let totalEntityMentions = 0;
           const brandRanks: (number | null)[] = [];
           for (const r of dateRuns) {
-            const mentioned = isBrandMentioned(r.rawResponseText, brand.name, brand.slug, brandAliases);
+            const mentioned = isRunInBrandScope(r, brandIdentity);
             if (mentioned) brandMentions++;
             const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
             brandRanks.push(rank);

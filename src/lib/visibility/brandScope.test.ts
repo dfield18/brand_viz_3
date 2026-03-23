@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   isRunInBrandScope,
   filterRunsToBrandScope,
+  isRunInBrandQueryUniverse,
+  filterRunsToBrandQueryUniverse,
   isBrandNameAmbiguous,
   buildBrandIdentity,
   type BrandScopeRun,
@@ -407,6 +409,96 @@ describe("cross-route consistency", () => {
     const scoped = filterRunsToBrandScope([valid, unrelated1, unrelated2], BRAND);
     assert.equal(scoped.length, 1);
     assert.ok(scoped.includes(valid));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Query-universe scope
+// ---------------------------------------------------------------------------
+
+describe("isRunInBrandQueryUniverse", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Future Forward",
+    brandSlug: "future-forward-usa",
+    aliases: ["Future Forward PAC"],
+  };
+
+  it("non-ambiguous brand: all runs pass unchanged", () => {
+    const brand: BrandScopeIdentity = { brandName: "Patagonia", brandSlug: "patagonia" };
+    const run1 = makeRun({ rawResponseText: "Nike makes shoes." });
+    const run2 = makeRun({ rawResponseText: "Patagonia makes jackets." });
+    assert.ok(isRunInBrandQueryUniverse(run1, brand));
+    assert.ok(isRunInBrandQueryUniverse(run2, brand));
+  });
+
+  it("ambiguous brand, no text mention: keeps run (valid absent-brand answer)", () => {
+    const run = makeRun({
+      rawResponseText: "ActBlue is the top fundraising platform for Democrats.",
+      analysisJson: { brandMentioned: false },
+    });
+    assert.ok(isRunInBrandQueryUniverse(run, BRAND));
+  });
+
+  it("ambiguous brand, text mention + valid evidence: keeps run", () => {
+    const run = makeRun({
+      rawResponseText: "Future Forward PAC raised $950M. Future Forward is the largest Super PAC.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "ActBlue" }] },
+    });
+    assert.ok(isRunInBrandQueryUniverse(run, BRAND));
+  });
+
+  it("ambiguous brand, text mention + no evidence: excludes false positive", () => {
+    const run = makeRun({
+      rawResponseText: "Future Forward is a marketing agency.",
+      analysisJson: { brandMentioned: false, competitors: [{ name: "HubSpot" }] },
+    });
+    assert.ok(!isRunInBrandQueryUniverse(run, BRAND));
+  });
+});
+
+describe("filterRunsToBrandQueryUniverse", () => {
+  const BRAND: BrandScopeIdentity = {
+    brandName: "Future Forward",
+    brandSlug: "future-forward-usa",
+  };
+
+  it("mixed dataset: keeps absent-brand + valid, removes false positives", () => {
+    const validMention = makeRun({
+      rawResponseText: "Future Forward PAC raised $950M. Future Forward is a leader.",
+      analysisJson: { brandMentioned: true },
+    });
+    const absentBrand = makeRun({
+      rawResponseText: "ActBlue is the top platform.",
+      analysisJson: { brandMentioned: false },
+    });
+    const falsePositive = makeRun({
+      rawResponseText: "Future Forward agency does web design.",
+      analysisJson: { brandMentioned: false, competitors: [{ name: "HubSpot" }] },
+    });
+
+    const result = filterRunsToBrandQueryUniverse([validMention, absentBrand, falsePositive], BRAND);
+    assert.equal(result.length, 2);
+    assert.ok(result.includes(validMention));
+    assert.ok(result.includes(absentBrand));
+    assert.ok(!result.includes(falsePositive));
+  });
+
+  it("denominator is NOT collapsed — absent-brand runs survive", () => {
+    const mentioned = makeRun({
+      rawResponseText: "Future Forward PAC raised $950M. Future Forward is a leader.",
+      analysisJson: { brandMentioned: true },
+    });
+    const absent1 = makeRun({
+      rawResponseText: "ActBlue is the top platform.",
+      analysisJson: null,
+    });
+    const absent2 = makeRun({
+      rawResponseText: "WinRed raised $500M for Republicans.",
+      analysisJson: null,
+    });
+
+    const result = filterRunsToBrandQueryUniverse([mentioned, absent1, absent2], BRAND);
+    assert.equal(result.length, 3, "All 3 runs survive — denominator preserved");
   });
 });
 

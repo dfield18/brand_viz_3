@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
+import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
@@ -197,10 +198,20 @@ export async function GET(req: NextRequest) {
 
   if (!result.ok) return result.response;
 
-  const { brand, runs } = result;
+  const { brand, runs: rawRuns } = result;
   const brandName = brand.displayName || brand.name;
+  const brandIdentity = buildBrandIdentity(brand);
   const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
   const competitorWord = isOrg ? "other organizations" : "competitors";
+
+  // Two scoped run pools:
+  // queryUniverseRuns: for prompt opportunities, competitor gaps, rank-based recommendations
+  // contentScopedRuns: for weakness/narrative extraction, sentiment analysis
+  const queryUniverseRuns = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
+  const contentScopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
+  // Use queryUniverseRuns as default for the route (most sections need it)
+  const runs = queryUniverseRuns;
+
   const entityDisplayNames = buildEntityDisplayNames(runs);
   entityDisplayNames.set(brand.slug, brandName);
 
@@ -437,7 +448,8 @@ export async function GET(req: NextRequest) {
   const weaknessResponses: Record<string, { promptText: string; model: string; responsePreview: string; fullResponse: string }[]> = {};
   const themesBySentiment: Record<string, { positive: number; negative: number; neutral: number }> = {};
 
-  for (const run of runs) {
+  // Use content-scoped runs for weakness/narrative extraction (no ambiguous false positives)
+  for (const run of contentScopedRuns) {
     const narrative = parseNarrative(run.narrativeJson);
     if (!narrative) continue;
 

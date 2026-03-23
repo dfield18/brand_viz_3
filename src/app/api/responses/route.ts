@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "@/lib/visibility/rankedEntities";
-import { buildEntityAliasGroups } from "@/lib/competition/canonicalize";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } }
     : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } };
 
-  const runs = await prisma.run.findMany({
+  const rawRuns = await prisma.run.findMany({
     where: runWhere,
     select: {
       id: true, model: true, promptId: true, createdAt: true,
@@ -62,9 +62,15 @@ export async function GET(req: NextRequest) {
     select: { id: true, model: true, range: true, finishedAt: true },
   });
 
-  if (runs.length === 0) {
+  if (rawRuns.length === 0) {
     return NextResponse.json({ hasData: false, reason: "no_runs" });
   }
+
+  // Default export uses query-universe scope (matches dashboard semantics).
+  // Optional ?scope=raw returns all rows for debugging.
+  const scopeParam = req.nextUrl.searchParams.get("scope");
+  const brandIdentity = buildBrandIdentity(brand);
+  const runs = scopeParam === "raw" ? rawRuns : filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
 
   const brandName = brand.displayName || brand.name;
 
@@ -75,22 +81,6 @@ export async function GET(req: NextRequest) {
     let totalExtractionCost = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
-
-    // Build deterministic alias map for consistent Brand 1..5 ranking
-    // Same dedup logic as competitor movement (corporate suffixes + brand-family variants)
-    const allCompNames = new Set<string>();
-    for (const run of runs) {
-      if (run.prompt.cluster !== "industry") continue;
-      const analysis = run.analysisJson as { competitors?: { name: string }[] } | null;
-      for (const c of (analysis?.competitors ?? [])) {
-        allCompNames.add(c.name.toLowerCase());
-      }
-    }
-    const aliasMap = buildEntityAliasGroups(
-      [...allCompNames],
-      brand.slug,
-      brand.aliases?.length ? brand.aliases : undefined,
-    );
 
     const runData = runs.map((run) => {
       const pricing = MODEL_PRICING[run.model] ?? defaultPricing;
@@ -129,7 +119,6 @@ export async function GET(req: NextRequest) {
             brandName,
             brandSlug: brand.slug,
             includeBrand: true,
-            aliasMap,
             limit: RANKED_ENTITY_LIMIT,
           })
         : [];

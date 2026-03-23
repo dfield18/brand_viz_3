@@ -4,6 +4,7 @@ import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -79,8 +80,12 @@ export async function GET(req: NextRequest) {
       if (j.finishedAt) jobDateMap.set(j.id, j.finishedAt.toISOString().slice(0, 10));
     }
 
+    // Filter to query universe (removes ambiguous false positives)
+    const brandIdentity = buildBrandIdentity(brand);
+    const queryUniverseRuns = filterRunsToBrandQueryUniverse(runs, brandIdentity);
+
     // Build MovementRun[]
-    const movementRuns: MovementRun[] = runs.map((r) => ({
+    const movementRuns: MovementRun[] = queryUniverseRuns.map((r) => ({
       id: r.id,
       model: r.model,
       jobDate: jobDateMap.get(r.jobId) ?? "",

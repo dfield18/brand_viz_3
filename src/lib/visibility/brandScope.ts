@@ -235,13 +235,62 @@ export function isRunInBrandScope(
 }
 
 /**
- * Filter an array of runs to only those in the brand's scope.
+ * Filter an array of runs to only those in the brand's content scope.
+ * Use for narrative, sentiment, sources — content genuinely about the brand.
  */
 export function filterRunsToBrandScope<T extends BrandScopeRun>(
   runs: T[],
   brand: BrandScopeIdentity,
 ): T[] {
   return runs.filter((run) => isRunInBrandScope(run, brand));
+}
+
+// ---------------------------------------------------------------------------
+// Query-universe scope (less strict — for competition, movement, export)
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine whether a run belongs in the brand's dashboard query universe.
+ *
+ * Less strict than `isRunInBrandScope`:
+ * - Runs that do NOT mention the brand phrase at all → KEEP (valid absent-brand
+ *   industry answers needed for recall denominators, competitor landscape, etc.)
+ * - Runs that DO mention the brand phrase and pass content scope → KEEP
+ * - Runs that DO mention the brand phrase but FAIL content scope → EXCLUDE
+ *   (ambiguous false positives about a different entity sharing the name)
+ *
+ * For non-ambiguous brands: all runs pass (no filtering needed).
+ */
+export function isRunInBrandQueryUniverse(
+  run: BrandScopeRun,
+  brand: BrandScopeIdentity,
+): boolean {
+  if (!isBrandNameAmbiguous(brand.brandName)) return true;
+
+  const textMention = isBrandMentioned(
+    run.rawResponseText,
+    brand.brandName,
+    brand.brandSlug,
+    brand.aliases,
+  );
+
+  // No text mention → valid absent-brand run, keep it
+  if (!textMention) return true;
+
+  // Text mention present → must pass the stricter content scope check
+  return isRunInBrandScope(run, brand);
+}
+
+/**
+ * Filter runs to the brand's dashboard query universe.
+ * Use for competition, movement, export, prompt opportunities —
+ * anywhere absent-brand runs are valid but ambiguous false positives are not.
+ */
+export function filterRunsToBrandQueryUniverse<T extends BrandScopeRun>(
+  runs: T[],
+  brand: BrandScopeIdentity,
+): T[] {
+  return runs.filter((run) => isRunInBrandQueryUniverse(run, brand));
 }
 
 /**
