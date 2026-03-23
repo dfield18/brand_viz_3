@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 /**
  * GET /api/response-detail?brandSlug=...&promptText=...&model=...
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
   const brandName = (brand as unknown as { displayName?: string | null }).displayName || brand.name;
   const brandIndustry = (brand as unknown as { industry?: string | null }).industry;
   const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+  const brandIdentity = buildBrandIdentity(brand);
 
   // Mode 1: By prompt text
   if (promptText) {
@@ -74,37 +76,11 @@ export async function GET(req: NextRequest) {
 
     const promptTexts = [promptText, templateText].filter((v, i, a) => a.indexOf(v) === i);
 
-    const runs = await prisma.run.findMany({
+    const rawRuns = await prisma.run.findMany({
       where: {
         brandId: brand.id,
         prompt: { text: { in: promptTexts } },
         ...(model && model !== "all" ? { model } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      select: {
-        id: true,
-        model: true,
-        rawResponseText: true,
-        analysisJson: true,
-        createdAt: true,
-        prompt: { select: { text: true, cluster: true, intent: true } },
-      },
-    });
-
-    return respondWith(brandName, runs, brandIndustry);
-  }
-
-  // Mode 2: By model + position range (for dot chart drill-down)
-  if (model && model !== "all") {
-    const minPos = positionMin ? parseInt(positionMin, 10) : null;
-    const maxPos = positionMax ? parseInt(positionMax, 10) : null;
-
-    const runs = await prisma.run.findMany({
-      where: {
-        brandId: brand.id,
-        model,
-        prompt: { cluster: "industry" },
       },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -117,11 +93,39 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
+    const runs = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
+
+    return respondWith(brandName, runs.slice(0, 4), brandIndustry);
+  }
+
+  // Mode 2: By model + position range (for dot chart drill-down)
+  if (model && model !== "all") {
+    const minPos = positionMin ? parseInt(positionMin, 10) : null;
+    const maxPos = positionMax ? parseInt(positionMax, 10) : null;
+
+    const rawPosRuns = await prisma.run.findMany({
+      where: {
+        brandId: brand.id,
+        model,
+        prompt: { cluster: "industry" },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      select: {
+        id: true,
+        model: true,
+        rawResponseText: true,
+        analysisJson: true,
+        createdAt: true,
+        prompt: { select: { text: true, cluster: true, intent: true } },
+      },
+    });
+    const posRuns = filterRunsToBrandQueryUniverse(rawPosRuns, brandIdentity);
 
     // Filter by position range client-side
     if (minPos !== null) {
       const isNotMentioned = minPos === -1;
-      const filtered = runs.filter((r) => {
+      const filtered = posRuns.filter((r) => {
         const rank = computeBrandRank(r.rawResponseText, brandName, brand.slug, r.analysisJson, brandAliases);
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
@@ -129,7 +133,7 @@ export async function GET(req: NextRequest) {
       return respondWith(brandName, filtered.slice(0, 4), brandIndustry);
     }
 
-    return respondWith(brandName, runs.slice(0, 4), brandIndustry);
+    return respondWith(brandName, posRuns.slice(0, 4), brandIndustry);
   }
 
   return NextResponse.json({ error: "Provide promptText or model with position range" }, { status: 400 });

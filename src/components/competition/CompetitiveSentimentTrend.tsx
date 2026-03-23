@@ -124,7 +124,7 @@ export function CompetitiveSentimentTrend({
   function sentimentLabel(value: number): string {
     if (value >= 60) return "Strongly Positive";
     if (value >= 40) return "Mostly Positive";
-    if (value <= 20) return "Mostly Negative";
+    if (value <= 10) return "Mostly Negative";
     return "Mixed";
   }
 

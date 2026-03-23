@@ -19,6 +19,7 @@ import type { TopicModelSplitRow } from "@/types/api";
 import { buildEntityDisplayNames, expandPromptPlaceholders } from "@/lib/utils";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 const TOPIC_LABEL_MAP: Record<string, string> = {};
 for (const t of TOPIC_TAXONOMY) {
@@ -50,7 +51,10 @@ export async function GET(req: NextRequest) {
     runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, analysisJson: true, rawResponseText: true } },
   });
   if (!result.ok) return result.response;
-  const { brand, job, runs, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, rangeCutoff } = result;
+
+  // Query-universe scope: removes ambiguous false positives, keeps absent-brand runs
+  const runs = filterRunsToBrandQueryUniverse(rawRuns, buildBrandIdentity(brand));
 
   try {
     const runIds = runs.map((r) => r.id);

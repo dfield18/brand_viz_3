@@ -12,7 +12,7 @@ import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
 import { isBrandMentioned } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
 const STATIC_THEME_LABELS: Record<string, string> = {};
@@ -499,7 +499,7 @@ export async function GET(req: NextRequest) {
       if (collected >= 4) break;
       const run = runById.get(contributor.runId);
       if (!run) continue;
-      if (!isBrandMentioned(run.rawResponseText, brand.name, brand.slug, brandAliases)) continue;
+      if (!isRunInBrandScope(run, brandIdentity)) continue;
 
       const parsed = narrativeByRunId.get(contributor.runId);
       usedRunIds.add(contributor.runId);
