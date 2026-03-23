@@ -304,36 +304,71 @@ function normaliseForDomainMatch(name: string): string {
 }
 
 /**
- * Check whether a domain looks like the official site for an entity.
- * Matches patterns like "patagonia.com", "thenorthface.com", "rei.com".
+ * Check whether a domain looks like the official site for an entity,
+ * checking against one or more candidate names.
+ *
+ * For the selected brand, pass [slug, name, displayName, ...aliases].
+ * For competitors, pass [entityId] or [entityId, displayName].
  */
-function isOfficialDomain(domain: string, entityId: string): boolean {
+function isOfficialDomainForCandidates(domain: string, candidates: string[]): boolean {
   const domainLower = domain.toLowerCase();
-  // Strip common prefixes (www.)
   const base = domainLower.replace(/^www\./, "");
-  // Get the part before the TLD: "patagonia.com" → "patagonia"
   const domainName = base.split(".")[0];
-  const normEntity = normaliseForDomainMatch(entityId);
 
-  // Exact match: "patagonia" === "patagonia"
-  if (domainName === normEntity) return true;
-  // Domain contains entity: "patagoniaoutdoors" contains "patagonia"
-  if (normEntity.length >= 4 && domainName.includes(normEntity)) return true;
-  // Entity contains domain (for short domains like "rei"):
-  if (domainName.length >= 3 && normEntity.includes(domainName) && domainName.length >= normEntity.length * 0.6) return true;
+  for (const candidate of candidates) {
+    if (!candidate || candidate.length < 2) continue;
+    const norm = normaliseForDomainMatch(candidate);
+    if (!norm) continue;
+
+    // Exact match: "patagonia" === "patagonia"
+    if (domainName === norm) return true;
+    // Domain contains entity: "patagoniaoutdoors" contains "patagonia"
+    if (norm.length >= 4 && domainName.includes(norm)) return true;
+    // Entity contains domain (for short domains like "rei"):
+    if (domainName.length >= 3 && norm.includes(domainName) && domainName.length >= norm.length * 0.6) return true;
+  }
 
   return false;
+}
+
+/** Legacy single-candidate wrapper for backward compatibility */
+function isOfficialDomain(domain: string, entityId: string): boolean {
+  return isOfficialDomainForCandidates(domain, [entityId]);
+}
+
+export interface OfficialSiteBrandIdentity {
+  slug: string;
+  name?: string;
+  displayName?: string | null;
+  aliases?: string[];
 }
 
 /**
  * For each entity mentioned in source occurrences, find their official domain
  * among all cited domains and compute citation stats.
  * Only returns entities whose official site is actually cited.
+ *
+ * For the selected brand, uses all available identity candidates
+ * (slug, name, displayName, aliases) so short acronym domains like
+ * `fire.org` are recognized even when the slug is long.
  */
 export function computeOfficialSiteCitations(
   occurrences: SourceOccurrenceInput[],
   brandSlug: string,
+  brandIdentity?: OfficialSiteBrandIdentity,
 ): OfficialSiteCitation[] {
+  // Build candidate names for the selected brand
+  const brandCandidates: string[] = [brandSlug];
+  if (brandIdentity) {
+    if (brandIdentity.name) brandCandidates.push(brandIdentity.name);
+    if (brandIdentity.displayName) brandCandidates.push(brandIdentity.displayName);
+    if (brandIdentity.aliases) {
+      for (const alias of brandIdentity.aliases) {
+        if (alias.length >= 2) brandCandidates.push(alias);
+      }
+    }
+  }
+
   // Collect all unique entityIds (including brand)
   const entityIds = new Set<string>();
   entityIds.add(brandSlug);
@@ -347,8 +382,10 @@ export function computeOfficialSiteCitations(
   const results: OfficialSiteCitation[] = [];
 
   for (const entityId of entityIds) {
-    // Find ALL official domains for this entity (e.g., microsoft.com, azure.microsoft.com)
-    const officialDomains = allDomains.filter((d) => isOfficialDomain(d, entityId));
+    // For the selected brand, use multi-candidate matching
+    // For competitors, use single entityId matching
+    const candidates = entityId === brandSlug ? brandCandidates : [entityId];
+    const officialDomains = allDomains.filter((d) => isOfficialDomainForCandidates(d, candidates));
     if (officialDomains.length === 0) continue;
     const officialDomain = officialDomains[0]; // primary domain for display
 

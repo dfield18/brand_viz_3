@@ -359,7 +359,12 @@ export async function GET(req: NextRequest) {
     })();
 
     // Official site citations for brand + competitors
-    const officialSites = computeOfficialSiteCitations(occurrences, brand.slug);
+    const officialSites = computeOfficialSiteCitations(occurrences, brand.slug, {
+      slug: brand.slug,
+      name: brand.name,
+      displayName: brand.displayName,
+      aliases: brand.aliases?.length ? brand.aliases : undefined,
+    });
 
     // Brand-attributed sources: sources cited near brand mentions
     const brandOccurrences = occurrences.filter((o) => o.entityId === brand.slug);

@@ -6,6 +6,7 @@ import {
   computeSourceModelSplit,
   detectEmergingSources,
   computeCompetitorCrossCitation,
+  computeOfficialSiteCitations,
   type SourceOccurrenceInput,
   type EntityMetricInput,
 } from "./computeSources";
@@ -296,6 +297,94 @@ describe("computeCompetitorCrossCitation", () => {
   it("returns empty for no attributed occurrences", () => {
     const occ = [makeOcc({ domain: "a.com", entityId: null })];
     const result = computeCompetitorCrossCitation(occ, ["a.com"]);
+    assert.equal(result.length, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeOfficialSiteCitations
+// ---------------------------------------------------------------------------
+
+describe("computeOfficialSiteCitations", () => {
+  it("recognizes acronym domain via brand displayName", () => {
+    const occ = [
+      makeOcc({ domain: "fire.org", entityId: "fire-long-slug", normalizedUrl: "https://fire.org/page" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "fire-long-slug", {
+      slug: "fire-long-slug",
+      name: "Fire Long Name",
+      displayName: "FIRE",
+      aliases: ["Foundation for Individual Rights and Expression"],
+    });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].officialDomain, "fire.org");
+    assert.equal(result[0].isBrand, true);
+  });
+
+  it("recognizes acronym domain via alias", () => {
+    const occ = [
+      makeOcc({ domain: "fire.org", entityId: "fire-foundation", normalizedUrl: "https://fire.org/" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "fire-foundation", {
+      slug: "fire-foundation",
+      aliases: ["FIRE"],
+    });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].isBrand, true);
+  });
+
+  it("recognizes standard domain via slug (existing behavior)", () => {
+    const occ = [
+      makeOcc({ domain: "patagonia.com", entityId: "patagonia", normalizedUrl: "https://patagonia.com/" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "patagonia");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].officialDomain, "patagonia.com");
+    assert.equal(result[0].isBrand, true);
+  });
+
+  it("competitor official sites still detected", () => {
+    const occ = [
+      makeOcc({ domain: "fire.org", entityId: "fire-org", normalizedUrl: "https://fire.org/" }),
+      makeOcc({ domain: "aclu.org", entityId: "aclu", normalizedUrl: "https://aclu.org/" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "fire-org", {
+      slug: "fire-org",
+      displayName: "FIRE",
+    });
+    // Brand should be first, competitor second
+    assert.equal(result.length, 2);
+    assert.equal(result[0].isBrand, true);
+    assert.equal(result[0].officialDomain, "fire.org");
+    assert.equal(result[1].isBrand, false);
+    assert.equal(result[1].officialDomain, "aclu.org");
+  });
+
+  it("brand sorts first when present", () => {
+    const occ = [
+      makeOcc({ domain: "aclu.org", entityId: "aclu", normalizedUrl: "https://aclu.org/" }),
+      makeOcc({ domain: "aclu.org", entityId: "aclu", normalizedUrl: "https://aclu.org/about" }),
+      makeOcc({ domain: "aclu.org", entityId: "aclu", normalizedUrl: "https://aclu.org/news" }),
+      makeOcc({ domain: "fire.org", entityId: "fire-slug", normalizedUrl: "https://fire.org/" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "fire-slug", {
+      slug: "fire-slug",
+      displayName: "FIRE",
+    });
+    assert.equal(result[0].isBrand, true);
+    assert.equal(result[0].officialDomain, "fire.org");
+    // ACLU has more citations but brand still sorts first
+    assert.equal(result[1].isBrand, false);
+  });
+
+  it("returns empty when no official domains match", () => {
+    const occ = [
+      makeOcc({ domain: "wikipedia.org", entityId: null, normalizedUrl: "https://en.wikipedia.org/" }),
+    ];
+    const result = computeOfficialSiteCitations(occ, "fire-slug", {
+      slug: "fire-slug",
+      displayName: "FIRE",
+    });
     assert.equal(result.length, 0);
   });
 });
