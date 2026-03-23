@@ -450,7 +450,7 @@ function WinLossSection({
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-base font-semibold">Win Rate: When AI Picks {brandName} Over Competitors</h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             How often {brandName} outranks each competitor when both appear in the same AI response
           </p>
         </div>
