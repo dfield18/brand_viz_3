@@ -215,35 +215,80 @@ function PromptOpportunitiesSection({ data, brandName, summary }: { data: ApiRes
     return <p className="text-sm text-muted-foreground">No prompt gaps found — {brandName} has great coverage across AI questions.</p>;
   }
 
-  const notMentioned = data.filter((p) => p.brandRank === null);
-  const outranked = data.filter((p) => p.brandRank !== null && p.brandRank > 1);
-
-  const paragraphs: string[] = [];
-
-  if (notMentioned.length > 0) {
-    const examples = notMentioned.slice(0, 3).map((p) => `"${p.promptText}"`).join(", ");
-    paragraphs.push(`${brandName} is completely absent from ${notMentioned.length} AI prompt${notMentioned.length !== 1 ? "s" : ""} where competitors are ranking. Examples include ${examples}. Creating content that directly addresses these questions should be the top priority.`);
-  }
-
-  if (outranked.length > 0) {
-    const topComps = new Set<string>();
-    outranked.forEach((p) => p.topCompetitors.forEach((c) => topComps.add(c.displayName)));
-    const compList = [...topComps].slice(0, 4).join(", ");
-    paragraphs.push(`In ${outranked.length} additional prompt${outranked.length !== 1 ? "s" : ""}, ${brandName} is mentioned but ranks behind competitors like ${compList}. Strengthening claims, adding structured data, and building authority signals can help improve positioning.`);
-  }
-
-  if (summary) {
-    const cleanSummary = stripMarkdown(summary).replace(/^[-•]\s*/gm, "").trim();
-    if (cleanSummary.length > 20) {
-      paragraphs.push(cleanSummary);
+  // Deduplicate prompts across models
+  const grouped = useMemo(() => {
+    const map = new Map<string, {
+      promptText: string;
+      worstRank: number | null;
+      competitors: Map<string, { displayName: string; bestRank: number }>;
+      suggestion: string;
+    }>();
+    for (const item of data) {
+      let group = map.get(item.promptText);
+      if (!group) {
+        group = { promptText: item.promptText, worstRank: item.brandRank, competitors: new Map(), suggestion: item.suggestion };
+        map.set(item.promptText, group);
+      }
+      if (item.brandRank === null) group.worstRank = null;
+      else if (group.worstRank !== null) group.worstRank = Math.max(group.worstRank, item.brandRank);
+      for (const c of item.topCompetitors) {
+        const existing = group.competitors.get(c.entityId);
+        if (!existing || c.rank < existing.bestRank) {
+          group.competitors.set(c.entityId, { displayName: c.displayName, bestRank: c.rank });
+        }
+      }
     }
-  }
+    return [...map.values()].sort((a, b) => {
+      if (a.worstRank === null && b.worstRank !== null) return -1;
+      if (a.worstRank !== null && b.worstRank === null) return 1;
+      return b.competitors.size - a.competitors.size;
+    });
+  }, [data]);
+
+  const notMentioned = grouped.filter((g) => g.worstRank === null);
+  const outranked = grouped.filter((g) => g.worstRank !== null);
 
   return (
     <div>
-      {paragraphs.map((text, i) => (
-        <p key={i} className="text-sm text-muted-foreground leading-relaxed mb-4 last:mb-0">{text}</p>
-      ))}
+      {/* Intro line */}
+      <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+        {notMentioned.length > 0
+          ? `${brandName} is absent from ${notMentioned.length} AI prompt${notMentioned.length !== 1 ? "s" : ""} where competitors rank.`
+          : `${brandName} appears in all prompts but ranks behind competitors in ${outranked.length}.`}
+        {" "}Here&apos;s what to do about each one:
+      </p>
+
+      {/* Not mentioned — highest priority */}
+      {notMentioned.map((item, i) => {
+        const comps = [...item.competitors.values()].sort((a, b) => a.bestRank - b.bestRank).slice(0, 4);
+        const compText = comps.length > 0
+          ? ` Competitors ranking: ${comps.map((c) => `${c.displayName} #${c.bestRank}`).join(", ")}.`
+          : "";
+        return (
+          <div key={`nm-${i}`} className="mb-5 last:mb-0">
+            <h4 className="text-sm font-semibold mb-1">&ldquo;{item.promptText}&rdquo;</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {brandName} is not mentioned at all.{compText} {stripMarkdown(item.suggestion) || `Create content that directly addresses this question to close the gap.`}
+            </p>
+          </div>
+        );
+      })}
+
+      {/* Outranked */}
+      {outranked.map((item, i) => {
+        const comps = [...item.competitors.values()].sort((a, b) => a.bestRank - b.bestRank).slice(0, 4);
+        const compText = comps.length > 0
+          ? ` Outranked by: ${comps.map((c) => `${c.displayName} #${c.bestRank}`).join(", ")}.`
+          : "";
+        return (
+          <div key={`or-${i}`} className="mb-5 last:mb-0">
+            <h4 className="text-sm font-semibold mb-1">&ldquo;{item.promptText}&rdquo;</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {brandName} ranks #{item.worstRank}.{compText} {stripMarkdown(item.suggestion) || `Strengthen claims and build authority signals to improve positioning.`}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
