@@ -70,6 +70,45 @@ const AMBIGUOUS_SINGLE_WORDS = new Set([
   "chase", "ally", "indeed", "snap", "square", "slack",
   "notion", "discord", "compass", "harbor", "haven",
   "crown", "summit", "pilot", "spark", "hive", "nest",
+  "fire", "rise", "wave", "sage", "pure", "bold",
+]);
+
+/**
+ * Acronym brands that collide with common abbreviations/phrases.
+ * These need extra-strict evidence because the acronym alone is
+ * too ambiguous — e.g. "FIRE" = Foundation for Individual Rights
+ * and Expression, but also "Financial Independence, Retire Early".
+ *
+ * For acronym brands, isRunInBrandScope requires either:
+ * - the full organization name or a trusted alias in the text
+ * - analysisJson.brandMentioned === true
+ * - an alias/full-name match in the competitor list
+ * - organization-specific context terms in the text
+ *
+ * AND explicitly rejects runs containing known collision phrases.
+ */
+interface AcronymCollisionRule {
+  /** Context phrases that confirm the run is about the intended entity */
+  confirmPhrases: string[];
+  /** Context phrases that indicate the run is about a DIFFERENT entity */
+  rejectPhrases: string[];
+}
+
+const ACRONYM_COLLISION_RULES = new Map<string, AcronymCollisionRule>([
+  ["fire", {
+    confirmPhrases: [
+      "free speech", "first amendment", "academic freedom", "campus speech",
+      "individual rights", "foundation for individual rights",
+      "civil liberties", "student rights", "faculty rights",
+      "speech code", "due process", "censorship",
+    ],
+    rejectPhrases: [
+      "retire early", "financial independence", "4% rule", "safe withdrawal",
+      "lean fire", "fat fire", "barista fire", "coast fire",
+      "fire movement", "fire number", "fire calculator",
+      "early retirement", "retire by", "nest egg",
+    ],
+  }],
 ]);
 
 /**
@@ -97,6 +136,8 @@ export function isBrandNameAmbiguous(brandName: string): boolean {
     if (w.length < 4) return true;
     if (AMBIGUOUS_SINGLE_WORDS.has(w)) return true;
     if (COMMON_WORDS.has(w)) return true;
+    // Acronym collision brands
+    if (ACRONYM_COLLISION_RULES.has(w)) return true;
     return false;
   }
 
@@ -214,17 +255,46 @@ export function isRunInBrandScope(
   // Non-ambiguous brands: text mention alone is enough
   if (!isBrandNameAmbiguous(brand.brandName)) return true;
 
-  // Layer 2+3: ambiguous brands need supporting evidence
+  const textLower = run.rawResponseText.toLowerCase();
+
+  // Acronym collision check: if the brand has specific collision rules,
+  // apply stricter evidence requirements that override generic checks.
+  const acronymRule = ACRONYM_COLLISION_RULES.get(brand.brandName.toLowerCase());
+  if (acronymRule) {
+    // Reject if ANY reject phrase is present — this is a strong negative signal
+    // that the response is about the colliding entity, not the intended brand.
+    const hasReject = acronymRule.rejectPhrases.some((p) => textLower.includes(p));
+    if (hasReject) return false;
+
+    // Accept if any confirm phrase is present (domain-specific context)
+    const hasConfirm = acronymRule.confirmPhrases.some((p) => textLower.includes(p));
+    if (hasConfirm) return true;
+
+    // Accept if a trusted alias (full org name) appears in text
+    if (brand.aliases) {
+      for (const alias of brand.aliases) {
+        if (alias.length >= 10 && textLower.includes(alias.toLowerCase())) return true;
+      }
+    }
+
+    // Accept if analysisJson has strong evidence (brandMentioned or alias in competitors)
+    if (hasAnalysisEvidence(run.analysisJson, brand)) return true;
+
+    // No confirm phrases, no reject phrases, no structured evidence → reject
+    // The acronym alone is too ambiguous without contextual support
+    return false;
+  }
+
+  // Layer 2+3: standard ambiguous brands need supporting evidence
   if (hasAnalysisEvidence(run.analysisJson, brand)) return true;
   if (run.narrativeJson !== undefined && hasNarrativeEvidence(run.narrativeJson, brand)) return true;
 
   // Fallback: check if brand name appears prominently (not just once in passing)
   // Count distinct mentions — 2+ occurrences suggests the response is actually about this brand
-  const text = run.rawResponseText;
   let count = 0;
   let searchFrom = 0;
   while (count < 2) {
-    const pos = wordBoundaryIndex(text.slice(searchFrom), brand.brandName);
+    const pos = wordBoundaryIndex(textLower.slice(searchFrom), brand.brandName.toLowerCase());
     if (pos < 0) break;
     count++;
     searchFrom += pos + brand.brandName.length;

@@ -646,3 +646,122 @@ describe("sources route regression — firstSeen from scoped history only", () =
     // firstSeen would only be computed from currentValid's occurrence dates
   });
 });
+
+// ---------------------------------------------------------------------------
+// Acronym collision: FIRE (org) vs FIRE (retire early)
+// ---------------------------------------------------------------------------
+
+describe("acronym collision — FIRE organization vs FIRE movement", () => {
+  const FIRE_ORG: BrandScopeIdentity = {
+    brandName: "FIRE",
+    brandSlug: "fire",
+    aliases: ["Foundation for Individual Rights and Expression", "Foundation for Individual Rights in Education"],
+  };
+
+  it("flags FIRE as ambiguous", () => {
+    assert.ok(isBrandNameAmbiguous("FIRE"));
+  });
+
+  it("accepts run about the free-speech organization", () => {
+    const run = makeRun({
+      rawResponseText: "FIRE, the Foundation for Individual Rights and Expression, defends free speech on college campuses. FIRE has won numerous First Amendment cases.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "ACLU" }] },
+    });
+    assert.ok(isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("accepts run with free-speech context terms", () => {
+    const run = makeRun({
+      rawResponseText: "FIRE rates colleges on their free speech policies. FIRE advocates for academic freedom and due process for students accused of misconduct.",
+      analysisJson: null,
+    });
+    assert.ok(isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("accepts run with full organization name alias in text", () => {
+    const run = makeRun({
+      rawResponseText: "The Foundation for Individual Rights and Expression published a new report on campus speech codes.",
+      analysisJson: null,
+    });
+    assert.ok(isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("rejects run about Financial Independence / Retire Early", () => {
+    const run = makeRun({
+      rawResponseText: "The FIRE movement is about financial independence and retiring early. To achieve FIRE, you need to save aggressively and follow the 4% rule for safe withdrawal rates.",
+      analysisJson: { brandMentioned: false, competitors: [] },
+    });
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("rejects run with lean/fat/barista FIRE variants", () => {
+    const run = makeRun({
+      rawResponseText: "There are several types of FIRE: lean fire means extreme frugality, fat fire means a more comfortable retirement, and barista fire means working part-time.",
+      analysisJson: null,
+    });
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("rejects run about early retirement planning", () => {
+    const run = makeRun({
+      rawResponseText: "FIRE stands for Financial Independence, Retire Early. Many people aim to retire by 40 using aggressive saving strategies.",
+      analysisJson: null,
+    });
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("rejects even with brandMentioned=true if reject phrases present", () => {
+    // GPT may flag brandMentioned for FIRE but the content is about retirement
+    const run = makeRun({
+      rawResponseText: "FIRE is a movement focused on financial independence and retire early strategies. FIRE followers track their nest egg and safe withdrawal rate.",
+      analysisJson: { brandMentioned: true },
+    });
+    assert.ok(!isRunInBrandScope(run, FIRE_ORG));
+  });
+
+  it("FIRE retirement run stays in query universe (absent-brand valid)", () => {
+    // A FIRE/retirement run with the acronym should be excluded from query universe
+    // because it mentions the phrase and fails content scope
+    const retirementRun = makeRun({
+      rawResponseText: "The FIRE movement is about financial independence and retiring early.",
+      analysisJson: { brandMentioned: false },
+    });
+    assert.ok(!isRunInBrandQueryUniverse(retirementRun, FIRE_ORG));
+  });
+
+  it("absent-brand industry run stays in query universe", () => {
+    const industryRun = makeRun({
+      rawResponseText: "The ACLU defends civil liberties across the United States.",
+      analysisJson: null,
+    });
+    assert.ok(isRunInBrandQueryUniverse(industryRun, FIRE_ORG));
+  });
+
+  it("mixed dataset: narrative/sources only get org runs", () => {
+    const orgRun = makeRun({
+      rawResponseText: "FIRE defends free speech on campus. FIRE rates colleges on academic freedom.",
+      analysisJson: { brandMentioned: true },
+    });
+    const retireRun = makeRun({
+      rawResponseText: "FIRE stands for financial independence retire early. The 4% rule is key to FIRE.",
+      analysisJson: { brandMentioned: false },
+    });
+    const unrelatedRun = makeRun({
+      rawResponseText: "The ACLU filed a brief in the Supreme Court case.",
+      analysisJson: null,
+    });
+
+    // Content scope: only the org run
+    const contentScoped = filterRunsToBrandScope([orgRun, retireRun, unrelatedRun], FIRE_ORG);
+    assert.equal(contentScoped.length, 1);
+    assert.ok(contentScoped.includes(orgRun));
+    assert.ok(!contentScoped.includes(retireRun));
+
+    // Query universe: org run + unrelated (no brand mention), NOT retire run
+    const queryUniverse = filterRunsToBrandQueryUniverse([orgRun, retireRun, unrelatedRun], FIRE_ORG);
+    assert.equal(queryUniverse.length, 2);
+    assert.ok(queryUniverse.includes(orgRun));
+    assert.ok(queryUniverse.includes(unrelatedRun));
+    assert.ok(!queryUniverse.includes(retireRun));
+  });
+});
