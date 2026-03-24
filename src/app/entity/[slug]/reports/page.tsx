@@ -314,7 +314,13 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
 function NarrativeSection({ d }: { d: Record<string, unknown> }) {
   if (!d) return <Empty label="No narrative data available." />;
   const n = d as {
-    scorecard?: { sentimentSplit: { positive: number; neutral: number; negative: number } | null; polarization?: string | null; hedgingRate?: number | null };
+    scorecard?: {
+      sentimentSplit: { positive: number; neutral: number; negative: number } | null;
+      polarization?: string | null;
+      platformConsistency?: number | null;
+      hedgingRate?: number | null;
+      modelConfidence?: number | null;
+    };
     frames?: { frame: string; percentage: number; byModel?: Record<string, number> }[];
     sentimentTrend?: { date: string; model: string; positive: number }[];
     frameTrend?: Record<string, string | number>[];
@@ -324,6 +330,8 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
     drift?: { emerging: string[]; declining: string[] } | null;
     narrativeDeltas?: { sentimentPositive: number; confidence: number } | null;
     positioning?: { legitimacy: number; controversy: number; label: string }[];
+    perceptionIssue?: { text: string } | null;
+    emergingTopics?: { topicKey: string; label: string; mentions: number; growth: string }[];
     themes?: { label: string; count: number; pct: number }[];
     sentimentByQuestion?: { prompt: string; sentiment: string; mentionRate: number; consistency: number }[];
   };
@@ -338,18 +346,9 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
           <KV label="Negative" value={pct(n.scorecard.sentimentSplit.negative)} />
         </>
       )}
-      {n.scorecard?.polarization && (() => {
-        // Match the Narrative tab: polarization label → fixed consistency percentage
-        const CONSISTENCY_PCT: Record<string, number> = { Low: 30, Moderate: 60, High: 85 };
-        const consistencyPct = CONSISTENCY_PCT[n.scorecard.polarization] ?? 0;
-        return (
-          <>
-            <KV label="Platform Consistency" value={`${consistencyPct}%`} />
-            <KV label="Polarization" value={n.scorecard.polarization} />
-          </>
-        );
-      })()}
-      {n.scorecard?.hedgingRate != null && <KV label="Model Confidence" value={`${100 - n.scorecard.hedgingRate}%`} />}
+      {n.scorecard?.platformConsistency != null && <KV label="Platform Consistency" value={`${n.scorecard.platformConsistency}%`} />}
+      {n.scorecard?.polarization && <KV label="Polarization" value={n.scorecard.polarization} />}
+      {n.scorecard?.modelConfidence != null && <KV label="Model Confidence" value={`${n.scorecard.modelConfidence}%`} />}
 
       {n.narrativeDeltas && (n.narrativeDeltas.sentimentPositive !== 0 || n.narrativeDeltas.confidence !== 0) && (
         <P><em>
@@ -455,11 +454,32 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
         );
       })()}
 
+      {n.perceptionIssue?.text && (
+        <>
+          <SH3>Perception Issue</SH3>
+          <P><em>{n.perceptionIssue.text}</em></P>
+        </>
+      )}
+
+      {n.emergingTopics && n.emergingTopics.length > 0 && (
+        <>
+          <SH3>Emerging Topics</SH3>
+          <Tbl
+            headers={["Topic", "Mentions", "Growth"]}
+            rows={n.emergingTopics.slice(0, 10).map((t) => [
+              t.label ?? t.topicKey ?? "\u2014",
+              t.mentions ?? 0,
+              t.growth ?? "\u2014",
+            ])}
+          />
+        </>
+      )}
+
       {n.drift && ((n.drift.emerging ?? []).length > 0 || (n.drift.declining ?? []).length > 0) && (
         <>
-          <SH3>Emerging & Declining Topics</SH3>
-          {(n.drift.emerging ?? []).length > 0 && <P><strong>Emerging:</strong> {(n.drift.emerging ?? []).join(", ")}</P>}
-          {(n.drift.declining ?? []).length > 0 && <P><strong>Declining:</strong> {(n.drift.declining ?? []).join(", ")}</P>}
+          <SH3>Theme Drift</SH3>
+          {(n.drift.emerging ?? []).length > 0 && <P><strong>Emerging themes:</strong> {(n.drift.emerging ?? []).join(", ")}</P>}
+          {(n.drift.declining ?? []).length > 0 && <P><strong>Declining themes:</strong> {(n.drift.declining ?? []).join(", ")}</P>}
         </>
       )}
     </div>
@@ -759,103 +779,11 @@ function ReportInner() {
       setError(null);
       try {
         const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
-        const [overviewRes, visibilityRes, narrativeRes, competitionRes, sourcesRes, quotesRes, alertsRes] = await Promise.all([
-          fetch(`/api/overview?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/visibility?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/narrative?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/competition?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/sources?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/visibility/quotes?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-          fetch(`/api/competitor-alerts?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-        ]);
-
+        const res = await fetch(`/api/report?${qs}`);
+        if (!res.ok) throw new Error(`Report API returned ${res.status}`);
+        const data = await res.json();
         if (cancelled) return;
-
-        const r: ReportData["report"] = {
-          meta: {
-            brandSlug: params.slug,
-            brandName: brandName,
-            model,
-            range,
-            generatedAt: new Date().toISOString(),
-          },
-          overview: overviewRes?.hasData ? {
-            aiSummary: overviewRes.aiSummary ?? null,
-            scorecard: {
-              brandRecall: overviewRes.visibilityKpis?.overallMentionRate ?? null,
-              shareOfVoice: overviewRes.visibilityKpis?.shareOfVoice ?? null,
-              topResultRate: overviewRes.visibilityKpis?.firstMentionRate ?? null,
-              avgPosition: overviewRes.visibilityKpis?.avgRankScore ?? null,
-            },
-            sentimentSplit: overviewRes.sentimentSplit ?? null,
-            kpiDeltas: overviewRes.kpiDeltas ?? null,
-            topFrames: overviewRes.overview?.topFrames ?? [],
-            topSourceType: overviewRes.topSourceType ?? null,
-            modelComparison: overviewRes.overview?.modelComparison ?? [],
-            competitiveRank: overviewRes.competitiveRank ?? null,
-            quotes: quotesRes?.quotes ?? [],
-            competitorAlerts: alertsRes?.competitorAlerts ?? [],
-          } : null,
-          visibility: visibilityRes?.hasData ? {
-            scorecard: {
-              brandRecall: visibilityRes.visibility?.overallMentionRate ?? null,
-              shareOfVoice: visibilityRes.visibility?.shareOfVoice ?? null,
-              avgPosition: visibilityRes.visibility?.avgRankScore ?? null,
-              topResultRate: visibilityRes.visibility?.firstMentionRate ?? null,
-            },
-            trend: visibilityRes.visibility?.trend ?? [],
-            rankDistribution: visibilityRes.visibility?.rankDistribution ?? [],
-            modelBreakdown: visibilityRes.visibility?.modelBreakdown ?? [],
-            visibilityRanking: visibilityRes.visibility?.visibilityRanking ?? [],
-            resultsByQuestion: visibilityRes.visibility?.resultsByQuestion ?? [],
-            opportunityPrompts: visibilityRes.visibility?.opportunityPrompts ?? [],
-            worstPerformingPrompts: visibilityRes.visibility?.worstPerformingPrompts ?? [],
-            intentSplit: visibilityRes.visibility?.intentSplit ?? [],
-            clusterBreakdown: visibilityRes.visibility?.clusterBreakdown ?? [],
-          } : null,
-          narrative: narrativeRes?.hasData ? {
-            scorecard: {
-              sentimentSplit: narrativeRes.narrative?.sentimentSplit ?? null,
-              polarization: narrativeRes.narrative?.polarization ?? null,
-              hedgingRate: narrativeRes.narrative?.hedgingRate ?? null,
-            },
-            frames: narrativeRes.narrative?.frames ?? [],
-            sentimentTrend: narrativeRes.narrative?.sentimentTrend ?? [],
-            frameTrend: narrativeRes.narrative?.frameTrend ?? [],
-            strengths: narrativeRes.narrative?.strengths ?? [],
-            weaknesses: narrativeRes.narrative?.weaknesses ?? [],
-            themes: narrativeRes.narrative?.themes ?? [],
-            examples: narrativeRes.narrative?.examples ?? [],
-            sentimentByQuestion: narrativeRes.narrative?.sentimentByQuestion ?? [],
-            drift: narrativeRes.narrative?.drift ?? null,
-            narrativeDeltas: narrativeRes.narrativeDeltas ?? null,
-            positioning: narrativeRes.narrative?.positioning ?? [],
-          } : null,
-          landscape: competitionRes?.hasData ? {
-            scope: competitionRes.competition?.scope ?? null,
-            competitors: competitionRes.competition?.competitors ?? [],
-            fragmentation: competitionRes.competition?.fragmentation ?? null,
-            winLoss: competitionRes.competition?.winLoss ?? null,
-            coMentions: competitionRes.competition?.coMentions ?? [],
-            competitiveTrend: competitionRes.competition?.competitiveTrend ?? [],
-            sentimentTrend: competitionRes.competition?.sentimentTrend ?? [],
-            prominenceShare: competitionRes.competition?.prominenceShare ?? [],
-            competitorNarratives: competitionRes.competition?.competitorNarratives ?? [],
-            modelSplit: competitionRes.competition?.modelSplit ?? [],
-            rankDistribution: competitionRes.competition?.rankDistribution ?? [],
-          } : null,
-          sources: sourcesRes?.hasData ? {
-            summary: sourcesRes.sources?.summary ?? null,
-            topDomains: sourcesRes.sources?.topDomains ?? [],
-            officialSites: sourcesRes.sources?.officialSites ?? [],
-            domainsNotCitingBrand: sourcesRes.sources?.domainsNotCitingBrand ?? [],
-            emerging: sourcesRes.sources?.emerging ?? [],
-            domainOverTime: sourcesRes.sources?.domainOverTime ?? [],
-            crossCitation: sourcesRes.sources?.crossCitation ?? [],
-          } : null,
-        };
-
-        setReport(r);
+        setReport(data.report ?? null);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load report data");
       } finally {
@@ -864,7 +792,7 @@ function ReportInner() {
     }
     load();
     return () => { cancelled = true; };
-  }, [params.slug, model, range, brandName]);
+  }, [params.slug, model, range]);
 
   if (loading) {
     return (
