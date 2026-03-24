@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
+import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -11,16 +12,18 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 
-  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date };
+  type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; rawResponseText: string; analysisJson: unknown };
   const result = await fetchBrandRuns<MinimalRun>({
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, rawResponseText: true, analysisJson: true } },
     skipJobCheck: true,
   });
   if (!result.ok) return result.response;
-  const { brand, runs } = result;
+  const { brand, runs: rawRuns } = result;
+  // Content scope: match the main Sources page (only runs genuinely about the brand)
+  const runs = filterRunsToBrandScope(rawRuns, buildBrandIdentity(brand));
 
   try {
     // Find the Source record for this domain
