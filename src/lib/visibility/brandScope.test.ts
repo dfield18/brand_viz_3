@@ -783,3 +783,85 @@ describe("acronym collision — FIRE organization vs FIRE movement", () => {
     assert.ok(!queryUniverse.includes(retireRun));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Acronym collision: CPAC (political conference) vs CPAC (cement company)
+// ---------------------------------------------------------------------------
+
+describe("acronym collision — CPAC conference vs Cementos Pacasmayo", () => {
+  const CPAC_CONF: BrandScopeIdentity = {
+    brandName: "CPAC",
+    brandSlug: "cpac",
+    aliases: ["Conservative Political Action Conference", "CPAC Dallas", "CPAC Orlando"],
+  };
+
+  it("flags CPAC as ambiguous", () => {
+    assert.ok(isBrandNameAmbiguous("CPAC"));
+  });
+
+  it("accepts run about the conservative conference", () => {
+    const run = makeRun({
+      rawResponseText: "The Conservative Political Action Conference (CPAC) is the largest annual gathering of conservatives. CPAC features keynote speakers and straw polls.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "RNC" }] },
+    });
+    assert.ok(isRunInBrandScope(run, CPAC_CONF));
+  });
+
+  it("accepts run with republican/conservative context", () => {
+    const run = makeRun({
+      rawResponseText: "CPAC Dallas 2026 featured prominent Republican leaders discussing the conservative movement and right-wing policy priorities.",
+      analysisJson: null,
+    });
+    assert.ok(isRunInBrandScope(run, CPAC_CONF));
+  });
+
+  it("rejects run about Peruvian cement company", () => {
+    const run = makeRun({
+      rawResponseText: "CPAC holds a dominant position in the Peruvian cement market. Cementos Pacasmayo benefits from strong brand recognition and a loyal customer base in construction materials.",
+      analysisJson: { brandMentioned: true, competitors: [{ name: "UNACEM" }] },
+    });
+    assert.ok(!isRunInBrandScope(run, CPAC_CONF));
+  });
+
+  it("rejects run about cement stock ticker", () => {
+    const run = makeRun({
+      rawResponseText: "Cementos Pacasmayo S.A.A. (CPAC) is listed on the NYSE. The company produces cement, concrete, and building materials for the construction industry.",
+      analysisJson: null,
+    });
+    assert.ok(!isRunInBrandScope(run, CPAC_CONF));
+  });
+
+  it("rejects cement even with brandMentioned=true", () => {
+    const run = makeRun({
+      rawResponseText: "CPAC is a leading cement producer in Peru with quarry operations and ready-mix concrete facilities.",
+      analysisJson: { brandMentioned: true },
+    });
+    assert.ok(!isRunInBrandScope(run, CPAC_CONF));
+  });
+
+  it("mixed dataset: content scope isolates conference runs only", () => {
+    const confRun = makeRun({
+      rawResponseText: "CPAC is the premier conservative political action conference. CPAC brings together Republican leaders annually.",
+      analysisJson: { brandMentioned: true },
+    });
+    const cementRun = makeRun({
+      rawResponseText: "CPAC (Cementos Pacasmayo) is a Peruvian cement company with construction materials operations.",
+      analysisJson: { brandMentioned: true },
+    });
+    const unrelatedRun = makeRun({
+      rawResponseText: "The Republican National Committee held its annual meeting.",
+      analysisJson: null,
+    });
+
+    const contentScoped = filterRunsToBrandScope([confRun, cementRun, unrelatedRun], CPAC_CONF);
+    assert.equal(contentScoped.length, 1);
+    assert.ok(contentScoped.includes(confRun));
+    assert.ok(!contentScoped.includes(cementRun));
+
+    const queryUniverse = filterRunsToBrandQueryUniverse([confRun, cementRun, unrelatedRun], CPAC_CONF);
+    assert.equal(queryUniverse.length, 2);
+    assert.ok(queryUniverse.includes(confRun));
+    assert.ok(queryUniverse.includes(unrelatedRun));
+    assert.ok(!queryUniverse.includes(cementRun));
+  });
+});

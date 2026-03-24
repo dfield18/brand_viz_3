@@ -71,6 +71,7 @@ const AMBIGUOUS_SINGLE_WORDS = new Set([
   "notion", "discord", "compass", "harbor", "haven",
   "crown", "summit", "pilot", "spark", "hive", "nest",
   "fire", "rise", "wave", "sage", "pure", "bold",
+  "cpac",
 ]);
 
 /**
@@ -116,6 +117,24 @@ const ACRONYM_COLLISION_RULES = new Map<string, AcronymCollisionRule>([
       "save 75%", "financial planner", "financial planning",
       "lifestyle changes", "spending habits", "income savings",
       "accumulate sufficient assets", "retirement savings",
+    ],
+  }],
+  ["cpac", {
+    confirmPhrases: [
+      "conservative political action", "conservative conference",
+      "american conservative union", "cpac dallas", "cpac orlando",
+      "cpac hungary", "cpac japan", "cpac australia", "cpac mexico",
+      "republican", "conservative movement", "conservative activism",
+      "right-wing", "political action conference",
+      "matt schlapp", "straw poll", "keynote speaker",
+      "cpac.org",
+    ],
+    rejectPhrases: [
+      "cement", "cementos", "pacasmayo", "peruvian",
+      "construction materials", "concrete", "clinker",
+      "mining", "quarry", "aggregate",
+      "stock ticker", "nyse", "lima stock",
+      "building materials", "ready-mix",
     ],
   }],
 ]);
