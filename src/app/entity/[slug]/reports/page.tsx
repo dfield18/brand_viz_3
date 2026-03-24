@@ -269,19 +269,18 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
           <KV label="Negative" value={pct(n.scorecard.sentimentSplit.negative)} />
         </>
       )}
-      {n.scorecard?.polarization && <KV label="Polarization" value={n.scorecard.polarization} />}
-      {n.scorecard?.hedgingRate != null && <KV label="Model Confidence" value={`${100 - n.scorecard.hedgingRate}%`} />}
-      {n.frames && n.frames.length > 0 && (() => {
-        // Platform consistency: how many models agree on the top frame
-        const topFrame = n.frames[0];
-        const byModel = topFrame?.byModel ?? {};
-        const modelCount = Object.values(byModel).filter((v) => v > 0).length;
-        const totalModels = Object.keys(byModel).length;
-        if (totalModels > 0) {
-          return <KV label="Platform Consistency" value={`${Math.round((modelCount / totalModels) * 100)}%`} />;
-        }
-        return null;
+      {n.scorecard?.polarization && (() => {
+        // Match the Narrative tab: polarization label → fixed consistency percentage
+        const CONSISTENCY_PCT: Record<string, number> = { Low: 30, Moderate: 60, High: 85 };
+        const consistencyPct = CONSISTENCY_PCT[n.scorecard.polarization] ?? 0;
+        return (
+          <>
+            <KV label="Platform Consistency" value={`${consistencyPct}%`} />
+            <KV label="Polarization" value={n.scorecard.polarization} />
+          </>
+        );
       })()}
+      {n.scorecard?.hedgingRate != null && <KV label="Model Confidence" value={`${100 - n.scorecard.hedgingRate}%`} />}
 
       {n.narrativeDeltas && (n.narrativeDeltas.sentimentPositive !== 0 || n.narrativeDeltas.confidence !== 0) && (
         <P><em>
