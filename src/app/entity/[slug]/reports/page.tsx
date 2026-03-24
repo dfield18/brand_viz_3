@@ -1,47 +1,48 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { useBrandName } from "@/lib/useBrandName";
-import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
-import { Loader2 } from "lucide-react";
+import { MODEL_LABELS } from "@/lib/constants";
+import { Loader2, Printer } from "lucide-react";
 
-/* ─── Lightweight renderers for each tab's API data ──────────────────── */
+/* ─── Shared Renderers ───────────────────────────────────────────────── */
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-xl font-bold mt-10 mb-4 border-b-2 border-gray-300 pb-2 print:mt-6">{children}</h2>;
+function SH({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-xl font-bold mt-10 mb-4 border-b-2 border-gray-300 pb-2 print:mt-6 print:break-after-avoid">{children}</h2>;
 }
 
-function SubHeading({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-base font-semibold mt-6 mb-2">{children}</h3>;
+function SH3({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-base font-semibold mt-5 mb-2 print:break-after-avoid">{children}</h3>;
 }
 
-function Para({ children }: { children: React.ReactNode }) {
+function P({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-gray-700 leading-relaxed mb-3">{children}</p>;
 }
 
-function KpiRow({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
+function KV({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex justify-between py-1.5 border-b border-gray-100">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-semibold">{value}{unit ? ` ${unit}` : ""}</span>
+      <span className="text-sm font-semibold">{value ?? "\u2014"}</span>
     </div>
   );
 }
 
-function DataTable({ headers, rows }: { headers: string[]; rows: (string | number)[][] }) {
+function Tbl({ headers, rows }: { headers: string[]; rows: (string | number | null)[][] }) {
+  if (rows.length === 0) return <P>No data available.</P>;
   return (
     <table className="w-full text-xs border-collapse mb-4">
       <thead>
         <tr className="border-b-2 border-gray-300">
-          {headers.map((h) => <th key={h} className="text-left py-2 pr-4 font-semibold text-gray-600">{h}</th>)}
+          {headers.map((h) => <th key={h} className="text-left py-2 pr-3 font-semibold text-gray-600">{h}</th>)}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, i) => (
           <tr key={i} className="border-b border-gray-100">
-            {row.map((cell, j) => <td key={j} className="py-1.5 pr-4">{cell}</td>)}
+            {row.map((cell, j) => <td key={j} className="py-1.5 pr-3">{cell ?? "\u2014"}</td>)}
           </tr>
         ))}
       </tbody>
@@ -49,50 +50,78 @@ function DataTable({ headers, rows }: { headers: string[]; rows: (string | numbe
   );
 }
 
-/* ─── Overview Section ───────────────────────────────────────────────── */
+function Empty({ label }: { label: string }) {
+  return <P><em>{label}</em></P>;
+}
 
-function OverviewSection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/overview?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No overview data available.</Para>;
+function pct(v: number | null | undefined) {
+  return v != null ? `${v}%` : "\u2014";
+}
 
-  const d = data as {
-    visibilityKpis?: { overallMentionRate: number; shareOfVoice: number; firstMentionRate: number; avgRankScore: number };
-    sentimentSplit?: { positive: number; neutral: number; negative: number };
-    overview?: { topFrames?: { frame: string; percentage: number }[] };
-    aiSummary?: string;
+function pos(v: number | null | undefined) {
+  return v != null && v > 0 ? `#${typeof v === "number" ? v.toFixed(1) : v}` : "\u2014";
+}
+
+/* ─── Section Renderers ──────────────────────────────────────────────── */
+
+function OverviewSection({ d }: { d: Record<string, unknown> }) {
+  const o = d as {
+    aiSummary?: string | null;
+    scorecard?: { brandRecall: number | null; shareOfVoice: number | null; topResultRate: number | null; avgPosition: number | null };
+    sentimentSplit?: { positive: number; neutral: number; negative: number } | null;
+    topFrames?: { frame: string; percentage: number }[];
+    topSourceType?: { category: string; count: number; totalSources: number } | null;
+    modelComparison?: { model: string; mentionRate: number; avgRank: number | null; sentiment?: number }[];
   };
 
   return (
     <div>
-      {d.aiSummary && <Para><em>{d.aiSummary}</em></Para>}
+      {o.aiSummary && <P><em>{o.aiSummary}</em></P>}
 
-      {d.visibilityKpis && (
+      {o.scorecard && (
         <>
-          <SubHeading>Visibility KPIs</SubHeading>
-          <KpiRow label="Brand Recall" value={`${d.visibilityKpis.overallMentionRate}%`} />
-          <KpiRow label="Share of Voice" value={`${d.visibilityKpis.shareOfVoice}%`} />
-          <KpiRow label="Top Result Rate" value={`${d.visibilityKpis.firstMentionRate}%`} />
-          <KpiRow label="Avg Position" value={d.visibilityKpis.avgRankScore > 0 ? `#${d.visibilityKpis.avgRankScore.toFixed(1)}` : "—"} />
+          <SH3>Visibility Scorecard</SH3>
+          <KV label="Brand Recall" value={pct(o.scorecard.brandRecall)} />
+          <KV label="Share of Voice" value={pct(o.scorecard.shareOfVoice)} />
+          <KV label="Top Result Rate" value={pct(o.scorecard.topResultRate)} />
+          <KV label="Avg Position" value={pos(o.scorecard.avgPosition)} />
         </>
       )}
 
-      {d.sentimentSplit && (
+      {o.sentimentSplit && (
         <>
-          <SubHeading>Sentiment</SubHeading>
-          <KpiRow label="Positive" value={`${d.sentimentSplit.positive}%`} />
-          <KpiRow label="Neutral" value={`${d.sentimentSplit.neutral}%`} />
-          <KpiRow label="Negative" value={`${d.sentimentSplit.negative}%`} />
+          <SH3>Sentiment</SH3>
+          <KV label="Positive" value={pct(o.sentimentSplit.positive)} />
+          <KV label="Neutral" value={pct(o.sentimentSplit.neutral)} />
+          <KV label="Negative" value={pct(o.sentimentSplit.negative)} />
         </>
       )}
 
-      {d.overview?.topFrames && d.overview.topFrames.length > 0 && (
+      {o.topFrames && o.topFrames.length > 0 && (
         <>
-          <SubHeading>Top Narratives</SubHeading>
-          <DataTable
-            headers={["Narrative", "Frequency"]}
-            rows={d.overview.topFrames.slice(0, 8).map((f) => [f.frame, `${f.percentage}%`])}
+          <SH3>Top Narratives</SH3>
+          <Tbl headers={["Narrative", "Frequency"]} rows={o.topFrames.slice(0, 8).map((f) => [f.frame, `${f.percentage}%`])} />
+        </>
+      )}
+
+      {o.topSourceType && (
+        <>
+          <SH3>Most Cited Source Type</SH3>
+          <KV label={o.topSourceType.category} value={`${Math.round((o.topSourceType.count / Math.max(o.topSourceType.totalSources, 1)) * 100)}%`} />
+        </>
+      )}
+
+      {o.modelComparison && o.modelComparison.length > 0 && (
+        <>
+          <SH3>By AI Platform</SH3>
+          <Tbl
+            headers={["Platform", "Brand Recall", "Avg Position", "Sentiment"]}
+            rows={o.modelComparison.map((m) => [
+              MODEL_LABELS[m.model] ?? m.model,
+              pct(m.mentionRate),
+              m.avgRank != null ? pos(m.avgRank) : "\u2014",
+              m.sentiment != null ? `${m.sentiment}%` : "\u2014",
+            ])}
           />
         </>
       )}
@@ -100,124 +129,137 @@ function OverviewSection({ slug, model, range }: { slug: string; model: string; 
   );
 }
 
-/* ─── Visibility Section ─────────────────────────────────────────────── */
-
-function VisibilitySection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/visibility?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No visibility data available.</Para>;
-
-  const d = data as {
-    overallMentionRate?: number;
-    shareOfVoice?: number;
-    firstMentionRate?: number;
-    avgRankScore?: number;
-    modelBreakdown?: { model: string; mentionRate: number | null; avgRank: number | null; firstMentionPct: number | null }[];
+function VisibilitySection({ d }: { d: Record<string, unknown> }) {
+  const v = d as {
+    scorecard?: { brandRecall: number | null; shareOfVoice: number | null; avgPosition: number | null; topResultRate: number | null };
     rankDistribution?: { rank: number; count: number; percentage: number }[];
-    clusterBreakdown?: { cluster: string; mentionRate: number }[];
+    modelBreakdown?: { model: string; mentionRate: number | null; avgRank: number | null; firstMentionPct: number | null; totalRuns: number }[];
+    visibilityRanking?: { entityId: string; name: string; score: number; isBrand: boolean }[];
+    resultsByQuestion?: { promptText: string; model: string; aiVisibility: number; avgPosition: number | null; shareOfVoice: number }[];
+    opportunityPrompts?: { prompt: string; competitorCount: number; competitors: string[] }[];
   };
 
   return (
     <div>
-      <SubHeading>KPI Summary</SubHeading>
-      <KpiRow label="Brand Recall" value={`${d.overallMentionRate ?? 0}%`} />
-      <KpiRow label="Share of Voice" value={`${d.shareOfVoice ?? 0}%`} />
-      <KpiRow label="Top Result Rate" value={`${d.firstMentionRate ?? 0}%`} />
-      <KpiRow label="Avg Position" value={(d.avgRankScore ?? 0) > 0 ? `#${(d.avgRankScore ?? 0).toFixed(1)}` : "—"} />
-
-      {d.modelBreakdown && d.modelBreakdown.length > 0 && (
+      {v.scorecard && (
         <>
-          <SubHeading>By AI Platform</SubHeading>
-          <DataTable
-            headers={["Platform", "Recall", "Avg Position", "Top Result"]}
-            rows={d.modelBreakdown
-              .filter((m) => m.mentionRate !== null)
-              .map((m) => [
-                MODEL_LABELS[m.model] ?? m.model,
-                `${m.mentionRate}%`,
-                m.avgRank !== null ? `#${m.avgRank.toFixed(1)}` : "—",
-                m.firstMentionPct !== null ? `${m.firstMentionPct}%` : "—",
-              ])}
+          <SH3>Scorecard</SH3>
+          <KV label="Brand Recall" value={pct(v.scorecard.brandRecall)} />
+          <KV label="Share of Voice" value={pct(v.scorecard.shareOfVoice)} />
+          <KV label="Top Result Rate" value={pct(v.scorecard.topResultRate)} />
+          <KV label="Avg Position" value={pos(v.scorecard.avgPosition)} />
+        </>
+      )}
+
+      {v.rankDistribution && v.rankDistribution.length > 0 && (
+        <>
+          <SH3>Position Distribution</SH3>
+          <Tbl headers={["Position", "Count", "%"]} rows={v.rankDistribution.map((r) => [`#${r.rank}`, r.count, `${r.percentage}%`])} />
+        </>
+      )}
+
+      {v.modelBreakdown && v.modelBreakdown.length > 0 && (
+        <>
+          <SH3>By AI Platform</SH3>
+          <Tbl
+            headers={["Platform", "Recall", "Avg Position", "Top Result", "Runs"]}
+            rows={v.modelBreakdown.filter((m) => m.totalRuns > 0).map((m) => [
+              MODEL_LABELS[m.model] ?? m.model,
+              m.mentionRate != null ? `${m.mentionRate}%` : "\u2014",
+              m.avgRank != null ? `#${m.avgRank.toFixed(1)}` : "\u2014",
+              m.firstMentionPct != null ? `${m.firstMentionPct}%` : "\u2014",
+              m.totalRuns,
+            ])}
           />
         </>
       )}
 
-      {d.rankDistribution && d.rankDistribution.length > 0 && (
+      {v.visibilityRanking && v.visibilityRanking.length > 0 && (
         <>
-          <SubHeading>Position Distribution</SubHeading>
-          <DataTable
-            headers={["Position", "Count", "%"]}
-            rows={d.rankDistribution.map((r) => [`#${r.rank}`, r.count, `${r.percentage}%`])}
+          <SH3>Visibility Ranking</SH3>
+          <Tbl headers={["Entity", "Score"]} rows={v.visibilityRanking.slice(0, 10).map((e) => [e.isBrand ? `\u2605 ${e.name}` : e.name, `${e.score}%`])} />
+        </>
+      )}
+
+      {v.resultsByQuestion && v.resultsByQuestion.length > 0 && (
+        <>
+          <SH3>Performance by Question</SH3>
+          <Tbl
+            headers={["Prompt", "Platform", "Visibility", "Avg Position", "SoV"]}
+            rows={v.resultsByQuestion.slice(0, 20).map((r) => [
+              r.promptText.length > 60 ? r.promptText.slice(0, 60) + "..." : r.promptText,
+              MODEL_LABELS[r.model] ?? r.model,
+              `${r.aiVisibility}%`,
+              r.avgPosition != null ? `#${r.avgPosition.toFixed(1)}` : "\u2014",
+              `${r.shareOfVoice}%`,
+            ])}
           />
+        </>
+      )}
+
+      {v.opportunityPrompts && v.opportunityPrompts.length > 0 && (
+        <>
+          <SH3>Opportunity Prompts (Brand Missing)</SH3>
+          <Tbl headers={["Prompt", "Competitors Present"]} rows={v.opportunityPrompts.slice(0, 10).map((p) => [p.prompt, p.competitors.slice(0, 3).join(", ")])} />
         </>
       )}
     </div>
   );
 }
 
-/* ─── Narrative Section ──────────────────────────────────────────────── */
-
-function NarrativeSection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/narrative?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No narrative data available.</Para>;
-
-  const d = data as {
-    narrative?: {
-      frames?: { frame: string; percentage: number }[];
-      sentimentSplit?: { positive: number; neutral: number; negative: number };
-      strengths?: { text: string; count: number }[];
-      weaknesses?: { text: string; count: number }[];
-      examples?: { excerpt: string; model: string; matchedFrame: string }[];
-    };
+function NarrativeSection({ d }: { d: Record<string, unknown> }) {
+  const n = d as {
+    scorecard?: { sentimentSplit: { positive: number; neutral: number; negative: number } | null };
+    frames?: { frame: string; percentage: number }[];
+    strengths?: { text: string; count: number }[];
+    weaknesses?: { text: string; count: number }[];
+    examples?: { excerpt: string; model: string; matchedFrame: string }[];
+    themes?: { label: string; count: number; pct: number }[];
+    sentimentByQuestion?: { prompt: string; sentiment: string; mentionRate: number; consistency: number }[];
   };
-  const n = d.narrative;
-  if (!n) return <Para>No narrative data available.</Para>;
 
   return (
     <div>
-      {n.sentimentSplit && (
+      {n.scorecard?.sentimentSplit && (
         <>
-          <SubHeading>Sentiment Split</SubHeading>
-          <KpiRow label="Positive" value={`${n.sentimentSplit.positive}%`} />
-          <KpiRow label="Neutral" value={`${n.sentimentSplit.neutral}%`} />
-          <KpiRow label="Negative" value={`${n.sentimentSplit.negative}%`} />
+          <SH3>Sentiment Split</SH3>
+          <KV label="Positive" value={pct(n.scorecard.sentimentSplit.positive)} />
+          <KV label="Neutral" value={pct(n.scorecard.sentimentSplit.neutral)} />
+          <KV label="Negative" value={pct(n.scorecard.sentimentSplit.negative)} />
         </>
       )}
 
       {n.frames && n.frames.length > 0 && (
         <>
-          <SubHeading>How AI Describes This Brand</SubHeading>
-          <DataTable
-            headers={["Theme", "Frequency"]}
-            rows={n.frames.slice(0, 8).map((f) => [f.frame, `${f.percentage}%`])}
-          />
+          <SH3>How AI Describes This Brand</SH3>
+          <Tbl headers={["Theme", "Frequency"]} rows={n.frames.slice(0, 8).map((f) => [f.frame, `${f.percentage}%`])} />
         </>
       )}
 
       {n.strengths && n.strengths.length > 0 && (
         <>
-          <SubHeading>Strengths</SubHeading>
-          {n.strengths.map((s, i) => (
-            <Para key={i}><strong>{s.text}</strong> — mentioned {s.count} time{s.count !== 1 ? "s" : ""}</Para>
-          ))}
+          <SH3>Strengths</SH3>
+          {n.strengths.map((s, i) => <P key={i}><strong>{s.text}</strong> \u2014 {s.count} mention{s.count !== 1 ? "s" : ""}</P>)}
         </>
       )}
 
       {n.weaknesses && n.weaknesses.length > 0 && (
         <>
-          <SubHeading>Weaknesses</SubHeading>
-          {n.weaknesses.map((w, i) => (
-            <Para key={i}><strong>{w.text}</strong> — mentioned {w.count} time{w.count !== 1 ? "s" : ""}</Para>
-          ))}
+          <SH3>Weaknesses</SH3>
+          {n.weaknesses.map((w, i) => <P key={i}><strong>{w.text}</strong> \u2014 {w.count} mention{w.count !== 1 ? "s" : ""}</P>)}
+        </>
+      )}
+
+      {n.themes && n.themes.length > 0 && (
+        <>
+          <SH3>Themes</SH3>
+          <Tbl headers={["Theme", "Count", "%"]} rows={n.themes.slice(0, 10).map((t) => [t.label, t.count, `${t.pct}%`])} />
         </>
       )}
 
       {n.examples && n.examples.length > 0 && (
         <>
-          <SubHeading>What AI Is Saying</SubHeading>
+          <SH3>What AI Is Saying</SH3>
           {n.examples.slice(0, 5).map((ex, i) => (
             <div key={i} className="mb-3 pl-3 border-l-2 border-gray-300">
               <p className="text-sm text-gray-700 italic">&ldquo;{ex.excerpt}&rdquo;</p>
@@ -226,50 +268,16 @@ function NarrativeSection({ slug, model, range }: { slug: string; model: string;
           ))}
         </>
       )}
-    </div>
-  );
-}
 
-/* ─── Competition Section ────────────────────────────────────────────── */
-
-function CompetitionSection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/competition?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No competition data available.</Para>;
-
-  const d = data as {
-    competition?: {
-      competitors?: { name: string; mentionRate: number; mentionShare: number; avgRank: number | null; rank1Rate: number; isBrand: boolean }[];
-      winLoss?: { byCompetitor: { name: string; wins: number; losses: number }[] };
-    };
-  };
-  const c = d.competition;
-  if (!c?.competitors) return <Para>No competition data available.</Para>;
-
-  return (
-    <div>
-      <SubHeading>Competitive Landscape</SubHeading>
-      <DataTable
-        headers={["Entity", "Recall", "Share of Voice", "Avg Position", "Top Result"]}
-        rows={c.competitors.slice(0, 10).map((comp) => [
-          comp.isBrand ? `★ ${comp.name}` : comp.name,
-          `${comp.mentionRate}%`,
-          `${comp.mentionShare.toFixed(1)}%`,
-          comp.avgRank !== null ? `#${comp.avgRank.toFixed(1)}` : "—",
-          `${comp.rank1Rate}%`,
-        ])}
-      />
-
-      {c.winLoss?.byCompetitor && c.winLoss.byCompetitor.length > 0 && (
+      {n.sentimentByQuestion && n.sentimentByQuestion.length > 0 && (
         <>
-          <SubHeading>Win Rate</SubHeading>
-          <DataTable
-            headers={["Competitor", "Wins", "Losses", "Win Rate"]}
-            rows={c.winLoss.byCompetitor.slice(0, 10).map((w) => {
-              const total = w.wins + w.losses;
-              return [w.name, w.wins, w.losses, total > 0 ? `${Math.round((w.wins / total) * 100)}%` : "—"];
-            })}
+          <SH3>Sentiment by Question</SH3>
+          <Tbl
+            headers={["Prompt", "Sentiment", "Mention Rate", "Consistency"]}
+            rows={n.sentimentByQuestion.slice(0, 15).map((q) => [
+              q.prompt.length > 50 ? q.prompt.slice(0, 50) + "..." : q.prompt,
+              q.sentiment, `${q.mentionRate}%`, `${q.consistency}%`,
+            ])}
           />
         </>
       )}
@@ -277,115 +285,115 @@ function CompetitionSection({ slug, model, range }: { slug: string; model: strin
   );
 }
 
-/* ─── Sources Section ────────────────────────────────────────────────── */
-
-function SourcesSection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/sources?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No sources data available.</Para>;
-
-  const d = data as {
-    sources?: {
-      summary?: { totalCitations: number; uniqueDomains: number; citationsPerResponse: number; pctResponsesWithCitations: number };
-      topDomains?: { domain: string; citations: number; category?: string }[];
-    };
+function LandscapeSection({ d }: { d: Record<string, unknown> }) {
+  const c = d as {
+    competitors?: { name: string; mentionRate: number; mentionShare: number; avgRank: number | null; rank1Rate: number; isBrand: boolean }[];
+    winLoss?: { byCompetitor: { name: string; wins: number; losses: number }[]; topLosses: { prompt: string; competitorName: string; competitorRank: number; brandRank: number | null }[] };
+    coMentions?: { entityA: string; entityB: string; coMentionCount: number; coMentionRate: number }[];
   };
-  const s = d.sources;
-  if (!s) return <Para>No sources data available.</Para>;
+
+  return (
+    <div>
+      {c.competitors && c.competitors.length > 0 && (
+        <>
+          <SH3>Competitive Landscape</SH3>
+          <Tbl
+            headers={["Entity", "Recall", "Share of Voice", "Avg Position", "Top Result"]}
+            rows={c.competitors.slice(0, 12).map((comp) => [
+              comp.isBrand ? `\u2605 ${comp.name}` : comp.name,
+              `${comp.mentionRate}%`, `${comp.mentionShare.toFixed(1)}%`,
+              comp.avgRank != null ? `#${comp.avgRank.toFixed(1)}` : "\u2014", `${comp.rank1Rate}%`,
+            ])}
+          />
+        </>
+      )}
+
+      {c.winLoss?.byCompetitor && c.winLoss.byCompetitor.length > 0 && (
+        <>
+          <SH3>Win Rate</SH3>
+          <Tbl
+            headers={["Competitor", "Wins", "Losses", "Win Rate"]}
+            rows={c.winLoss.byCompetitor.slice(0, 10).map((w) => {
+              const total = w.wins + w.losses;
+              return [w.name, w.wins, w.losses, total > 0 ? `${Math.round((w.wins / total) * 100)}%` : "\u2014"];
+            })}
+          />
+        </>
+      )}
+
+      {c.winLoss?.topLosses && c.winLoss.topLosses.length > 0 && (
+        <>
+          <SH3>Top Losing Prompts</SH3>
+          <Tbl
+            headers={["Prompt", "Competitor", "Their Rank", "Brand Rank"]}
+            rows={c.winLoss.topLosses.slice(0, 10).map((l) => [
+              l.prompt.length > 50 ? l.prompt.slice(0, 50) + "..." : l.prompt,
+              l.competitorName, `#${l.competitorRank}`,
+              l.brandRank != null ? `#${l.brandRank}` : "Not mentioned",
+            ])}
+          />
+        </>
+      )}
+
+      {c.coMentions && c.coMentions.length > 0 && (
+        <>
+          <SH3>Brand Associations</SH3>
+          <Tbl
+            headers={["Entity A", "Entity B", "Co-mentions", "Rate"]}
+            rows={c.coMentions.slice(0, 10).map((cm) => [cm.entityA, cm.entityB, cm.coMentionCount, `${cm.coMentionRate}%`])}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function SourcesSection({ d }: { d: Record<string, unknown> }) {
+  const s = d as {
+    summary?: { totalCitations: number; uniqueDomains: number; citationsPerResponse: number; pctResponsesWithCitations: number };
+    topDomains?: { domain: string; citations: number; category?: string }[];
+    officialSites?: { entityId: string; isBrand: boolean; officialDomain: string; citations: number }[];
+    domainsNotCitingBrand?: { domain: string; citations: number; competitors: [string, number][] }[];
+    emerging?: { domain: string; currentCitations: number; previousCitations: number; growthRate: number }[];
+  };
 
   return (
     <div>
       {s.summary && (
         <>
-          <SubHeading>Source Summary</SubHeading>
-          <KpiRow label="Total Citations" value={s.summary.totalCitations} />
-          <KpiRow label="Unique Domains" value={s.summary.uniqueDomains} />
-          <KpiRow label="Citations per Response" value={s.summary.citationsPerResponse.toFixed(1)} />
-          <KpiRow label="Responses with Citations" value={`${s.summary.pctResponsesWithCitations}%`} />
+          <SH3>Source Summary</SH3>
+          <KV label="Total Citations" value={s.summary.totalCitations} />
+          <KV label="Unique Domains" value={s.summary.uniqueDomains} />
+          <KV label="Citations per Response" value={s.summary.citationsPerResponse.toFixed(1)} />
+          <KV label="Responses with Citations" value={`${s.summary.pctResponsesWithCitations}%`} />
         </>
       )}
 
       {s.topDomains && s.topDomains.length > 0 && (
         <>
-          <SubHeading>Top Cited Sources</SubHeading>
-          <DataTable
-            headers={["Domain", "Citations", "Category"]}
-            rows={s.topDomains.slice(0, 15).map((td) => [td.domain, td.citations, td.category ?? "—"])}
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ─── Recommendations Section ────────────────────────────────────────── */
-
-function RecommendationsSection({ slug, model, range }: { slug: string; model: string; range: number }) {
-  const { data } = useCachedFetch<Record<string, unknown>>(
-    `/api/recommendations?brandSlug=${slug}&model=${model}&range=${range}`,
-  );
-  if (!data || !(data as { hasData?: boolean }).hasData) return <Para>No recommendations data available.</Para>;
-
-  const d = data as {
-    promptOpportunities?: { promptText: string; brandRank: number | null; topCompetitors: { displayName: string; rank: number }[] }[];
-    negativeNarratives?: { weaknesses: { weakness: string; count: number }[] };
-    competitorAlerts?: { displayName: string; direction: string; recentMentionRate: number; previousMentionRate: number }[];
-    sourceGapOpportunities?: { domain: string; totalCitations: number; competitorsCited: string[] }[];
-  };
-
-  return (
-    <div>
-      {d.promptOpportunities && d.promptOpportunities.length > 0 && (
-        <>
-          <SubHeading>Prompt Opportunities</SubHeading>
-          {d.promptOpportunities.slice(0, 10).map((p, i) => (
-            <div key={i} className="mb-3">
-              <p className="text-sm font-medium">&ldquo;{p.promptText}&rdquo;</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Brand rank: {p.brandRank !== null ? `#${p.brandRank}` : "Not mentioned"}
-                {p.topCompetitors.length > 0 && ` · Competitors: ${p.topCompetitors.slice(0, 3).map((c) => `${c.displayName} #${c.rank}`).join(", ")}`}
-              </p>
-            </div>
-          ))}
+          <SH3>Top Cited Sources</SH3>
+          <Tbl headers={["Domain", "Citations", "Category"]} rows={s.topDomains.slice(0, 20).map((td) => [td.domain, td.citations, td.category ?? "\u2014"])} />
         </>
       )}
 
-      {d.negativeNarratives?.weaknesses && d.negativeNarratives.weaknesses.length > 0 && (
+      {s.officialSites && s.officialSites.length > 0 && (
         <>
-          <SubHeading>Negative Narratives</SubHeading>
-          {d.negativeNarratives.weaknesses.slice(0, 5).map((w, i) => (
-            <Para key={i}><strong>{w.weakness}</strong> — {w.count} mention{w.count !== 1 ? "s" : ""}</Para>
-          ))}
+          <SH3>Official Website Citations</SH3>
+          <Tbl headers={["Entity", "Domain", "Citations"]} rows={s.officialSites.map((os) => [os.isBrand ? `\u2605 ${os.entityId}` : os.entityId, os.officialDomain, os.citations])} />
         </>
       )}
 
-      {d.competitorAlerts && d.competitorAlerts.length > 0 && (
+      {s.domainsNotCitingBrand && s.domainsNotCitingBrand.length > 0 && (
         <>
-          <SubHeading>Competitor Movement</SubHeading>
-          <DataTable
-            headers={["Competitor", "Direction", "Previous", "Recent"]}
-            rows={d.competitorAlerts.slice(0, 10).map((a) => [
-              a.displayName,
-              a.direction,
-              `${Math.round(a.previousMentionRate * 100)}%`,
-              `${Math.round(a.recentMentionRate * 100)}%`,
-            ])}
-          />
+          <SH3>Sources Not Citing Brand</SH3>
+          <Tbl headers={["Domain", "Citations", "Cited For"]} rows={s.domainsNotCitingBrand.slice(0, 15).map((d) => [d.domain, d.citations, d.competitors.slice(0, 3).map(([id]) => id).join(", ")])} />
         </>
       )}
 
-      {d.sourceGapOpportunities && d.sourceGapOpportunities.length > 0 && (
+      {s.emerging && s.emerging.length > 0 && (
         <>
-          <SubHeading>Source Gaps</SubHeading>
-          <DataTable
-            headers={["Domain", "Citations", "Competitors Cited"]}
-            rows={d.sourceGapOpportunities.slice(0, 10).map((sg) => [
-              sg.domain,
-              sg.totalCitations,
-              sg.competitorsCited.slice(0, 3).join(", "),
-            ])}
-          />
+          <SH3>Emerging Sources</SH3>
+          <Tbl headers={["Domain", "Current", "Previous", "Growth"]} rows={s.emerging.slice(0, 10).map((e) => [e.domain, e.currentCitations, e.previousCitations, `+${e.growthRate}%`])} />
         </>
       )}
     </div>
@@ -394,76 +402,101 @@ function RecommendationsSection({ slug, model, range }: { slug: string; model: s
 
 /* ─── Main Report Page ───────────────────────────────────────────────── */
 
+interface ReportData {
+  hasData: boolean;
+  report?: {
+    meta: { brandSlug: string; brandName: string; model: string; range: number; generatedAt: string };
+    overview: Record<string, unknown> | null;
+    visibility: Record<string, unknown> | null;
+    narrative: Record<string, unknown> | null;
+    landscape: Record<string, unknown> | null;
+    sources: Record<string, unknown> | null;
+  };
+}
+
 function ReportInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
   const range = Number(searchParams.get("range") ?? 90);
   const model = searchParams.get("model") ?? "all";
-  const [ready, setReady] = useState(false);
 
-  // Auto-print after data loads
-  useEffect(() => {
-    if (!ready) return;
-    const timer = setTimeout(() => window.print(), 1500);
-    return () => clearTimeout(timer);
-  }, [ready]);
+  const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
+  const { data, loading, error } = useCachedFetch<ReportData>(`/api/report?${qs}`);
 
-  // Mark ready after initial render + data fetch settle
-  useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 5000);
-    return () => clearTimeout(timer);
-  }, []);
+  if (loading) {
+    return (
+      <div className="max-w-[900px] mx-auto px-8 py-16 text-center">
+        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-gray-400" />
+        <p className="text-sm text-gray-500">Generating full report \u2014 this may take a moment...</p>
+      </div>
+    );
+  }
+
+  if (error || !data?.hasData || !data.report) {
+    return (
+      <div className="max-w-[900px] mx-auto px-8 py-16 text-center">
+        <p className="text-sm text-gray-500">{error ?? "No report data available. Run prompts first."}</p>
+      </div>
+    );
+  }
+
+  const r = data.report;
 
   return (
     <div className="max-w-[900px] mx-auto px-8 py-10 print:px-0 print:py-0 print:max-w-none">
-      {/* Print styles */}
       <style>{`
         @media print {
-          nav, header, .no-print { display: none !important; }
-          body { font-size: 12px; color: #111; }
+          nav, header, .no-print, .print-hide { display: none !important; }
+          body { font-size: 11px; color: #111; }
           h2 { page-break-after: avoid; }
           h3 { page-break-after: avoid; }
-          .print-section { page-break-inside: avoid; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; }
         }
-        @page { margin: 0.75in; }
+        @page { margin: 0.6in; }
       `}</style>
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">{brandName} — AI Visibility Report</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {MODEL_LABELS[model] ?? model} &middot; {range}-day window &middot; Generated {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+      <div className="flex items-center justify-between mb-8 no-print">
+        <div>
+          <h1 className="text-2xl font-bold">{r.meta.brandName} \u2014 AI Visibility Report</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; Generated {new Date(r.meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+          </p>
+        </div>
+        <button
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Print / Save PDF
+        </button>
+      </div>
+
+      <div className="hidden print:block mb-6">
+        <h1 className="text-xl font-bold">{r.meta.brandName} \u2014 AI Visibility Report</h1>
+        <p className="text-xs text-gray-500 mt-1">
+          {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; {new Date(r.meta.generatedAt).toLocaleDateString()}
         </p>
       </div>
 
-      {!ready && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 no-print">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading report data... The print dialog will open automatically.
-        </div>
-      )}
+      <SH>Overview</SH>
+      {r.overview ? <OverviewSection d={r.overview} /> : <Empty label="No overview data available." />}
 
-      <SectionHeading>Overview</SectionHeading>
-      <OverviewSection slug={params.slug} model={model} range={range} />
+      <SH>Visibility</SH>
+      {r.visibility ? <VisibilitySection d={r.visibility} /> : <Empty label="No visibility data available." />}
 
-      <SectionHeading>Visibility</SectionHeading>
-      <VisibilitySection slug={params.slug} model={model} range={range} />
+      <SH>Narrative</SH>
+      {r.narrative ? <NarrativeSection d={r.narrative} /> : <Empty label="No narrative data available." />}
 
-      <SectionHeading>Narrative</SectionHeading>
-      <NarrativeSection slug={params.slug} model={model} range={range} />
+      <SH>Issue Landscape</SH>
+      {r.landscape ? <LandscapeSection d={r.landscape} /> : <Empty label="No landscape data available." />}
 
-      <SectionHeading>Issue Landscape</SectionHeading>
-      <CompetitionSection slug={params.slug} model={model} range={range} />
-
-      <SectionHeading>Sources</SectionHeading>
-      <SourcesSection slug={params.slug} model={model} range={range} />
-
-      <SectionHeading>Recommendations</SectionHeading>
-      <RecommendationsSection slug={params.slug} model={model} range={range} />
+      <SH>Sources</SH>
+      {r.sources ? <SourcesSection d={r.sources} /> : <Empty label="No sources data available." />}
 
       <div className="mt-10 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center print:mt-6">
-        {brandName} AI Visibility Report &middot; {new Date().toLocaleDateString()}
+        {r.meta.brandName} AI Visibility Report &middot; {new Date(r.meta.generatedAt).toLocaleDateString()}
       </div>
     </div>
   );
@@ -471,7 +504,7 @@ function ReportInner() {
 
 export default function ReportsPage() {
   return (
-    <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Generating report...</div>}>
+    <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Loading report...</div>}>
       <ReportInner />
     </Suspense>
   );
