@@ -293,10 +293,20 @@ ${runs.map((r) => `
               const qs = new URLSearchParams({ model, range: String(range) }).toString();
               window.open(`/entity/${params.slug}/reports?${qs}`, "_blank");
             }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Data Report
+          </button>
+          <button
+            onClick={() => {
+              const qs = new URLSearchParams({ model, range: String(range) }).toString();
+              window.open(`/entity/${params.slug}/print?${qs}`, "_blank");
+            }}
             className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <FileText className="h-3.5 w-3.5" />
-            Full Report PDF
+            Print All Tabs
           </button>
         </div>
       </div>
