@@ -1,13 +1,12 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
 import { Printer, Loader2 } from "lucide-react";
 
-// Dynamically import each tab page so they bring their own data fetching
 const OverviewPage = dynamic(() => import("../overview/page"), { ssr: false });
 const VisibilityPage = dynamic(() => import("../visibility/page"), { ssr: false });
 const NarrativePage = dynamic(() => import("../narrative/page"), { ssr: false });
@@ -27,64 +26,90 @@ function SectionDivider({ title }: { title: string }) {
   );
 }
 
+function TabLoading({ label }: { label: string }) {
+  return (
+    <div className="py-8 text-center text-sm text-gray-400">
+      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+      Loading {label}...
+    </div>
+  );
+}
+
+/**
+ * Content-based readiness: polls the DOM for loading indicators.
+ * Only signals ready when no spinners or "Loading..." text remain.
+ */
+function useContentReady(containerRef: React.RefObject<HTMLElement | null>) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 60; // 30 seconds max
+
+    const check = () => {
+      attempts++;
+      const el = containerRef.current;
+      if (!el) {
+        if (attempts < maxAttempts) setTimeout(check, 500);
+        return;
+      }
+
+      // Check for any remaining loading indicators
+      const spinners = el.querySelectorAll(".animate-spin");
+      const loadingText = el.querySelectorAll("[class*='animate-pulse']");
+
+      if (spinners.length === 0 && loadingText.length === 0 && attempts >= 6) {
+        // No spinners, no pulse animations, and at least 3s has passed
+        setReady(true);
+      } else if (attempts < maxAttempts) {
+        setTimeout(check, 500);
+      } else {
+        // Max attempts reached — go ahead anyway
+        setReady(true);
+      }
+    };
+
+    // Start checking after initial render
+    setTimeout(check, 2000);
+  }, [containerRef]);
+
+  return ready;
+}
+
 function PrintInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
   const range = Number(searchParams.get("range") ?? 90);
   const model = searchParams.get("model") ?? "all";
-  const [ready, setReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const ready = useContentReady(containerRef);
+  const [printed, setPrinted] = useState(false);
 
-  // Auto-print after components have had time to load data
+  // Auto-print once content is ready
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 8000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
+    if (!ready || printed) return;
+    setPrinted(true);
     const timer = setTimeout(() => window.print(), 500);
     return () => clearTimeout(timer);
-  }, [ready]);
+  }, [ready, printed]);
 
   return (
-    <div className="print-report">
+    <div ref={containerRef} className="print-report">
       <style>{`
-        /* Print-specific styles */
         @media print {
-          /* Hide app chrome */
           nav, header, [data-tab-nav], .no-print, .print-hide { display: none !important; }
-
-          /* Hide tab-internal sidebars (OnThisPage) */
           .print-report [class*="xl:-ml-"] { margin-left: 0 !important; }
-          .print-report [class*="w-40"][class*="shrink-0"] { display: none !important; }
-
-          /* Hide tab-internal filter dropdowns and toolbar buttons */
+          .print-report [class*="w-40"][class*="shrink-0"]:has(a) { display: none !important; }
           .print-report select { display: none !important; }
           .print-report button:not(.print-keep) { display: none !important; }
-
-          /* Compact spacing */
-          .print-report > div > div { margin-top: 0.5rem !important; }
-
-          /* Page breaks between sections */
           .print-section-break { page-break-before: always; }
           .print-section-break:first-of-type { page-break-before: auto; }
-
-          /* General print cleanup */
           body { font-size: 11px; }
           @page { margin: 0.5in; }
         }
-
-        /* Screen-only: add visual separation */
-        @media screen {
-          .print-report section,
-          .print-report [class*="rounded-xl"] {
-            margin-bottom: 1rem;
-          }
-        }
       `}</style>
 
-      {/* Header - visible on screen and print */}
       <div className="max-w-[1200px] mx-auto px-6 py-6">
         <div className="flex items-center justify-between mb-6 no-print">
           <div>
@@ -105,12 +130,11 @@ function PrintInner() {
               className="print-keep inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Printer className="h-4 w-4" />
-              Print / Save PDF
+              {ready ? "Print / Save PDF" : "Loading..."}
             </button>
           </div>
         </div>
 
-        {/* Print-only header */}
         <div className="hidden print:block mb-4">
           <h1 className="text-xl font-bold">{brandName} — AI Visibility Report</h1>
           <p className="text-xs text-gray-500">
@@ -119,7 +143,6 @@ function PrintInner() {
         </div>
       </div>
 
-      {/* Tab sections */}
       <Suspense fallback={<TabLoading label="Overview" />}>
         <SectionDivider title="Overview" />
         <OverviewPage />
@@ -150,19 +173,9 @@ function PrintInner() {
         <RecommendationsPage />
       </Suspense>
 
-      {/* Footer */}
       <div className="max-w-[1200px] mx-auto px-6 mt-10 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center print:mt-4">
         {brandName} AI Visibility Report · {new Date().toLocaleDateString()}
       </div>
-    </div>
-  );
-}
-
-function TabLoading({ label }: { label: string }) {
-  return (
-    <div className="py-8 text-center text-sm text-gray-400">
-      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-      Loading {label}...
     </div>
   );
 }
