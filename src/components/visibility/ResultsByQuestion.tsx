@@ -110,7 +110,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
 
     // If only one model, go straight to full response
     if (rowModels.length === 1) {
-      openResponse({ promptText, model: rowModels[0], brandName });
+      openResponse({ promptText, model: rowModels[0], brandName, scopeMode: "query_universe" });
       return;
     }
 
@@ -126,7 +126,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
     if (!previewData[promptText]) {
       setPreviewLoading(promptText);
       try {
-        const params = new URLSearchParams({ brandSlug, promptText });
+        const params = new URLSearchParams({ brandSlug, promptText, scopeMode: "query_universe" });
         const res = await fetch(`/api/response-detail?${params}`);
         if (res.ok) {
           const data = await res.json();
@@ -497,7 +497,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                                   className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3.5 text-left hover:border-primary/40 hover:bg-muted/30 transition-colors group"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    openResponse({ promptText: row.promptText, model: preview.model, brandName });
+                                    openResponse({ promptText: row.promptText, model: preview.model, brandName, scopeMode: "query_universe" });
                                   }}
                                 >
                                   <div className="shrink-0 mt-0.5">

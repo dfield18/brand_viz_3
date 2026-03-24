@@ -363,7 +363,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
     if (!previewData[prompt]) {
       setPreviewLoading(prompt);
       try {
-        const params = new URLSearchParams({ brandSlug, promptText: prompt });
+        const params = new URLSearchParams({ brandSlug, promptText: prompt, scopeMode: "content" });
         if (model !== "all") params.set("model", model);
         const res = await fetch(`/api/response-detail?${params}`);
         if (res.ok) {
@@ -712,7 +712,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
                               className="w-full flex items-start gap-2 rounded-lg border border-border/60 bg-card p-2.5 text-left hover:border-primary/40 hover:bg-muted/30 transition-colors group"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openResponse({ promptText: selectedPrompt, model: preview.model, brandName });
+                                openResponse({ promptText: selectedPrompt, model: preview.model, brandName, scopeMode: "content" });
                               }}
                             >
                               <div className="shrink-0 mt-0.5">

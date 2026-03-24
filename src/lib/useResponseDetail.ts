@@ -7,6 +7,8 @@ interface PromptQuery {
   promptText: string;
   model?: string;
   brandName?: string;
+  /** "content" for narrative previews, "query_universe" for visibility drilldowns */
+  scopeMode?: "content" | "query_universe";
 }
 
 interface PositionQuery {
@@ -15,6 +17,8 @@ interface PositionQuery {
   positionMax: number | null;
   positionLabel: string;
   brandName?: string;
+  /** "content" for narrative previews, "query_universe" for visibility drilldowns */
+  scopeMode?: "content" | "query_universe";
 }
 
 /**
@@ -39,6 +43,9 @@ export function useResponseDetail(brandSlug: string) {
         });
         if (opts.model && opts.model !== "all") {
           params.set("model", opts.model);
+        }
+        if (opts.scopeMode) {
+          params.set("scopeMode", opts.scopeMode);
         }
 
         const res = await fetch(`/api/response-detail?${params}`);
@@ -86,6 +93,9 @@ export function useResponseDetail(brandSlug: string) {
         });
         if (opts.positionMax !== null) {
           params.set("positionMax", String(opts.positionMax));
+        }
+        if (opts.scopeMode) {
+          params.set("scopeMode", opts.scopeMode);
         }
 
         const res = await fetch(`/api/response-detail?${params}`);

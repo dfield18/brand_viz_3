@@ -105,7 +105,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
                   <tr
                     key={i}
                     className={`border-b border-border/50 last:border-0 ${brandSlug ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
-                    onClick={brandSlug ? () => openResponse({ promptText: win.prompt, brandName }) : undefined}
+                    onClick={brandSlug ? () => openResponse({ promptText: win.prompt, brandName, scopeMode: "query_universe" }) : undefined}
                   >
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-1.5">
@@ -151,7 +151,7 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
                   <tr
                     key={i}
                     className={`border-b border-border/50 last:border-0 ${brandSlug ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
-                    onClick={brandSlug ? () => openResponse({ promptText: p.prompt, brandName }) : undefined}
+                    onClick={brandSlug ? () => openResponse({ promptText: p.prompt, brandName, scopeMode: "query_universe" }) : undefined}
                   >
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-1.5">

@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity, type BrandScopeRun, type BrandScopeIdentity } from "@/lib/visibility/brandScope";
+
+type ScopeMode = "content" | "query_universe";
+
+function applyScope<T extends BrandScopeRun>(runs: T[], brand: BrandScopeIdentity, mode: ScopeMode): T[] {
+  return mode === "content"
+    ? filterRunsToBrandScope(runs, brand)
+    : filterRunsToBrandQueryUniverse(runs, brand);
+}
 
 /**
  * GET /api/response-detail?brandSlug=...&promptText=...&model=...
@@ -14,6 +22,7 @@ export async function GET(req: NextRequest) {
   const runId = req.nextUrl.searchParams.get("runId");
   const promptText = req.nextUrl.searchParams.get("promptText");
   const model = req.nextUrl.searchParams.get("model");
+  const scopeModeParam = req.nextUrl.searchParams.get("scopeMode") as ScopeMode | null;
   const positionMin = req.nextUrl.searchParams.get("positionMin");
   const positionMax = req.nextUrl.searchParams.get("positionMax");
 
@@ -93,7 +102,9 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const scopedRuns = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
+    // Default prompt-text mode to content scope (qualitative previews)
+    const promptScope = scopeModeParam ?? "content";
+    const scopedRuns = applyScope(rawRuns, brandIdentity, promptScope);
 
     return respondWith(brandName, scopedRuns.slice(0, 4), brandIndustry);
   }
@@ -120,7 +131,9 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const scopedPosRuns = filterRunsToBrandQueryUniverse(rawPosRuns, brandIdentity);
+    // Default position-range mode to query_universe scope (visibility drilldowns)
+    const posScope = scopeModeParam ?? "query_universe";
+    const scopedPosRuns = applyScope(rawPosRuns, brandIdentity, posScope);
 
     // Filter by position range client-side
     if (minPos !== null) {

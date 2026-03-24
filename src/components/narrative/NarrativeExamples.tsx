@@ -294,7 +294,7 @@ export function NarrativeExamples({ examples, brandSlug, brandName }: NarrativeE
                 if (ex.runId) {
                   openByRunId(ex.runId, { brandName });
                 } else {
-                  openResponse({ promptText: ex.prompt, model: ex.model, brandName });
+                  openResponse({ promptText: ex.prompt, model: ex.model, brandName, scopeMode: "content" });
                 }
               } : undefined}
             >

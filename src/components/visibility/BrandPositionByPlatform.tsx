@@ -180,7 +180,7 @@ export function BrandPositionByPlatform({ promptPositions, modelBreakdown, brand
                           title={item.promptText}
                           onClick={
                             brandSlug
-                              ? () => openResponse({ promptText: item.promptText, model, brandName })
+                              ? () => openResponse({ promptText: item.promptText, model, brandName, scopeMode: "query_universe" })
                               : undefined
                           }
                         />
