@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { useCachedFetch } from "@/lib/useCachedFetch";
+import { Suspense, useEffect, useState } from "react";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
 import { Loader2, Printer } from "lucide-react";
@@ -31,7 +30,7 @@ function KV({ label, value }: { label: string; value: string | number | null | u
 }
 
 function Tbl({ headers, rows }: { headers: string[]; rows: (string | number | null)[][] }) {
-  if (rows.length === 0) return <P>No data available.</P>;
+  if (!rows || rows.length === 0) return <P>No data available.</P>;
   return (
     <table className="w-full text-xs border-collapse mb-4">
       <thead>
@@ -421,19 +420,107 @@ function ReportInner() {
   const range = Number(searchParams.get("range") ?? 90);
   const model = searchParams.get("model") ?? "all";
 
-  const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
-  const { data, loading, error } = useCachedFetch<ReportData>(`/api/report?${qs}`);
+  const [report, setReport] = useState<ReportData["report"] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
+        const [overviewRes, visibilityRes, narrativeRes, competitionRes, sourcesRes] = await Promise.all([
+          fetch(`/api/overview?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/visibility?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/narrative?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/competition?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/sources?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+        ]);
+
+        if (cancelled) return;
+
+        const r: ReportData["report"] = {
+          meta: {
+            brandSlug: params.slug,
+            brandName: brandName,
+            model,
+            range,
+            generatedAt: new Date().toISOString(),
+          },
+          overview: overviewRes?.hasData ? {
+            aiSummary: overviewRes.aiSummary ?? null,
+            scorecard: {
+              brandRecall: overviewRes.visibilityKpis?.overallMentionRate ?? null,
+              shareOfVoice: overviewRes.visibilityKpis?.shareOfVoice ?? null,
+              topResultRate: overviewRes.visibilityKpis?.firstMentionRate ?? null,
+              avgPosition: overviewRes.visibilityKpis?.avgRankScore ?? null,
+            },
+            sentimentSplit: overviewRes.sentimentSplit ?? null,
+            topFrames: overviewRes.overview?.topFrames ?? [],
+            topSourceType: overviewRes.topSourceType ?? null,
+            modelComparison: overviewRes.overview?.modelComparison ?? [],
+          } : null,
+          visibility: visibilityRes?.hasData ? {
+            scorecard: {
+              brandRecall: visibilityRes.visibility?.overallMentionRate ?? null,
+              shareOfVoice: visibilityRes.visibility?.shareOfVoice ?? null,
+              avgPosition: visibilityRes.visibility?.avgRankScore ?? null,
+              topResultRate: visibilityRes.visibility?.firstMentionRate ?? null,
+            },
+            rankDistribution: visibilityRes.visibility?.rankDistribution ?? [],
+            modelBreakdown: visibilityRes.visibility?.modelBreakdown ?? [],
+            visibilityRanking: visibilityRes.visibility?.visibilityRanking ?? [],
+            resultsByQuestion: visibilityRes.visibility?.resultsByQuestion ?? [],
+            opportunityPrompts: visibilityRes.visibility?.opportunityPrompts ?? [],
+          } : null,
+          narrative: narrativeRes?.hasData ? {
+            scorecard: {
+              sentimentSplit: narrativeRes.narrative?.sentimentSplit ?? null,
+            },
+            frames: narrativeRes.narrative?.frames ?? [],
+            strengths: narrativeRes.narrative?.strengths ?? [],
+            weaknesses: narrativeRes.narrative?.weaknesses ?? [],
+            themes: narrativeRes.narrative?.themes ?? [],
+            examples: narrativeRes.narrative?.examples ?? [],
+            sentimentByQuestion: narrativeRes.narrative?.sentimentByQuestion ?? [],
+          } : null,
+          landscape: competitionRes?.hasData ? {
+            competitors: competitionRes.competition?.competitors ?? [],
+            winLoss: competitionRes.competition?.winLoss ?? null,
+            coMentions: competitionRes.competition?.coMentions ?? [],
+          } : null,
+          sources: sourcesRes?.hasData ? {
+            summary: sourcesRes.sources?.summary ?? null,
+            topDomains: sourcesRes.sources?.topDomains ?? [],
+            officialSites: sourcesRes.sources?.officialSites ?? [],
+            domainsNotCitingBrand: sourcesRes.sources?.domainsNotCitingBrand ?? [],
+            emerging: sourcesRes.sources?.emerging ?? [],
+          } : null,
+        };
+
+        setReport(r);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load report data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [params.slug, model, range, brandName]);
 
   if (loading) {
     return (
       <div className="max-w-[900px] mx-auto px-8 py-16 text-center">
         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-gray-400" />
-        <p className="text-sm text-gray-500">Generating full report \u2014 this may take a moment...</p>
+        <p className="text-sm text-gray-500">Generating full report — this may take a moment...</p>
       </div>
     );
   }
 
-  if (error || !data?.hasData || !data.report) {
+  if (error || !report) {
     return (
       <div className="max-w-[900px] mx-auto px-8 py-16 text-center">
         <p className="text-sm text-gray-500">{error ?? "No report data available. Run prompts first."}</p>
@@ -441,7 +528,7 @@ function ReportInner() {
     );
   }
 
-  const r = data.report;
+  const r = report;
 
   return (
     <div className="max-w-[900px] mx-auto px-8 py-10 print:px-0 print:py-0 print:max-w-none">
