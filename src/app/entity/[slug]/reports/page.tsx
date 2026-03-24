@@ -64,6 +64,7 @@ function pos(v: number | null | undefined) {
 /* ─── Section Renderers ──────────────────────────────────────────────── */
 
 function OverviewSection({ d }: { d: Record<string, unknown> }) {
+  if (!d) return <Empty label="No overview data available." />;
   const o = d as {
     aiSummary?: string | null;
     scorecard?: { brandRecall: number | null; shareOfVoice: number | null; topResultRate: number | null; avgPosition: number | null };
@@ -129,6 +130,7 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
 }
 
 function VisibilitySection({ d }: { d: Record<string, unknown> }) {
+  if (!d) return <Empty label="No visibility data available." />;
   const v = d as {
     scorecard?: { brandRecall: number | null; shareOfVoice: number | null; avgPosition: number | null; topResultRate: number | null };
     rankDistribution?: { rank: number; count: number; percentage: number }[];
@@ -186,7 +188,7 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
           <Tbl
             headers={["Prompt", "Platform", "Visibility", "Avg Position", "SoV"]}
             rows={v.resultsByQuestion.slice(0, 20).map((r) => [
-              r.promptText.length > 60 ? r.promptText.slice(0, 60) + "..." : r.promptText,
+              (r.promptText ?? "").length > 60 ? (r.promptText ?? "").slice(0, 60) + "..." : (r.promptText ?? ""),
               MODEL_LABELS[r.model] ?? r.model,
               `${r.aiVisibility}%`,
               r.avgPosition != null ? `#${r.avgPosition.toFixed(1)}` : "\u2014",
@@ -199,7 +201,7 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
       {v.opportunityPrompts && v.opportunityPrompts.length > 0 && (
         <>
           <SH3>Opportunity Prompts (Brand Missing)</SH3>
-          <Tbl headers={["Prompt", "Competitors Present"]} rows={v.opportunityPrompts.slice(0, 10).map((p) => [p.prompt, p.competitors.slice(0, 3).join(", ")])} />
+          <Tbl headers={["Prompt", "Competitors Present"]} rows={v.opportunityPrompts.slice(0, 10).map((p) => [p.prompt, (p.competitors ?? []).slice(0, 3).join(", ")])} />
         </>
       )}
     </div>
@@ -207,6 +209,7 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
 }
 
 function NarrativeSection({ d }: { d: Record<string, unknown> }) {
+  if (!d) return <Empty label="No narrative data available." />;
   const n = d as {
     scorecard?: { sentimentSplit: { positive: number; neutral: number; negative: number } | null };
     frames?: { frame: string; percentage: number }[];
@@ -274,7 +277,7 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
           <Tbl
             headers={["Prompt", "Sentiment", "Mention Rate", "Consistency"]}
             rows={n.sentimentByQuestion.slice(0, 15).map((q) => [
-              q.prompt.length > 50 ? q.prompt.slice(0, 50) + "..." : q.prompt,
+              (q.prompt ?? "").length > 50 ? (q.prompt ?? "").slice(0, 50) + "..." : (q.prompt ?? ""),
               q.sentiment, `${q.mentionRate}%`, `${q.consistency}%`,
             ])}
           />
@@ -285,6 +288,7 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
 }
 
 function LandscapeSection({ d }: { d: Record<string, unknown> }) {
+  if (!d) return <Empty label="No landscape data available." />;
   const c = d as {
     competitors?: { name: string; mentionRate: number; mentionShare: number; avgRank: number | null; rank1Rate: number; isBrand: boolean }[];
     winLoss?: { byCompetitor: { name: string; wins: number; losses: number }[]; topLosses: { prompt: string; competitorName: string; competitorRank: number; brandRank: number | null }[] };
@@ -326,7 +330,7 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
           <Tbl
             headers={["Prompt", "Competitor", "Their Rank", "Brand Rank"]}
             rows={c.winLoss.topLosses.slice(0, 10).map((l) => [
-              l.prompt.length > 50 ? l.prompt.slice(0, 50) + "..." : l.prompt,
+              (l.prompt ?? "").length > 50 ? (l.prompt ?? "").slice(0, 50) + "..." : (l.prompt ?? ""),
               l.competitorName, `#${l.competitorRank}`,
               l.brandRank != null ? `#${l.brandRank}` : "Not mentioned",
             ])}
@@ -348,6 +352,7 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
 }
 
 function SourcesSection({ d }: { d: Record<string, unknown> }) {
+  if (!d) return <Empty label="No sources data available." />;
   const s = d as {
     summary?: { totalCitations: number; uniqueDomains: number; citationsPerResponse: number; pctResponsesWithCitations: number };
     topDomains?: { domain: string; citations: number; category?: string }[];
@@ -385,7 +390,7 @@ function SourcesSection({ d }: { d: Record<string, unknown> }) {
       {s.domainsNotCitingBrand && s.domainsNotCitingBrand.length > 0 && (
         <>
           <SH3>Sources Not Citing Brand</SH3>
-          <Tbl headers={["Domain", "Citations", "Cited For"]} rows={s.domainsNotCitingBrand.slice(0, 15).map((d) => [d.domain, d.citations, d.competitors.slice(0, 3).map(([id]) => id).join(", ")])} />
+          <Tbl headers={["Domain", "Citations", "Cited For"]} rows={s.domainsNotCitingBrand.slice(0, 15).map((d) => [d.domain, d.citations, (d.competitors ?? []).slice(0, 3).map(([id]) => id).join(", ")])} />
         </>
       )}
 
