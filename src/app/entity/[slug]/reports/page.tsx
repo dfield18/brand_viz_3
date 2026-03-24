@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
 import { Loader2, Printer } from "lucide-react";
+import { sentimentLabel, stabilityLabel } from "@/lib/overview/modelComparisonDisplay";
 
 /* ─── Shared Renderers ───────────────────────────────────────────────── */
 
@@ -72,7 +73,7 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
     kpiDeltas?: { mentionRate: number; shareOfVoice: number; avgRank: number; firstMentionRate: number } | null;
     topFrames?: { frame: string; percentage: number }[];
     topSourceType?: { category: string; count: number; totalSources: number } | null;
-    modelComparison?: { model: string; mentionRate: number; avgRank: number | null; sentiment?: number }[];
+    modelComparison?: { model: string; mentionRate: number; avgRank: number | null; sentiment?: number; sentimentSplit?: { positive: number; neutral: number; negative: number }; narrativeStability?: number }[];
     quotes?: { quote: string; model: string; context: string }[];
     competitorAlerts?: { displayName: string; direction: string; recentMentionRate: number; previousMentionRate: number; mentionRateChange: number }[];
   };
@@ -130,12 +131,13 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
         <>
           <SH3>By AI Platform</SH3>
           <Tbl
-            headers={["Platform", "Brand Recall", "Avg Position", "Sentiment"]}
+            headers={["Platform", "Brand Recall", "Avg Sentiment", "Avg Position", "Message Consistency"]}
             rows={o.modelComparison.map((m) => [
               MODEL_LABELS[m.model] ?? m.model,
               pct(m.mentionRate),
+              sentimentLabel(m.sentimentSplit),
               m.avgRank != null ? pos(m.avgRank) : "\u2014",
-              m.sentiment != null ? `${m.sentiment}%` : "\u2014",
+              m.narrativeStability != null ? stabilityLabel(m.narrativeStability) : "\u2014",
             ])}
           />
         </>
