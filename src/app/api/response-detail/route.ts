@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 /**
  * GET /api/response-detail?brandSlug=...&promptText=...&model=...
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const scopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
+    const scopedRuns = filterRunsToBrandQueryUniverse(rawRuns, brandIdentity);
 
     return respondWith(brandName, scopedRuns.slice(0, 4), brandIndustry);
   }
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
         prompt: { select: { text: true, cluster: true, intent: true } },
       },
     });
-    const scopedPosRuns = filterRunsToBrandScope(rawPosRuns, brandIdentity);
+    const scopedPosRuns = filterRunsToBrandQueryUniverse(rawPosRuns, brandIdentity);
 
     // Filter by position range client-side
     if (minPos !== null) {
