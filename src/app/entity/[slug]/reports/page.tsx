@@ -69,10 +69,14 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
     aiSummary?: string | null;
     scorecard?: { brandRecall: number | null; shareOfVoice: number | null; topResultRate: number | null; avgPosition: number | null };
     sentimentSplit?: { positive: number; neutral: number; negative: number } | null;
+    kpiDeltas?: { mentionRate: number; shareOfVoice: number; avgRank: number; firstMentionRate: number } | null;
     topFrames?: { frame: string; percentage: number }[];
     topSourceType?: { category: string; count: number; totalSources: number } | null;
     modelComparison?: { model: string; mentionRate: number; avgRank: number | null; sentiment?: number }[];
   };
+
+  // Find declining metrics from kpiDeltas
+  const declining = o.kpiDeltas ? Object.entries(o.kpiDeltas).filter(([, v]) => typeof v === "number" && v < 0) : [];
 
   return (
     <div>
@@ -85,6 +89,15 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
           <KV label="Share of Voice" value={pct(o.scorecard.shareOfVoice)} />
           <KV label="Top Result Rate" value={pct(o.scorecard.topResultRate)} />
           <KV label="Avg Position" value={pos(o.scorecard.avgPosition)} />
+        </>
+      )}
+
+      {declining.length > 0 && (
+        <>
+          <SH3>Declining Metrics</SH3>
+          {declining.map(([key, val]) => (
+            <P key={key}>{key === "mentionRate" ? "Mention Rate" : key === "shareOfVoice" ? "Share of Voice" : key === "avgRank" ? "Avg Position" : key === "firstMentionRate" ? "Top Result Rate" : key}: {typeof val === "number" ? val.toFixed(1) : val} pts vs prior month</P>
+          ))}
         </>
       )}
 
@@ -233,26 +246,48 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
 function NarrativeSection({ d }: { d: Record<string, unknown> }) {
   if (!d) return <Empty label="No narrative data available." />;
   const n = d as {
-    scorecard?: { sentimentSplit: { positive: number; neutral: number; negative: number } | null };
-    frames?: { frame: string; percentage: number }[];
+    scorecard?: { sentimentSplit: { positive: number; neutral: number; negative: number } | null; polarization?: string | null; hedgingRate?: number | null };
+    frames?: { frame: string; percentage: number; byModel?: Record<string, number> }[];
     sentimentTrend?: { date: string; model: string; positive: number }[];
     frameTrend?: Record<string, string | number>[];
     strengths?: { text: string; count: number }[];
     weaknesses?: { text: string; count: number }[];
     examples?: { excerpt: string; model: string; matchedFrame: string }[];
+    drift?: { emerging: string[]; declining: string[] } | null;
+    narrativeDeltas?: { sentimentPositive: number; confidence: number } | null;
     themes?: { label: string; count: number; pct: number }[];
     sentimentByQuestion?: { prompt: string; sentiment: string; mentionRate: number; consistency: number }[];
   };
 
   return (
     <div>
+      <SH3>Narrative Scorecard</SH3>
       {n.scorecard?.sentimentSplit && (
         <>
-          <SH3>Sentiment Split</SH3>
           <KV label="Positive" value={pct(n.scorecard.sentimentSplit.positive)} />
           <KV label="Neutral" value={pct(n.scorecard.sentimentSplit.neutral)} />
           <KV label="Negative" value={pct(n.scorecard.sentimentSplit.negative)} />
         </>
+      )}
+      {n.scorecard?.polarization && <KV label="Polarization" value={n.scorecard.polarization} />}
+      {n.scorecard?.hedgingRate != null && <KV label="Model Confidence" value={`${100 - n.scorecard.hedgingRate}%`} />}
+      {n.frames && n.frames.length > 0 && (() => {
+        // Platform consistency: how many models agree on the top frame
+        const topFrame = n.frames[0];
+        const byModel = topFrame?.byModel ?? {};
+        const modelCount = Object.values(byModel).filter((v) => v > 0).length;
+        const totalModels = Object.keys(byModel).length;
+        if (totalModels > 0) {
+          return <KV label="Platform Consistency" value={`${Math.round((modelCount / totalModels) * 100)}%`} />;
+        }
+        return null;
+      })()}
+
+      {n.narrativeDeltas && (n.narrativeDeltas.sentimentPositive !== 0 || n.narrativeDeltas.confidence !== 0) && (
+        <P><em>
+          {n.narrativeDeltas.sentimentPositive !== 0 && `Sentiment ${n.narrativeDeltas.sentimentPositive > 0 ? "+" : ""}${n.narrativeDeltas.sentimentPositive} pts vs prior month. `}
+          {n.narrativeDeltas.confidence !== 0 && `Confidence ${n.narrativeDeltas.confidence > 0 ? "+" : ""}${n.narrativeDeltas.confidence} pts vs prior month.`}
+        </em></P>
       )}
 
       {(() => {
@@ -333,6 +368,14 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
           />
         </>
       )}
+
+      {n.drift && ((n.drift.emerging ?? []).length > 0 || (n.drift.declining ?? []).length > 0) && (
+        <>
+          <SH3>Emerging & Declining Topics</SH3>
+          {(n.drift.emerging ?? []).length > 0 && <P><strong>Emerging:</strong> {(n.drift.emerging ?? []).join(", ")}</P>}
+          {(n.drift.declining ?? []).length > 0 && <P><strong>Declining:</strong> {(n.drift.declining ?? []).join(", ")}</P>}
+        </>
+      )}
     </div>
   );
 }
@@ -340,15 +383,31 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
 function LandscapeSection({ d }: { d: Record<string, unknown> }) {
   if (!d) return <Empty label="No landscape data available." />;
   const c = d as {
+    scope?: { totalResponses: number; entitiesTracked: number } | null;
     competitors?: { name: string; mentionRate: number; mentionShare: number; avgRank: number | null; rank1Rate: number; isBrand: boolean }[];
+    fragmentation?: number | null;
     winLoss?: { byCompetitor: { name: string; wins: number; losses: number }[]; topLosses: { prompt: string; competitorName: string; competitorRank: number; brandRank: number | null }[] };
     coMentions?: { entityA: string; entityB: string; coMentionCount: number; coMentionRate: number }[];
     competitiveTrend?: { date: string; mentionRate: Record<string, number>; mentionShare: Record<string, number> }[];
     sentimentTrend?: { date: string; sentiment: Record<string, number> }[];
+    prominenceShare?: { entityId: string; name: string; mentionRate: number; mentionShare: number; isBrand: boolean }[];
   };
+
+  // Compute win rate from byCompetitor
+  const brandWins = (c.winLoss?.byCompetitor ?? []).reduce((s, w) => s + w.wins, 0);
+  const brandTotal = (c.winLoss?.byCompetitor ?? []).reduce((s, w) => s + w.wins + w.losses, 0);
 
   return (
     <div>
+      {(c.scope || c.fragmentation != null) && (
+        <>
+          <SH3>Landscape Scorecard</SH3>
+          {c.scope && <KV label="Competitors Tracked" value={c.scope.entitiesTracked} />}
+          {c.fragmentation != null && <KV label="Market Fragmentation" value={c.fragmentation} />}
+          {brandTotal > 0 && <KV label="Win Rate" value={`${Math.round((brandWins / brandTotal) * 100)}%`} />}
+        </>
+      )}
+
       {c.competitors && c.competitors.length > 0 && (
         <>
           <SH3>Competitive Landscape</SH3>
@@ -400,6 +459,36 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
         </>
       )}
 
+      {c.prominenceShare && c.prominenceShare.length > 0 && (
+        <>
+          <SH3>Who Gets Mentioned vs Who Gets Praised</SH3>
+          <Tbl
+            headers={["Entity", "Mention Rate", "Share of Voice"]}
+            rows={c.prominenceShare.slice(0, 10).map((p) => [
+              p.isBrand ? `\u2605 ${p.name}` : p.name,
+              `${p.mentionRate}%`,
+              `${p.mentionShare.toFixed(1)}%`,
+            ])}
+          />
+        </>
+      )}
+
+      {(() => {
+        const st = c.sentimentTrend ?? [];
+        if (st.length <= 1) return null;
+        const entities = Object.keys(st[0]?.sentiment ?? {}).slice(0, 5);
+        if (entities.length === 0) return null;
+        return (
+          <>
+            <SH3>Sentiment by Brand Over Time</SH3>
+            <Tbl
+              headers={["Date", ...entities]}
+              rows={st.map((t) => [t.date, ...entities.map((e) => `${(t.sentiment?.[e] ?? 0)}%`)])}
+            />
+          </>
+        );
+      })()}
+
       {(() => {
         const ct = c.competitiveTrend ?? [];
         if (ct.length <= 1) return null;
@@ -423,11 +512,12 @@ function SourcesSection({ d }: { d: Record<string, unknown> }) {
   if (!d) return <Empty label="No sources data available." />;
   const s = d as {
     summary?: { totalCitations: number; uniqueDomains: number; citationsPerResponse: number; pctResponsesWithCitations: number };
-    topDomains?: { domain: string; citations: number; category?: string }[];
+    topDomains?: { domain: string; citations: number; responses?: number; category?: string; avgRankWhenCited?: number | null; rank1RateWhenCited?: number | null; firstSeen?: string; lastSeen?: string }[];
     officialSites?: { entityId: string; isBrand: boolean; officialDomain: string; citations: number }[];
     domainsNotCitingBrand?: { domain: string; citations: number; competitors: [string, number][] }[];
     emerging?: { domain: string; currentCitations: number; previousCitations: number; growthRate: number }[];
     domainOverTime?: Record<string, string | number>[];
+    crossCitation?: { domain: string; entityCounts: Record<string, number> }[];
   };
 
   return (
@@ -444,8 +534,20 @@ function SourcesSection({ d }: { d: Record<string, unknown> }) {
 
       {s.topDomains && s.topDomains.length > 0 && (
         <>
-          <SH3>Top Cited Sources</SH3>
-          <Tbl headers={["Domain", "Citations", "Category"]} rows={s.topDomains.slice(0, 20).map((td) => [td.domain, td.citations, td.category ?? "\u2014"])} />
+          <SH3>All Sources</SH3>
+          <Tbl
+            headers={["Domain", "Citations", "Responses", "Category", "Avg Rank", "Top Result", "First Seen", "Last Seen"]}
+            rows={s.topDomains.slice(0, 25).map((td) => [
+              td.domain,
+              td.citations,
+              td.responses ?? "\u2014",
+              td.category ?? "\u2014",
+              td.avgRankWhenCited != null ? `#${td.avgRankWhenCited.toFixed(1)}` : "\u2014",
+              td.rank1RateWhenCited != null ? `${td.rank1RateWhenCited}%` : "\u2014",
+              td.firstSeen ?? "\u2014",
+              td.lastSeen ?? "\u2014",
+            ])}
+          />
         </>
       )}
 
@@ -481,6 +583,25 @@ function SourcesSection({ d }: { d: Record<string, unknown> }) {
             <Tbl
               headers={["Date", ...domains.slice(0, 6)]}
               rows={dot.map((row) => [String(row.date ?? ""), ...domains.slice(0, 6).map((d) => String(row[d] ?? 0))])}
+            />
+          </>
+        );
+      })()}
+
+      {s.crossCitation && s.crossCitation.length > 0 && (() => {
+        const entities = new Set<string>();
+        for (const row of s.crossCitation!) for (const id of Object.keys(row.entityCounts ?? {})) entities.add(id);
+        const entityList = [...entities].slice(0, 6);
+        if (entityList.length === 0) return null;
+        return (
+          <>
+            <SH3>Source Citation Matrix</SH3>
+            <Tbl
+              headers={["Domain", ...entityList]}
+              rows={(s.crossCitation ?? []).slice(0, 15).map((cc) => [
+                cc.domain,
+                ...entityList.map((e) => (cc.entityCounts ?? {})[e] ?? 0),
+              ])}
             />
           </>
         );
@@ -548,6 +669,7 @@ function ReportInner() {
               avgPosition: overviewRes.visibilityKpis?.avgRankScore ?? null,
             },
             sentimentSplit: overviewRes.sentimentSplit ?? null,
+            kpiDeltas: overviewRes.kpiDeltas ?? null,
             topFrames: overviewRes.overview?.topFrames ?? [],
             topSourceType: overviewRes.topSourceType ?? null,
             modelComparison: overviewRes.overview?.modelComparison ?? [],
@@ -569,6 +691,8 @@ function ReportInner() {
           narrative: narrativeRes?.hasData ? {
             scorecard: {
               sentimentSplit: narrativeRes.narrative?.sentimentSplit ?? null,
+              polarization: narrativeRes.narrative?.polarization ?? null,
+              hedgingRate: narrativeRes.narrative?.hedgingRate ?? null,
             },
             frames: narrativeRes.narrative?.frames ?? [],
             sentimentTrend: narrativeRes.narrative?.sentimentTrend ?? [],
@@ -578,13 +702,19 @@ function ReportInner() {
             themes: narrativeRes.narrative?.themes ?? [],
             examples: narrativeRes.narrative?.examples ?? [],
             sentimentByQuestion: narrativeRes.narrative?.sentimentByQuestion ?? [],
+            drift: narrativeRes.narrative?.drift ?? null,
+            narrativeDeltas: narrativeRes.narrativeDeltas ?? null,
           } : null,
           landscape: competitionRes?.hasData ? {
+            scope: competitionRes.competition?.scope ?? null,
             competitors: competitionRes.competition?.competitors ?? [],
+            fragmentation: competitionRes.competition?.fragmentation ?? null,
             winLoss: competitionRes.competition?.winLoss ?? null,
             coMentions: competitionRes.competition?.coMentions ?? [],
             competitiveTrend: competitionRes.competition?.competitiveTrend ?? [],
             sentimentTrend: competitionRes.competition?.sentimentTrend ?? [],
+            prominenceShare: competitionRes.competition?.prominenceShare ?? [],
+            competitorNarratives: competitionRes.competition?.competitorNarratives ?? [],
           } : null,
           sources: sourcesRes?.hasData ? {
             summary: sourcesRes.sources?.summary ?? null,
@@ -593,6 +723,7 @@ function ReportInner() {
             domainsNotCitingBrand: sourcesRes.sources?.domainsNotCitingBrand ?? [],
             emerging: sourcesRes.sources?.emerging ?? [],
             domainOverTime: sourcesRes.sources?.domainOverTime ?? [],
+            crossCitation: sourcesRes.sources?.crossCitation ?? [],
           } : null,
         };
 
