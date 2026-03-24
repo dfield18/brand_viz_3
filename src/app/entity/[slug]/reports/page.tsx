@@ -73,6 +73,8 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
     topFrames?: { frame: string; percentage: number }[];
     topSourceType?: { category: string; count: number; totalSources: number } | null;
     modelComparison?: { model: string; mentionRate: number; avgRank: number | null; sentiment?: number }[];
+    quotes?: { quote: string; model: string; context: string }[];
+    competitorAlerts?: { displayName: string; direction: string; recentMentionRate: number; previousMentionRate: number; mentionRateChange: number }[];
   };
 
   // Find declining metrics from kpiDeltas
@@ -138,6 +140,34 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
           />
         </>
       )}
+
+      {o.quotes && o.quotes.length > 0 && (
+        <>
+          <SH3>What AI Is Saying</SH3>
+          {o.quotes.map((q, i) => (
+            <div key={i} className="mb-3 pl-3 border-l-2 border-gray-300">
+              <p className="text-sm text-gray-700 italic">&ldquo;{q.quote}&rdquo;</p>
+              <p className="text-xs text-gray-500 mt-1">{MODEL_LABELS[q.model] ?? q.model} &middot; {q.context}</p>
+            </div>
+          ))}
+        </>
+      )}
+
+      {o.competitorAlerts && o.competitorAlerts.length > 0 && (
+        <>
+          <SH3>Competitor Movement</SH3>
+          <Tbl
+            headers={["Competitor", "Direction", "Previous", "Recent", "Change"]}
+            rows={o.competitorAlerts.map((a) => [
+              a.displayName,
+              a.direction,
+              `${Math.round((a.previousMentionRate ?? 0) * 100)}%`,
+              `${Math.round((a.recentMentionRate ?? 0) * 100)}%`,
+              `${a.mentionRateChange > 0 ? "+" : ""}${Math.round((a.mentionRateChange ?? 0) * 100)} pts`,
+            ])}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -152,6 +182,9 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
     visibilityRanking?: { entityId: string; name: string; score: number; isBrand: boolean }[];
     resultsByQuestion?: { promptText: string; model: string; aiVisibility: number; avgPosition: number | null; shareOfVoice: number }[];
     opportunityPrompts?: { prompt: string; competitorCount: number; competitors: string[] }[];
+    worstPerformingPrompts?: { prompt: string; rank: number | null; competitors: string[] }[];
+    intentSplit?: { intent: string; percentage: number }[];
+    clusterBreakdown?: { cluster: string; mentionRate: number; avgRank: number | null }[];
   };
 
   // Aggregate trend to "all" model/prompt only for the summary table
@@ -239,6 +272,41 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
           <Tbl headers={["Prompt", "Competitors Present"]} rows={v.opportunityPrompts.slice(0, 10).map((p) => [p.prompt, (p.competitors ?? []).slice(0, 3).join(", ")])} />
         </>
       )}
+
+      {v.worstPerformingPrompts && v.worstPerformingPrompts.length > 0 && (
+        <>
+          <SH3>Worst Performing Prompts</SH3>
+          <Tbl
+            headers={["Prompt", "Brand Rank", "Top Competitors"]}
+            rows={v.worstPerformingPrompts.slice(0, 10).map((w) => [
+              (w.prompt ?? "").length > 60 ? (w.prompt ?? "").slice(0, 60) + "..." : (w.prompt ?? ""),
+              w.rank != null ? `#${w.rank}` : "Not mentioned",
+              (w.competitors ?? []).slice(0, 3).join(", "),
+            ])}
+          />
+        </>
+      )}
+
+      {v.intentSplit && v.intentSplit.length > 0 && (
+        <>
+          <SH3>By Question Intent</SH3>
+          {v.intentSplit.map((is) => <KV key={is.intent} label={is.intent} value={`${is.percentage}%`} />)}
+        </>
+      )}
+
+      {v.clusterBreakdown && v.clusterBreakdown.length > 0 && (
+        <>
+          <SH3>By Question Type</SH3>
+          <Tbl
+            headers={["Cluster", "Mention Rate", "Avg Rank"]}
+            rows={v.clusterBreakdown.map((cb) => [
+              cb.cluster,
+              `${cb.mentionRate}%`,
+              cb.avgRank != null ? `#${cb.avgRank.toFixed(1)}` : "\u2014",
+            ])}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -255,6 +323,7 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
     examples?: { excerpt: string; model: string; matchedFrame: string }[];
     drift?: { emerging: string[]; declining: string[] } | null;
     narrativeDeltas?: { sentimentPositive: number; confidence: number } | null;
+    positioning?: { legitimacy: number; controversy: number; label: string }[];
     themes?: { label: string; count: number; pct: number }[];
     sentimentByQuestion?: { prompt: string; sentiment: string; mentionRate: number; consistency: number }[];
   };
@@ -368,6 +437,24 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
         </>
       )}
 
+      {(() => {
+        // Sentiment by Platform: extract latest per-model sentiment from sentimentTrend
+        const st = n.sentimentTrend ?? [];
+        const latestDate = st.filter((t) => t.model === "all").sort((a, b) => b.date.localeCompare(a.date))[0]?.date;
+        if (!latestDate) return null;
+        const modelEntries = st.filter((t) => t.model !== "all" && t.date === latestDate);
+        if (modelEntries.length === 0) return null;
+        return (
+          <>
+            <SH3>Sentiment by Platform</SH3>
+            <Tbl
+              headers={["Platform", "% Positive"]}
+              rows={modelEntries.map((m) => [MODEL_LABELS[m.model] ?? m.model, `${m.positive}%`])}
+            />
+          </>
+        );
+      })()}
+
       {n.drift && ((n.drift.emerging ?? []).length > 0 || (n.drift.declining ?? []).length > 0) && (
         <>
           <SH3>Emerging & Declining Topics</SH3>
@@ -390,6 +477,8 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
     competitiveTrend?: { date: string; mentionRate: Record<string, number>; mentionShare: Record<string, number> }[];
     sentimentTrend?: { date: string; sentiment: Record<string, number> }[];
     prominenceShare?: { entityId: string; name: string; mentionRate: number; mentionShare: number; isBrand: boolean }[];
+    modelSplit?: { model: string; competitors: { entityId: string; name: string; mentionShare: number }[] }[];
+    competitorNarratives?: { entityId: string; name: string; sentiment: string; topFrames: string[] }[];
   };
 
   // Compute win rate from byCompetitor
@@ -455,6 +544,35 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
             headers={["Entity A", "Entity B", "Co-mentions", "Rate"]}
             rows={c.coMentions.slice(0, 10).map((cm) => [cm.entityA, cm.entityB, cm.coMentionCount, `${cm.coMentionRate}%`])}
           />
+        </>
+      )}
+
+      {c.modelSplit && c.modelSplit.length > 0 && (
+        <>
+          <SH3>By AI Platform</SH3>
+          {c.modelSplit.map((ms) => (
+            <div key={ms.model} className="mb-3">
+              <P><strong>{MODEL_LABELS[ms.model] ?? ms.model}</strong></P>
+              {(ms.competitors ?? []).length > 0 && (
+                <Tbl
+                  headers={["Entity", "Share of Voice"]}
+                  rows={(ms.competitors ?? []).slice(0, 5).map((comp) => [comp.name, `${comp.mentionShare.toFixed(1)}%`])}
+                />
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {c.competitorNarratives && c.competitorNarratives.length > 0 && (
+        <>
+          <SH3>Competitor Narratives</SH3>
+          {c.competitorNarratives.slice(0, 8).map((cn) => (
+            <P key={cn.entityId}>
+              <strong>{cn.name}</strong> — Sentiment: {cn.sentiment ?? "N/A"}.
+              {(cn.topFrames ?? []).length > 0 && ` Key themes: ${(cn.topFrames ?? []).slice(0, 3).join(", ")}.`}
+            </P>
+          ))}
         </>
       )}
 
@@ -641,12 +759,14 @@ function ReportInner() {
       setError(null);
       try {
         const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
-        const [overviewRes, visibilityRes, narrativeRes, competitionRes, sourcesRes] = await Promise.all([
+        const [overviewRes, visibilityRes, narrativeRes, competitionRes, sourcesRes, quotesRes, alertsRes] = await Promise.all([
           fetch(`/api/overview?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch(`/api/visibility?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch(`/api/narrative?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch(`/api/competition?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
           fetch(`/api/sources?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/visibility/quotes?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/competitor-alerts?${qs}`).then((r) => r.ok ? r.json() : null).catch(() => null),
         ]);
 
         if (cancelled) return;
@@ -672,6 +792,9 @@ function ReportInner() {
             topFrames: overviewRes.overview?.topFrames ?? [],
             topSourceType: overviewRes.topSourceType ?? null,
             modelComparison: overviewRes.overview?.modelComparison ?? [],
+            competitiveRank: overviewRes.competitiveRank ?? null,
+            quotes: quotesRes?.quotes ?? [],
+            competitorAlerts: alertsRes?.competitorAlerts ?? [],
           } : null,
           visibility: visibilityRes?.hasData ? {
             scorecard: {
@@ -686,6 +809,9 @@ function ReportInner() {
             visibilityRanking: visibilityRes.visibility?.visibilityRanking ?? [],
             resultsByQuestion: visibilityRes.visibility?.resultsByQuestion ?? [],
             opportunityPrompts: visibilityRes.visibility?.opportunityPrompts ?? [],
+            worstPerformingPrompts: visibilityRes.visibility?.worstPerformingPrompts ?? [],
+            intentSplit: visibilityRes.visibility?.intentSplit ?? [],
+            clusterBreakdown: visibilityRes.visibility?.clusterBreakdown ?? [],
           } : null,
           narrative: narrativeRes?.hasData ? {
             scorecard: {
@@ -703,6 +829,7 @@ function ReportInner() {
             sentimentByQuestion: narrativeRes.narrative?.sentimentByQuestion ?? [],
             drift: narrativeRes.narrative?.drift ?? null,
             narrativeDeltas: narrativeRes.narrativeDeltas ?? null,
+            positioning: narrativeRes.narrative?.positioning ?? [],
           } : null,
           landscape: competitionRes?.hasData ? {
             scope: competitionRes.competition?.scope ?? null,
@@ -714,6 +841,8 @@ function ReportInner() {
             sentimentTrend: competitionRes.competition?.sentimentTrend ?? [],
             prominenceShare: competitionRes.competition?.prominenceShare ?? [],
             competitorNarratives: competitionRes.competition?.competitorNarratives ?? [],
+            modelSplit: competitionRes.competition?.modelSplit ?? [],
+            rankDistribution: competitionRes.competition?.rankDistribution ?? [],
           } : null,
           sources: sourcesRes?.hasData ? {
             summary: sourcesRes.sources?.summary ?? null,
