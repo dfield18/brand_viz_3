@@ -385,7 +385,7 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
   const c = d as {
     scope?: { totalResponses: number; entitiesTracked: number } | null;
     competitors?: { name: string; mentionRate: number; mentionShare: number; avgRank: number | null; rank1Rate: number; isBrand: boolean }[];
-    fragmentation?: number | null;
+    fragmentation?: { score: number; hhi: number } | number | null;
     winLoss?: { byCompetitor: { name: string; wins: number; losses: number }[]; topLosses: { prompt: string; competitorName: string; competitorRank: number; brandRank: number | null }[] };
     coMentions?: { entityA: string; entityB: string; coMentionCount: number; coMentionRate: number }[];
     competitiveTrend?: { date: string; mentionRate: Record<string, number>; mentionShare: Record<string, number> }[];
@@ -403,7 +403,7 @@ function LandscapeSection({ d }: { d: Record<string, unknown> }) {
         <>
           <SH3>Landscape Scorecard</SH3>
           {c.scope && <KV label="Competitors Tracked" value={c.scope.entitiesTracked} />}
-          {c.fragmentation != null && <KV label="Market Fragmentation" value={c.fragmentation} />}
+          {c.fragmentation != null && <KV label="Market Fragmentation" value={typeof c.fragmentation === "object" ? c.fragmentation.score : c.fragmentation} />}
           {brandTotal > 0 && <KV label="Win Rate" value={`${Math.round((brandWins / brandTotal) * 100)}%`} />}
         </>
       )}
