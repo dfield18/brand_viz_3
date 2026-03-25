@@ -330,8 +330,14 @@ export async function GET(req: NextRequest) {
   if (visResult && visResult.ok) {
     const { brand: visBrand, runs: visRuns } = visResult;
     const visBrandIdentity = buildBrandIdentity(visBrand);
-    // Keep all runs for denominator — use isRunInBrandScope for mention detection
-    const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
+    const allIndustryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
+
+    // Latest snapshot: only use runs from the most recent date (24h window)
+    // so KPIs match the visibility tab scorecard exactly
+    const latestIndustryDate = allIndustryRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+    const latestIndustryCutoff = new Date(latestIndustryDate.getTime() - 24 * 60 * 60 * 1000);
+    const latestIndustryRuns = allIndustryRuns.filter((r) => r.createdAt >= latestIndustryCutoff);
+    const industryRuns = latestIndustryRuns.length > 0 ? latestIndustryRuns : allIndustryRuns;
     const industryRunIds = industryRuns.map((r) => r.id);
 
     // Mention rate — scope-aware detection, full denominator
