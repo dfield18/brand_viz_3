@@ -61,29 +61,65 @@ export async function persistSourcesForRun(args: {
   const entities = buildEntityList(brandName, brandSlug, analysisJson);
   const attributed = attributeEntitiesToUrls({ responseText, urls: mergedUrls, entities });
 
-  for (const url of attributed) {
+  // Ensure Source records exist for all unique domains first
+  const uniqueDomains = [...new Set(attributed.map((u) => u.domain))];
+  const sourceIdByDomain = new Map<string, string>();
+  for (const domain of uniqueDomains) {
     try {
       const source = await prisma.source.upsert({
-        where: { domain: url.domain },
-        create: { domain: url.domain },
+        where: { domain },
+        create: { domain },
         update: {},
       });
+      sourceIdByDomain.set(domain, source.id);
+    } catch (err) {
+      console.error(`[persistSources] Failed to upsert Source for domain "${domain}" (run=${runId}):`, err instanceof Error ? err.message : err);
+    }
+  }
 
-      await prisma.sourceOccurrence.create({
-        data: {
-          runId,
-          promptId,
-          model,
-          entityId: url.entityId,
-          sourceId: source.id,
-          normalizedUrl: url.normalizedUrl,
-          originalUrl: url.originalUrl,
-          sourceType: url.sourceType,
-          positionIndex: url.positionIndex,
-        },
-      });
-    } catch {
-      // Non-blocking — don't fail the pipeline for source persistence errors
+  // Batch-create all SourceOccurrence records, with retry on failure
+  const occurrenceData = attributed
+    .filter((url) => sourceIdByDomain.has(url.domain))
+    .map((url) => ({
+      runId,
+      promptId,
+      model,
+      entityId: url.entityId,
+      sourceId: sourceIdByDomain.get(url.domain)!,
+      normalizedUrl: url.normalizedUrl,
+      originalUrl: url.originalUrl,
+      sourceType: url.sourceType,
+      positionIndex: url.positionIndex,
+    }));
+
+  if (occurrenceData.length === 0) return;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await prisma.sourceOccurrence.createMany({ data: occurrenceData, skipDuplicates: true });
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt === 1) {
+        console.warn(`[persistSources] Batch insert failed for run=${runId} (${occurrenceData.length} URLs), retrying: ${msg}`);
+        // Brief pause before retry
+        await new Promise((r) => setTimeout(r, 200));
+      } else {
+        console.error(`[persistSources] Batch insert failed on retry for run=${runId} (${occurrenceData.length} URLs): ${msg}`);
+        // Fall back to individual inserts so partial data is still saved
+        let saved = 0;
+        for (const occ of occurrenceData) {
+          try {
+            await prisma.sourceOccurrence.create({ data: occ });
+            saved++;
+          } catch (innerErr) {
+            // Skip duplicates or other per-row errors silently
+          }
+        }
+        if (saved < occurrenceData.length) {
+          console.error(`[persistSources] Only ${saved}/${occurrenceData.length} sources saved for run=${runId}`);
+        }
+      }
     }
   }
 }
