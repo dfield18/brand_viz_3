@@ -238,15 +238,11 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
     const deduped = [...byPrompt.values()].map(({ scores, consistencies, mentions, mentionRates, first }) => {
       const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
       const avgConsistency = Math.round(consistencies.reduce((a, b) => a + b, 0) / consistencies.length);
-      let sentiment: "Strong" | "Positive" | "Neutral" | "Conditional" | "Negative";
-      if (avgScore >= 0.5) sentiment = "Strong";
-      else if (avgScore >= 0.15) sentiment = "Positive";
-      else if (avgScore >= -0.15) sentiment = "Neutral";
-      else if (avgScore >= -0.4) sentiment = "Conditional";
-      else sentiment = "Negative";
+      // Use the API-computed sentiment label (already uses label-count methodology
+      // consistent with "How Each AI Platform Sees [Brand]")
       return {
         ...first,
-        sentiment,
+        sentiment: first.sentiment,
         sentimentScore: Math.round(avgScore * 100) / 100,
         consistency: avgConsistency,
         mentions: Math.round(mentions.reduce((a, b) => a + b, 0) / mentions.length),

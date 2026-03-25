@@ -604,30 +604,38 @@ Rules:
     }
   }
 
-  // Sentiment by Question: group by prompt, compute count + dominant sentiment
-  const promptSentimentMap = new Map<string, { mentions: number; scores: number[] }>();
+  // Sentiment by Question: group by prompt, compute using POS/NEU/NEG label counts
+  // (same methodology as "How Each AI Platform Sees [Brand]" — % positive classification)
+  const promptSentimentMap = new Map<string, { mentions: number; pos: number; neu: number; neg: number; scores: number[] }>();
   for (const { parsed, run } of narratives) {
     const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     if (!promptSentimentMap.has(promptText)) {
-      promptSentimentMap.set(promptText, { mentions: 0, scores: [] });
+      promptSentimentMap.set(promptText, { mentions: 0, pos: 0, neu: 0, neg: 0, scores: [] });
     }
     const entry = promptSentimentMap.get(promptText)!;
     entry.mentions++;
-    // Map POS/NEU/NEG + score to a numeric scale
+    const label = parsed.sentiment.label;
+    if (label === "POS") entry.pos++;
+    else if (label === "NEG") entry.neg++;
+    else entry.neu++;
+    // Keep raw scores for consistency (std dev) calculation
     const rawScore = parsed.sentiment.score;
-    const numericScore = parsed.sentiment.label === "POS" ? rawScore
-      : parsed.sentiment.label === "NEG" ? -rawScore
-      : 0;
+    const numericScore = label === "POS" ? rawScore : label === "NEG" ? -rawScore : 0;
     entry.scores.push(numericScore);
   }
-  const sentimentByQuestion = [...promptSentimentMap.entries()].map(([prompt, { mentions, scores }]) => {
-    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const sentimentByQuestion = [...promptSentimentMap.entries()].map(([prompt, { mentions, pos, neu, neg, scores }]) => {
+    const total = pos + neu + neg;
+    const pctPositive = total > 0 ? Math.round((pos / total) * 100) : 0;
+    const pctNegative = total > 0 ? Math.round((neg / total) * 100) : 0;
+    const pctNeutral = total > 0 ? Math.round((neu / total) * 100) : 0;
+    // Classify using same thresholds as platform sentiment (sentimentSplit → label)
     let sentiment: "Strong" | "Positive" | "Neutral" | "Conditional" | "Negative";
-    if (avg >= 0.5) sentiment = "Strong";
-    else if (avg >= 0.15) sentiment = "Positive";
-    else if (avg >= -0.15) sentiment = "Neutral";
-    else if (avg >= -0.4) sentiment = "Conditional";
-    else sentiment = "Negative";
+    if (pctPositive >= 60) sentiment = "Strong";
+    else if (pctPositive >= 40) sentiment = "Positive";
+    else if (pctNegative >= 40) sentiment = "Negative";
+    else if (pctNeutral >= 50) sentiment = "Neutral";
+    else sentiment = "Conditional";
+    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const mentionRate = narrativeCount > 0 ? Math.round((mentions / narrativeCount) * 100) : 0;
     // Consistency: 100 − normalized std deviation (scores range -1 to 1, so max std dev ≈ 1)
     const variance = scores.length > 1
