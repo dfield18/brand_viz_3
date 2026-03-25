@@ -547,9 +547,8 @@ export async function GET(req: NextRequest) {
       select: { id: true, finishedAt: true },
     });
 
-    // Entities with >5% mention share for trend lines
+    // All tracked entities get trend lines
     const trendEntityIds = competitors
-      .filter((c) => c.mentionShare > 5)
       .sort((a, b) => b.mentionShare - a.mentionShare)
       .map((c) => c.entityId);
     const trendEntitySet = new Set(trendEntityIds);
