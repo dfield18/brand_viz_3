@@ -34,6 +34,62 @@ const BAR_COLORS = [
   "var(--chart-5)",
 ];
 
+const MAX_RADAR_LABELS = 6;
+const MIN_RADAR_LABELS = 4;
+
+function wrapLabel(text: string, maxChars = 14): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && (current + " " + word).length > maxChars) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? current + " " + word : word;
+    }
+  }
+  if (current) lines.push(current);
+  // Truncate to max 2 lines with ellipsis
+  if (lines.length > 2) {
+    return [lines[0], lines[1].length > maxChars - 1 ? lines[1].slice(0, maxChars - 1) + "…" : lines[1] + "…"];
+  }
+  return lines;
+}
+
+function RadarTickLabel(props: {
+  x?: number; y?: number; payload?: { value: string };
+  cx?: number; cy?: number;
+}) {
+  const { x = 0, y = 0, payload, cx = 0, cy = 0 } = props;
+  const label = payload?.value ?? "";
+  const lines = wrapLabel(label, 14);
+  const dx = x - cx;
+  const dy = y - cy;
+  const anchor = dx > 5 ? "start" : dx < -5 ? "end" : "middle";
+  const nudgeX = dx > 5 ? 6 : dx < -5 ? -6 : 0;
+  const nudgeY = dy > 5 ? 6 : dy < -5 ? -6 : 0;
+
+  return (
+    <g transform={`translate(${x + nudgeX},${y + nudgeY})`}>
+      <title>{label}</title>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={0}
+          y={i * 12}
+          dy={y < cy ? -((lines.length - 1) * 12) + 4 : 4}
+          textAnchor={anchor}
+          fontSize={10}
+          fill="var(--muted-foreground)"
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 export function useDefaultCompetitorEntity(narratives: CompetitorNarrative[], competitors: CompetitorRow[]) {
   return useMemo(() => {
     const nonBrand = competitors
@@ -98,10 +154,14 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
     return null;
   }
 
-  const data = selectedNarrative.themes.map((t) => ({
+  const allData = selectedNarrative.themes.map((t) => ({
     frame: t.label,
     percentage: t.pct,
   }));
+
+  // Bar chart shows all themes; radar chart shows top 4–6 for readability
+  const data = allData;
+  const radarData = allData.slice(0, Math.max(MIN_RADAR_LABELS, Math.min(MAX_RADAR_LABELS, allData.length)));
 
   // Scale bar size and spacing based on frame count so few-frame charts don't look cramped
   const rowHeight = data.length <= 3 ? 64 : data.length <= 5 ? 50 : 38;
@@ -173,12 +233,11 @@ export function CompetitorFrameBreakdown({ narratives, competitors, brandName, s
             Larger area = AI leans more heavily on this narrative for {selectedNarrative.name}
           </p>
           <ResponsiveContainer width="100%" height={radarHeight}>
-            <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
+            <RadarChart cx="50%" cy="50%" outerRadius="42%" data={radarData}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
                 dataKey="frame"
-                fontSize={10}
-                tick={{ fill: "var(--muted-foreground)" }}
+                tick={(props: object) => <RadarTickLabel {...props as Parameters<typeof RadarTickLabel>[0]} />}
               />
               <PolarRadiusAxis
                 domain={[0, "auto"]}

@@ -89,15 +89,20 @@ function RadarTickLabel(props: {
   );
 }
 
-/** Custom Y-axis tick for bar chart — wraps long labels into multiple lines */
+/** Custom Y-axis tick for bar chart — wraps long labels to max 2 lines, truncates with ellipsis */
 function BarYAxisTick(props: {
   x?: number; y?: number; payload?: { value: string };
 }) {
   const { x = 0, y = 0, payload } = props;
   const label = payload?.value ?? "";
-  const lines = wrapLabel(label, 22);
+  const allLines = wrapLabel(label, 22);
+  const truncated = allLines.length > 2;
+  const lines = truncated
+    ? [allLines[0], allLines[1].length > 19 ? allLines[1].slice(0, 19) + "…" : allLines[1] + "…"]
+    : allLines;
   return (
     <g transform={`translate(${x},${y})`}>
+      {truncated && <title>{label}</title>}
       {lines.map((line, i) => (
         <text
           key={i}

@@ -40,7 +40,18 @@ export async function GET(req: NextRequest) {
   try {
     // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
     const brandIdentity = buildBrandIdentity(brand);
-    const runs = filterRunsToBrandScope(rawRuns, brandIdentity);
+    const scopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
+
+    // When latest=true (used by Overview tab), only use runs from the most recent
+    // date (24h window) so Top Cited Sources reflects the current snapshot.
+    // The Sources tab omits this param and gets the full deduped range.
+    let runs = scopedRuns;
+    if (latestOnly) {
+      const latestRunDate = scopedRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+      const latestCutoff = new Date(latestRunDate.getTime() - 24 * 60 * 60 * 1000);
+      const latestRuns = scopedRuns.filter((r) => r.createdAt >= latestCutoff);
+      if (latestRuns.length > 0) runs = latestRuns;
+    }
     const runIds = runs.map((r) => r.id);
     const totalResponses = runIds.length;
 

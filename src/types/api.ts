@@ -637,7 +637,10 @@ export interface OfficialSitePage {
 export interface OfficialSiteCitation {
   entityId: string;
   isBrand: boolean;
+  /** Primary official domain for display (root domain) */
   officialDomain: string;
+  /** All matched official hostnames (includes subdomains) */
+  officialHosts?: string[];
   citations: number;
   models: string[];
   pages: OfficialSitePage[];
@@ -681,7 +684,6 @@ export interface SourcesResponse {
   modelSplit: SourceModelSplitRow[];
   emerging: EmergingSource[];
   crossCitation: CompetitorCrossCitation[];
-  domainsNotCitingBrand?: { domain: string; citations: number; competitors: [string, number][] }[];
   officialSites: OfficialSiteCitation[];
   sourcePromptMatrix: SourcePromptMatrixRow[];
   matrixPrompts: SourceMatrixPrompt[];

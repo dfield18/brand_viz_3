@@ -367,28 +367,59 @@ function normaliseForDomainMatch(name: string): string {
 }
 
 /**
- * Check whether a domain looks like the official site for an entity,
+ * Extract the root domain from a hostname (last two labels).
+ * Handles subdomains and www prefix.
+ *
+ *   "news.samsung.com" → "samsung.com"
+ *   "www.samsung.com"  → "samsung.com"
+ *   "samsung.com"      → "samsung.com"
+ *   "blog.news.samsung.com" → "samsung.com"
+ */
+export function getRootDomain(domain: string): string {
+  const base = domain.toLowerCase().replace(/^www\./, "");
+  const labels = base.split(".");
+  if (labels.length <= 2) return base;
+  return labels.slice(-2).join(".");
+}
+
+/**
+ * Extract the root label (registrable name portion) from a domain.
+ *
+ *   "news.samsung.com" → "samsung"
+ *   "samsung.com"      → "samsung"
+ *   "www.fire.org"     → "fire"
+ */
+export function getRootLabel(domain: string): string {
+  const root = getRootDomain(domain);
+  return root.split(".")[0];
+}
+
+/**
+ * Check whether a domain belongs to an entity's official domain family,
  * checking against one or more candidate names.
+ *
+ * Uses root-domain matching so that subdomains (news.samsung.com,
+ * blog.samsung.com) are recognized as part of the official family.
  *
  * For the selected brand, pass [slug, name, displayName, ...aliases].
  * For competitors, pass [entityId] or [entityId, displayName].
  */
 function isOfficialDomainForCandidates(domain: string, candidates: string[]): boolean {
-  const domainLower = domain.toLowerCase();
-  const base = domainLower.replace(/^www\./, "");
-  const domainName = base.split(".")[0];
+  const rootLabel = getRootLabel(domain);
 
   for (const candidate of candidates) {
     if (!candidate || candidate.length < 2) continue;
     const norm = normaliseForDomainMatch(candidate);
     if (!norm) continue;
 
-    // Exact match: "patagonia" === "patagonia"
-    if (domainName === norm) return true;
-    // Domain contains entity: "patagoniaoutdoors" contains "patagonia"
-    if (norm.length >= 4 && domainName.includes(norm)) return true;
-    // Entity contains domain (for short domains like "rei"):
-    if (domainName.length >= 3 && norm.includes(domainName) && domainName.length >= norm.length * 0.6) return true;
+    // Exact root-label match: "samsung" === "samsung"
+    if (rootLabel === norm) return true;
+    // Root label contains entity name: "patagoniaoutdoors" contains "patagonia"
+    // Only for entity names with 4+ chars to avoid short-name false positives
+    if (norm.length >= 4 && rootLabel.includes(norm)) return true;
+    // Entity contains root label (for short domains like "rei.com"):
+    // Only when root label is a significant portion of the entity name
+    if (rootLabel.length >= 3 && norm.includes(rootLabel) && rootLabel.length >= norm.length * 0.6) return true;
   }
 
   return false;
@@ -408,12 +439,19 @@ export interface OfficialSiteBrandIdentity {
 
 /**
  * For each entity mentioned in source occurrences, find their official domain
- * among all cited domains and compute citation stats.
+ * family among all cited domains and compute citation stats.
  * Only returns entities whose official site is actually cited.
+ *
+ * Uses root-domain-family matching (Option B): samsung.com, www.samsung.com,
+ * and news.samsung.com all count as part of Samsung's official site family.
  *
  * For the selected brand, uses all available identity candidates
  * (slug, name, displayName, aliases) so short acronym domains like
  * `fire.org` are recognized even when the slug is long.
+ *
+ * `officialDomain` in the result is the primary host for display.
+ * `citations` is the total across the entire official domain family.
+ * `officialHosts` lists all matched hostnames (for multi-host transparency).
  */
 export function computeOfficialSiteCitations(
   occurrences: SourceOccurrenceInput[],
@@ -448,11 +486,16 @@ export function computeOfficialSiteCitations(
     // For the selected brand, use multi-candidate matching
     // For competitors, use single entityId matching
     const candidates = entityId === brandSlug ? brandCandidates : [entityId];
+    // officialDomains = all hostnames in the official domain family
     const officialDomains = allDomains.filter((d) => isOfficialDomainForCandidates(d, candidates));
     if (officialDomains.length === 0) continue;
-    const officialDomain = officialDomains[0]; // primary domain for display
 
-    // Collect citations across ALL official domains
+    // Primary domain for display: prefer the root domain (shortest / most recognizable)
+    const officialDomain = officialDomains
+      .slice()
+      .sort((a, b) => a.split(".").length - b.split(".").length || a.length - b.length)[0];
+
+    // Collect citations across ALL official family domains (root + subdomains)
     const officialSet = new Set(officialDomains);
     const domainOccs = occurrences.filter((o) => officialSet.has(o.domain));
     if (domainOccs.length === 0) continue;
@@ -475,6 +518,7 @@ export function computeOfficialSiteCitations(
       entityId,
       isBrand: entityId === brandSlug,
       officialDomain,
+      officialHosts: officialDomains.length > 1 ? officialDomains.sort() : undefined,
       citations: domainOccs.length,
       models,
       pages,

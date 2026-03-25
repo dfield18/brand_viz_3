@@ -153,7 +153,10 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
                 {isOpen && (
                   <div className="pl-14 pb-2 space-y-1">
                     <p className="text-[11px] text-muted-foreground">
-                      {uniquePages} unique page{uniquePages !== 1 ? "s" : ""} cited:
+                      {uniquePages} unique page{uniquePages !== 1 ? "s" : ""} cited
+                      {site.officialHosts && site.officialHosts.length > 1
+                        ? ` across ${site.officialHosts.length} hosts`
+                        : ""}:
                     </p>
                     {site.pages.map((page) => (
                       <div key={page.url} className="flex items-start gap-1.5 text-xs">
