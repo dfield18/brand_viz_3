@@ -32,7 +32,7 @@ export function CompetitorNarrativeCards({ narratives, competitors, selectedEnti
   const [prevSelected, setPrevSelected] = useState(selectedEntityId);
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     if (selectedEntityId) return new Set([selectedEntityId]);
-    return new Set(narratives.slice(0, 3).map((n) => n.entityId));
+    return narratives.length > 0 ? new Set([narratives[0].entityId]) : new Set();
   });
 
   // When selected entity changes, auto-expand it
