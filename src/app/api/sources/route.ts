@@ -12,6 +12,7 @@ import {
   computeCompetitorCrossCitation,
   computeOfficialSiteCitations,
   computeDomainsNotCitingBrand,
+  getRootDomain,
   type SourceOccurrenceInput,
   type EntityMetricInput,
 } from "@/lib/sources/computeSources";
@@ -108,12 +109,14 @@ export async function GET(req: NextRequest) {
       if (!runDateMap.has(o.runId)) runDateMap.set(o.runId, o.run.createdAt);
     }
 
+    // Group subdomains under their root domain (e.g. front.moveon.org → moveon.org)
+    // so the top sources list doesn't show the same site multiple times
     const occurrences: SourceOccurrenceInput[] = rawOccurrences.map((o) => ({
       runId: o.runId,
       promptId: o.promptId,
       model: o.model,
       entityId: o.entityId,
-      domain: o.source.domain,
+      domain: getRootDomain(o.source.domain),
       normalizedUrl: o.normalizedUrl,
       createdAt: o.createdAt,
     }));
