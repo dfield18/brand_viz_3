@@ -9,9 +9,11 @@ import {
   computeFragmentation,
   computeWinLoss,
   computeMentionRate,
+  computeShareOfVoice,
+  computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
-import { wordBoundaryIndex } from "@/lib/visibility/brandMention";
-import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest) {
 
   const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
   const brandIdentity = buildBrandIdentity(brand);
   // Filter to query universe first (removes ambiguous false positives),
   // then apply cluster/prompt selection
@@ -627,6 +630,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Group scoped trend runs by date for brand-specific text-based computation
+    // (matches overview tab methodology: isRunInBrandScope + computeBrandRank)
+    type TrendAnalysis = { brandMentioned?: boolean; competitors?: { name: string }[] };
+    const trendRunsByDate = new Map<string, typeof scopedBrandTrendRuns>();
+    for (const r of scopedBrandTrendRuns) {
+      const tj = allTrendJobs.find((j) => j.id === r.jobId);
+      if (!tj?.finishedAt) continue;
+      const date = tj.finishedAt.toISOString().slice(0, 10);
+      if (!trendRunsByDate.has(date)) trendRunsByDate.set(date, []);
+      trendRunsByDate.get(date)!.push(r);
+    }
+
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, bucket] of [...trendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const mentionShare: Record<string, number> = {};
@@ -646,15 +661,36 @@ export async function GET(req: NextRequest) {
         avgPosition[entityId] = ranks.length > 0
           ? Math.round((ranks.reduce((s, r) => s + r, 0) / ranks.length) * 10) / 10
           : null;
+        // rank1Rate denominator = total responses (matches overview tab)
         const rank1Count = ranks.filter((r) => r === 1).length;
-        rank1Rate[entityId] = ranks.length > 0
-          ? Math.round((rank1Count / ranks.length) * 10000) / 100
+        rank1Rate[entityId] = bucket.totalResponses > 0
+          ? Math.round((rank1Count / bucket.totalResponses) * 10000) / 100
           : 0;
       }
 
-      // No brand-only override — all entities use the same EntityResponseMetric-based
-      // methodology for trend consistency. The query universe is already scope-filtered
-      // (filterRunsToBrandQueryUniverse) so ambiguous false positives are excluded.
+      // Brand override: use overview-tab methodology (isRunInBrandScope + computeBrandRank)
+      // so brand recall, SoV, and top result rate match the overview scorecard exactly
+      if (trendEntitySet.has(brand.slug)) {
+        const dateRuns = trendRunsByDate.get(date) ?? [];
+        if (dateRuns.length > 0) {
+          let brandMentions = 0;
+          let sovTotal = 0;
+          const brandRanks: (number | null)[] = [];
+          for (const r of dateRuns) {
+            const mentioned = isRunInBrandScope(r, brandIdentity);
+            if (mentioned) brandMentions++;
+            const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
+            brandRanks.push(rank);
+            const analysis = r.analysisJson as TrendAnalysis | null;
+            const compCount = (analysis?.competitors ?? []).length;
+            sovTotal += (mentioned ? 1 : 0) + compCount;
+          }
+          mentionRate[brand.slug] = computeMentionRate(brandMentions, dateRuns.length);
+          mentionShare[brand.slug] = computeShareOfVoice(brandMentions, sovTotal);
+          avgPosition[brand.slug] = computeAvgRank(brandRanks);
+          rank1Rate[brand.slug] = computeRank1RateAll(brandRanks);
+        }
+      }
 
       competitiveTrend.push({ date, mentionShare, mentionRate, avgPosition, rank1Rate });
     }
