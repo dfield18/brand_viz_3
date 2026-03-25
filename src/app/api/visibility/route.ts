@@ -601,7 +601,9 @@ export async function GET(req: NextRequest) {
       total: number;
       mentions: number;
       ranks: number[];
-      sentiments: ("Strong" | "Positive" | "Neutral" | "Negative")[];
+      sentPos: number;
+      sentNeu: number;
+      sentNeg: number;
     };
     const promptBuckets = new Map<string, PromptBucket>();
     // Also fetch SOV per prompt from entityResponseMetric
@@ -611,7 +613,7 @@ export async function GET(req: NextRequest) {
       const promptText = run.prompt.text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, brand.industry || `${brandName}'s industry`);
       const key = `${promptText}||${run.model}`;
       if (!promptBuckets.has(key)) {
-        promptBuckets.set(key, { promptText, model: run.model, total: 0, mentions: 0, ranks: [], sentiments: [] });
+        promptBuckets.set(key, { promptText, model: run.model, total: 0, mentions: 0, ranks: [], sentPos: 0, sentNeu: 0, sentNeg: 0 });
       }
       const bucket = promptBuckets.get(key)!;
       bucket.total++;
@@ -620,18 +622,12 @@ export async function GET(req: NextRequest) {
       const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) bucket.ranks.push(rk);
 
-      // Extract sentiment from narrativeJson
-      const nj = run.narrativeJson as { sentiment?: { label?: string; score?: number } } | null;
+      // Count POS/NEU/NEG labels (same methodology as overview/narrative sentiment)
+      const nj = run.narrativeJson as { sentiment?: { label?: string } } | null;
       if (nj?.sentiment?.label) {
-        const label = nj.sentiment.label;
-        const score = nj.sentiment.score ?? 0;
-        if (label === "POS") {
-          bucket.sentiments.push(score >= 0.5 ? "Strong" : "Positive");
-        } else if (label === "NEG") {
-          bucket.sentiments.push("Negative");
-        } else {
-          bucket.sentiments.push("Neutral");
-        }
+        if (nj.sentiment.label === "POS") bucket.sentPos++;
+        else if (nj.sentiment.label === "NEG") bucket.sentNeg++;
+        else bucket.sentNeu++;
       }
 
       if (!industryRunPromptMap.has(key)) industryRunPromptMap.set(key, []);
@@ -675,17 +671,19 @@ export async function GET(req: NextRequest) {
       }
       const sov = computeShareOfVoice(bm, tm);
 
-      // Average sentiment
+      // Classify sentiment using label counting + 60/40/40/50 thresholds
+      // (same methodology as overview scorecard and narrative tab)
       let avgSent: "Strong" | "Positive" | "Neutral" | "Negative" = "Neutral";
-      if (bucket.sentiments.length > 0) {
-        const sentScores: number[] = bucket.sentiments.map((s) =>
-          s === "Strong" ? 2 : s === "Positive" ? 1 : s === "Neutral" ? 0 : -1
-        );
-        const avg = sentScores.reduce((a, b) => a + b, 0) / sentScores.length;
-        if (avg >= 1.5) avgSent = "Strong";
-        else if (avg >= 0.5) avgSent = "Positive";
-        else if (avg >= -0.5) avgSent = "Neutral";
-        else avgSent = "Negative";
+      const sentTotal = bucket.sentPos + bucket.sentNeu + bucket.sentNeg;
+      if (sentTotal > 0) {
+        const pctPos = Math.round((bucket.sentPos / sentTotal) * 100);
+        const pctNeg = Math.round((bucket.sentNeg / sentTotal) * 100);
+        const pctNeu = Math.round((bucket.sentNeu / sentTotal) * 100);
+        if (pctPos >= 60) avgSent = "Strong";
+        else if (pctPos >= 40) avgSent = "Positive";
+        else if (pctNeg >= 40) avgSent = "Negative";
+        else if (pctNeu >= 50) avgSent = "Neutral";
+        else avgSent = "Neutral"; // mixed — default to Neutral for 4-tier display
       }
 
       resultsByQuestion.push({
