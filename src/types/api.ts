@@ -677,6 +677,12 @@ export interface DomainOverTimeEntry {
   [domain: string]: string | number; // domain keys map to citation count
 }
 
+export interface DomainNotCitingBrand {
+  domain: string;
+  citations: number;
+  competitors: [string, number][];
+}
+
 export interface SourcesResponse {
   scope: SourcesScope;
   summary: SourceSummary;
@@ -684,6 +690,7 @@ export interface SourcesResponse {
   modelSplit: SourceModelSplitRow[];
   emerging: EmergingSource[];
   crossCitation: CompetitorCrossCitation[];
+  domainsNotCitingBrand?: DomainNotCitingBrand[];
   officialSites: OfficialSiteCitation[];
   sourcePromptMatrix: SourcePromptMatrixRow[];
   matrixPrompts: SourceMatrixPrompt[];
