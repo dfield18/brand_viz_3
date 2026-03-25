@@ -353,6 +353,19 @@ export async function GET(req: NextRequest) {
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
 
+    // Recompute per-model mentionRate + avgRank from the same latest-snapshot pool
+    // so the "By AI Platform" table matches the scorecard exactly
+    for (const mc of overview.modelComparison) {
+      const modelIndustryRuns = industryRuns.filter((r) => r.model === mc.model);
+      if (modelIndustryRuns.length === 0) continue;
+      const modelMentions = modelIndustryRuns.filter((r) => isRunInBrandScope(r, visBrandIdentity)).length;
+      mc.mentionRate = computeMentionRate(modelMentions, modelIndustryRuns.length);
+      const modelRanks = modelIndustryRuns.map((r) =>
+        computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
+      );
+      mc.avgRank = computeAvgRank(modelRanks);
+    }
+
     // SoV + competitive rank + KPI deltas — text-based (no EntityResponseMetric)
     type OverviewAnalysis = { brandMentioned?: boolean; competitors?: { name: string }[] };
 
