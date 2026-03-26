@@ -243,6 +243,43 @@ const STATIC_DOMAIN_MAP: Record<string, string> = {
   "blogspot.com": "blog_forum",
   "dev.to": "blog_forum",
   "hackernoon.com": "blog_forum",
+
+  // --- Reference: civic/political/nonprofit/advocacy ---
+  // These are informational or advocacy sites, NOT social media
+  "ballotpedia.org": "reference",
+  "votesmart.org": "reference",
+  "opensecrets.org": "reference",
+  "govtrack.us": "reference",
+  "legistorm.com": "reference",
+  "influencewatch.org": "reference",
+  "sourcewatch.org": "reference",
+  "mediabiasfactcheck.com": "reference",
+  "factcheck.org": "reference",
+  "politifact.com": "reference",
+  "snopes.com": "reference",
+  "commoncause.org": "reference",
+  "lwv.org": "reference",
+  "aclu.org": "reference",
+  "amnesty.org": "reference",
+  "hrw.org": "reference",
+  "splcenter.org": "reference",
+  "naacp.org": "reference",
+  "eff.org": "reference",
+  "brennancenter.org": "reference",
+  "pewresearch.org": "reference",
+  "cfr.org": "reference",
+  "brookings.edu": "reference",
+  "rand.org": "reference",
+  "heritage.org": "reference",
+  "cato.org": "reference",
+  "americanprogress.org": "reference",
+  "participedia.net": "reference",
+  "fiveable.me": "reference",
+  "growjo.com": "reference",
+  "builtin.com": "reference",
+  "mbaskool.com": "reference",
+  "kiddle.co": "reference",
+  "scam-detector.com": "reviews",
 };
 
 /**
@@ -287,7 +324,7 @@ async function classifyWithGPT(domains: string[]): Promise<Record<string, string
       messages: [
         {
           role: "system",
-          content: `You classify website domains into categories. Valid categories: ${categoryList}. Respond with JSON only — an object mapping each domain to its category. Use "other" if uncertain.`,
+          content: `You classify website domains into categories. Valid categories: ${categoryList}. Rules: "social_media" is ONLY for user-generated social platforms (Reddit, Twitter/X, Facebook, Instagram, LinkedIn, Quora, Discord). Advocacy organizations, nonprofits, think tanks, petition platforms, and civic engagement sites are "reference", NOT "social_media". Respond with JSON only — an object mapping each domain to its category. Use "other" if uncertain.`,
         },
         {
           role: "user",
