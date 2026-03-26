@@ -23,7 +23,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    brands: brands.map((b) => ({
+    brands: brands.map((b: { id: string; name: string; displayName: string | null; slug: string; category: string | null; industry: string | null; createdAt: Date }) => ({
       id: b.id,
       name: b.displayName || b.name,
       slug: b.slug,

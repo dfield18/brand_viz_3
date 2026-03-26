@@ -17,15 +17,13 @@ export async function POST(req: NextRequest) {
   if (rlError) return rlError;
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
 
-  const where: Prisma.RunWhereInput = {
-    ...(brandSlug ? { brand: { slug: brandSlug } } : {}),
-    rawResponseText: { not: "" },
-    analysisJson: { not: Prisma.DbNull },
-    competitorNarrativesJson: { equals: Prisma.DbNull },
-  };
-
   const runs = await prisma.run.findMany({
-    where,
+    where: {
+      ...(brandSlug ? { brand: { slug: brandSlug } } : {}),
+      rawResponseText: { not: "" },
+      analysisJson: { not: Prisma.DbNull },
+      competitorNarrativesJson: { equals: Prisma.DbNull },
+    },
     select: {
       id: true,
       rawResponseText: true,

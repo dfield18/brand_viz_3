@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
   const prompts: BackfillPrompt[] = [];
 
   const comparativeWithCompetitor = rawPrompts.filter(
-    (p) => p.cluster === "comparative" && p.text.includes("{competitor}"),
+    (p: { cluster: string; text: string }) => p.cluster === "comparative" && p.text.includes("{competitor}"),
   );
 
   let competitors: string[] = [];
@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
       where: { run: { brandId: brand.id }, entityId: brand.slug },
       select: { runId: true },
     });
-    const brandRunIds = brandMetrics.map((m) => m.runId);
+    const brandRunIds = brandMetrics.map((m: { runId: string }) => m.runId);
     if (brandRunIds.length > 0) {
       const coEntities = await prisma.entityResponseMetric.groupBy({
         by: ["entityId"],
@@ -301,7 +301,7 @@ export async function POST(req: NextRequest) {
         orderBy: { _count: { entityId: "desc" } },
         take: 5,
       });
-      competitors = coEntities.map((e) =>
+      competitors = coEntities.map((e: { entityId: string }) =>
         e.entityId.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       );
     }
@@ -350,15 +350,15 @@ export async function POST(req: NextRequest) {
   ]);
 
   // Build set of dates that already have a completed job
-  const doneDates = new Set(doneJobs.map((j) => j.finishedAt?.toISOString().slice(0, 10)));
+  const doneDates = new Set(doneJobs.map((j: { finishedAt: Date | null }) => j.finishedAt?.toISOString().slice(0, 10)));
 
   // Bulk cleanup stale jobs in one pass
   if (staleJobs.length > 0) {
-    const staleIds = staleJobs.map((j) => j.id);
+    const staleIds = staleJobs.map((j: { id: string }) => j.id);
     const staleRunIds = (await prisma.run.findMany({
       where: { jobId: { in: staleIds } },
       select: { id: true },
-    })).map((r) => r.id);
+    })).map((r: { id: string }) => r.id);
     if (staleRunIds.length > 0) {
       await Promise.all([
         prisma.entityResponseMetric.deleteMany({ where: { runId: { in: staleRunIds } } }),

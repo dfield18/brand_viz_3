@@ -12,6 +12,7 @@ import {
   computeShareOfVoice,
   computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
+import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, type LeaderboardEntity } from "@/lib/competition/leaderboardMetrics";
 import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
     // Build a map of runId → text-order ranks for all entities in that run
     const runTextRanks = new Map<string, Map<string, number>>();
     for (const run of runs) {
-      const entitiesInRun = rawMetrics.filter((m) => m.runId === run.id);
+      const entitiesInRun = rawMetrics.filter((m: { runId: string }) => m.runId === run.id);
       if (entitiesInRun.length === 0) continue;
       const positions: { entityId: string; pos: number }[] = [];
       for (const m of entitiesInRun) {
@@ -182,60 +183,20 @@ export async function GET(req: NextRequest) {
     const trackedIds = [brand.slug, ...topCompetitorIds];
     const trackedSet = new Set(trackedIds);
 
-    // Compute text-order ranks for ALL entities (consistent methodology)
-    // For each run, find the first text position of each tracked entity and rank by position
-    const textRanksByEntity = new Map<string, (number | null)[]>();
-    for (const id of trackedIds) textRanksByEntity.set(id, []);
+    // Build leaderboard entities list for the shared helper
+    const leaderboardEntities: LeaderboardEntity[] = trackedIds.map((entityId) => ({
+      entityId,
+      name: entityId === brand.slug ? brandName : resolveEntityName(entityId, entityDisplayNames),
+      isBrand: entityId === brand.slug,
+    }));
 
-    for (const run of runs) {
-      const text = run.rawResponseText;
-
-      // Find first text position of each tracked entity in this response
-      const entityPositions: { entityId: string; pos: number }[] = [];
-      for (const entityId of trackedIds) {
-        const name = entityId === brand.slug ? brand.name : resolveEntityName(entityId, entityDisplayNames);
-        const pos = wordBoundaryIndex(text, name);
-        if (pos >= 0) {
-          entityPositions.push({ entityId, pos });
-        }
-      }
-      // Sort by position to determine text-order rank
-      entityPositions.sort((a, b) => a.pos - b.pos);
-      for (const entityId of trackedIds) {
-        const idx = entityPositions.findIndex((e) => e.entityId === entityId);
-        textRanksByEntity.get(entityId)!.push(idx >= 0 ? idx + 1 : null);
-      }
-    }
-
-    // Derive mention rate from text-presence (textRanksByEntity) for ALL entities
-    // consistently. A non-null rank means the entity was textually present in the response.
-    // This ensures the leaderboard uses one methodology for every row — brand and competitors alike.
-    const textMentionsByEntity = new Map<string, number>();
-    for (const [entityId, ranks] of textRanksByEntity) {
-      textMentionsByEntity.set(entityId, ranks.filter((r) => r !== null).length);
-    }
-
-    // Total text-level entity mentions (for SoV denominator) — sum of all entities' text appearances
-    let totalTextMentions = 0;
-    for (const [, count] of textMentionsByEntity) {
-      totalTextMentions += count;
-    }
-
-    const competitors: CompetitorRow[] = trackedIds.map((entityId) => {
-      const ranks = textRanksByEntity.get(entityId) ?? [];
-      const textMentions = textMentionsByEntity.get(entityId) ?? 0;
-      const rank1Count = ranks.filter((r) => r === 1).length;
-      return {
-        entityId,
-        name: entityId === brand.slug ? brandName : resolveEntityName(entityId, entityDisplayNames),
-        isBrand: entityId === brand.slug,
-        mentionShare: computeMentionShare(textMentions, totalTextMentions),
-        mentionRate: computeMentionRate(textMentions, totalResponses),
-        avgRank: computeAvgRank(ranks),
-        rank1Rate: totalResponses > 0 ? Math.round((rank1Count / totalResponses) * 100) : 0,
-        appearances: textMentions,
-      };
-    });
+    // Compute text-order ranks and derive leaderboard rows using the shared helper.
+    // This ensures ALL rows (brand + competitors) use the same text-presence methodology.
+    const leaderboardRuns = runs.map((r) => ({ text: r.rawResponseText, model: r.model }));
+    const textRanksByEntity = computeTextRanks(leaderboardRuns, leaderboardEntities);
+    const competitors: CompetitorRow[] = buildLeaderboardRows(
+      textRanksByEntity, leaderboardEntities, totalResponses,
+    );
 
     // --- Per-entity sentiment ---
     // Build runId→rawResponseText map and cache split sentences
@@ -416,49 +377,13 @@ export async function GET(req: NextRequest) {
     allLosses.sort((a, b) => (a.competitorRank ?? Infinity) - (b.competitorRank ?? Infinity));
     const topLosses = allLosses.slice(0, MAX_TOP_LOSSES);
 
-    // Model Split — uses same text-presence methodology as main leaderboard
-    // Build per-run model lookup (runs are iterated in the same order as textRanksByEntity entries)
+    // Model Split — uses same shared helper as main leaderboard
     const runModels = runs.map((r) => r.model);
-
-    const modelSplit: ModelSplitRow[] = modelsIncluded.map((modelId) => {
-      // Find which run indices belong to this model
-      const modelRunIndices: number[] = [];
-      for (let i = 0; i < runModels.length; i++) {
-        if (runModels[i] === modelId) modelRunIndices.push(i);
-      }
-      const modelTotalResponses = modelRunIndices.length;
-
-      // Extract per-model text ranks for each entity (same text-presence methodology)
-      const modelTextRanks = new Map<string, (number | null)[]>();
-      for (const entityId of trackedIds) {
-        const allRanks = textRanksByEntity.get(entityId) ?? [];
-        modelTextRanks.set(entityId, modelRunIndices.map((i) => allRanks[i]));
-      }
-
-      // Total text mentions for this model (SoV denominator)
-      let modelTotalTextMentions = 0;
-      for (const [, ranks] of modelTextRanks) {
-        modelTotalTextMentions += ranks.filter((r) => r !== null).length;
-      }
-
-      const modelCompetitors: CompetitorRow[] = trackedIds.map((entityId) => {
-        const ranks = modelTextRanks.get(entityId) ?? [];
-        const textMentions = ranks.filter((r) => r !== null).length;
-        const rank1Count = ranks.filter((r) => r === 1).length;
-        return {
-          entityId,
-          name: entityId === brand.slug ? brandName : resolveEntityName(entityId, entityDisplayNames),
-          isBrand: entityId === brand.slug,
-          mentionShare: computeMentionShare(textMentions, modelTotalTextMentions),
-          mentionRate: computeMentionRate(textMentions, modelTotalResponses),
-          avgRank: computeAvgRank(ranks),
-          rank1Rate: modelTotalResponses > 0 ? Math.round((rank1Count / modelTotalResponses) * 100) : 0,
-          appearances: textMentions,
-        };
-      });
-
-      return { model: modelId, competitors: modelCompetitors };
-    });
+    const perModelResults = buildPerModelRows(textRanksByEntity, leaderboardEntities, runModels);
+    const modelSplit: ModelSplitRow[] = perModelResults.map(({ model: m, rows }) => ({
+      model: m,
+      competitors: rows,
+    }));
 
     // --- Prominence Share (now uses mentionShare) ---
     const prominenceShare: ProminenceShareRow[] = trackedIds.map((entityId) => {
