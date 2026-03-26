@@ -507,8 +507,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // --- Competitive Trend: uses same text-rank methodology as leaderboard ---
-    // All entities (brand + competitors) computed identically per date bucket.
+    // --- Competitive Trend: cumulative "latest per model+prompt as of date" ---
+    // Matches Visibility trend methodology: each date point uses the latest
+    // available run per model+prompt up to that date, not raw runs from that date.
     const trendJobWhere = isAll
       ? { brandId: brand.id, status: "done" as const, finishedAt: { gte: rangeCutoff } }
       : { brandId: brand.id, model, status: "done" as const, finishedAt: { gte: rangeCutoff } };
@@ -524,36 +525,63 @@ export async function GET(req: NextRequest) {
       .map((c) => c.entityId);
     const trendEntitySet = new Set(trendEntityIds);
 
-    // Fetch industry trend runs with response text for text-rank computation
+    // Fetch industry trend runs with promptId + createdAt for model+prompt deduplication
     const trendJobIds = allTrendJobs.filter((j) => j.finishedAt).map((j) => j.id);
     const rawTrendRuns = trendJobIds.length > 0
       ? await prisma.run.findMany({
           where: { jobId: { in: trendJobIds }, prompt: { cluster: "industry" } },
-          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true, model: true },
+          select: { id: true, jobId: true, promptId: true, createdAt: true, rawResponseText: true, analysisJson: true, model: true },
         })
       : [];
 
-    // Group RAW trend runs by date (not query-universe-filtered) so the Brand Recall
-    // series uses the same denominator as Overview/Visibility per date bucket.
-    // Competition-specific metrics (SoV, avgPosition, rank1Rate) also use this raw pool
-    // for trend consistency.
-    const trendRunsByDate = new Map<string, typeof rawTrendRuns>();
+    // Build cumulative as-of-date deduped snapshots (same as Visibility trend)
+    // For each date, keep the latest run per model+prompt seen up to that date.
+    const trendDates = [...new Set(
+      allTrendJobs.filter((j) => j.finishedAt).map((j) => j.finishedAt!.toISOString().slice(0, 10)),
+    )].sort();
+
+    // Index runs by model+prompt key, sorted by createdAt asc
+    type TrendRun = (typeof rawTrendRuns)[number];
+    const trendRunsByKey = new Map<string, { date: string; run: TrendRun }[]>();
     for (const r of rawTrendRuns) {
       const tj = allTrendJobs.find((j) => j.id === r.jobId);
       if (!tj?.finishedAt) continue;
       const date = tj.finishedAt.toISOString().slice(0, 10);
-      if (!trendRunsByDate.has(date)) trendRunsByDate.set(date, []);
-      trendRunsByDate.get(date)!.push(r);
+      const key = `${r.model}|${r.promptId}`;
+      const list = trendRunsByKey.get(key) ?? [];
+      list.push({ date, run: r });
+      trendRunsByKey.set(key, list);
+    }
+    for (const [, list] of trendRunsByKey) {
+      list.sort((a, b) => a.run.createdAt.getTime() - b.run.createdAt.getTime());
     }
 
-    // Build trend points: brand recall uses isRunInBrandScope on raw runs,
-    // competitors use text-presence on the same raw runs (same denominator)
+    // Walk dates in order, maintaining a running map of latest run per key
+    const latestByKey = new Map<string, TrendRun>();
+    const keyPointers = new Map<string, number>();
+    for (const key of trendRunsByKey.keys()) keyPointers.set(key, 0);
+
+    const dedupedTrendByDate = new Map<string, TrendRun[]>();
+    for (const date of trendDates) {
+      // Advance pointers: absorb runs whose date <= current date
+      for (const [key, list] of trendRunsByKey) {
+        let ptr = keyPointers.get(key) ?? 0;
+        while (ptr < list.length && list[ptr].date <= date) {
+          latestByKey.set(key, list[ptr].run);
+          ptr++;
+        }
+        keyPointers.set(key, ptr);
+      }
+      dedupedTrendByDate.set(date, [...latestByKey.values()]);
+    }
+
+    // Build trend points from deduped as-of-date snapshots
     const competitiveTrend: CompetitiveTrendPoint[] = [];
-    for (const [date, dateRuns] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [date, dateRuns] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const trendLeaderboardRuns: LeaderboardRun[] = dateRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
       const dateTextRanks = computeTextRanks(trendLeaderboardRuns, leaderboardEntities);
       const point = buildTrendPoint(dateTextRanks, trendEntityIds, dateRuns.length);
-      // Override brand mentionRate with isRunInBrandScope on raw runs (matches Overview/Visibility)
+      // Override brand mentionRate with isRunInBrandScope (matches Overview/Visibility)
       const brandDateMentions = dateRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
       point.mentionRate[brand.slug] = dateRuns.length > 0
         ? Math.round((brandDateMentions / dateRuns.length) * 10000) / 100
@@ -664,7 +692,7 @@ export async function GET(req: NextRequest) {
     }
 
     const sentimentTrend: CompetitiveSentimentTrendPoint[] = [];
-    for (const [date] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [date] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const dateMap = sentimentByDateEntity.get(date);
       const sentiment: Record<string, number> = {};
       for (const entityId of trendEntityIds) {
