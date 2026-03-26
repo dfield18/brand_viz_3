@@ -15,6 +15,8 @@ import {
   computeMentionRate,
 } from "./computeCompetition";
 
+export { computeMentionRate };
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -233,4 +235,53 @@ export function buildTrendPoint(
   }
 
   return { mentionRate, mentionShare, avgPosition, rank1Rate };
+}
+
+// ---------------------------------------------------------------------------
+// Latest-snapshot recall (aligns with Overview/Visibility Brand Recall)
+// ---------------------------------------------------------------------------
+
+export interface SnapshotRun {
+  text: string;
+  model: string;
+  createdAt: Date;
+}
+
+/**
+ * Extract the latest-snapshot runs using the same 24h-window logic
+ * as Overview and Visibility tabs.
+ */
+export function getLatestSnapshotRuns<T extends { createdAt: Date }>(runs: T[]): T[] {
+  if (runs.length === 0) return [];
+  const latestDate = runs.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+  const cutoff = new Date(latestDate.getTime() - 24 * 60 * 60 * 1000);
+  const snapshot = runs.filter((r) => r.createdAt >= cutoff);
+  return snapshot.length > 0 ? snapshot : runs;
+}
+
+/**
+ * Compute latest-snapshot Brand Recall for all entities.
+ * Brand uses a custom mention detector (e.g. isRunInBrandScope);
+ * competitors use text-presence on the same snapshot pool.
+ *
+ * Returns a Map of entityId → recall percentage (0-100).
+ */
+export function computeSnapshotRecall(
+  snapshotRuns: LeaderboardRun[],
+  entities: LeaderboardEntity[],
+  brandMentionCount: number,
+  snapshotTotal: number,
+): Map<string, number> {
+  const textRanks = computeTextRanks(snapshotRuns, entities);
+  const result = new Map<string, number>();
+  for (const entity of entities) {
+    if (entity.isBrand) {
+      result.set(entity.entityId, computeMentionRate(brandMentionCount, snapshotTotal));
+    } else {
+      const ranks = textRanks.get(entity.entityId) ?? [];
+      const mentions = ranks.filter((r) => r !== null).length;
+      result.set(entity.entityId, computeMentionRate(mentions, snapshotTotal));
+    }
+  }
+  return result;
 }

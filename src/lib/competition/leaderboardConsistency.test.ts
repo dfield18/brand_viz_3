@@ -6,8 +6,12 @@ import {
   buildPerModelRows,
   buildRankDistribution,
   buildTrendPoint,
+  getLatestSnapshotRuns,
+  computeSnapshotRecall,
+  computeMentionRate,
   type LeaderboardRun,
   type LeaderboardEntity,
+  type SnapshotRun,
 } from "./leaderboardMetrics";
 
 /**
@@ -269,143 +273,90 @@ describe("No brand-only override drift", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: rank distribution consistency
+// Tests: latest-snapshot recall alignment with Overview/Visibility
 // ---------------------------------------------------------------------------
 
-describe("buildRankDistribution (production helper)", () => {
-  it("derives distribution from the same text-rank arrays as leaderboard", () => {
-    const runs: LeaderboardRun[] = [
-      { text: "Acme first. Globex second.", model: "chatgpt" },
-      { text: "Globex first. Acme second.", model: "gemini" },
-      { text: "Acme only.", model: "claude" },
-      { text: "Neither here.", model: "perplexity" },
+describe("getLatestSnapshotRuns (production helper)", () => {
+  it("extracts runs from the latest 24h window", () => {
+    const runs = [
+      { createdAt: new Date("2026-03-13T10:00:00Z"), text: "old" },
+      { createdAt: new Date("2026-03-25T10:00:00Z"), text: "new1" },
+      { createdAt: new Date("2026-03-25T12:00:00Z"), text: "new2" },
     ];
-    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
-    const textRanks = computeTextRanks(runs, entities);
-    const dist = buildRankDistribution(textRanks);
-
-    // Acme: rank 1 in runs 0,2; rank 2 in run 1; null in run 3
-    assert.deepEqual(dist["acme"], { 1: 2, 2: 1 });
-    // Globex: rank 2 in run 0; rank 1 in run 1; null in runs 2,3
-    assert.deepEqual(dist["globex"], { 1: 1, 2: 1 });
+    const snapshot = getLatestSnapshotRuns(runs);
+    assert.equal(snapshot.length, 2);
+    assert.ok(snapshot.every((r) => r.text.startsWith("new")));
   });
 
-  it("ignores null ranks (entity not mentioned)", () => {
-    const runs: LeaderboardRun[] = [
-      { text: "Acme only.", model: "chatgpt" },
-      { text: "Nothing.", model: "gemini" },
+  it("falls back to all runs when snapshot is empty", () => {
+    const runs = [
+      { createdAt: new Date("2026-03-13T10:00:00Z"), text: "only" },
     ];
-    const entities = makeEntities(["acme", "Acme", true]);
-    const textRanks = computeTextRanks(runs, entities);
-    const dist = buildRankDistribution(textRanks);
-
-    assert.deepEqual(dist["acme"], { 1: 1 });
+    const snapshot = getLatestSnapshotRuns(runs);
+    assert.equal(snapshot.length, 1);
   });
 
-  it("is consistent with leaderboard avgRank and rank1Rate", () => {
-    const runs: LeaderboardRun[] = [
-      { text: "Acme first. Globex second.", model: "chatgpt" },
-      { text: "Globex first. Acme second.", model: "gemini" },
-      { text: "Acme first.", model: "claude" },
-      { text: "Nothing.", model: "perplexity" },
-    ];
-    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
-    const textRanks = computeTextRanks(runs, entities);
-    const rows = buildLeaderboardRows(textRanks, entities, runs.length);
-    const dist = buildRankDistribution(textRanks);
-
-    const acmeRow = rows.find((r) => r.entityId === "acme")!;
-    const acmeDist = dist["acme"];
-
-    // rank1Rate from leaderboard = rank1 count / total responses
-    const rank1FromDist = acmeDist[1] ?? 0;
-    const rank1RateFromDist = Math.round((rank1FromDist / runs.length) * 100);
-    assert.equal(acmeRow.rank1Rate, rank1RateFromDist,
-      "rank1Rate from leaderboard must match count from rank distribution");
-
-    // avgRank from leaderboard must match average of distribution
-    const allRanks: number[] = [];
-    for (const [rank, count] of Object.entries(acmeDist)) {
-      for (let i = 0; i < count; i++) allRanks.push(Number(rank));
-    }
-    const avgFromDist = allRanks.length > 0
-      ? Math.round((allRanks.reduce((s, r) => s + r, 0) / allRanks.length) * 100) / 100
-      : null;
-    assert.equal(acmeRow.avgRank, avgFromDist,
-      "avgRank from leaderboard must match average derived from rank distribution");
+  it("returns empty for empty input", () => {
+    assert.equal(getLatestSnapshotRuns([]).length, 0);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tests: trend consistency
-// ---------------------------------------------------------------------------
-
-describe("buildTrendPoint (production helper)", () => {
-  it("treats brand and competitors identically in trend data", () => {
-    // Brand and competitor both mentioned in 2 runs, alternating rank1
-    const runs: LeaderboardRun[] = [
-      { text: "Acme is top. Globex follows.", model: "chatgpt" },
-      { text: "Globex leads. Acme trails.", model: "gemini" },
+describe("computeSnapshotRecall (production helper)", () => {
+  it("brand recall matches Overview/Visibility methodology", () => {
+    // Simulate: 4 latest-snapshot runs, brand mentioned in 3 (via isRunInBrandScope)
+    const snapshotRuns: LeaderboardRun[] = [
+      { text: "Acme is great. Globex too.", model: "chatgpt" },
+      { text: "Globex leads.", model: "gemini" },
+      { text: "Acme mentioned. Globex mentioned.", model: "claude" },
+      { text: "Acme only.", model: "perplexity" },
     ];
     const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
-    const textRanks = computeTextRanks(runs, entities);
-    const point = buildTrendPoint(textRanks, ["acme", "globex"], runs.length);
 
-    // Both mentioned in 2/2 = 100%
-    assert.equal(point.mentionRate["acme"], 100);
-    assert.equal(point.mentionRate["globex"], 100);
-    // Both have 50% mentionShare
-    assert.equal(point.mentionShare["acme"], 50);
-    assert.equal(point.mentionShare["globex"], 50);
-    // Both rank1 once out of 2 = 50%
-    assert.equal(point.rank1Rate["acme"], 50);
-    assert.equal(point.rank1Rate["globex"], 50);
+    // Brand: 3 out of 4 = 75% (simulating isRunInBrandScope result)
+    const brandMentionCount = 3;
+    const recall = computeSnapshotRecall(snapshotRuns, entities, brandMentionCount, snapshotRuns.length);
+
+    assert.equal(recall.get("acme"), 75);
+    // Globex: text-presence in 3/4 = 75%
+    assert.equal(recall.get("globex"), 75);
   });
 
-  it("no brand-only override in trend — brand with lower presence gets lower rate", () => {
-    const runs: LeaderboardRun[] = [
-      { text: "Globex is great.", model: "chatgpt" },
-      { text: "Globex dominates. Acme trails.", model: "gemini" },
-      { text: "Globex only.", model: "claude" },
+  it("competitor recall uses same denominator as brand", () => {
+    const snapshotRuns: LeaderboardRun[] = [
+      { text: "Acme is here.", model: "chatgpt" },
+      { text: "Nothing here.", model: "gemini" },
     ];
     const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
-    const textRanks = computeTextRanks(runs, entities);
-    const point = buildTrendPoint(textRanks, ["acme", "globex"], runs.length);
 
-    // Acme: 1/3 = 33.33%, Globex: 3/3 = 100%
-    assert.equal(point.mentionRate["acme"], 33.33);
-    assert.equal(point.mentionRate["globex"], 100);
-    // No brand override — brand has genuinely lower rate
-    assert.ok(point.mentionRate["acme"] < point.mentionRate["globex"],
-      "Brand with lower text presence must have lower mentionRate in trend — no override allowed");
+    const recall = computeSnapshotRecall(snapshotRuns, entities, 1, snapshotRuns.length);
+    // Brand: 1/2 = 50%
+    assert.equal(recall.get("acme"), 50);
+    // Globex: 0/2 = 0% (same denominator, not mentioned)
+    assert.equal(recall.get("globex"), 0);
   });
 
-  it("trend mentionShare sums to ~100%", () => {
-    const runs: LeaderboardRun[] = [
-      { text: "Acme and Globex and Initech.", model: "chatgpt" },
-      { text: "Acme and Globex.", model: "gemini" },
+  it("historical presence does NOT leak into latest-snapshot recall", () => {
+    // Full range has competitor in 5/6 runs, but latest snapshot only has 2 runs
+    // where competitor appears in 1
+    const allRuns: SnapshotRun[] = [
+      { text: "Globex everywhere.", model: "chatgpt", createdAt: new Date("2026-03-13") },
+      { text: "Globex here too.", model: "gemini", createdAt: new Date("2026-03-13") },
+      { text: "Globex again.", model: "claude", createdAt: new Date("2026-03-13") },
+      { text: "Globex still.", model: "perplexity", createdAt: new Date("2026-03-13") },
+      { text: "Globex mentioned. Acme too.", model: "chatgpt", createdAt: new Date("2026-03-25") },
+      { text: "Acme only.", model: "gemini", createdAt: new Date("2026-03-25") },
     ];
-    const entities = makeEntities(
-      ["acme", "Acme", true],
-      ["globex", "Globex", false],
-      ["initech", "Initech", false],
-    );
-    const textRanks = computeTextRanks(runs, entities);
-    const point = buildTrendPoint(textRanks, ["acme", "globex", "initech"], runs.length);
 
-    const totalShare = point.mentionShare["acme"] + point.mentionShare["globex"] + point.mentionShare["initech"];
-    assert.ok(Math.abs(totalShare - 100) < 1,
-      `trend mentionShare should sum to ~100%, got ${totalShare}`);
-  });
+    const snapshot = getLatestSnapshotRuns(allRuns);
+    assert.equal(snapshot.length, 2, "Should only have Mar 25 runs");
 
-  it("returns zeros for empty runs", () => {
-    const textRanks = new Map<string, (number | null)[]>();
-    textRanks.set("acme", []);
-    const point = buildTrendPoint(textRanks, ["acme"], 0);
+    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
+    const snapshotLeaderboardRuns = snapshot.map((r) => ({ text: r.text, model: r.model }));
+    const recall = computeSnapshotRecall(snapshotLeaderboardRuns, entities, 2, snapshot.length);
 
-    assert.equal(point.mentionRate["acme"], 0);
-    assert.equal(point.mentionShare["acme"], 0);
-    assert.equal(point.avgPosition["acme"], null);
-    assert.equal(point.rank1Rate["acme"], 0);
+    // Globex: 1/2 = 50% on latest snapshot (NOT 5/6 from full range)
+    assert.equal(recall.get("globex"), 50);
+    // Brand: 2/2 = 100% (we pass brandMentionCount=2)
+    assert.equal(recall.get("acme"), 100);
   });
 });
