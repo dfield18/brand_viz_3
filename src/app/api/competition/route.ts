@@ -192,31 +192,35 @@ export async function GET(req: NextRequest) {
       textRanksByEntity, leaderboardEntities, totalResponses,
     );
 
-    // --- Brand Recall (mentionRate): latest-snapshot, matching Overview/Visibility ---
-    // Uses the same 24h-window snapshot and isRunInBrandScope for the brand.
-    // Competitors use text-presence on the same latest-snapshot runs.
-    // This ensures the "Brand Recall" column matches across all tabs.
-    const latestRunDate = runs.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-    const latestCutoff = new Date(latestRunDate.getTime() - 24 * 60 * 60 * 1000);
-    const latestSnapshotRuns = runs.filter((r) => r.createdAt >= latestCutoff);
-    const snapshotRuns = latestSnapshotRuns.length > 0 ? latestSnapshotRuns : runs;
-    const snapshotTotal = snapshotRuns.length;
+    // --- Brand Recall (mentionRate): from RAW latest-snapshot industry runs ---
+    // Uses the same run pool as Overview/Visibility: rawRuns (not query-universe-filtered).
+    // This ensures the "Brand Recall" column matches across all tabs, even for
+    // ambiguous brands where query-universe filtering removes some runs.
+    //
+    // Other competition metrics (SoV, avgRank, rank1Rate, win/loss) continue using
+    // the query-universe-filtered `runs` for competition-specific analysis.
+    const rawIndustryRuns = rawRuns.filter((r) => r.prompt.cluster === "industry");
+    const rawLatestDate = rawIndustryRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+    const rawLatestCutoff = new Date(rawLatestDate.getTime() - 24 * 60 * 60 * 1000);
+    const rawLatestIndustry = rawIndustryRuns.filter((r) => r.createdAt >= rawLatestCutoff);
+    const recallSnapshotRuns = rawLatestIndustry.length > 0 ? rawLatestIndustry : rawIndustryRuns;
+    const recallSnapshotTotal = recallSnapshotRuns.length;
 
-    // Brand recall: isRunInBrandScope (same as Overview/Visibility)
-    const brandSnapshotMentions = snapshotRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
+    // Brand recall: isRunInBrandScope on raw snapshot (same as Overview/Visibility)
+    const brandSnapshotMentions = recallSnapshotRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
 
-    // Competitor recall: text-presence on latest-snapshot runs
-    const snapshotLeaderboardRuns: LeaderboardRun[] = snapshotRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
-    const snapshotTextRanks = computeTextRanks(snapshotLeaderboardRuns, leaderboardEntities);
+    // Competitor recall: text-presence on the same raw latest-snapshot runs
+    const recallSnapshotLeaderboardRuns: LeaderboardRun[] = recallSnapshotRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
+    const recallSnapshotTextRanks = computeTextRanks(recallSnapshotLeaderboardRuns, leaderboardEntities);
 
-    // Override mentionRate on all rows with latest-snapshot recall
+    // Override mentionRate on all rows with raw-snapshot recall
     for (const comp of competitors) {
       if (comp.isBrand) {
-        comp.mentionRate = computeMentionRate(brandSnapshotMentions, snapshotTotal);
+        comp.mentionRate = computeMentionRate(brandSnapshotMentions, recallSnapshotTotal);
       } else {
-        const ranks = snapshotTextRanks.get(comp.entityId) ?? [];
+        const ranks = recallSnapshotTextRanks.get(comp.entityId) ?? [];
         const mentions = ranks.filter((r) => r !== null).length;
-        comp.mentionRate = computeMentionRate(mentions, snapshotTotal);
+        comp.mentionRate = computeMentionRate(mentions, recallSnapshotTotal);
       }
     }
 
@@ -396,18 +400,18 @@ export async function GET(req: NextRequest) {
     const runModels = runs.map((r) => r.model);
     const perModelResults = buildPerModelRows(textRanksByEntity, leaderboardEntities, runModels);
 
-    // Override per-model mentionRate with latest-snapshot recall
-    const snapshotRunModels = snapshotRuns.map((r) => r.model);
-    const snapshotPerModel = buildPerModelRows(snapshotTextRanks, leaderboardEntities, snapshotRunModels);
+    // Override per-model mentionRate with raw latest-snapshot recall (matches Overview/Visibility)
+    const recallSnapshotRunModels = recallSnapshotRuns.map((r) => r.model);
+    const recallSnapshotPerModel = buildPerModelRows(recallSnapshotTextRanks, leaderboardEntities, recallSnapshotRunModels);
     const snapshotRecallByModel = new Map<string, Map<string, number>>();
-    for (const { model: m, rows } of snapshotPerModel) {
+    for (const { model: m, rows } of recallSnapshotPerModel) {
       const modelMap = new Map<string, number>();
-      const modelSnapshotRuns = snapshotRuns.filter((r) => r.model === m);
-      const modelSnapshotTotal = modelSnapshotRuns.length;
+      const modelRecallRuns = recallSnapshotRuns.filter((r) => r.model === m);
+      const modelRecallTotal = modelRecallRuns.length;
       for (const row of rows) {
         if (row.isBrand) {
-          const brandModelMentions = modelSnapshotRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
-          modelMap.set(row.entityId, computeMentionRate(brandModelMentions, modelSnapshotTotal));
+          const brandModelMentions = modelRecallRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
+          modelMap.set(row.entityId, computeMentionRate(brandModelMentions, modelRecallTotal));
         } else {
           modelMap.set(row.entityId, row.mentionRate);
         }
@@ -529,12 +533,12 @@ export async function GET(req: NextRequest) {
         })
       : [];
 
-    // Scope-filter trend runs (removes ambiguous false positives)
-    const scopedTrendRuns = filterRunsToBrandQueryUniverse(rawTrendRuns, brandIdentity);
-
-    // Group scoped trend runs by date
-    const trendRunsByDate = new Map<string, typeof scopedTrendRuns>();
-    for (const r of scopedTrendRuns) {
+    // Group RAW trend runs by date (not query-universe-filtered) so the Brand Recall
+    // series uses the same denominator as Overview/Visibility per date bucket.
+    // Competition-specific metrics (SoV, avgPosition, rank1Rate) also use this raw pool
+    // for trend consistency.
+    const trendRunsByDate = new Map<string, typeof rawTrendRuns>();
+    for (const r of rawTrendRuns) {
       const tj = allTrendJobs.find((j) => j.id === r.jobId);
       if (!tj?.finishedAt) continue;
       const date = tj.finishedAt.toISOString().slice(0, 10);
@@ -542,14 +546,14 @@ export async function GET(req: NextRequest) {
       trendRunsByDate.get(date)!.push(r);
     }
 
-    // Build trend points: competitors use text-presence, brand uses isRunInBrandScope
-    // (matches Overview/Visibility brand-recall definition per date bucket)
+    // Build trend points: brand recall uses isRunInBrandScope on raw runs,
+    // competitors use text-presence on the same raw runs (same denominator)
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, dateRuns] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const trendLeaderboardRuns: LeaderboardRun[] = dateRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
       const dateTextRanks = computeTextRanks(trendLeaderboardRuns, leaderboardEntities);
       const point = buildTrendPoint(dateTextRanks, trendEntityIds, dateRuns.length);
-      // Override brand mentionRate with isRunInBrandScope (same as Overview/Visibility)
+      // Override brand mentionRate with isRunInBrandScope on raw runs (matches Overview/Visibility)
       const brandDateMentions = dateRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
       point.mentionRate[brand.slug] = dateRuns.length > 0
         ? Math.round((brandDateMentions / dateRuns.length) * 10000) / 100
@@ -581,8 +585,8 @@ export async function GET(req: NextRequest) {
           select: { runId: true, entityId: true, rankPosition: true, run: { select: { jobId: true } } },
         })
       : [];
-    const scopedTrendRunIds = new Set(scopedTrendRuns.map((r) => r.id));
-    const scopedTrendMetrics = allTrendMetrics.filter((m: { runId: string }) => scopedTrendRunIds.has(m.runId));
+    const rawTrendRunIds = new Set(rawTrendRuns.map((r) => r.id));
+    const scopedTrendMetrics = allTrendMetrics.filter((m: { runId: string }) => rawTrendRunIds.has(m.runId));
 
     // --- Sentiment Trend: per-entity sentiment score per date ---
     // Uses entity-metric presence to find context windows for signal scoring
