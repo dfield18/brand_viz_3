@@ -70,7 +70,7 @@ const DONUT_COLORS: Record<string, string> = {
 /* ─── Mini Donut ──────────────────────────────────────────────────── */
 
 function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: TopDomainRow[]; overallTotalCitations: number }) {
-  const { pieData } = useMemo(() => {
+  const { pieData, chartTotal } = useMemo(() => {
     const counts: Record<string, number> = {};
     let total = 0;
     for (const d of topDomains) {
@@ -78,7 +78,7 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
       counts[cat] = (counts[cat] ?? 0) + d.citations;
       total += d.citations;
     }
-    if (total === 0) return { pieData: [], totalCitations: 0 };
+    if (total === 0) return { pieData: [], chartTotal: 0 };
     const rawSlices = Object.entries(counts)
       .map(([key, value]) => ({
         key,
@@ -87,7 +87,7 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
         pct: total > 0 ? (value / total) * 100 : 0,
       }))
       .sort((a, b) => b.value - a.value);
-    // Roll up categories under 5% into "Other" (matches sources tab)
+    // Roll up categories under 5% into "Other"
     let otherValue = 0;
     const slices: typeof rawSlices = [];
     for (const slice of rawSlices) {
@@ -105,7 +105,7 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
         pct: total > 0 ? Math.round((otherValue / total) * 100) : 0,
       });
     }
-    return { pieData: slices };
+    return { pieData: slices, chartTotal: total };
   }, [topDomains]);
 
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
@@ -171,8 +171,8 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
             </>
           ) : (
             <>
-              <span className="text-lg font-bold tabular-nums">{overallTotalCitations}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight text-center">total citations</span>
+              <span className="text-lg font-bold tabular-nums">{chartTotal}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight text-center">Total citations</span>
             </>
           )}
         </div>
