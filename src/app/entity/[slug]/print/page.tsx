@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, useRef, useCallback } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
@@ -89,8 +89,10 @@ function PrintInner() {
   // Auto-print once content is ready
   useEffect(() => {
     if (!ready || printed) return;
-    setPrinted(true);
-    const timer = setTimeout(() => window.print(), 500);
+    const timer = setTimeout(() => {
+      setPrinted(true);
+      window.print();
+    }, 500);
     return () => clearTimeout(timer);
   }, [ready, printed]);
 

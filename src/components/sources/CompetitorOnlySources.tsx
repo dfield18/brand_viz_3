@@ -32,11 +32,9 @@ const COMP_COLORS = [
 
 /** Chart-only view — stays in Source Overview */
 export default function CompetitorOnlySources({ rows, brandName, entityNames, isOrg }: Props) {
-  if (!rows || rows.length === 0) return null;
+  const top = (rows ?? []).slice(0, 15);
 
-  const top = rows.slice(0, 15);
-
-  // Build a stable color map for competitors
+  // Build a stable color map for competitors — must be called before early return
   const colorMap = useMemo(() => {
     const keySet = new Set<string>();
     for (const row of top) {
@@ -48,6 +46,8 @@ export default function CompetitorOnlySources({ rows, brandName, entityNames, is
     });
     return cMap;
   }, [top]);
+
+  if (top.length === 0) return null;
 
   const maxTotal = Math.max(...top.map((r) => r.citations), 1);
 
@@ -107,7 +107,7 @@ export default function CompetitorOnlySources({ rows, brandName, entityNames, is
         })}
       </div>
 
-      {rows.length > 15 && (
+      {rows && rows.length > 15 && (
         <p className="text-[11px] text-muted-foreground mt-4 text-center">
           Showing top 15 of {rows.length} sources — see full list below
         </p>

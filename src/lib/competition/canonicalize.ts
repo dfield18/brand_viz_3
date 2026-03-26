@@ -190,7 +190,7 @@ export function buildEntityAliasGroups(
   // produces a base that also exists as a canonical value
   const familyMerges = new Map<string, string>();
   for (const canonical of canonicalValues) {
-    let stripped = canonical;
+    const stripped = canonical;
     for (const suffix of BUSINESS_UNIT_SUFFIXES) {
       if (stripped.endsWith(" " + suffix)) {
         const core = stripped.slice(0, -(suffix.length + 1)).trim();

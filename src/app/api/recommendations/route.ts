@@ -667,7 +667,7 @@ export async function GET(req: NextRequest) {
   const snapshots = buildMovementSnapshots(movementRuns, brandName, brand.slug, alertAliasMap);
 
   const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
-  let { comparisonPeriodLabel } = alertResult;
+  const { comparisonPeriodLabel } = alertResult;
 
   // Map to the format expected by the UI (add displayName)
   const competitorAlerts = alertResult.alerts

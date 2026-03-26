@@ -234,12 +234,9 @@ function TopPrioritiesSection({ data, brandName }: { data: ApiResponse; brandNam
 }
 
 function PromptOpportunitiesSection({ data, brandName, summary }: { data: ApiResponse["promptOpportunities"]; brandName: string; summary: string }) {
-  if (!data || data.length === 0) {
-    return <p className="text-sm text-muted-foreground">No prompt gaps found — {brandName} has great coverage across AI questions.</p>;
-  }
-
-  // Deduplicate prompts across models
+  // Deduplicate prompts across models — hook must be called before early return
   const grouped = useMemo(() => {
+    if (!data || data.length === 0) return [];
     const map = new Map<string, {
       promptText: string;
       worstRank: number | null;
@@ -267,6 +264,10 @@ function PromptOpportunitiesSection({ data, brandName, summary }: { data: ApiRes
       return b.competitors.size - a.competitors.size;
     });
   }, [data]);
+
+  if (grouped.length === 0) {
+    return <p className="text-sm text-muted-foreground">No prompt gaps found — {brandName} has great coverage across AI questions.</p>;
+  }
 
   const notMentioned = grouped.filter((g) => g.worstRank === null);
   const outranked = grouped.filter((g) => g.worstRank !== null);
