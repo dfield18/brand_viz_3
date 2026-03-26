@@ -12,7 +12,7 @@ import {
   computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
 import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
-import { isBrandMentioned, computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   splitSentences,
@@ -196,10 +196,11 @@ export async function GET(req: NextRequest) {
       textRanksByEntity, leaderboardEntities, totalResponses,
     );
 
-    // --- KPI alignment: all four metrics use isBrandMentioned + computeBrandRank ---
-    // ALL entities (brand + competitors) use the same detection methodology:
-    // - Presence: isBrandMentioned (word-boundary match of name + slug)
-    //   Brand additionally uses isRunInBrandScope (adds ambiguity/scope evidence)
+    // --- KPI alignment: all four metrics use isRunInBrandScope + computeBrandRank ---
+    // ALL entities (brand + competitors) use isRunInBrandScope for presence detection:
+    // - Non-ambiguous names: text mention alone is sufficient (identical for all entities)
+    // - Ambiguous names: requires evidence (analysisJson.competitors list, 2+ mentions, etc.)
+    //   Works for competitors because GPT's competitor extraction provides the evidence signal
     // - Ranking: computeBrandRank (alias-aware text-position relative to analysisJson.competitors)
     // - Run pool: raw latest-24h-snapshot industry runs (same as Overview/Visibility)
     // - SoV denominator: brand/entity mentions + analysisJson.competitors.length per run
@@ -223,22 +224,28 @@ export async function GET(req: NextRequest) {
       sovTotalEntityMentions += (mentioned ? 1 : 0) + compCount;
     }
 
-    // Compute all four metrics for every entity using the same methodology
+    // Compute all four metrics for every entity using isRunInBrandScope + computeBrandRank.
+    // Brand and competitors both go through the same scope-aware detection:
+    // - Non-ambiguous names: text mention is sufficient (identical for brand and competitors)
+    // - Ambiguous names: requires supporting evidence (analysisJson.competitors list,
+    //   2+ distinct mentions, etc.) — works for competitors because GPT's competitor
+    //   extraction provides the evidence signal
     for (const comp of competitors) {
-      // Presence detection: brand uses isRunInBrandScope (scope-aware);
-      // competitors use isBrandMentioned (same word-boundary matching, just without scope evidence layer)
+      const entityIdentity: import("@/lib/visibility/brandScope").BrandScopeIdentity = {
+        brandName: comp.name,
+        brandSlug: comp.entityId,
+      };
+      // Brand gets its full identity (with aliases); competitors get name + entityId
+      const identity = comp.isBrand ? brandIdentity : entityIdentity;
+      const rankName = comp.isBrand ? brand.name : comp.name;
+      const rankSlug = comp.isBrand ? brand.slug : comp.entityId;
+      const rankAliases = comp.isBrand ? brandAliases : undefined;
+
       let entityMentions = 0;
       const entityRanks: (number | null)[] = [];
       for (const run of recallSnapshotRuns) {
-        let mentioned: boolean;
-        let rank: number | null;
-        if (comp.isBrand) {
-          mentioned = isRunInBrandScope(run, brandIdentity);
-          rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
-        } else {
-          mentioned = isBrandMentioned(run.rawResponseText, comp.name, comp.entityId);
-          rank = computeBrandRank(run.rawResponseText, comp.name, comp.entityId, run.analysisJson);
-        }
+        const mentioned = isRunInBrandScope(run, identity);
+        const rank = computeBrandRank(run.rawResponseText, rankName, rankSlug, run.analysisJson, rankAliases);
         if (mentioned) entityMentions++;
         entityRanks.push(rank);
       }
@@ -474,18 +481,20 @@ export async function GET(req: NextRequest) {
       }
       const modelMap = new Map<string, PerModelSnapshot>();
       for (const entity of leaderboardEntities) {
+        const entityIdentity: import("@/lib/visibility/brandScope").BrandScopeIdentity = {
+          brandName: entity.name,
+          brandSlug: entity.entityId,
+        };
+        const identity = entity.isBrand ? brandIdentity : entityIdentity;
+        const rankName = entity.isBrand ? brand.name : entity.name;
+        const rankSlug = entity.isBrand ? brand.slug : entity.entityId;
+        const rankAliases = entity.isBrand ? brandAliases : undefined;
+
         let entityMentions = 0;
         const entityRanks: (number | null)[] = [];
         for (const run of modelRuns) {
-          let mentioned: boolean;
-          let rank: number | null;
-          if (entity.isBrand) {
-            mentioned = isRunInBrandScope(run, brandIdentity);
-            rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
-          } else {
-            mentioned = isBrandMentioned(run.rawResponseText, entity.name, entity.entityId);
-            rank = computeBrandRank(run.rawResponseText, entity.name, entity.entityId, run.analysisJson);
-          }
+          const mentioned = isRunInBrandScope(run, identity);
+          const rank = computeBrandRank(run.rawResponseText, rankName, rankSlug, run.analysisJson, rankAliases);
           if (mentioned) entityMentions++;
           entityRanks.push(rank);
         }
@@ -676,18 +685,20 @@ export async function GET(req: NextRequest) {
       for (const entityId of trendEntityIds) {
         const entity = leaderboardEntities.find((e) => e.entityId === entityId);
         if (!entity) continue;
+        const entityIdentity: import("@/lib/visibility/brandScope").BrandScopeIdentity = {
+          brandName: entity.name,
+          brandSlug: entity.entityId,
+        };
+        const identity = entity.isBrand ? brandIdentity : entityIdentity;
+        const rankName = entity.isBrand ? brand.name : entity.name;
+        const rankSlug = entity.isBrand ? brand.slug : entity.entityId;
+        const rankAliases = entity.isBrand ? brandAliases : undefined;
+
         let entityMentions = 0;
         const entityRanks: (number | null)[] = [];
         for (const run of dateRuns) {
-          let mentioned: boolean;
-          let rank: number | null;
-          if (entity.isBrand) {
-            mentioned = isRunInBrandScope(run, brandIdentity);
-            rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
-          } else {
-            mentioned = isBrandMentioned(run.rawResponseText, entity.name, entity.entityId);
-            rank = computeBrandRank(run.rawResponseText, entity.name, entity.entityId, run.analysisJson);
-          }
+          const mentioned = isRunInBrandScope(run, identity);
+          const rank = computeBrandRank(run.rawResponseText, rankName, rankSlug, run.analysisJson, rankAliases);
           if (mentioned) entityMentions++;
           entityRanks.push(rank);
         }
