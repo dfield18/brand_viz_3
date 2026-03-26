@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   review: "Review",
   ecommerce: "E-commerce",
   reference: "Reference",
+  advocacy: "Advocacy / Nonprofit",
   other: "Other",
 };
 

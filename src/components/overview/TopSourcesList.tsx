@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   video: "Video",
   ecommerce: "E-commerce",
   reference: "Reference",
+  advocacy: "Advocacy / Nonprofit",
   social_media: "Social Media",
   government: "Government",
   academic: "Academic",
@@ -27,6 +28,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   video: "video platforms",
   ecommerce: "online retailers",
   reference: "encyclopedias & data portals",
+  advocacy: "nonprofits & advocacy organizations",
   social_media: "forums & discussion sites",
   government: "government agency sites",
   academic: "research & journals",
@@ -42,6 +44,7 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   video: "bg-slate-200 text-slate-800",
   ecommerce: "bg-orange-100 text-orange-700",
   reference: "bg-violet-100 text-violet-700",
+  advocacy: "bg-emerald-100 text-emerald-700",
   social_media: "bg-pink-100 text-pink-700",
   government: "bg-teal-100 text-teal-700",
   academic: "bg-indigo-100 text-indigo-700",
@@ -51,13 +54,13 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-600",
 };
 
-// Colors match the sources tab's CATEGORY_COLORS exactly
 const DONUT_COLORS: Record<string, string> = {
   reviews: "#38bdf8",
   news_media: "#818cf8",
   video: "#fb7185",
   ecommerce: "#f97316",
   reference: "#a78bfa",
+  advocacy: "#34d399",
   social_media: "#f472b6",
   government: "#14b8a6",
   academic: "#6366f1",

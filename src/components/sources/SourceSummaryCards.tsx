@@ -103,6 +103,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   video: "Video",
   ecommerce: "E-commerce",
   reference: "Reference",
+  advocacy: "Advocacy / Nonprofit",
   social_media: "Social Media",
   government: "Government",
   academic: "Academic",
