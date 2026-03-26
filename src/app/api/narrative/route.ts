@@ -179,10 +179,11 @@ export async function GET(req: NextRequest) {
 
   const narrativeCount = narratives.length;
 
-  // Sentiment split — iterate runs directly (matches overview tab methodology)
-  // This avoids parseNarrative() filtering out runs that have sentiment but no themes array
+  // Sentiment split — uses ALL scoped runs (all clusters), matching overview tab.
+  // This avoids parseNarrative() filtering out runs that have sentiment but no themes array.
+  // All clusters are included so sentiment is consistent across Overview and Narrative tabs.
   let posCount = 0, neuCount = 0, negCount = 0;
-  for (const r of runs) {
+  for (const r of allScopedRuns) {
     const nj = r.narrativeJson as Record<string, unknown> | null;
     if (!nj) continue;
     const sent = nj.sentiment as { label?: string } | undefined;
@@ -312,13 +313,12 @@ export async function GET(req: NextRequest) {
         .slice(0, 5);
 
   // Drift + trend: fetch historical runs using the same scope rule as the cards.
-  // If cards use industry runs, trends use industry runs. If cards fell back
-  // to all-scoped runs, trends also use all-scoped runs.
-  const useIndustryScope = industryRuns.length > 0;
+  // Fetch ALL clusters for trend — sentiment uses all clusters for consistency with Overview.
+  // Theme drift still filters to industry below.
   type TrendRun = { rawResponseText: string; narrativeJson: unknown; analysisJson: unknown; createdAt: Date; model: string; prompt: { cluster: string } };
   const trendRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...(useIndustryScope ? { prompt: { cluster: "industry" } } : {}) }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const }, ...(useIndustryScope ? { prompt: { cluster: "industry" } } : {}) };
+    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } }
+    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } };
   const rawTrendRuns = await prisma.run.findMany({
     where: trendRunWhere,
     select: { rawResponseText: true, narrativeJson: true, analysisJson: true, createdAt: true, model: true, prompt: { select: { cluster: true } } },
@@ -327,7 +327,8 @@ export async function GET(req: NextRequest) {
 
   // Apply brand-scope filter to trend runs (same disambiguation as top-of-page)
   const allTrendRuns = filterRunsToBrandScope(rawTrendRuns, brandIdentity);
-  const driftRuns = allTrendRuns.filter((r) => r.narrativeJson != null);
+  // Theme drift uses industry runs only (narrative-specific); sentiment trend uses all clusters
+  const driftRuns = allTrendRuns.filter((r) => r.narrativeJson != null && r.prompt.cluster === "industry");
 
   const weekBuckets: Record<string, Record<string, number>> = {};
   for (const dr of driftRuns) {
@@ -604,10 +605,13 @@ Rules:
     }
   }
 
-  // Sentiment by Question: group by prompt, compute using POS/NEU/NEG label counts
-  // (same methodology as "How Each AI Platform Sees [Brand]" — % positive classification)
+  // Sentiment by Question: uses ALL scoped runs (all clusters) so every prompt
+  // type contributes to the scatter chart, matching the all-cluster sentiment split.
+  const allScopedNarratives = allScopedRuns
+    .map((r) => ({ parsed: parseNarrative(r.narrativeJson), run: r }))
+    .filter((n): n is { parsed: NarrativeExtractionResult; run: typeof allScopedRuns[number] } => n.parsed !== null);
   const promptSentimentMap = new Map<string, { mentions: number; pos: number; neu: number; neg: number; scores: number[] }>();
-  for (const { parsed, run } of narratives) {
+  for (const { parsed, run } of allScopedNarratives) {
     const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     if (!promptSentimentMap.has(promptText)) {
       promptSentimentMap.set(promptText, { mentions: 0, pos: 0, neu: 0, neg: 0, scores: [] });
@@ -636,7 +640,7 @@ Rules:
     else if (pctNeutral >= 50) sentiment = "Neutral";
     else sentiment = "Conditional";
     const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    const mentionRate = narrativeCount > 0 ? Math.round((mentions / narrativeCount) * 100) : 0;
+    const mentionRate = allScopedNarratives.length > 0 ? Math.round((mentions / allScopedNarratives.length) * 100) : 0;
     // Consistency: 100 − normalized std deviation (scores range -1 to 1, so max std dev ≈ 1)
     const variance = scores.length > 1
       ? scores.reduce((sum, s) => sum + (s - avg) ** 2, 0) / scores.length
