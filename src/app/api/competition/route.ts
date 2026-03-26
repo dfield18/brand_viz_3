@@ -43,7 +43,7 @@ const TOP_COMPETITORS = 10;
 const MAX_MATRIX_ROWS = 50;
 const MAX_TOP_LOSSES = 10;
 
-type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; jobId: string; rawResponseText: string; analysisJson: unknown; competitorNarrativesJson: unknown };
+type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; jobId: string; rawResponseText: string; analysisJson: unknown; narrativeJson: unknown; competitorNarrativesJson: unknown };
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     brandSlug,
     model,
     viewRange,
-    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, jobId: true, rawResponseText: true, analysisJson: true, competitorNarrativesJson: true, prompt: { select: { cluster: true } } } },
+    runQuery: { select: { id: true, model: true, promptId: true, createdAt: true, jobId: true, rawResponseText: true, analysisJson: true, narrativeJson: true, competitorNarrativesJson: true, prompt: { select: { cluster: true } } } },
   });
   if (!result.ok) return result.response;
 
@@ -278,6 +278,37 @@ export async function GET(req: NextRequest) {
         comp.sentimentScore = Math.round(avg * 100) / 100;
         comp.avgSentiment = scoreToLabel(avg);
         comp.sentimentDist = dist;
+      }
+    }
+
+    // Override brand sentiment with narrativeJson labels (matches Overview/Narrative)
+    const brandComp = competitors.find((c) => c.isBrand);
+    if (brandComp) {
+      let bPos = 0, bNeu = 0, bNeg = 0;
+      for (const run of runs) {
+        const nj = run.narrativeJson as Record<string, unknown> | null;
+        if (!nj) continue;
+        const sent = nj.sentiment as { label?: string } | undefined;
+        if (!sent?.label) continue;
+        if (sent.label === "POS") bPos++;
+        else if (sent.label === "NEG") bNeg++;
+        else bNeu++;
+      }
+      const bTotal = bPos + bNeu + bNeg;
+      if (bTotal > 0) {
+        const pctPos = Math.round((bPos / bTotal) * 100);
+        const pctNeg = Math.round((bNeg / bTotal) * 100);
+        const pctNeu = Math.round((bNeu / bTotal) * 100);
+        // Use same 60/40/40/50 thresholds as Overview/Narrative
+        let label: "Strong" | "Positive" | "Neutral" | "Conditional" | "Negative";
+        if (pctPos >= 60) label = "Strong";
+        else if (pctPos >= 40) label = "Positive";
+        else if (pctNeg >= 40) label = "Negative";
+        else if (pctNeu >= 50) label = "Neutral";
+        else label = "Conditional";
+        brandComp.avgSentiment = label;
+        brandComp.sentimentScore = Math.round(((bPos - bNeg) / bTotal) * 100) / 100;
+        brandComp.sentimentDist = { Strong: 0, Positive: bPos, Neutral: bNeu, Conditional: 0, Negative: bNeg };
       }
     }
 
