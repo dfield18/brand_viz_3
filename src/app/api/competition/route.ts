@@ -668,17 +668,44 @@ export async function GET(req: NextRequest) {
       dedupedTrendByDate.set(date, [...latestByKey.values()]);
     }
 
-    // Build trend points from deduped as-of-date snapshots
+    // Build trend points from deduped as-of-date snapshots.
+    // Brand series uses same methods as Overview/Visibility for all four metrics.
+    // Competitors use text-rank on the same deduped snapshot.
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, dateRuns] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const trendLeaderboardRuns: LeaderboardRun[] = dateRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
       const dateTextRanks = computeTextRanks(trendLeaderboardRuns, leaderboardEntities);
       const point = buildTrendPoint(dateTextRanks, trendEntityIds, dateRuns.length);
-      // Override brand mentionRate with isRunInBrandScope (matches Overview/Visibility)
+
+      // Override ALL brand metrics with Overview/Visibility methodology
       const brandDateMentions = dateRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
+      // Brand Recall
       point.mentionRate[brand.slug] = dateRuns.length > 0
         ? Math.round((brandDateMentions / dateRuns.length) * 10000) / 100
         : 0;
+      // SoV: brand mentions / (brand + analysisJson.competitors)
+      let dateSovTotal = 0;
+      for (const r of dateRuns) {
+        const mentioned = isRunInBrandScope(r, brandIdentity);
+        const a = r.analysisJson as { competitors?: { name: string }[] } | null;
+        dateSovTotal += (mentioned ? 1 : 0) + (a?.competitors ?? []).length;
+      }
+      point.mentionShare[brand.slug] = dateSovTotal > 0
+        ? Math.round((brandDateMentions / dateSovTotal) * 10000) / 100
+        : 0;
+      // Top Result Rate + Avg Position: computeBrandRank (alias-aware)
+      const brandDateRanks = dateRuns.map((r) =>
+        computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
+      );
+      const brandRank1 = brandDateRanks.filter((r) => r === 1).length;
+      point.rank1Rate[brand.slug] = dateRuns.length > 0
+        ? Math.round((brandRank1 / dateRuns.length) * 10000) / 100
+        : 0;
+      const validBrandRanks = brandDateRanks.filter((r): r is number => r !== null);
+      point.avgPosition[brand.slug] = validBrandRanks.length > 0
+        ? Math.round((validBrandRanks.reduce((s, r) => s + r, 0) / validBrandRanks.length) * 10) / 10
+        : null;
+
       competitiveTrend.push({ date, ...point });
     }
 
