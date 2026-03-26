@@ -119,3 +119,38 @@ export function getRankedEntitiesForRun(args: GetRankedEntitiesArgs): RankedEnti
 export function getTopBrandsForRun(args: GetRankedEntitiesArgs): string[] {
   return getRankedEntitiesForRun(args).map((e) => e.name);
 }
+
+// ---------------------------------------------------------------------------
+// Run-level Share of Voice counts
+// ---------------------------------------------------------------------------
+
+export interface RunSovCounts {
+  brandMentions: number;   // 0 or 1
+  totalMentions: number;   // ranked entity count (text-verified, deduped)
+}
+
+/**
+ * Compute run-level Share of Voice counts from the same canonical ranked
+ * entity list used by the Full Data CSV Brand 1..5 export.
+ *
+ * This ensures displayed SoV matches what users see in the exported data.
+ * Do NOT derive SoV denominator from raw analysisJson.competitors.length;
+ * use this helper instead to guarantee consistency.
+ *
+ * Uses `limit: Infinity` to count ALL text-verified entities, not just top 5.
+ */
+export function getSovCountsForRun(args: {
+  rawResponseText: string;
+  analysisJson: unknown;
+  brandName: string;
+  brandSlug: string;
+  aliasMap?: Map<string, string>;
+}): RunSovCounts {
+  const ranked = getRankedEntitiesForRun({
+    ...args,
+    includeBrand: true,
+    limit: Infinity, // count all text-verified entities, not just top 5
+  });
+  const brandMentions = ranked.some((e) => e.canonicalId === args.brandSlug) ? 1 : 0;
+  return { brandMentions, totalMentions: ranked.length };
+}

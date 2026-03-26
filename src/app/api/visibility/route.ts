@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
 import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import {
@@ -148,27 +149,37 @@ export async function GET(req: NextRequest) {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
 
-    // Share of Voice: text-based entity counting across latest-snapshot industry runs
+    // Share of Voice: uses canonical ranked entities (same as Full Data CSV Brand 1..5).
+    // Denominator = text-verified deduped entity count, NOT raw analysisJson.competitors.length.
     const industryRuns2 = latestIndustryRuns;
     let sovBrandMentions = 0;
     let sovTotalEntityMentions = 0;
     // Also build entity run sets for visibility ranking + opportunity prompts
     const entityRunSets = new Map<string, Set<string>>();
     const runCompetitorMap = new Map<string, string[]>(); // runId → competitor entity IDs
+    // Per-run SoV counts for per-question aggregation
+    const sovByRunId: Record<string, { brandMentions: number; totalMentions: number }> = {};
 
     for (const run of industryRuns2) {
       const { brandMentioned, competitors } = getRunEntities(run);
       const competitorIds = competitors.map((c) => slugify(c));
       runCompetitorMap.set(run.id, competitorIds);
 
+      // SoV from canonical ranked entities (matches CSV export entity set)
+      const sovCounts = getSovCountsForRun({
+        rawResponseText: run.rawResponseText,
+        analysisJson: run.analysisJson,
+        brandName: brand.name,
+        brandSlug: brand.slug,
+      });
+      sovBrandMentions += sovCounts.brandMentions;
+      sovTotalEntityMentions += sovCounts.totalMentions;
+      sovByRunId[run.id] = sovCounts;
+
       if (brandMentioned) {
-        sovBrandMentions++;
         if (!entityRunSets.has(brand.slug)) entityRunSets.set(brand.slug, new Set());
         entityRunSets.get(brand.slug)!.add(run.id);
       }
-      // Total entity mentions = brand (if mentioned) + all competitors
-      sovTotalEntityMentions += (brandMentioned ? 1 : 0) + competitorIds.length;
-
       for (const compId of competitorIds) {
         if (!entityRunSets.has(compId)) entityRunSets.set(compId, new Set());
         entityRunSets.get(compId)!.add(run.id);
@@ -424,17 +435,16 @@ export async function GET(req: NextRequest) {
       trendRunsByJob.set(run.jobId, list);
     }
 
-    // Text-based SOV per trend run (from analysisJson)
+    // SoV per trend run: uses canonical ranked entities (same as scorecard + CSV export)
     const sovByRun = new Map<string, { brandMentions: number; totalMentions: number }>();
     for (const run of allTrendRuns) {
       if (run.prompt.cluster !== "industry") continue;
-      const bMentioned = isRunInBrandScope(run, brandIdentity);
-      const analysis = run.analysisJson as ParsedAnalysis | null;
-      const compCount = (analysis?.competitors ?? []).length;
-      sovByRun.set(run.id, {
-        brandMentions: bMentioned ? 1 : 0,
-        totalMentions: (bMentioned ? 1 : 0) + compCount,
-      });
+      sovByRun.set(run.id, getSovCountsForRun({
+        rawResponseText: run.rawResponseText,
+        analysisJson: run.analysisJson,
+        brandName: brand.name,
+        brandSlug: brand.slug,
+      }));
     }
 
     // Cumulative trend: for each date, use the latest run per model+prompt AS OF that date.
@@ -634,17 +644,18 @@ export async function GET(req: NextRequest) {
       industryRunPromptMap.get(key)!.push({ runId: run.id, promptText, model: run.model });
     }
 
-    // Compute text-based SOV per run for per-question aggregation
-    const sovByRunId: Record<string, { brandMentions: number; totalMentions: number }> = {};
+    // Per-question SoV: uses canonical ranked entities (same as scorecard SoV).
+    // For runs outside the latest snapshot, compute SoV counts on demand.
+    // (sovByRunId from the scorecard loop only covers latest-snapshot runs.)
     for (const run of runs) {
       if (run.prompt.cluster !== "industry") continue;
-      const bm = isRunInBrandScope(run, brandIdentity);
-      const analysis = run.analysisJson as ParsedAnalysis | null;
-      const compCount = (analysis?.competitors ?? []).length;
-      sovByRunId[run.id] = {
-        brandMentions: bm ? 1 : 0,
-        totalMentions: (bm ? 1 : 0) + compCount,
-      };
+      if (sovByRunId[run.id]) continue; // already computed in scorecard loop
+      sovByRunId[run.id] = getSovCountsForRun({
+        rawResponseText: run.rawResponseText,
+        analysisJson: run.analysisJson,
+        brandName: brand.name,
+        brandSlug: brand.slug,
+      });
     }
 
     const resultsByQuestion: {

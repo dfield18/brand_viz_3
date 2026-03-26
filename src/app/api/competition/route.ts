@@ -14,6 +14,7 @@ import {
 import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
 import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -213,15 +214,16 @@ export async function GET(req: NextRequest) {
     const recallSnapshotRuns = rawLatestIndustry.length > 0 ? rawLatestIndustry : rawIndustryRuns;
     const recallSnapshotTotal = recallSnapshotRuns.length;
 
-    // SoV denominator: sum of entity mentions across all snapshot runs
-    // (same structure as Overview/Visibility: brand/entity mention + analysisJson.competitors)
-    type SovAnalysis = { competitors?: { name: string }[] };
+    // SoV denominator: canonical ranked entities (same as Full Data CSV + Overview/Visibility)
     let sovTotalEntityMentions = 0;
     for (const run of recallSnapshotRuns) {
-      const mentioned = isRunInBrandScope(run, brandIdentity);
-      const analysis = run.analysisJson as SovAnalysis | null;
-      const compCount = (analysis?.competitors ?? []).length;
-      sovTotalEntityMentions += (mentioned ? 1 : 0) + compCount;
+      const counts = getSovCountsForRun({
+        rawResponseText: run.rawResponseText,
+        analysisJson: run.analysisJson,
+        brandName: brand.name,
+        brandSlug: brand.slug,
+      });
+      sovTotalEntityMentions += counts.totalMentions;
     }
 
     // Compute all four metrics for every entity using isRunInBrandScope + computeBrandRank.
@@ -471,13 +473,16 @@ export async function GET(req: NextRequest) {
     for (const m of modelsInSnapshot) {
       const modelRuns = recallSnapshotRuns.filter((r) => r.model === m);
       const modelTotal = modelRuns.length;
-      // SoV denominator for this model
+      // SoV denominator: canonical ranked entities (same as CSV export)
       let modelSovTotal = 0;
       for (const run of modelRuns) {
-        const mentioned = isRunInBrandScope(run, brandIdentity);
-        const analysis = run.analysisJson as SovAnalysis | null;
-        const compCount = (analysis?.competitors ?? []).length;
-        modelSovTotal += (mentioned ? 1 : 0) + compCount;
+        const counts = getSovCountsForRun({
+          rawResponseText: run.rawResponseText,
+          analysisJson: run.analysisJson,
+          brandName: brand.name,
+          brandSlug: brand.slug,
+        });
+        modelSovTotal += counts.totalMentions;
       }
       const modelMap = new Map<string, PerModelSnapshot>();
       for (const entity of leaderboardEntities) {
@@ -669,12 +674,16 @@ export async function GET(req: NextRequest) {
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, dateRuns] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const dateTotal = dateRuns.length;
-      // SoV denominator for this date
+      // SoV denominator: canonical ranked entities (same as CSV export)
       let dateSovTotal = 0;
       for (const r of dateRuns) {
-        const mentioned = isRunInBrandScope(r, brandIdentity);
-        const a = r.analysisJson as SovAnalysis | null;
-        dateSovTotal += (mentioned ? 1 : 0) + (a?.competitors ?? []).length;
+        const counts = getSovCountsForRun({
+          rawResponseText: r.rawResponseText,
+          analysisJson: r.analysisJson,
+          brandName: brand.name,
+          brandSlug: brand.slug,
+        });
+        dateSovTotal += counts.totalMentions;
       }
 
       const mentionRate: Record<string, number> = {};

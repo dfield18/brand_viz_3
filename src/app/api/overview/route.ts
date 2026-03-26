@@ -11,6 +11,7 @@ import {
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
@@ -367,16 +368,18 @@ export async function GET(req: NextRequest) {
     }
 
     // SoV + competitive rank + KPI deltas — text-based (no EntityResponseMetric)
-    type OverviewAnalysis = { brandMentioned?: boolean; competitors?: { name: string }[] };
-
+    // SoV uses canonical ranked entities (same as Full Data CSV + Visibility tab)
     function computeTextSov(sovRuns: OverviewVisRun[]): number {
       let bm = 0, total = 0;
       for (const run of sovRuns) {
-        const mentioned = isRunInBrandScope(run, visBrandIdentity);
-        const analysis = run.analysisJson as OverviewAnalysis | null;
-        const compCount = (analysis?.competitors ?? []).length;
-        if (mentioned) bm++;
-        total += (mentioned ? 1 : 0) + compCount;
+        const counts = getSovCountsForRun({
+          rawResponseText: run.rawResponseText,
+          analysisJson: run.analysisJson,
+          brandName: visBrand.name,
+          brandSlug: visBrand.slug,
+        });
+        bm += counts.brandMentions;
+        total += counts.totalMentions;
       }
       return computeShareOfVoice(bm, total);
     }
