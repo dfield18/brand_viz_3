@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
-import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { isRunInBrandScope, filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { openai, getOpenAIDefault } from "@/lib/openai";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
@@ -389,17 +390,17 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Avg brand rank on this model
-    const ranks: number[] = [];
+    // Avg brand rank on this model — uses isRunInBrandScope + computeBrandRank
+    // (same methodology as Overview/Visibility/Competition)
+    const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
+    const ranks: (number | null)[] = [];
     let mentions = 0;
     for (const run of modelRuns) {
-      const bm = run.prominenceMetrics.find((pm) => pm.entityId === brand.slug);
-      if (bm) {
-        mentions++;
-        if (bm.rankPosition !== null) ranks.push(bm.rankPosition);
-      }
+      if (isRunInBrandScope(run, brandIdentity)) mentions++;
+      ranks.push(computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases));
     }
-    const avgBrandRank = ranks.length > 0 ? ranks.reduce((s, r) => s + r, 0) / ranks.length : null;
+    const validRanks = ranks.filter((r): r is number => r !== null);
+    const avgBrandRank = validRanks.length > 0 ? validRanks.reduce((s, r) => s + r, 0) / validRanks.length : null;
     const mentionRate = modelRuns.length > 0 ? mentions / modelRuns.length : 0;
 
     // Top source categories for this model
@@ -762,9 +763,12 @@ export async function GET(req: NextRequest) {
   // -----------------------------------------------------------------------
   // 7. topicCoverageGaps
   // -----------------------------------------------------------------------
+  // Topic coverage gaps — uses isRunInBrandScope + computeBrandRank
+  // (same methodology as Overview/Visibility/Competition)
+  const topicBrandAliases = brand.aliases?.length ? brand.aliases : undefined;
   const topicData: Record<
     string,
-    { totalRuns: number; mentions: number; ranks: number[]; entityRank1: Record<string, number> }
+    { totalRuns: number; mentions: number; ranks: (number | null)[]; entityRank1: Record<string, number> }
   > = {};
 
   for (const run of runs) {
@@ -776,13 +780,13 @@ export async function GET(req: NextRequest) {
     }
     topicData[topicKey].totalRuns++;
 
-    const brandMetric = run.prominenceMetrics.find((m) => m.entityId === brand.slug);
-    if (brandMetric) {
-      topicData[topicKey].mentions++;
-      if (brandMetric.rankPosition !== null) topicData[topicKey].ranks.push(brandMetric.rankPosition);
-    }
+    const mentioned = isRunInBrandScope(run, brandIdentity);
+    const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, topicBrandAliases);
+    if (mentioned) topicData[topicKey].mentions++;
+    topicData[topicKey].ranks.push(rank);
 
-    // Track who ranks #1
+    // Track who ranks #1 (competitors still use prominenceMetrics for this since
+    // we only need to know which competitor was #1, not the brand's own rank)
     const rank1 = run.prominenceMetrics
       .filter((m) => m.rankPosition === 1 && m.entityId !== brand.slug)
       .map((m) => m.entityId);
@@ -801,7 +805,8 @@ export async function GET(req: NextRequest) {
 
   for (const [topicKey, data] of Object.entries(topicData)) {
     const mentionRate = data.totalRuns > 0 ? data.mentions / data.totalRuns : 0;
-    const avgRank = data.ranks.length > 0 ? data.ranks.reduce((s, r) => s + r, 0) / data.ranks.length : null;
+    const validTopicRanks = data.ranks.filter((r): r is number => r !== null);
+    const avgRank = validTopicRanks.length > 0 ? validTopicRanks.reduce((s, r) => s + r, 0) / validTopicRanks.length : null;
 
     if (mentionRate < 0.5 || (avgRank !== null && avgRank > 3)) {
       const competitorLeaders = Object.entries(data.entityRank1)
@@ -835,28 +840,28 @@ export async function GET(req: NextRequest) {
   const earlierRuns = sortedRuns.slice(0, midIdx);
   const recentRuns = sortedRuns.slice(midIdx);
 
+  // Uses isRunInBrandScope + computeBrandRank (same as Overview/Visibility/Competition)
+  const halfBrandAliases = brand.aliases?.length ? brand.aliases : undefined;
   function computeHalfMetrics(halfRuns: RecommendationRun[]) {
     let mentions = 0;
-    const ranks: number[] = [];
-    const perModel: Record<string, { mentions: number; total: number; ranks: number[] }> = {};
+    const ranks: (number | null)[] = [];
+    const perModel: Record<string, { mentions: number; total: number; ranks: (number | null)[] }> = {};
 
     for (const run of halfRuns) {
-      const bm = run.prominenceMetrics.find((m) => m.entityId === brand.slug);
-      if (bm) {
-        mentions++;
-        if (bm.rankPosition !== null) ranks.push(bm.rankPosition);
-      }
+      const mentioned = isRunInBrandScope(run, brandIdentity);
+      const rank = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, halfBrandAliases);
+      if (mentioned) mentions++;
+      ranks.push(rank);
       if (!perModel[run.model]) perModel[run.model] = { mentions: 0, total: 0, ranks: [] };
       perModel[run.model].total++;
-      if (bm) {
-        perModel[run.model].mentions++;
-        if (bm.rankPosition !== null) perModel[run.model].ranks.push(bm.rankPosition);
-      }
+      if (mentioned) perModel[run.model].mentions++;
+      perModel[run.model].ranks.push(rank);
     }
 
+    const validRanks = ranks.filter((r): r is number => r !== null);
     return {
       mentionRate: halfRuns.length > 0 ? mentions / halfRuns.length : 0,
-      avgRank: ranks.length > 0 ? ranks.reduce((s, r) => s + r, 0) / ranks.length : null,
+      avgRank: validRanks.length > 0 ? validRanks.reduce((s, r) => s + r, 0) / validRanks.length : null,
       perModel,
     };
   }
