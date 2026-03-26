@@ -8,9 +8,11 @@ import {
   computeWinLoss,
   computeMentionRate,
   computeShareOfVoice,
+  computeAvgRank,
+  computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
 import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
-import { wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   splitSentences,
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest) {
 
   const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
+  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
   const brandIdentity = buildBrandIdentity(brand);
   // Filter to query universe first (removes ambiguous false positives),
   // then apply cluster/prompt selection
@@ -193,13 +196,14 @@ export async function GET(req: NextRequest) {
       textRanksByEntity, leaderboardEntities, totalResponses,
     );
 
-    // --- Brand Recall + SoV: from RAW latest-snapshot industry runs ---
-    // Uses the same run pool and denominators as Overview/Visibility.
-    // Brand Recall: isRunInBrandScope count / snapshot total
-    // SoV: brand mentions / (brand mentions + analysisJson.competitors.length)
-    //
-    // Other competition metrics (avgRank, rank1Rate, win/loss) continue using
-    // the query-universe-filtered `runs` for competition-specific analysis.
+    // --- KPI alignment: all four visibility metrics from RAW latest-snapshot ---
+    // Uses the same run pool, detection methods, and denominators as Overview/Visibility:
+    // - Brand Recall: isRunInBrandScope count / snapshot total
+    // - SoV: brand mentions / (brand mentions + analysisJson.competitors.length)
+    // - Top Result Rate: computeBrandRank rank=1 count / snapshot total
+    // - Avg Position: computeAvgRank from computeBrandRank arrays
+    // Competitors use text-presence/text-rank on the same snapshot pool.
+    // Win/loss and other competition-specific metrics use query-universe-filtered runs.
     const rawIndustryRuns = rawRuns.filter((r) => r.prompt.cluster === "industry");
     const rawLatestDate = rawIndustryRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
     const rawLatestCutoff = new Date(rawLatestDate.getTime() - 24 * 60 * 60 * 1000);
@@ -228,19 +232,28 @@ export async function GET(req: NextRequest) {
     }
     const brandSov = computeShareOfVoice(sovBrandMentions, sovTotalEntityMentions);
 
-    // Override mentionRate and mentionShare on all rows with raw-snapshot values
+    // Brand rank arrays from raw snapshot (same as Overview/Visibility: computeBrandRank)
+    const brandSnapshotRanks: (number | null)[] = recallSnapshotRuns.map((r) =>
+      computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
+    );
+
+    // Override mentionRate, mentionShare, rank1Rate, avgRank on all rows with raw-snapshot values
     for (const comp of competitors) {
       if (comp.isBrand) {
         comp.mentionRate = computeMentionRate(brandSnapshotMentions, recallSnapshotTotal);
         comp.mentionShare = brandSov;
+        comp.rank1Rate = computeRank1RateAll(brandSnapshotRanks);
+        comp.avgRank = computeAvgRank(brandSnapshotRanks);
       } else {
         const ranks = recallSnapshotTextRanks.get(comp.entityId) ?? [];
         const mentions = ranks.filter((r) => r !== null).length;
+        const rank1Count = ranks.filter((r) => r === 1).length;
         comp.mentionRate = computeMentionRate(mentions, recallSnapshotTotal);
-        // Competitor SoV: text-presence count / same total entity mentions denominator
         comp.mentionShare = sovTotalEntityMentions > 0
           ? Math.round((mentions / sovTotalEntityMentions) * 10000) / 100
           : 0;
+        comp.rank1Rate = recallSnapshotTotal > 0 ? Math.round((rank1Count / recallSnapshotTotal) * 100) : 0;
+        comp.avgRank = computeAvgRank(ranks);
       }
     }
 
@@ -451,15 +464,14 @@ export async function GET(req: NextRequest) {
     const runModels = runs.map((r) => r.model);
     const perModelResults = buildPerModelRows(textRanksByEntity, leaderboardEntities, runModels);
 
-    // Override per-model mentionRate + mentionShare with raw latest-snapshot values
-    // (matches Overview/Visibility methodology)
+    // Override per-model metrics with raw latest-snapshot values (matches Overview/Visibility)
+    type PerModelSnapshot = { mentionRate: number; mentionShare: number; rank1Rate: number; avgRank: number | null };
     const recallSnapshotRunModels = recallSnapshotRuns.map((r) => r.model);
     const recallSnapshotPerModel = buildPerModelRows(recallSnapshotTextRanks, leaderboardEntities, recallSnapshotRunModels);
-    const snapshotByModel = new Map<string, Map<string, { mentionRate: number; mentionShare: number }>>();
+    const snapshotByModel = new Map<string, Map<string, PerModelSnapshot>>();
     for (const { model: m, rows } of recallSnapshotPerModel) {
       const modelRecallRuns = recallSnapshotRuns.filter((r) => r.model === m);
       const modelRecallTotal = modelRecallRuns.length;
-      // Compute per-model SoV with same denominator as Overview/Visibility
       let modelSovBrand = 0, modelSovTotal = 0;
       for (const run of modelRecallRuns) {
         const mentioned = isRunInBrandScope(run, brandIdentity);
@@ -468,24 +480,32 @@ export async function GET(req: NextRequest) {
         if (mentioned) modelSovBrand++;
         modelSovTotal += (mentioned ? 1 : 0) + compCount;
       }
-      const modelMap = new Map<string, { mentionRate: number; mentionShare: number }>();
+      // Brand ranks for this model (computeBrandRank, same as Overview/Visibility)
+      const modelBrandRanks = modelRecallRuns.map((r) =>
+        computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
+      );
+      const modelMap = new Map<string, PerModelSnapshot>();
       for (const row of rows) {
         if (row.isBrand) {
           const brandModelMentions = modelRecallRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
           modelMap.set(row.entityId, {
             mentionRate: computeMentionRate(brandModelMentions, modelRecallTotal),
             mentionShare: computeShareOfVoice(modelSovBrand, modelSovTotal),
+            rank1Rate: computeRank1RateAll(modelBrandRanks),
+            avgRank: computeAvgRank(modelBrandRanks),
           });
         } else {
-          const textMentions = (recallSnapshotTextRanks.get(row.entityId) ?? []).filter((r) => r !== null).length;
-          // Filter to this model's runs for competitor text mentions
           const modelIndices: number[] = [];
           recallSnapshotRunModels.forEach((rm, i) => { if (rm === m) modelIndices.push(i); });
-          const modelRanks = recallSnapshotTextRanks.get(row.entityId) ?? [];
-          const modelTextMentions = modelIndices.map((i) => modelRanks[i]).filter((r) => r !== null).length;
+          const allRanks = recallSnapshotTextRanks.get(row.entityId) ?? [];
+          const modelRanks = modelIndices.map((i) => allRanks[i]);
+          const modelTextMentions = modelRanks.filter((r) => r !== null).length;
+          const modelRank1 = modelRanks.filter((r) => r === 1).length;
           modelMap.set(row.entityId, {
             mentionRate: computeMentionRate(modelTextMentions, modelRecallTotal),
             mentionShare: modelSovTotal > 0 ? Math.round((modelTextMentions / modelSovTotal) * 10000) / 100 : 0,
+            rank1Rate: modelRecallTotal > 0 ? Math.round((modelRank1 / modelRecallTotal) * 100) : 0,
+            avgRank: computeAvgRank(modelRanks),
           });
         }
       }
@@ -496,11 +516,7 @@ export async function GET(req: NextRequest) {
       model: m,
       competitors: rows.map((row) => {
         const snapshot = snapshotByModel.get(m)?.get(row.entityId);
-        return {
-          ...row,
-          mentionRate: snapshot?.mentionRate ?? row.mentionRate,
-          mentionShare: snapshot?.mentionShare ?? row.mentionShare,
-        };
+        return snapshot ? { ...row, ...snapshot } : row;
       }),
     }));
 
