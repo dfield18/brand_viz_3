@@ -542,12 +542,18 @@ export async function GET(req: NextRequest) {
       trendRunsByDate.get(date)!.push(r);
     }
 
-    // Build trend points using text-rank methodology (same as leaderboard)
+    // Build trend points: competitors use text-presence, brand uses isRunInBrandScope
+    // (matches Overview/Visibility brand-recall definition per date bucket)
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, dateRuns] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const trendLeaderboardRuns: LeaderboardRun[] = dateRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
       const dateTextRanks = computeTextRanks(trendLeaderboardRuns, leaderboardEntities);
       const point = buildTrendPoint(dateTextRanks, trendEntityIds, dateRuns.length);
+      // Override brand mentionRate with isRunInBrandScope (same as Overview/Visibility)
+      const brandDateMentions = dateRuns.filter((r) => isRunInBrandScope(r, brandIdentity)).length;
+      point.mentionRate[brand.slug] = dateRuns.length > 0
+        ? Math.round((brandDateMentions / dateRuns.length) * 10000) / 100
+        : 0;
       competitiveTrend.push({ date, ...point });
     }
 
