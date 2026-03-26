@@ -4,6 +4,8 @@ import {
   computeTextRanks,
   buildLeaderboardRows,
   buildPerModelRows,
+  buildRankDistribution,
+  buildTrendPoint,
   type LeaderboardRun,
   type LeaderboardEntity,
 } from "./leaderboardMetrics";
@@ -263,5 +265,147 @@ describe("No brand-only override drift", () => {
       "avgRank must be computed identically when positions mirror");
     assert.equal(brand.mentionShare, competitor.mentionShare,
       "mentionShare must be computed identically when presence is equal");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: rank distribution consistency
+// ---------------------------------------------------------------------------
+
+describe("buildRankDistribution (production helper)", () => {
+  it("derives distribution from the same text-rank arrays as leaderboard", () => {
+    const runs: LeaderboardRun[] = [
+      { text: "Acme first. Globex second.", model: "chatgpt" },
+      { text: "Globex first. Acme second.", model: "gemini" },
+      { text: "Acme only.", model: "claude" },
+      { text: "Neither here.", model: "perplexity" },
+    ];
+    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
+    const textRanks = computeTextRanks(runs, entities);
+    const dist = buildRankDistribution(textRanks);
+
+    // Acme: rank 1 in runs 0,2; rank 2 in run 1; null in run 3
+    assert.deepEqual(dist["acme"], { 1: 2, 2: 1 });
+    // Globex: rank 2 in run 0; rank 1 in run 1; null in runs 2,3
+    assert.deepEqual(dist["globex"], { 1: 1, 2: 1 });
+  });
+
+  it("ignores null ranks (entity not mentioned)", () => {
+    const runs: LeaderboardRun[] = [
+      { text: "Acme only.", model: "chatgpt" },
+      { text: "Nothing.", model: "gemini" },
+    ];
+    const entities = makeEntities(["acme", "Acme", true]);
+    const textRanks = computeTextRanks(runs, entities);
+    const dist = buildRankDistribution(textRanks);
+
+    assert.deepEqual(dist["acme"], { 1: 1 });
+  });
+
+  it("is consistent with leaderboard avgRank and rank1Rate", () => {
+    const runs: LeaderboardRun[] = [
+      { text: "Acme first. Globex second.", model: "chatgpt" },
+      { text: "Globex first. Acme second.", model: "gemini" },
+      { text: "Acme first.", model: "claude" },
+      { text: "Nothing.", model: "perplexity" },
+    ];
+    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
+    const textRanks = computeTextRanks(runs, entities);
+    const rows = buildLeaderboardRows(textRanks, entities, runs.length);
+    const dist = buildRankDistribution(textRanks);
+
+    const acmeRow = rows.find((r) => r.entityId === "acme")!;
+    const acmeDist = dist["acme"];
+
+    // rank1Rate from leaderboard = rank1 count / total responses
+    const rank1FromDist = acmeDist[1] ?? 0;
+    const rank1RateFromDist = Math.round((rank1FromDist / runs.length) * 100);
+    assert.equal(acmeRow.rank1Rate, rank1RateFromDist,
+      "rank1Rate from leaderboard must match count from rank distribution");
+
+    // avgRank from leaderboard must match average of distribution
+    const allRanks: number[] = [];
+    for (const [rank, count] of Object.entries(acmeDist)) {
+      for (let i = 0; i < count; i++) allRanks.push(Number(rank));
+    }
+    const avgFromDist = allRanks.length > 0
+      ? Math.round((allRanks.reduce((s, r) => s + r, 0) / allRanks.length) * 100) / 100
+      : null;
+    assert.equal(acmeRow.avgRank, avgFromDist,
+      "avgRank from leaderboard must match average derived from rank distribution");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: trend consistency
+// ---------------------------------------------------------------------------
+
+describe("buildTrendPoint (production helper)", () => {
+  it("treats brand and competitors identically in trend data", () => {
+    // Brand and competitor both mentioned in 2 runs, alternating rank1
+    const runs: LeaderboardRun[] = [
+      { text: "Acme is top. Globex follows.", model: "chatgpt" },
+      { text: "Globex leads. Acme trails.", model: "gemini" },
+    ];
+    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
+    const textRanks = computeTextRanks(runs, entities);
+    const point = buildTrendPoint(textRanks, ["acme", "globex"], runs.length);
+
+    // Both mentioned in 2/2 = 100%
+    assert.equal(point.mentionRate["acme"], 100);
+    assert.equal(point.mentionRate["globex"], 100);
+    // Both have 50% mentionShare
+    assert.equal(point.mentionShare["acme"], 50);
+    assert.equal(point.mentionShare["globex"], 50);
+    // Both rank1 once out of 2 = 50%
+    assert.equal(point.rank1Rate["acme"], 50);
+    assert.equal(point.rank1Rate["globex"], 50);
+  });
+
+  it("no brand-only override in trend — brand with lower presence gets lower rate", () => {
+    const runs: LeaderboardRun[] = [
+      { text: "Globex is great.", model: "chatgpt" },
+      { text: "Globex dominates. Acme trails.", model: "gemini" },
+      { text: "Globex only.", model: "claude" },
+    ];
+    const entities = makeEntities(["acme", "Acme", true], ["globex", "Globex", false]);
+    const textRanks = computeTextRanks(runs, entities);
+    const point = buildTrendPoint(textRanks, ["acme", "globex"], runs.length);
+
+    // Acme: 1/3 = 33.33%, Globex: 3/3 = 100%
+    assert.equal(point.mentionRate["acme"], 33.33);
+    assert.equal(point.mentionRate["globex"], 100);
+    // No brand override — brand has genuinely lower rate
+    assert.ok(point.mentionRate["acme"] < point.mentionRate["globex"],
+      "Brand with lower text presence must have lower mentionRate in trend — no override allowed");
+  });
+
+  it("trend mentionShare sums to ~100%", () => {
+    const runs: LeaderboardRun[] = [
+      { text: "Acme and Globex and Initech.", model: "chatgpt" },
+      { text: "Acme and Globex.", model: "gemini" },
+    ];
+    const entities = makeEntities(
+      ["acme", "Acme", true],
+      ["globex", "Globex", false],
+      ["initech", "Initech", false],
+    );
+    const textRanks = computeTextRanks(runs, entities);
+    const point = buildTrendPoint(textRanks, ["acme", "globex", "initech"], runs.length);
+
+    const totalShare = point.mentionShare["acme"] + point.mentionShare["globex"] + point.mentionShare["initech"];
+    assert.ok(Math.abs(totalShare - 100) < 1,
+      `trend mentionShare should sum to ~100%, got ${totalShare}`);
+  });
+
+  it("returns zeros for empty runs", () => {
+    const textRanks = new Map<string, (number | null)[]>();
+    textRanks.set("acme", []);
+    const point = buildTrendPoint(textRanks, ["acme"], 0);
+
+    assert.equal(point.mentionRate["acme"], 0);
+    assert.equal(point.mentionShare["acme"], 0);
+    assert.equal(point.avgPosition["acme"], null);
+    assert.equal(point.rank1Rate["acme"], 0);
   });
 });

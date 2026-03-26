@@ -8,7 +8,7 @@
  * Pure functions — no database access.
  */
 
-import { wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { wordBoundaryIndex } from "../visibility/brandMention";
 import {
   computeMentionShare,
   computeAvgRank,
@@ -147,4 +147,90 @@ export function buildPerModelRows(
       rows: buildLeaderboardRows(modelTextRanks, entities, modelTotal),
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Rank distribution from text ranks
+// ---------------------------------------------------------------------------
+
+/**
+ * Build per-entity rank distribution from text-rank arrays.
+ * Uses the same underlying ranks as the leaderboard's avgRank and rank1Rate.
+ *
+ * Returns: entityId → { rank: count }
+ */
+export function buildRankDistribution(
+  textRanks: Map<string, (number | null)[]>,
+): Record<string, Record<number, number>> {
+  const result: Record<string, Record<number, number>> = {};
+  for (const [entityId, ranks] of textRanks) {
+    const dist: Record<number, number> = {};
+    for (const r of ranks) {
+      if (r !== null) dist[r] = (dist[r] || 0) + 1;
+    }
+    result[entityId] = dist;
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Competitive trend point from text ranks
+// ---------------------------------------------------------------------------
+
+export interface TrendPoint {
+  mentionRate: Record<string, number>;
+  mentionShare: Record<string, number>;
+  avgPosition: Record<string, number | null>;
+  rank1Rate: Record<string, number>;
+}
+
+/**
+ * Build a single trend data point from text-rank arrays for one date bucket.
+ * All entities use the same methodology — no brand-only overrides.
+ *
+ * @param textRanks — per-entity rank arrays for runs in this date bucket
+ * @param entityIds — entity IDs to include in the output
+ * @param totalResponses — total runs in this date bucket (denominator)
+ */
+export function buildTrendPoint(
+  textRanks: Map<string, (number | null)[]>,
+  entityIds: string[],
+  totalResponses: number,
+): TrendPoint {
+  // Text-mention counts
+  let totalTextMentions = 0;
+  const mentionCounts = new Map<string, number>();
+  for (const entityId of entityIds) {
+    const ranks = textRanks.get(entityId) ?? [];
+    const count = ranks.filter((r) => r !== null).length;
+    mentionCounts.set(entityId, count);
+    totalTextMentions += count;
+  }
+
+  const mentionRate: Record<string, number> = {};
+  const mentionShare: Record<string, number> = {};
+  const avgPosition: Record<string, number | null> = {};
+  const rank1Rate: Record<string, number> = {};
+
+  for (const entityId of entityIds) {
+    const ranks = textRanks.get(entityId) ?? [];
+    const mentions = mentionCounts.get(entityId) ?? 0;
+    const validRanks = ranks.filter((r): r is number => r !== null);
+
+    mentionRate[entityId] = totalResponses > 0
+      ? Math.round((mentions / totalResponses) * 10000) / 100
+      : 0;
+    mentionShare[entityId] = totalTextMentions > 0
+      ? Math.round((mentions / totalTextMentions) * 10000) / 100
+      : 0;
+    avgPosition[entityId] = validRanks.length > 0
+      ? Math.round((validRanks.reduce((s, r) => s + r, 0) / validRanks.length) * 10) / 10
+      : null;
+    const rank1Count = validRanks.filter((r) => r === 1).length;
+    rank1Rate[entityId] = totalResponses > 0
+      ? Math.round((rank1Count / totalResponses) * 10000) / 100
+      : 0;
+  }
+
+  return { mentionRate, mentionShare, avgPosition, rank1Rate };
 }

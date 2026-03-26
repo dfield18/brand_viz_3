@@ -4,17 +4,12 @@ import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/uti
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { parseAnalysis } from "@/lib/aggregateAnalysis";
 import {
-  computeMentionShare,
-  computeAvgRank,
   computeFragmentation,
   computeWinLoss,
-  computeMentionRate,
-  computeShareOfVoice,
-  computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
-import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, type LeaderboardEntity } from "@/lib/competition/leaderboardMetrics";
-import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
-import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
+import { wordBoundaryIndex } from "@/lib/visibility/brandMention";
+import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -70,7 +65,6 @@ export async function GET(req: NextRequest) {
 
   const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
   const brandName = brand.displayName || brand.name;
-  const brandAliases = brand.aliases?.length ? brand.aliases : undefined;
   const brandIdentity = buildBrandIdentity(brand);
   // Filter to query universe first (removes ambiguous false positives),
   // then apply cluster/prompt selection
@@ -259,16 +253,8 @@ export async function GET(req: NextRequest) {
     const shares = competitors.map((c) => c.mentionShare);
     const fragmentation = computeFragmentation(shares);
 
-    // Rank Distribution: entity → {rank: count}
-    const rankDistribution: Record<string, Record<number, number>> = {};
-    for (const entityId of trackedIds) {
-      const ms = (byEntity.get(entityId) ?? []).filter((m) => m.rankPosition !== null);
-      const dist: Record<number, number> = {};
-      for (const m of ms) {
-        dist[m.rankPosition!] = (dist[m.rankPosition!] || 0) + 1;
-      }
-      rankDistribution[entityId] = dist;
-    }
+    // Rank Distribution: derived from text-rank arrays (same basis as leaderboard)
+    const rankDistribution = buildRankDistribution(textRanksByEntity);
 
     // Models included
     const modelsIncluded = [...new Set(runs.map((r) => r.model))];
@@ -465,7 +451,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // --- Competitive Trend: query ALL jobs in range (not just deduped runs) ---
+    // --- Competitive Trend: uses same text-rank methodology as leaderboard ---
+    // All entities (brand + competitors) computed identically per date bucket.
     const trendJobWhere = isAll
       ? { brandId: brand.id, status: "done" as const, finishedAt: { gte: rangeCutoff } }
       : { brandId: brand.id, model, status: "done" as const, finishedAt: { gte: rangeCutoff } };
@@ -481,85 +468,21 @@ export async function GET(req: NextRequest) {
       .map((c) => c.entityId);
     const trendEntitySet = new Set(trendEntityIds);
 
-    // Batch-fetch all metrics for trend jobs (avoid N+1)
-    type TrendDateBucket = {
-      totalResponses: number;
-      totalAppearances: number;
-      entityAppearances: Record<string, Set<string>>;
-      entityRanks: Record<string, number[]>;
-    };
-    const trendByDate = new Map<string, TrendDateBucket>();
-
+    // Fetch industry trend runs with response text for text-rank computation
     const trendJobIds = allTrendJobs.filter((j) => j.finishedAt).map((j) => j.id);
-    const allTrendMetrics = trendJobIds.length > 0
-      ? await prisma.entityResponseMetric.findMany({
-          where: {
-            run: {
-              jobId: { in: trendJobIds },
-              prompt: { cluster: "industry" },
-            },
-          },
-          select: { runId: true, entityId: true, rankPosition: true, run: { select: { jobId: true } } },
-        })
-      : [];
-
-    // Fetch + scope industry trend runs for brand metrics (needed before metric indexing)
-    const rawBrandTrendRunsEarly = trendJobIds.length > 0
+    const rawTrendRuns = trendJobIds.length > 0
       ? await prisma.run.findMany({
           where: { jobId: { in: trendJobIds }, prompt: { cluster: "industry" } },
-          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true },
+          select: { id: true, jobId: true, rawResponseText: true, analysisJson: true, model: true },
         })
       : [];
-    const scopedBrandTrendRuns = filterRunsToBrandQueryUniverse(rawBrandTrendRunsEarly, brandIdentity);
-    const scopedTrendRunIds = new Set(scopedBrandTrendRuns.map((r) => r.id));
 
-    // Build one scoped metric collection — used by ALL downstream trend computations
-    const scopedTrendMetrics = allTrendMetrics.filter((m) => scopedTrendRunIds.has(m.runId));
+    // Scope-filter trend runs (removes ambiguous false positives)
+    const scopedTrendRuns = filterRunsToBrandQueryUniverse(rawTrendRuns, brandIdentity);
 
-    // Index scoped metrics by jobId
-    const trendMetricsByJob = new Map<string, typeof scopedTrendMetrics>();
-    for (const m of scopedTrendMetrics) {
-      const list = trendMetricsByJob.get(m.run.jobId) ?? [];
-      list.push(m);
-      trendMetricsByJob.set(m.run.jobId, list);
-    }
-
-    for (const tj of allTrendJobs) {
-      if (!tj.finishedAt) continue;
-      const date = tj.finishedAt.toISOString().slice(0, 10);
-
-      const jobMetrics = trendMetricsByJob.get(tj.id) ?? [];
-
-      const jobRunIds = new Set<string>();
-      for (const m of jobMetrics) jobRunIds.add(m.runId);
-
-      let bucket = trendByDate.get(date);
-      if (!bucket) {
-        bucket = { totalResponses: 0, totalAppearances: 0, entityAppearances: {}, entityRanks: {} };
-        for (const eid of trendEntityIds) {
-          bucket.entityAppearances[eid] = new Set();
-          bucket.entityRanks[eid] = [];
-        }
-        trendByDate.set(date, bucket);
-      }
-
-      bucket.totalResponses += jobRunIds.size;
-      for (const m of jobMetrics) {
-        if (trendEntitySet.has(m.entityId)) {
-          bucket.totalAppearances++;
-          bucket.entityAppearances[m.entityId]?.add(m.runId);
-          if (m.rankPosition !== null) {
-            bucket.entityRanks[m.entityId]?.push(m.rankPosition);
-          }
-        }
-      }
-    }
-
-    // Group scoped trend runs by date for brand-specific text-based computation
-    // (matches overview tab methodology: isRunInBrandScope + computeBrandRank)
-    type TrendAnalysis = { brandMentioned?: boolean; competitors?: { name: string }[] };
-    const trendRunsByDate = new Map<string, typeof scopedBrandTrendRuns>();
-    for (const r of scopedBrandTrendRuns) {
+    // Group scoped trend runs by date
+    const trendRunsByDate = new Map<string, typeof scopedTrendRuns>();
+    for (const r of scopedTrendRuns) {
       const tj = allTrendJobs.find((j) => j.id === r.jobId);
       if (!tj?.finishedAt) continue;
       const date = tj.finishedAt.toISOString().slice(0, 10);
@@ -567,61 +490,16 @@ export async function GET(req: NextRequest) {
       trendRunsByDate.get(date)!.push(r);
     }
 
+    // Build trend points using text-rank methodology (same as leaderboard)
     const competitiveTrend: CompetitiveTrendPoint[] = [];
-    for (const [date, bucket] of [...trendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      const mentionShare: Record<string, number> = {};
-      const mentionRate: Record<string, number> = {};
-      const avgPosition: Record<string, number | null> = {};
-      const rank1Rate: Record<string, number> = {};
-      for (const entityId of trendEntityIds) {
-        const entityRuns = bucket.entityAppearances[entityId];
-        const entityAppCount = entityRuns?.size ?? 0;
-        mentionShare[entityId] = bucket.totalAppearances > 0
-          ? Math.round((entityAppCount / bucket.totalAppearances) * 10000) / 100
-          : 0;
-        mentionRate[entityId] = bucket.totalResponses > 0
-          ? Math.round((entityAppCount / bucket.totalResponses) * 10000) / 100
-          : 0;
-        const ranks = bucket.entityRanks[entityId] ?? [];
-        avgPosition[entityId] = ranks.length > 0
-          ? Math.round((ranks.reduce((s, r) => s + r, 0) / ranks.length) * 10) / 10
-          : null;
-        // rank1Rate denominator = total responses (matches overview tab)
-        const rank1Count = ranks.filter((r) => r === 1).length;
-        rank1Rate[entityId] = bucket.totalResponses > 0
-          ? Math.round((rank1Count / bucket.totalResponses) * 10000) / 100
-          : 0;
-      }
-
-      // Brand override: use overview-tab methodology (isRunInBrandScope + computeBrandRank)
-      // so brand recall, SoV, and top result rate match the overview scorecard exactly
-      if (trendEntitySet.has(brand.slug)) {
-        const dateRuns = trendRunsByDate.get(date) ?? [];
-        if (dateRuns.length > 0) {
-          let brandMentions = 0;
-          let sovTotal = 0;
-          const brandRanks: (number | null)[] = [];
-          for (const r of dateRuns) {
-            const mentioned = isRunInBrandScope(r, brandIdentity);
-            if (mentioned) brandMentions++;
-            const rank = computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases);
-            brandRanks.push(rank);
-            const analysis = r.analysisJson as TrendAnalysis | null;
-            const compCount = (analysis?.competitors ?? []).length;
-            sovTotal += (mentioned ? 1 : 0) + compCount;
-          }
-          mentionRate[brand.slug] = computeMentionRate(brandMentions, dateRuns.length);
-          mentionShare[brand.slug] = computeShareOfVoice(brandMentions, sovTotal);
-          avgPosition[brand.slug] = computeAvgRank(brandRanks);
-          rank1Rate[brand.slug] = computeRank1RateAll(brandRanks);
-        }
-      }
-
-      competitiveTrend.push({ date, mentionShare, mentionRate, avgPosition, rank1Rate });
+    for (const [date, dateRuns] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const trendLeaderboardRuns: LeaderboardRun[] = dateRuns.map((r) => ({ text: r.rawResponseText, model: r.model }));
+      const dateTextRanks = computeTextRanks(trendLeaderboardRuns, leaderboardEntities);
+      const point = buildTrendPoint(dateTextRanks, trendEntityIds, dateRuns.length);
+      competitiveTrend.push({ date, ...point });
     }
 
     // Ensure the trend spans the full selected range by adding anchor points
-    // that repeat the nearest real data so the X-axis covers the entire window
     const rangeStartDate = rangeCutoff.toISOString().slice(0, 10);
     const todayDate = new Date().toISOString().slice(0, 10);
     if (competitiveTrend.length > 0) {
@@ -633,8 +511,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fetch entity metrics for sentiment trend (needs entity-run mapping for context windows)
+    const allTrendMetrics = trendJobIds.length > 0
+      ? await prisma.entityResponseMetric.findMany({
+          where: {
+            run: {
+              jobId: { in: trendJobIds },
+              prompt: { cluster: "industry" },
+            },
+          },
+          select: { runId: true, entityId: true, rankPosition: true, run: { select: { jobId: true } } },
+        })
+      : [];
+    const scopedTrendRunIds = new Set(scopedTrendRuns.map((r) => r.id));
+    const scopedTrendMetrics = allTrendMetrics.filter((m: { runId: string }) => scopedTrendRunIds.has(m.runId));
+
     // --- Sentiment Trend: per-entity sentiment score per date ---
-    // Use scopedTrendMetrics (not raw allTrendMetrics) for the run universe
+    // Uses entity-metric presence to find context windows for signal scoring
     const sentimentTrendRunIds = new Set<string>();
     for (const m of scopedTrendMetrics) {
       if (trendEntitySet.has(m.entityId)) {
@@ -709,7 +602,7 @@ export async function GET(req: NextRequest) {
     }
 
     const sentimentTrend: CompetitiveSentimentTrendPoint[] = [];
-    for (const [date] of [...trendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [date] of [...trendRunsByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const dateMap = sentimentByDateEntity.get(date);
       const sentiment: Record<string, number> = {};
       for (const entityId of trendEntityIds) {
