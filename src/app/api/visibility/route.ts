@@ -752,17 +752,19 @@ export async function GET(req: NextRequest) {
           for (const [key, bucket] of Object.entries(trendByDateModel)) {
             const [date, m, prompt] = key.split("||");
             if (prompt !== "all") continue; // only aggregate buckets
-            const validRanks = bucket.ranks.filter((r): r is number => r !== null);
-            if (validRanks.length === 0) continue;
-            const total = validRanks.length;
-            const p1 = validRanks.filter((r) => r === 1).length;
-            const p23 = validRanks.filter((r) => r >= 2 && r <= 3).length;
-            const p45 = validRanks.filter((r) => r >= 4 && r <= 5).length;
-            const p6 = validRanks.filter((r) => r >= 6).length;
+            if (bucket.ranks.length === 0) continue;
+            // Use ALL runs (including nulls) as denominator so Rank #1 %
+            // matches the Top Result Rate KPI (which uses computeRank1RateAll)
+            const total = bucket.ranks.length;
+            const p1 = bucket.ranks.filter((r) => r === 1).length;
+            const p23 = bucket.ranks.filter((r) => r !== null && r >= 2 && r <= 3).length;
+            const p45 = bucket.ranks.filter((r) => r !== null && r >= 4 && r <= 5).length;
+            const p6 = bucket.ranks.filter((r) => r !== null && r >= 6).length;
             const rPos1 = Math.round((p1 / total) * 100);
             const rPos23 = Math.round((p23 / total) * 100);
             const rPos45 = Math.round((p45 / total) * 100);
             // Use remainder for last band to guarantee sum = 100%
+            // This now absorbs both rank 6+ and not-mentioned runs
             const rPos6 = 100 - rPos1 - rPos23 - rPos45;
             entries.push({
               date,
