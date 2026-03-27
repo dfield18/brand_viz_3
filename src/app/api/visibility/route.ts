@@ -342,13 +342,18 @@ export async function GET(req: NextRequest) {
     const thisMonth = computeWeekKpis(thisMonthIndustry);
     const priorMonth = computeWeekKpis(priorMonthIndustry);
 
-    // SOV deltas — text-based
+    // SOV deltas — uses canonical ranked entities (same as scorecard SoV)
     function computeTextBasedSov(sovRuns: VisibilityRun[]): number {
       let bm = 0, total = 0;
       for (const run of sovRuns) {
-        const { brandMentioned, competitors } = getRunEntities(run);
-        if (brandMentioned) bm++;
-        total += (brandMentioned ? 1 : 0) + competitors.length;
+        const counts = getSovCountsForRun({
+          rawResponseText: run.rawResponseText,
+          analysisJson: run.analysisJson,
+          brandName: brand.name,
+          brandSlug: brand.slug,
+        });
+        bm += counts.brandMentions;
+        total += counts.totalMentions;
       }
       return computeShareOfVoice(bm, total);
     }
