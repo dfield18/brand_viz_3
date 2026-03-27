@@ -215,43 +215,8 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
   const noData = model !== pageModel && apiData && (!apiData.hasData || !apiData.narrative?.sentimentByQuestion?.length);
 
   const chartData = useMemo(() => {
-    // Deduplicate by prompt: average sentimentScore and consistency across entries
-    const byPrompt = new Map<string, { scores: number[]; consistencies: number[]; mentions: number[]; mentionRates: number[]; first: (typeof data)[number] }>();
-    for (const d of data) {
-      const existing = byPrompt.get(d.prompt);
-      if (existing) {
-        existing.scores.push(d.sentimentScore);
-        existing.consistencies.push(d.consistency);
-        existing.mentions.push(d.mentions);
-        existing.mentionRates.push(d.mentionRate);
-      } else {
-        byPrompt.set(d.prompt, {
-          scores: [d.sentimentScore],
-          consistencies: [d.consistency],
-          mentions: [d.mentions],
-          mentionRates: [d.mentionRate],
-          first: d,
-        });
-      }
-    }
-
-    const deduped = [...byPrompt.values()].map(({ scores, consistencies, mentions, mentionRates, first }) => {
-      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-      const avgConsistency = Math.round(consistencies.reduce((a, b) => a + b, 0) / consistencies.length);
-      // Use the API-computed sentiment label (already uses label-count methodology
-      // consistent with "How Each AI Platform Sees [Brand]")
-      return {
-        ...first,
-        sentiment: first.sentiment,
-        sentimentScore: Math.round(avgScore * 100) / 100,
-        consistency: avgConsistency,
-        mentions: Math.round(mentions.reduce((a, b) => a + b, 0) / mentions.length),
-        mentionRate: Math.round(mentionRates.reduce((a, b) => a + b, 0) / mentionRates.length),
-      };
-    });
-
-    // Assign sibling info for jitter before returning
-    const raw = deduped.map((d) => ({
+    // API already guarantees one entry per prompt — map directly to chart points
+    const raw = data.map((d) => ({
       ...d,
       x: SENTIMENT_X[d.sentiment] ?? 2,
       y: d.consistency,

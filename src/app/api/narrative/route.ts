@@ -627,7 +627,9 @@ Rules:
     const numericScore = label === "POS" ? rawScore : label === "NEG" ? -rawScore : 0;
     entry.scores.push(numericScore);
   }
-  const sentimentByQuestion = [...promptSentimentMap.entries()].map(([prompt, { mentions, pos, neu, neg, scores }]) => {
+  const sentimentByQuestion = [...promptSentimentMap.entries()]
+    .filter(([, { pos, neu, neg }]) => (pos + neu + neg) > 0)
+    .map(([prompt, { mentions, pos, neu, neg, scores }]) => {
     const total = pos + neu + neg;
     const pctPositive = total > 0 ? Math.round((pos / total) * 100) : 0;
     const pctNegative = total > 0 ? Math.round((neg / total) * 100) : 0;
