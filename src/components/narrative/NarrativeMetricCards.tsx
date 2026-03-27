@@ -158,8 +158,11 @@ function getConfidenceBadge(confidence: number): { text: string; color: string }
 const CONFIDENCE_COLOR_CARD = (confidence: number) =>
   confidence >= 85 ? "hsl(160, 60%, 45%)" : confidence >= 65 ? "hsl(38, 92%, 50%)" : "hsl(0, 72%, 55%)";
 
-const CONSISTENCY_PCT: Record<string, number> = { Low: 30, Moderate: 60, High: 85 };
+// CONSISTENCY_PCT maps polarization level → consistency percentage (inverted)
+// Low polarization = high consistency, High polarization = low consistency
+const CONSISTENCY_PCT: Record<string, number> = { Low: 85, Moderate: 60, High: 30 };
 const POLARIZATION_PCT: Record<string, number> = { Low: 20, Moderate: 55, High: 90 };
+// Colors for the consistency donut: green when consistent (Low polarization), red when divided (High)
 const POLARIZATION_COLOR: Record<string, string> = {
   Low: "hsl(160, 60%, 45%)",
   Moderate: "hsl(38, 92%, 50%)",
