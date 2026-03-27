@@ -417,7 +417,7 @@ function CompetitorAlertsSection({ data, brandName, slug, range, model }: { data
           <h4 className="text-base font-semibold mb-2">Rising Competitors</h4>
           {rising.map((a) => (
             <p key={a.entityId} className="text-sm text-muted-foreground leading-relaxed mb-2">
-              <span className="font-medium text-foreground">{a.displayName}</span> has increased from {pct(a.previousMentionRate)} to {pct(a.recentMentionRate)} mention rate ({a.mentionRateChange > 0 ? "+" : ""}{Math.round(a.mentionRateChange * 100)} pts). This means AI platforms are mentioning them more frequently in industry responses.
+              <span className="font-medium text-foreground">{a.displayName}</span> has increased from {a.previousMentionRate}% to {a.recentMentionRate}% mention rate ({a.mentionRateChange > 0 ? "+" : ""}{Math.round(a.mentionRateChange)} pts). This means AI platforms are mentioning them more frequently in industry responses.
             </p>
           ))}
         </div>
@@ -428,7 +428,7 @@ function CompetitorAlertsSection({ data, brandName, slug, range, model }: { data
           <h4 className="text-base font-semibold mb-2">Declining Competitors</h4>
           {falling.map((a) => (
             <p key={a.entityId} className="text-sm text-muted-foreground leading-relaxed mb-2">
-              <span className="font-medium text-foreground">{a.displayName}</span> dropped from {pct(a.previousMentionRate)} to {pct(a.recentMentionRate)} mention rate. This could be an opportunity for {brandName} to fill the gap.
+              <span className="font-medium text-foreground">{a.displayName}</span> dropped from {a.previousMentionRate}% to {a.recentMentionRate}% mention rate. This could be an opportunity for {brandName} to fill the gap.
             </p>
           ))}
         </div>
