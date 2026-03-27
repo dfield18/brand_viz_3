@@ -833,12 +833,13 @@ export async function GET(req: NextRequest) {
   topicCoverageGaps.splice(15);
 
   // -----------------------------------------------------------------------
-  // 8. decliningMetrics
+  // 8. decliningMetrics — split by date midpoint, not run index
   // -----------------------------------------------------------------------
-  const sortedRuns = [...runs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const midIdx = Math.floor(sortedRuns.length / 2);
-  const earlierRuns = sortedRuns.slice(0, midIdx);
-  const recentRuns = sortedRuns.slice(midIdx);
+  // Runs are deduped (latest per model+prompt), so they may all share the same date.
+  // Split by the midpoint of the selected date range to get distinct time periods.
+  const rangeMidpoint = new Date(rangeCutoff.getTime() + (Date.now() - rangeCutoff.getTime()) / 2);
+  const earlierRuns = runs.filter((r) => r.createdAt < rangeMidpoint);
+  const recentRuns = runs.filter((r) => r.createdAt >= rangeMidpoint);
 
   // Uses isRunInBrandScope + computeBrandRank (same as Overview/Visibility/Competition)
   const halfBrandAliases = brand.aliases?.length ? brand.aliases : undefined;
@@ -869,11 +870,13 @@ export async function GET(req: NextRequest) {
   const earlierMetrics = computeHalfMetrics(earlierRuns);
   const recentMetrics = computeHalfMetrics(recentRuns);
 
-  // Compute date labels for each half
-  const earlierStart = earlierRuns.length > 0 ? earlierRuns[0].createdAt.toISOString().slice(0, 10) : "";
-  const earlierEnd = earlierRuns.length > 0 ? earlierRuns[earlierRuns.length - 1].createdAt.toISOString().slice(0, 10) : "";
-  const recentStart = recentRuns.length > 0 ? recentRuns[0].createdAt.toISOString().slice(0, 10) : "";
-  const recentEnd = recentRuns.length > 0 ? recentRuns[recentRuns.length - 1].createdAt.toISOString().slice(0, 10) : "";
+  // Date labels from actual run dates in each half
+  const sortedEarlier = [...earlierRuns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const sortedRecent = [...recentRuns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const earlierStart = sortedEarlier.length > 0 ? sortedEarlier[0].createdAt.toISOString().slice(0, 10) : "";
+  const earlierEnd = sortedEarlier.length > 0 ? sortedEarlier[sortedEarlier.length - 1].createdAt.toISOString().slice(0, 10) : "";
+  const recentStart = sortedRecent.length > 0 ? sortedRecent[0].createdAt.toISOString().slice(0, 10) : "";
+  const recentEnd = sortedRecent.length > 0 ? sortedRecent[sortedRecent.length - 1].createdAt.toISOString().slice(0, 10) : "";
 
   const decliningMetrics: {
     metric: string;
