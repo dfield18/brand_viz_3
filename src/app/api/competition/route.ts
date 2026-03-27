@@ -27,6 +27,7 @@ import {
 } from "@/lib/narrative/signalLexicons";
 
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
+import { isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
 import { normalizeEntityIds, mergeEntityMetrics } from "@/lib/competition/normalizeEntities";
 import { validateCompetitors } from "@/lib/validateCompetitors";
 import type {
@@ -924,6 +925,7 @@ export async function GET(req: NextRequest) {
       const weaknessMap: Record<string, number> = {};
       for (const n of narratives) {
         for (const claim of n.claims) {
+          if (isSourceOrJunkClaim(claim.text)) continue;
           const key = claim.text.toLowerCase();
           if (claim.type === "strength") {
             strengthMap[key] = (strengthMap[key] || 0) + 1;

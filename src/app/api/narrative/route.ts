@@ -10,7 +10,7 @@ import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
-import { splitSentences, getEntityContextWindow } from "@/lib/narrative/textUtils";
+import { splitSentences, getEntityContextWindow, isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
 import { isBrandMentioned } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
@@ -286,6 +286,7 @@ export async function GET(req: NextRequest) {
   for (const { parsed, run } of narratives) {
     const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     for (const claim of parsed.claims) {
+      if (isSourceOrJunkClaim(claim.text)) continue;
       const map = claim.type === "strength" ? strengthMap
         : claim.type === "weakness" ? weaknessMap
         : neutralMap;

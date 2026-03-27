@@ -10,6 +10,7 @@ import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
 import { computeDomainsNotCitingBrand, type SourceOccurrenceInput } from "@/lib/sources/computeSources";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
+import { isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -456,7 +457,7 @@ export async function GET(req: NextRequest) {
     if (!narrative) continue;
 
     for (const claim of narrative.claims) {
-      if (claim.type === "weakness") {
+      if (claim.type === "weakness" && !isSourceOrJunkClaim(claim.text)) {
         weaknessCounts[claim.text] = (weaknessCounts[claim.text] ?? 0) + 1;
         if (!weaknessResponses[claim.text]) weaknessResponses[claim.text] = [];
         weaknessResponses[claim.text].push({

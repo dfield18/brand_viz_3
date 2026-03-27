@@ -72,6 +72,27 @@ export function countSignalHits(text: string, signals: string[]): number {
   return count;
 }
 
+/**
+ * Returns true if a claim looks like a source domain, bare URL, or
+ * non-substantive fragment rather than a real narrative claim.
+ * Used to filter junk out of strength/weakness lists.
+ */
+export function isSourceOrJunkClaim(text: string): boolean {
+  const trimmed = text.replace(/^[\s]*[-*]\s+/, "").trim();
+  // Bare URL
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  // Single token (no spaces) under 40 chars — likely a domain or username
+  if (!/\s/.test(trimmed) && trimmed.length < 40) return true;
+  // Looks like a domain (e.g., "medium.com", "njoag.gov")
+  if (/^[a-z0-9-]+\.[a-z]{2,}(\.[a-z]{2,})?$/i.test(trimmed)) return true;
+  // Very short fragment — not a meaningful narrative
+  if (trimmed.length < 15) return true;
+  // After stripping URLs, nothing meaningful remains
+  const withoutUrls = trimmed.replace(/https?:\/\/[^\s)]+/g, "").replace(/\s{2,}/g, " ").trim();
+  if (withoutUrls.length < 15) return true;
+  return false;
+}
+
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
