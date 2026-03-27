@@ -8,7 +8,6 @@ import { NarrativeResponse, NarrativeFrame, TopicsResponse, NarrativeDeltas, Ove
 import { NarrativeMetricCards } from "@/components/narrative/NarrativeMetricCards";
 import { useResponseDetail } from "@/lib/useResponseDetail";
 
-import { StrengthsWeaknesses } from "@/components/narrative/StrengthsWeaknesses";
 import { TopNarrativeQuotes } from "@/components/narrative/TopNarrativeQuotes";
 import { NarrativeExamples } from "@/components/narrative/NarrativeExamples";
 import { SentimentByQuestion } from "@/components/narrative/SentimentByQuestion";
@@ -171,8 +170,7 @@ function NarrativeInner() {
     { id: "narrative-frames", label: "Narrative Frames", heading: "Narratives" },
     { id: "top-narratives", label: "Top Narratives" },
     { id: "frame-trend", label: "Frame Trend" },
-    { id: "strengths-weaknesses", label: "Strengths & Weaknesses", heading: "Sentiment" },
-    { id: "sentiment-by-model", label: "Sentiment by Platform" },
+    { id: "sentiment-by-model", label: "Sentiment by Platform", heading: "Sentiment" },
     { id: "sentiment-by-prompt", label: "Sentiment by Question" },
     { id: "emerging-topics", label: "Emerging Topics", heading: "Trends & Exploration" },
     { id: "evidence-examples", label: "Explore AI Responses" },
@@ -299,22 +297,6 @@ function NarrativeInner() {
 
         {/* Section: Sentiment */}
         <h2 className="text-lg font-semibold border-b border-border pb-2">Sentiment</h2>
-
-        {/* Strengths vs Weaknesses */}
-        {((data.strengths && data.strengths.length > 0) ||
-          (data.weaknesses && data.weaknesses.length > 0)) && (
-          <div id="strengths-weaknesses" className="scroll-mt-24">
-            <section className="rounded-xl bg-card p-6 shadow-section">
-              <h2 className="text-base font-semibold mb-4">Strengths vs Weaknesses</h2>
-              <StrengthsWeaknesses
-                strengths={data.strengths ?? []}
-                weaknesses={data.weaknesses ?? []}
-                weaknessesAreNeutral={data.weaknessesAreNeutral}
-                brandName={brandName}
-              />
-            </section>
-          </div>
-        )}
 
         {/* Sentiment by Model */}
         {data.sentimentTrend && data.sentimentTrend.length > 0 && (
