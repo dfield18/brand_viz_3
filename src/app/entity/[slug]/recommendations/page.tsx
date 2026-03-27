@@ -14,6 +14,7 @@ interface ApiResponse {
   hasData: boolean;
   brandName: string;
   promptOpportunitySummary: string;
+  comparisonPeriodLabel?: string;
 
   promptOpportunities: {
     promptText: string;
@@ -46,6 +47,19 @@ interface ApiResponse {
     negativeThemes: { theme: string; negativeCount: number; mixedCount: number; positiveCount: number }[];
     narrativeSummary: string;
   };
+
+  competitorNarrativeGaps: {
+    entityId: string;
+    displayName: string;
+    promptsWhereCompetitorOutranks: number;
+    outranksPercent: number;
+    gaps: {
+      promptText: string;
+      competitorRank: number;
+      brandRank: number | null;
+      models: string[];
+    }[];
+  }[];
 
   competitorAlerts: {
     entityId: string;
@@ -187,6 +201,7 @@ const PAGE_SECTIONS: PageSection[] = [
   { id: "top-priorities", label: "Top Priorities" },
   { id: "prompt-opportunities", label: "Where You're Missing", heading: "Content Gaps" },
   { id: "platform-playbooks", label: "By AI Platform" },
+  { id: "topic-coverage-gaps", label: "Topic Gaps" },
   { id: "negative-narratives", label: "Narrative Issues", heading: "Narrative" },
   { id: "competitor-alerts", label: "Competitor Movement", heading: "Monitoring" },
   { id: "source-gaps", label: "Source Gaps" },
@@ -460,6 +475,32 @@ function SourceGapsSection({ data, brandName }: { data: ApiResponse["sourceGapOp
   );
 }
 
+function TopicCoverageGapsSection({ data, brandName }: { data: ApiResponse["topicCoverageGaps"]; brandName: string }) {
+  if (!data || data.length === 0) return <p className="text-sm text-muted-foreground">No topic coverage gaps found — {brandName} is well represented across all topics.</p>;
+
+  return (
+    <div>
+      {data.map((gap, i) => {
+        const mentionPct = Math.round(gap.mentionRate * 100);
+        const rankText = gap.avgRank !== null ? ` with an average position of #${gap.avgRank.toFixed(1)}` : "";
+        const leaders = gap.competitorLeaders;
+        const leaderText = leaders.length > 0
+          ? ` Competitors leading this topic: ${leaders.map((l) => `${l.displayName} (#1 in ${l.rank1Count} response${l.rank1Count !== 1 ? "s" : ""})`).join(", ")}.`
+          : "";
+
+        return (
+          <div key={i} className="mb-6 last:mb-0">
+            <h4 className="text-base font-semibold mb-2">{gap.topicKey}</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {brandName} is only mentioned in {mentionPct}% of AI responses about this topic{rankText}.{leaderText} {stripMarkdown(gap.suggestion)}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DecliningMetricsSection({ data, brandName }: { data: ApiResponse["decliningMetrics"]; brandName: string }) {
   const declining = data?.filter((m) => m.direction === "declining") ?? [];
   if (declining.length === 0) return <p className="text-sm text-muted-foreground">All metrics are stable or improving — no declining trends detected.</p>;
@@ -568,11 +609,13 @@ function RecommendationsInner() {
 
   const name = apiData.brandName;
   const showPlaybooks = (apiData.platformPlaybooks ?? []).some((pb) => !(pb.avgBrandRank !== null && pb.avgBrandRank <= 2 && pb.mentionRate >= 0.8));
+  const hasTopicGaps = (apiData.topicCoverageGaps ?? []).length > 0;
   const hasCompetitorAlerts = (apiData.competitorAlerts ?? []).length > 0;
   const hasDeclining = (apiData.decliningMetrics ?? []).some((m) => m.direction === "declining");
 
   const activeSections = PAGE_SECTIONS.filter((s) => {
     if (s.id === "platform-playbooks" && !showPlaybooks) return false;
+    if (s.id === "topic-coverage-gaps" && !hasTopicGaps) return false;
     if (s.id === "competitor-alerts" && !hasCompetitorAlerts) return false;
     if (s.id === "declining-metrics" && !hasDeclining) return false;
     return true;
@@ -605,6 +648,12 @@ function RecommendationsInner() {
         {showPlaybooks && (
           <SectionBlock id="platform-playbooks" title="Performance by AI Platform">
             <PlatformPlaybooksSection data={apiData.platformPlaybooks} brandName={name} />
+          </SectionBlock>
+        )}
+
+        {hasTopicGaps && (
+          <SectionBlock id="topic-coverage-gaps" title="Topics Where You're Underrepresented">
+            <TopicCoverageGapsSection data={apiData.topicCoverageGaps} brandName={name} />
           </SectionBlock>
         )}
 
