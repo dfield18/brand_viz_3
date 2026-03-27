@@ -588,12 +588,15 @@ export async function GET(req: NextRequest) {
       runsByModel.get(r.model)!.push(r);
     }
     for (const mc of overview.modelComparison) {
+      // Controversy, authority, stability need industry-cluster analyses
       const analyses = dedupedByModel.get(mc.model);
-      if (!analyses || analyses.length === 0) continue;
-      mc.controversy = Math.round(avgArr(analyses.map((a) => a.sentiment.controversy)));
-      mc.authority = parseFloat(avgArr(analyses.map((a) => a.authorityScore)).toFixed(2));
-      mc.narrativeStability = computeStability(analyses);
-      // Sentiment from narrativeJson (matches overall sentimentSplit methodology exactly)
+      if (analyses && analyses.length > 0) {
+        mc.controversy = Math.round(avgArr(analyses.map((a) => a.sentiment.controversy)));
+        mc.authority = parseFloat(avgArr(analyses.map((a) => a.authorityScore)).toFixed(2));
+        mc.narrativeStability = computeStability(analyses);
+      }
+      // Sentiment from narrativeJson uses ALL scoped runs (not just industry),
+      // so models with no industry-cluster runs still get sentiment computed.
       const modelRuns = runsByModel.get(mc.model) ?? [];
       let pos = 0, neu = 0, neg = 0;
       for (const r of modelRuns) {
