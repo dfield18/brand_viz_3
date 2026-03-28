@@ -768,6 +768,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
   const [frequency, setFrequency] = useState("weekly");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; enabled: boolean }[]>([]);
 
   useEffect(() => {
@@ -804,21 +805,27 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
 
   async function handleSendNow() {
     setSendStatus("sending");
+    setSendError(null);
     try {
       const res = await fetch("/api/reports/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandSlug }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSendStatus(data.sent > 0 ? "sent" : "error");
-        if (data.sent > 0) setTimeout(() => setSendStatus("idle"), 5000);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.sent > 0) {
+        setSendStatus("sent");
+        setTimeout(() => setSendStatus("idle"), 5000);
       } else {
         setSendStatus("error");
+        const detail = data?.errors?.join("; ") || data?.message || data?.error || `HTTP ${res.status}`;
+        setSendError(detail);
+        console.error("[Send report]", data);
       }
-    } catch {
+    } catch (err) {
       setSendStatus("error");
+      setSendError(err instanceof Error ? err.message : "Network error");
+      console.error("[Send report]", err);
     }
   }
 
@@ -889,7 +896,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
             </button>
           </div>
           {sendStatus === "error" && (
-            <p className="text-xs text-red-500 mt-1">Failed to send. Check that RESEND_API_KEY is configured.</p>
+            <p className="text-xs text-red-500 mt-1">Failed to send{sendError ? `: ${sendError}` : ". Check that RESEND_API_KEY is configured."}</p>
           )}
         </div>
       )}

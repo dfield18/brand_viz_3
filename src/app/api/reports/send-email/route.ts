@@ -3,18 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
 import { renderReportEmail } from "@/lib/email/renderReportEmail";
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "reports@visibility.ai";
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 
 /**
  * POST /api/reports/send-email
  *
- * Called by Vercel Cron (or manually) to send scheduled email reports.
- * Finds all enabled subscriptions due for sending based on frequency,
- * fetches the report for each brand, and sends via Resend.
+ * Called by Vercel Cron (or manually via "Send now" button).
  *
- * Query params:
- *   ?frequency=weekly (default) — which subscriptions to process
- *   ?brandSlug=xyz — optionally limit to one brand (for testing)
+ * Cron usage (query params):
+ *   ?frequency=weekly — which subscriptions to process
+ *
+ * On-demand usage (POST body):
+ *   { brandSlug: "xyz" } — send immediately to all subscribers for this brand
  */
 export async function POST(req: NextRequest) {
   // Check for on-demand send via POST body (from UI "Send now" button)
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   const subscriptions = await prisma.emailSubscription.findMany({
     where,
     include: { brand: true },
-    take: 50, // process in batches to stay within function timeout
+    take: 50,
   });
 
   if (subscriptions.length === 0) {
@@ -91,17 +91,19 @@ export async function POST(req: NextRequest) {
   let sent = 0;
   const errors: string[] = [];
 
+  // Resolve base URL for self-fetch
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    || `http://localhost:${process.env.PORT || 3000}`;
+
   for (const [, group] of byBrand) {
     try {
       // Fetch report data from own API
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
-      const reportRes = await fetch(
-        `${baseUrl}/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`,
-      );
+      const reportUrl = `${baseUrl}/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`;
+      const reportRes = await fetch(reportUrl);
       if (!reportRes.ok) {
-        errors.push(`Report fetch failed for ${group.brandSlug}: ${reportRes.status}`);
+        const text = await reportRes.text().catch(() => "");
+        errors.push(`Report fetch failed for ${group.brandSlug}: ${reportRes.status} ${text.slice(0, 200)}`);
         continue;
       }
       const reportJson = await reportRes.json();
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
           });
           sent++;
         } catch (err) {
-          errors.push(`Send failed to ${email}: ${err instanceof Error ? err.message : String(err)}`);
+          errors.push(`Resend failed to ${email}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     } catch (err) {
