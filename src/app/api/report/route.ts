@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
   const qs = `brandSlug=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(model)}&range=${range}`;
 
   // Fetch all 7 APIs in parallel (5 tabs + recommendations + topics)
-  async function fetchApi(path: string): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function fetchApi(path: string): Promise<any> {
     const url = `${origin}${path}?${qs}`;
     try {
       const res = await fetch(url, fetchOpts);
