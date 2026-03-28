@@ -30,16 +30,33 @@ export async function GET(req: NextRequest) {
   const qs = `brandSlug=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(model)}&range=${range}`;
 
   // Fetch all 7 APIs in parallel (5 tabs + recommendations + topics)
+  async function fetchApi(path: string): Promise<unknown> {
+    const url = `${origin}${path}?${qs}`;
+    try {
+      const res = await fetch(url, fetchOpts);
+      if (!res.ok) {
+        console.error(`[report] ${path} returned ${res.status}`);
+        return null;
+      }
+      return res.json();
+    } catch (err) {
+      console.error(`[report] ${path} failed:`, err instanceof Error ? err.message : err);
+      return null;
+    }
+  }
+
+  console.log(`[report] Fetching APIs from origin: ${origin}`);
+
   const [overviewRes, visibilityRes, narrativeRes, competitionRes, sourcesRes, recsRes, topicsRes, quotesRes, alertsRes] = await Promise.all([
-    fetch(`${origin}/api/overview?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/visibility?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/narrative?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/competition?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/sources?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/recommendations?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/topics?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/visibility/quotes?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
-    fetch(`${origin}/api/competitor-alerts?${qs}`, fetchOpts).then((r) => r.json()).catch(() => null),
+    fetchApi("/api/overview"),
+    fetchApi("/api/visibility"),
+    fetchApi("/api/narrative"),
+    fetchApi("/api/competition"),
+    fetchApi("/api/sources"),
+    fetchApi("/api/recommendations"),
+    fetchApi("/api/topics"),
+    fetchApi("/api/visibility/quotes"),
+    fetchApi("/api/competitor-alerts"),
   ]);
 
   const brandName =

@@ -103,9 +103,13 @@ export async function POST(req: NextRequest) {
       }
       const reportJson = await reportRes.json();
       if (!reportJson.hasData || !reportJson.report) {
-        errors.push(`No report data for ${group.brandSlug}`);
+        errors.push(`No report data for ${group.brandSlug}: hasData=${reportJson.hasData}, hasOverview=${!!reportJson.report?.overview}`);
         continue;
       }
+      // Log which sections have data
+      const r = reportJson.report;
+      const sections = ['overview','visibility','narrative','landscape','sources'].filter(k => r[k] != null);
+      console.log(`[send-email] Report for ${group.brandSlug}: sections with data: [${sections.join(', ')}]`);
 
       const { subject, html } = renderReportEmail(reportJson.report);
 
