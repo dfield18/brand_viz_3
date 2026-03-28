@@ -8,7 +8,7 @@ import { MODEL_LABELS } from "@/lib/constants";
 import { Printer, Loader2 } from "lucide-react";
 
 const OverviewPage = dynamic(() => import("../overview/page"), { ssr: false });
-const VisibilityPage = dynamic(() => import("../visibility/page"), { ssr: false });
+const VisibilityPage = dynamic(() => import("../visibility-v2/page"), { ssr: false });
 const NarrativePage = dynamic(() => import("../narrative/page"), { ssr: false });
 const CompetitionPage = dynamic(() => import("../competition/page"), { ssr: false });
 const SourcesPage = dynamic(() => import("../sources/page"), { ssr: false });
