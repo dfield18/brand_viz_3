@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
 
   let sent = 0;
   const errors: string[] = [];
+  let lastDiag: Record<string, unknown> | null = null;
 
   for (const [, group] of byBrand) {
     try {
@@ -112,9 +113,12 @@ export async function POST(req: NextRequest) {
         const r = reportJson.report;
         diag.brandName = r.meta?.brandName;
         diag.sections = ['overview','visibility','narrative','landscape','sources']
-          .filter(k => r[k] != null);
+          .filter((k: string) => r[k] != null);
         diag.overviewHasScorecard = !!r.overview?.scorecard;
+        diag.overviewKeys = r.overview ? Object.keys(r.overview) : [];
+        diag.visibilityKeys = r.visibility ? Object.keys(r.visibility).slice(0, 5) : [];
       }
+      lastDiag = diag;
 
       if (!reportJson.hasData || !reportJson.report) {
         errors.push(`No report data for ${group.brandSlug}: ${JSON.stringify(diag)}`);
@@ -150,6 +154,6 @@ export async function POST(req: NextRequest) {
     sent,
     total: subscriptions.length,
     errors: errors.length > 0 ? errors : undefined,
-    debug: { origin: req.url, subscriptionCount: subscriptions.length },
+    debug: { origin: req.url, subscriptionCount: subscriptions.length, reportDiag: lastDiag },
   });
 }
