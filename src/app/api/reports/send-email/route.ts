@@ -102,14 +102,24 @@ export async function POST(req: NextRequest) {
         continue;
       }
       const reportJson = await reportRes.json();
+
+      // Collect diagnostics for browser console
+      const diag: Record<string, unknown> = {
+        hasData: reportJson.hasData,
+        hasReport: !!reportJson.report,
+      };
+      if (reportJson.report) {
+        const r = reportJson.report;
+        diag.brandName = r.meta?.brandName;
+        diag.sections = ['overview','visibility','narrative','landscape','sources']
+          .filter(k => r[k] != null);
+        diag.overviewHasScorecard = !!r.overview?.scorecard;
+      }
+
       if (!reportJson.hasData || !reportJson.report) {
-        errors.push(`No report data for ${group.brandSlug}: hasData=${reportJson.hasData}, hasOverview=${!!reportJson.report?.overview}`);
+        errors.push(`No report data for ${group.brandSlug}: ${JSON.stringify(diag)}`);
         continue;
       }
-      // Log which sections have data
-      const r = reportJson.report;
-      const sections = ['overview','visibility','narrative','landscape','sources'].filter(k => r[k] != null);
-      console.log(`[send-email] Report for ${group.brandSlug}: sections with data: [${sections.join(', ')}]`);
 
       const { subject, html } = renderReportEmail(reportJson.report);
 
@@ -140,5 +150,6 @@ export async function POST(req: NextRequest) {
     sent,
     total: subscriptions.length,
     errors: errors.length > 0 ? errors : undefined,
+    debug: { origin: req.url, subscriptionCount: subscriptions.length },
   });
 }
