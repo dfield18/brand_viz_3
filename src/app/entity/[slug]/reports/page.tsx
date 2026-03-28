@@ -804,6 +804,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
   }
 
   async function handleSendNow() {
+    console.log("[Send report] Sending...");
     setSendStatus("sending");
     setSendError(null);
     try {
@@ -812,7 +813,9 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandSlug }),
       });
+      console.log("[Send report] Response status:", res.status);
       const data = await res.json().catch(() => null);
+      console.log("[Send report] Response data:", JSON.stringify(data, null, 2));
       if (res.ok && data?.sent > 0) {
         setSendStatus("sent");
         setTimeout(() => setSendStatus("idle"), 5000);
@@ -820,12 +823,11 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
         setSendStatus("error");
         const detail = data?.errors?.join("; ") || data?.message || data?.error || `HTTP ${res.status}`;
         setSendError(detail);
-        console.error("[Send report]", data);
       }
     } catch (err) {
+      console.error("[Send report] Error:", err);
       setSendStatus("error");
       setSendError(err instanceof Error ? err.message : "Network error");
-      console.error("[Send report]", err);
     }
   }
 
