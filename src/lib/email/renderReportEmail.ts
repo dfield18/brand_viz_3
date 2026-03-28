@@ -44,20 +44,20 @@ function sentimentLabel(split: { positive: number; negative: number }): string {
 export function renderReportEmail(report: ReportData): { subject: string; html: string } {
   const { meta, overview } = report;
   const brandName = meta.brandName;
-  const sc = overview.scorecard;
-  const sent = overview.sentimentSplit;
+  const sc = overview?.scorecard;
+  const sent = overview?.sentimentSplit;
 
   const subject = `${brandName} AI Visibility Report — ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
-  const kpiCards = [
+  const kpiCards = sc ? [
     { label: "Brand Recall", value: pct(sc.brandRecall), desc: "% of AI responses mentioning you" },
     { label: "Share of Voice", value: pct(sc.shareOfVoice), desc: "Your share of brand mentions" },
     { label: "Top Result Rate", value: pct(sc.topResultRate), desc: "% ranked #1" },
     { label: "Avg Position", value: pos(sc.avgPosition), desc: "Average ranking" },
-  ];
+  ] : [];
 
   // Competitor alerts
-  const rising = (overview.competitorAlerts ?? []).filter((a) => a.direction === "rising").slice(0, 3);
+  const rising = (overview?.competitorAlerts ?? []).filter((a) => a.direction === "rising").slice(0, 3);
 
   // Opportunity prompts
   const opportunities = (report.visibility?.opportunityPrompts ?? []).slice(0, 3);
@@ -77,7 +77,7 @@ export function renderReportEmail(report: ReportData): { subject: string; html: 
     <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">AI Visibility Report &middot; ${meta.range}-day window &middot; ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
   </div>
 
-  <!-- KPI Cards -->
+  ${kpiCards.length > 0 ? `<!-- KPI Cards -->
   <div style="background:#fff;padding:24px 28px;border-left:1px solid #e5e5e5;border-right:1px solid #e5e5e5;">
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       <tr>
@@ -88,7 +88,7 @@ export function renderReportEmail(report: ReportData): { subject: string; html: 
         </td>`).join("")}
       </tr>
     </table>
-  </div>
+  </div>` : ""}
 
   ${sent ? `
   <!-- Sentiment -->
@@ -101,7 +101,7 @@ export function renderReportEmail(report: ReportData): { subject: string; html: 
     </tr></table>
   </div>` : ""}
 
-  ${overview.aiSummary ? `
+  ${overview?.aiSummary ? `
   <!-- AI Summary -->
   <div style="background:#fff;padding:20px 28px;border-left:1px solid #e5e5e5;border-right:1px solid #e5e5e5;border-top:1px solid #f0f0f0;">
     <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">${overview.aiSummary.replace(/\n/g, "<br>")}</p>
