@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
 import { renderReportEmail } from "@/lib/email/renderReportEmail";
+import { GET as getReport } from "@/app/api/report/route";
 
 const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 
@@ -45,12 +46,10 @@ export async function POST(req: NextRequest) {
   };
 
   if (onDemandBrandSlug) {
-    // On-demand: send immediately to all subscribers for this brand, no cooldown
     const brand = await prisma.brand.findUnique({ where: { slug: onDemandBrandSlug } });
     if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
     where.brandId = brand.id;
   } else {
-    // Cron: respect frequency and cooldown
     where.frequency = frequency;
     const cooldownDays = frequency === "monthly" ? 27 : 6;
     const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
@@ -74,7 +73,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: 0, message: "No subscriptions due" });
   }
 
-  // Group by brand to avoid fetching the same report multiple times
+  // Group by brand
   const byBrand = new Map<string, { brandSlug: string; brandName: string; emails: { id: string; email: string }[] }>();
   for (const sub of subscriptions) {
     const key = sub.brandId;
@@ -91,19 +90,15 @@ export async function POST(req: NextRequest) {
   let sent = 0;
   const errors: string[] = [];
 
-  // Resolve base URL for self-fetch
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-    || `http://localhost:${process.env.PORT || 3000}`;
-
   for (const [, group] of byBrand) {
     try {
-      // Fetch report data from own API
-      const reportUrl = `${baseUrl}/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`;
-      const reportRes = await fetch(reportUrl);
+      // Call the report route handler directly (bypasses Clerk proxy)
+      const reportReq = new NextRequest(
+        new URL(`/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`, req.url),
+      );
+      const reportRes = await getReport(reportReq);
       if (!reportRes.ok) {
-        const text = await reportRes.text().catch(() => "");
-        errors.push(`Report fetch failed for ${group.brandSlug}: ${reportRes.status} ${text.slice(0, 200)}`);
+        errors.push(`Report generation failed for ${group.brandSlug}: ${reportRes.status}`);
         continue;
       }
       const reportJson = await reportRes.json();
