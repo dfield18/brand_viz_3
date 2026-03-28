@@ -22,9 +22,25 @@ model Brand {
   aliases     String[] @default([]) // alternate names/abbreviations for mention detection — set via GPT
   createdAt   DateTime @default(now())
 
-  jobs    Job[]
-  runs    Run[]
-  prompts Prompt[]
+  jobs               Job[]
+  runs               Run[]
+  prompts            Prompt[]
+  emailSubscriptions EmailSubscription[]
+}
+
+model EmailSubscription {
+  id        String   @id @default(cuid())
+  brandId   String
+  email     String
+  frequency String   @default("weekly") // "weekly" | "monthly"
+  enabled   Boolean  @default(true)
+  lastSentAt DateTime?
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id])
+
+  @@unique([brandId, email])
+  @@index([enabled, frequency])
 }
 
 model Prompt {

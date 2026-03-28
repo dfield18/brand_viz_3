@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, Mail, Check } from "lucide-react";
 import { sentimentLabel, stabilityLabel } from "@/lib/overview/modelComparisonDisplay";
 
 /* ─── Shared Renderers ───────────────────────────────────────────────── */
@@ -763,6 +763,93 @@ interface ReportData {
   };
 }
 
+function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
+  const [email, setEmail] = useState("");
+  const [frequency, setFrequency] = useState("weekly");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; enabled: boolean }[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/reports/subscribe?brandSlug=${encodeURIComponent(brandSlug)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.subscriptions) setSubscriptions(data.subscriptions); })
+      .catch(() => {});
+  }, [brandSlug]);
+
+  async function handleSubscribe() {
+    if (!email.trim()) return;
+    setStatus("saving");
+    try {
+      const res = await fetch("/api/reports/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandSlug, email: email.trim(), frequency }),
+      });
+      if (res.ok) {
+        setStatus("saved");
+        setSubscriptions((prev) => {
+          const existing = prev.find((s) => s.email === email.trim());
+          if (existing) return prev.map((s) => s.email === email.trim() ? { ...s, frequency, enabled: true } : s);
+          return [...prev, { email: email.trim(), frequency, enabled: true }];
+        });
+        setTimeout(() => setStatus("idle"), 3000);
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const activeCount = subscriptions.filter((s) => s.enabled).length;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 no-print">
+      <div className="flex items-center gap-2 mb-3">
+        <Mail className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">Email Reports</h3>
+        {activeCount > 0 && (
+          <span className="text-xs text-muted-foreground">({activeCount} active)</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Get this report delivered to your inbox automatically.
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+          className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <select
+          value={frequency}
+          onChange={(e) => setFrequency(e.target.value)}
+          className="text-xs px-2 py-1.5 rounded-lg border border-border bg-background"
+        >
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <button
+          onClick={handleSubscribe}
+          disabled={status === "saving" || !email.trim()}
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          {status === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+           status === "saved" ? <Check className="h-3.5 w-3.5" /> :
+           <Mail className="h-3.5 w-3.5" />}
+          {status === "saved" ? "Subscribed" : "Subscribe"}
+        </button>
+      </div>
+      {status === "error" && (
+        <p className="text-xs text-red-500 mt-2">Failed to subscribe. Please try again.</p>
+      )}
+    </div>
+  );
+}
+
 function ReportInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -843,6 +930,10 @@ function ReportInner() {
           <Printer className="h-4 w-4" />
           Print / Save PDF
         </button>
+      </div>
+
+      <div className="mb-6 no-print">
+        <EmailSubscribePanel brandSlug={params.slug} />
       </div>
 
       <div className="hidden print:block mb-6">
