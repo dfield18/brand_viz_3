@@ -11,6 +11,7 @@ import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
 import { computeDomainsNotCitingBrand, type SourceOccurrenceInput } from "@/lib/sources/computeSources";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
 import { isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
+import { TOPIC_TAXONOMY } from "@/lib/topics/topicTaxonomy";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -820,12 +821,13 @@ export async function GET(req: NextRequest) {
         }));
 
       const pct = Math.round(mentionRate * 100);
+      const topicLabel = TOPIC_TAXONOMY.find((t) => t.key === topicKey)?.label ?? topicKey.replace(/_/g, " ");
       topicCoverageGaps.push({
-        topicKey,
+        topicKey: topicLabel,
         mentionRate: Math.round(mentionRate * 1000) / 1000,
         avgRank: avgRank !== null ? Math.round(avgRank * 100) / 100 : null,
         competitorLeaders,
-        suggestion: `Improve visibility for "${topicKey}" \u2014 currently mentioned in only ${pct}% of responses`,
+        suggestion: `Improve visibility for "${topicLabel}" \u2014 currently mentioned in only ${pct}% of responses`,
       });
     }
   }
