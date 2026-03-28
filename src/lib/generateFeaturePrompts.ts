@@ -306,11 +306,12 @@ export async function generateBrandPrompts(
 
 ${context}
 
-Generate exactly 8 questions that:
+Generate 7-8 questions that:
 - Mention "${brandName}" by name
-- Cover a mix of: what it is, reputation, how it compares, pros/cons, whether it's worth it, recent news/controversies, alternatives
+- Cover a mix of: what it is, reputation, how it compares, pros/cons, whether it's worth it, alternatives
 - Sound natural — the way a real person would phrase a question, not formal or academic
 - Vary between short casual queries and longer specific questions
+- If "${brandName}" has been involved in a notable controversy, scandal, or public criticism, include ONE question about that specific controversy (referencing the actual issue, not a generic "any controversies?" question). Only include this if there is a real, well-known controversy — do not fabricate one.
 
 Return ONLY a JSON array of objects with "text" and "intent" fields.
 Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
@@ -318,7 +319,8 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
 Example format:
 [
   {"text": "Is Nike worth the price?", "intent": "high-intent"},
-  {"text": "What is Nike known for?", "intent": "informational"}
+  {"text": "What is Nike known for?", "intent": "informational"},
+  {"text": "What happened with Nike's sweatshop labor controversy?", "intent": "informational"}
 ]`,
         },
         {
