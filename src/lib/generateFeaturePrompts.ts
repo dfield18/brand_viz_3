@@ -269,3 +269,157 @@ export function buildFeaturePrompts(
     source: "generated-feature",
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Dynamic prompt generation
+// ---------------------------------------------------------------------------
+
+interface GeneratedPrompt {
+  text: string;
+  cluster: "brand" | "industry";
+  intent: "informational" | "high-intent";
+  source: "generated";
+}
+
+/**
+ * Generate brand-cluster prompts — questions a real user would ask about
+ * the specific brand. Mentions the brand by name.
+ */
+export async function generateBrandPrompts(
+  brandName: string,
+  industry: string,
+  category: BrandCategory,
+): Promise<GeneratedPrompt[]> {
+  const context = category === "political_advocacy"
+    ? `"${brandName}" is a political/advocacy organization in the ${industry} space.`
+    : `"${brandName}" is a brand/company in the ${industry} industry.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 800,
+      messages: [
+        {
+          role: "system",
+          content: `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) to learn about a specific brand or organization.
+
+${context}
+
+Generate exactly 8 questions that:
+- Mention "${brandName}" by name
+- Cover a mix of: what it is, reputation, how it compares, pros/cons, whether it's worth it, recent news/controversies, alternatives
+- Sound natural — the way a real person would phrase a question, not formal or academic
+- Vary between short casual queries and longer specific questions
+
+Return ONLY a JSON array of objects with "text" and "intent" fields.
+Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
+
+Example format:
+[
+  {"text": "Is Nike worth the price?", "intent": "high-intent"},
+  {"text": "What is Nike known for?", "intent": "informational"}
+]`,
+        },
+        {
+          role: "user",
+          content: `Generate 8 search queries about "${brandName}"`,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content?.trim();
+    if (!content) return [];
+
+    const parsed = JSON.parse(
+      content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+    ) as { text: string; intent: string }[];
+
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.slice(0, 8).map((p) => ({
+      text: p.text,
+      cluster: "brand" as const,
+      intent: (p.intent === "high-intent" ? "high-intent" : "informational") as "informational" | "high-intent",
+      source: "generated" as const,
+    }));
+  } catch (err) {
+    console.error("[generateBrandPrompts] Failed:", err);
+    return [];
+  }
+}
+
+/**
+ * Generate industry-cluster prompts — broad category questions that do NOT
+ * mention the brand by name. These test whether AI surfaces the brand
+ * organically when users ask about the category.
+ */
+export async function generateIndustryPrompts(
+  brandName: string,
+  industry: string,
+  category: BrandCategory,
+): Promise<GeneratedPrompt[]> {
+  const context = category === "political_advocacy"
+    ? `"${brandName}" operates in the ${industry} space (political/advocacy).`
+    : `"${brandName}" is in the ${industry} industry.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 800,
+      messages: [
+        {
+          role: "system",
+          content: `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) when exploring a category or industry — NOT asking about a specific brand.
+
+${context}
+
+Generate exactly 8 questions that:
+- Do NOT mention "${brandName}" by name anywhere in the question
+- Ask about the broader category, industry, or problem space that "${brandName}" operates in
+- Cover a mix of: best/top options, recommendations, comparisons between options, what to look for, recent trends, how to choose
+- Sound natural — the way a real person would phrase a question
+- Would naturally lead AI to potentially mention or recommend "${brandName}" (or its competitors)
+
+Return ONLY a JSON array of objects with "text" and "intent" fields.
+Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
+
+Example format (for a running shoe brand):
+[
+  {"text": "What are the best running shoes in 2025?", "intent": "high-intent"},
+  {"text": "What should I look for when buying running shoes?", "intent": "informational"}
+]`,
+        },
+        {
+          role: "user",
+          content: `Generate 8 category-level search queries for the ${industry} space (the brand is "${brandName}" but do NOT mention it)`,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content?.trim();
+    if (!content) return [];
+
+    const parsed = JSON.parse(
+      content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+    ) as { text: string; intent: string }[];
+
+    if (!Array.isArray(parsed)) return [];
+
+    // Safety check: reject any prompt that mentions the brand name
+    const brandLower = brandName.toLowerCase();
+    return parsed
+      .filter((p) => !p.text.toLowerCase().includes(brandLower))
+      .slice(0, 8)
+      .map((p) => ({
+        text: p.text,
+        cluster: "industry" as const,
+        intent: (p.intent === "high-intent" ? "high-intent" : "informational") as "informational" | "high-intent",
+        source: "generated" as const,
+      }));
+  } catch (err) {
+    console.error("[generateIndustryPrompts] Failed:", err);
+    return [];
+  }
+}

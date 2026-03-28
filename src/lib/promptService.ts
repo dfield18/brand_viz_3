@@ -5,83 +5,89 @@ import {
   classifyBrandDisplayName,
   classifyBrandIndustry,
   generateBrandAliases,
+  generateBrandPrompts,
+  generateIndustryPrompts,
+  type BrandCategory,
 } from "@/lib/generateFeaturePrompts";
 
 /**
- * Ensure brand-specific prompt rows exist by copying from global templates.
- * Also generates feature-based comparative prompts using GPT if not yet created.
- * Idempotent — safe to call on every request.
+ * Ensure brand-specific prompts exist. On first call for a brand:
+ * 1. Classify the brand (category, industry, display name, aliases)
+ * 2. Generate dynamic brand + industry prompts via GPT
+ *
+ * Idempotent — if prompts already exist, only runs classification
+ * for any missing fields and topic-key backfill.
  */
 export async function materializePromptsForBrand(brandId: string) {
-  const templates = await prisma.prompt.findMany({
-    where: { brandId: null },
-    orderBy: { createdAt: "asc" },
-  });
+  // --- 1. Classify brand metadata if not yet set ---
+  let brand = await prisma.brand.findUnique({ where: { id: brandId } });
+  if (!brand) return;
 
-  const existing = await prisma.prompt.findMany({
-    where: { brandId },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const existingTemplateIds = new Set(
-    existing.filter((p) => p.templateId).map((p) => p.templateId),
-  );
-
-  const toCreate = templates.filter((t) => !existingTemplateIds.has(t.id));
-
-  if (toCreate.length > 0) {
-    await prisma.prompt.createMany({
-      data: toCreate.map((t) => ({
-        brandId,
-        text: t.text,
-        cluster: t.cluster,
-        intent: t.intent,
-        source: "suggested",
-        originalText: t.text,
-        templateId: t.id,
-        enabled: true,
-      })),
-    });
-  }
-
-  // Classify brand category and industry if not yet set
   try {
-    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
-    if (brand) {
-      if (!brand.category) {
-        const category = await classifyBrandCategory(brand.name);
-        await prisma.brand.update({ where: { id: brandId }, data: { category } });
-      }
-      if (!brand.industry) {
-        const industry = await classifyBrandIndustry(brand.name);
-        await prisma.brand.update({ where: { id: brandId }, data: { industry } });
-      }
-      if (!brand.displayName) {
-        const displayName = await classifyBrandDisplayName(brand.name);
-        await prisma.brand.update({ where: { id: brandId }, data: { displayName } });
-      }
-      if (!brand.aliases || brand.aliases.length === 0) {
-        const aliases = await generateBrandAliases(brand.name);
-        if (aliases.length > 0) {
-          await prisma.brand.update({ where: { id: brandId }, data: { aliases } });
-        }
-      }
+    const updates: Record<string, unknown> = {};
+    if (!brand.category) {
+      updates.category = await classifyBrandCategory(brand.name);
+    }
+    if (!brand.industry) {
+      updates.industry = await classifyBrandIndustry(brand.name);
+    }
+    if (!brand.displayName) {
+      updates.displayName = await classifyBrandDisplayName(brand.name);
+    }
+    if (!brand.aliases || brand.aliases.length === 0) {
+      const aliases = await generateBrandAliases(brand.name);
+      if (aliases.length > 0) updates.aliases = aliases;
+    }
+    if (Object.keys(updates).length > 0) {
+      brand = await prisma.brand.update({ where: { id: brandId }, data: updates });
     }
   } catch (err) {
     console.error("[materializePromptsForBrand] Brand classification failed (non-blocking):", err);
   }
 
-  // Classify any prompts that don't yet have a topicKey
+  // --- 2. Generate prompts if none exist yet ---
+  const existing = await prisma.prompt.findMany({
+    where: { brandId },
+    select: { id: true, source: true },
+  });
+
+  if (existing.length === 0) {
+    const brandName = brand.displayName || brand.name;
+    const industry = brand.industry || brandName;
+    const category = (brand.category || "commercial") as BrandCategory;
+
+    // Generate brand + industry prompts in parallel
+    const [brandPrompts, industryPrompts] = await Promise.all([
+      generateBrandPrompts(brandName, industry, category),
+      generateIndustryPrompts(brandName, industry, category),
+    ]);
+
+    const allPrompts = [...brandPrompts, ...industryPrompts];
+
+    if (allPrompts.length > 0) {
+      await prisma.prompt.createMany({
+        data: allPrompts.map((p) => ({
+          brandId,
+          text: p.text,
+          cluster: p.cluster,
+          intent: p.intent,
+          source: p.source,
+          originalText: p.text,
+          enabled: true,
+        })),
+      });
+    }
+  }
+
+  // --- 3. Classify topic keys for any prompts missing them ---
   const unclassified = await prisma.prompt.findMany({
     where: { brandId, topicKey: null },
     select: { id: true, text: true },
   });
   if (unclassified.length > 0) {
-    const brandForName = await prisma.brand.findUnique({ where: { id: brandId }, select: { name: true } });
-    const bName = brandForName?.name;
     await Promise.all(
       unclassified.map(async (p) => {
-        const { topicKey } = await classifyPromptTopicDynamic(p.text, bName ?? undefined);
+        const { topicKey } = await classifyPromptTopicDynamic(p.text, brand!.name);
         return prisma.prompt.update({
           where: { id: p.id },
           data: { topicKey },
