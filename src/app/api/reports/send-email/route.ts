@@ -93,10 +93,19 @@ export async function POST(req: NextRequest) {
 
   for (const [, group] of byBrand) {
     try {
-      // Call the report route handler directly (bypasses Clerk proxy)
-      const reportReq = new NextRequest(
-        new URL(`/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`, req.url),
-      );
+      // Call the report route handler directly (bypasses Clerk proxy).
+      // Set the host header to the production domain so the report route's
+      // internal HTTP fetches to tab APIs reach the correct deployment.
+      const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL  // e.g. "brand-viz-3-b7dn.vercel.app"
+        || req.headers.get("host")
+        || "localhost:3000";
+      const reportUrl = new URL(`/api/report?brandSlug=${encodeURIComponent(group.brandSlug)}&model=all&range=90`, `https://${prodHost}`);
+      const reportReq = new NextRequest(reportUrl, {
+        headers: {
+          host: prodHost,
+          "x-forwarded-proto": "https",
+        },
+      });
       const reportRes = await getReport(reportReq);
       if (!reportRes.ok) {
         errors.push(`Report generation failed for ${group.brandSlug}: ${reportRes.status}`);
