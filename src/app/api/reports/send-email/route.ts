@@ -17,33 +17,51 @@ const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "reports@visibility.ai";
  *   ?brandSlug=xyz — optionally limit to one brand (for testing)
  */
 export async function POST(req: NextRequest) {
-  // Verify cron secret (Vercel sets CRON_SECRET automatically)
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Check for on-demand send via POST body (from UI "Send now" button)
+  let onDemandBrandSlug: string | null = null;
+  const contentType = req.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
+    try {
+      const body = await req.json();
+      if (body.brandSlug) onDemandBrandSlug = body.brandSlug;
+    } catch { /* not JSON — cron request */ }
+  }
+
+  // For cron requests, verify secret. On-demand requests skip this.
+  if (!onDemandBrandSlug) {
+    const authHeader = req.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const frequency = req.nextUrl.searchParams.get("frequency") || "weekly";
-  const brandSlugFilter = req.nextUrl.searchParams.get("brandSlug");
+  const brandSlugFilter = onDemandBrandSlug || req.nextUrl.searchParams.get("brandSlug");
 
-  // Find due subscriptions
+  // Find subscriptions to send
   const where: Record<string, unknown> = {
     enabled: true,
-    frequency,
   };
 
-  // Skip if sent recently (weekly = 6 days, monthly = 27 days)
-  const cooldownDays = frequency === "monthly" ? 27 : 6;
-  const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
-  where.OR = [
-    { lastSentAt: null },
-    { lastSentAt: { lt: cooldownDate } },
-  ];
-
-  if (brandSlugFilter) {
-    const brand = await prisma.brand.findUnique({ where: { slug: brandSlugFilter } });
-    if (brand) where.brandId = brand.id;
+  if (onDemandBrandSlug) {
+    // On-demand: send immediately to all subscribers for this brand, no cooldown
+    const brand = await prisma.brand.findUnique({ where: { slug: onDemandBrandSlug } });
+    if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+    where.brandId = brand.id;
+  } else {
+    // Cron: respect frequency and cooldown
+    where.frequency = frequency;
+    const cooldownDays = frequency === "monthly" ? 27 : 6;
+    const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
+    where.OR = [
+      { lastSentAt: null },
+      { lastSentAt: { lt: cooldownDate } },
+    ];
+    if (brandSlugFilter) {
+      const brand = await prisma.brand.findUnique({ where: { slug: brandSlugFilter } });
+      if (brand) where.brandId = brand.id;
+    }
   }
 
   const subscriptions = await prisma.emailSubscription.findMany({

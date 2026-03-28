@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useBrandName } from "@/lib/useBrandName";
 import { MODEL_LABELS } from "@/lib/constants";
-import { Loader2, Printer, Mail, Check } from "lucide-react";
+import { Loader2, Printer, Mail, Check, Send } from "lucide-react";
 import { sentimentLabel, stabilityLabel } from "@/lib/overview/modelComparisonDisplay";
 
 /* ─── Shared Renderers ───────────────────────────────────────────────── */
@@ -767,6 +767,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
   const [email, setEmail] = useState("");
   const [frequency, setFrequency] = useState("weekly");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; enabled: boolean }[]>([]);
 
   useEffect(() => {
@@ -798,6 +799,26 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
       }
     } catch {
       setStatus("error");
+    }
+  }
+
+  async function handleSendNow() {
+    setSendStatus("sending");
+    try {
+      const res = await fetch("/api/reports/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandSlug }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSendStatus(data.sent > 0 ? "sent" : "error");
+        if (data.sent > 0) setTimeout(() => setSendStatus("idle"), 5000);
+      } else {
+        setSendStatus("error");
+      }
+    } catch {
+      setSendStatus("error");
     }
   }
 
@@ -845,6 +866,32 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
       </div>
       {status === "error" && (
         <p className="text-xs text-red-500 mt-2">Failed to subscribe. Please try again.</p>
+      )}
+
+      {/* Send now + active subscriptions */}
+      {activeCount > 0 && (
+        <div className="mt-4 pt-3 border-t border-border/60">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; next report: {frequency === "weekly" ? "Monday 9am UTC" : "1st of month 9am UTC"}
+              </p>
+            </div>
+            <button
+              onClick={handleSendNow}
+              disabled={sendStatus === "sending"}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 transition-colors"
+            >
+              {sendStatus === "sending" ? <Loader2 className="h-3 w-3 animate-spin" /> :
+               sendStatus === "sent" ? <Check className="h-3 w-3 text-emerald-600" /> :
+               <Send className="h-3 w-3" />}
+              {sendStatus === "sending" ? "Sending..." : sendStatus === "sent" ? "Sent!" : "Send now"}
+            </button>
+          </div>
+          {sendStatus === "error" && (
+            <p className="text-xs text-red-500 mt-1">Failed to send. Check that RESEND_API_KEY is configured.</p>
+          )}
+        </div>
       )}
     </div>
   );
