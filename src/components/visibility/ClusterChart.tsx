@@ -18,10 +18,7 @@ interface ClusterChartProps {
 }
 
 const CLUSTER_LABELS: Record<string, { name: string; desc: string }> = {
-  direct: { name: "Direct", desc: "Brand-specific queries" },
-  related: { name: "Related", desc: "Topic & context queries" },
-  comparative: { name: "Comparative", desc: "Brand vs brand queries" },
-  network: { name: "Network", desc: "Peer & similar brands" },
+  brand: { name: "Brand", desc: "Brand-specific queries" },
   industry: { name: "Industry", desc: "Industry-wide searches" },
 };
 

@@ -37,7 +37,7 @@ interface PromptManagerProps {
   range: number;
 }
 
-const CLUSTER_OPTIONS = ["direct", "related", "comparative", "network", "industry"];
+const CLUSTER_OPTIONS = ["brand", "industry"];
 const INTENT_OPTIONS = ["informational", "high-intent"];
 
 export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
@@ -48,7 +48,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
   const [editText, setEditText] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newText, setNewText] = useState("");
-  const [newCluster, setNewCluster] = useState("direct");
+  const [newCluster, setNewCluster] = useState("brand");
   const [newIntent, setNewIntent] = useState("informational");
   const [saving, setSaving] = useState(false);
   const [industry, setIndustry] = useState<string | null>(null);

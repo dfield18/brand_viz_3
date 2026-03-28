@@ -6,7 +6,7 @@ import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-const VALID_CLUSTERS = ["direct", "related", "comparative", "network", "industry"];
+const VALID_CLUSTERS = ["brand", "industry"];
 const VALID_INTENTS = ["informational", "high-intent"];
 
 export async function GET(req: NextRequest) {

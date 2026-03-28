@@ -13,7 +13,7 @@ import {
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 
-const CLUSTERS = ["direct", "related", "comparative", "network", "industry"] as const;
+const CLUSTERS = ["brand", "industry"] as const;
 const INTENTS = ["high-intent", "informational"] as const;
 
 type VisibilityRun = {

@@ -171,7 +171,7 @@ export interface NarrativeResponse {
 // --- Visibility tab ---
 
 export interface ClusterMentions {
-  cluster: "direct" | "related" | "comparative" | "network" | "industry";
+  cluster: "brand" | "industry";
   mentionRate: number; // 0–100
   byModel: Record<ModelKey, number>; // per-model mention rate for this cluster
 }
@@ -182,7 +182,7 @@ export interface IntentSplit {
 }
 
 export interface ClusterBreakdownRow {
-  cluster: "direct" | "related" | "comparative" | "network" | "industry";
+  cluster: "brand" | "industry";
   mentionRate: number;        // 0–100
   avgRank: number | null;     // avg position, null if no data
   firstMentionPct: number | null; // % mentioned first, null if no data
@@ -219,7 +219,7 @@ export interface RankDistributionRow {
 }
 
 export interface VisibilityResponse {
-  clusters: ClusterMentions[]; // 5 items (direct/related/comparative/network/industry)
+  clusters: ClusterMentions[]; // 2 items (brand/industry)
   clusterBreakdown: ClusterBreakdownRow[];
   modelBreakdown: ModelBreakdownRow[];
   topPromptWins: TopPromptWin[];

@@ -103,10 +103,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   brand_discovery: "Brand Discovery",
   trust_reliability: "Trust & Reliability",
   seasonal_contextual: "Seasonal",
-  direct: "Direct",
-  related: "Related",
-  comparative: "Comparative",
-  network: "Network",
+  brand: "Brand",
   industry: "Industry",
   other: "Other",
 };

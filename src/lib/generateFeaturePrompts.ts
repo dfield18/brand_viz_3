@@ -264,7 +264,7 @@ export function buildFeaturePrompts(
 ): { text: string; cluster: string; intent: string; source: string }[] {
   return features.map((feature) => ({
     text: `How does {brand} compare to {competitor} in terms of ${feature}?`,
-    cluster: "comparative",
+    cluster: "brand",
     intent: "high-intent",
     source: "generated-feature",
   }));

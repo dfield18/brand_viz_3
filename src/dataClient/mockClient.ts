@@ -326,10 +326,10 @@ const VISIBILITY_PROFILES: Record<string, {
 }> = {
   patagonia: {
     clusters: [
-      { cluster: "direct", rate: 68 },
-      { cluster: "related", rate: 52 },
-      { cluster: "comparative", rate: 41 },
-      { cluster: "network", rate: 28 },
+      { cluster: "brand", rate: 68 },
+      { cluster: "brand", rate: 52 },
+      { cluster: "brand", rate: 41 },
+      { cluster: "brand", rate: 28 },
     ],
     highIntent: 35,
     overallMentionRate: 58,
@@ -338,10 +338,10 @@ const VISIBILITY_PROFILES: Record<string, {
   },
   nike: {
     clusters: [
-      { cluster: "direct", rate: 88 },
-      { cluster: "related", rate: 71 },
-      { cluster: "comparative", rate: 62 },
-      { cluster: "network", rate: 45 },
+      { cluster: "brand", rate: 88 },
+      { cluster: "brand", rate: 71 },
+      { cluster: "brand", rate: 62 },
+      { cluster: "brand", rate: 45 },
     ],
     highIntent: 54,
     overallMentionRate: 82,
@@ -350,10 +350,10 @@ const VISIBILITY_PROFILES: Record<string, {
   },
   allbirds: {
     clusters: [
-      { cluster: "direct", rate: 42 },
-      { cluster: "related", rate: 31 },
-      { cluster: "comparative", rate: 55 },
-      { cluster: "network", rate: 18 },
+      { cluster: "brand", rate: 42 },
+      { cluster: "brand", rate: 31 },
+      { cluster: "brand", rate: 55 },
+      { cluster: "brand", rate: 18 },
     ],
     highIntent: 28,
     overallMentionRate: 36,
@@ -365,10 +365,10 @@ const VISIBILITY_PROFILES: Record<string, {
 function getVisibilityProfile(slug: string) {
   return VISIBILITY_PROFILES[slug] ?? {
     clusters: [
-      { cluster: "direct" as const, rate: 50 },
-      { cluster: "related" as const, rate: 40 },
-      { cluster: "comparative" as const, rate: 35 },
-      { cluster: "network" as const, rate: 22 },
+      { cluster: "brand" as const, rate: 50 },
+      { cluster: "brand" as const, rate: 40 },
+      { cluster: "brand" as const, rate: 35 },
+      { cluster: "brand" as const, rate: 22 },
     ],
     highIntent: 40,
     overallMentionRate: 45,
@@ -433,9 +433,9 @@ function generateVisibility(brandId: string, filters: Filters): VisibilityRespon
   });
 
   const topPromptWins = [
-    { prompt: `What is ${brandId} known for?`, rank: 1, cluster: "direct" },
-    { prompt: `Best brands in ${brandId}'s industry`, rank: 1, cluster: "related" },
-    { prompt: `${brandId} vs competitors`, rank: 1, cluster: "comparative" },
+    { prompt: `What is ${brandId} known for?`, rank: 1, cluster: "brand" },
+    { prompt: `Best brands in ${brandId}'s industry`, rank: 1, cluster: "brand" },
+    { prompt: `${brandId} vs competitors`, rank: 1, cluster: "brand" },
   ].filter(() => rand() > 0.3);
 
   const trendModels = ["all", "chatgpt", "gemini", "claude", "perplexity"];

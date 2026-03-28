@@ -19,18 +19,18 @@ export const PATAGONIA_DUMMY_VISIBILITY: VisibilityResponse = {
   },
 
   clusters: [
-    { cluster: "direct", mentionRate: 91, byModel: { chatgpt: 94, gemini: 88, claude: 90, perplexity: 92, google: 0 } },
-    { cluster: "related", mentionRate: 68, byModel: { chatgpt: 72, gemini: 65, claude: 70, perplexity: 64, google: 0 } },
-    { cluster: "comparative", mentionRate: 78, byModel: { chatgpt: 82, gemini: 74, claude: 80, perplexity: 76, google: 0 } },
-    { cluster: "network", mentionRate: 45, byModel: { chatgpt: 50, gemini: 42, claude: 48, perplexity: 40, google: 0 } },
+    { cluster: "brand", mentionRate: 91, byModel: { chatgpt: 94, gemini: 88, claude: 90, perplexity: 92, google: 0 } },
+    { cluster: "brand", mentionRate: 68, byModel: { chatgpt: 72, gemini: 65, claude: 70, perplexity: 64, google: 0 } },
+    { cluster: "brand", mentionRate: 78, byModel: { chatgpt: 82, gemini: 74, claude: 80, perplexity: 76, google: 0 } },
+    { cluster: "brand", mentionRate: 45, byModel: { chatgpt: 50, gemini: 42, claude: 48, perplexity: 40, google: 0 } },
     { cluster: "industry", mentionRate: 72, byModel: { chatgpt: 76, gemini: 68, claude: 74, perplexity: 70, google: 0 } },
   ],
 
   clusterBreakdown: [
-    { cluster: "direct", mentionRate: 91, avgRank: 1.2, firstMentionPct: 82 },
-    { cluster: "related", mentionRate: 68, avgRank: 2.8, firstMentionPct: 28 },
-    { cluster: "comparative", mentionRate: 78, avgRank: 2.1, firstMentionPct: 42 },
-    { cluster: "network", mentionRate: 45, avgRank: 3.5, firstMentionPct: 15 },
+    { cluster: "brand", mentionRate: 91, avgRank: 1.2, firstMentionPct: 82 },
+    { cluster: "brand", mentionRate: 68, avgRank: 2.8, firstMentionPct: 28 },
+    { cluster: "brand", mentionRate: 78, avgRank: 2.1, firstMentionPct: 42 },
+    { cluster: "brand", mentionRate: 45, avgRank: 3.5, firstMentionPct: 15 },
     { cluster: "industry", mentionRate: 72, avgRank: 2.14, firstMentionPct: 38.5 },
   ],
 
@@ -322,18 +322,18 @@ export const NUCLEAR_ENERGY_DUMMY_VISIBILITY: VisibilityResponse = {
   },
 
   clusters: [
-    { cluster: "direct", mentionRate: 95, byModel: { chatgpt: 97, gemini: 92, claude: 96, perplexity: 94, google: 0 } },
-    { cluster: "related", mentionRate: 82, byModel: { chatgpt: 85, gemini: 78, claude: 84, perplexity: 80, google: 0 } },
-    { cluster: "comparative", mentionRate: 88, byModel: { chatgpt: 90, gemini: 84, claude: 89, perplexity: 87, google: 0 } },
-    { cluster: "network", mentionRate: 62, byModel: { chatgpt: 68, gemini: 58, claude: 64, perplexity: 60, google: 0 } },
+    { cluster: "brand", mentionRate: 95, byModel: { chatgpt: 97, gemini: 92, claude: 96, perplexity: 94, google: 0 } },
+    { cluster: "brand", mentionRate: 82, byModel: { chatgpt: 85, gemini: 78, claude: 84, perplexity: 80, google: 0 } },
+    { cluster: "brand", mentionRate: 88, byModel: { chatgpt: 90, gemini: 84, claude: 89, perplexity: 87, google: 0 } },
+    { cluster: "brand", mentionRate: 62, byModel: { chatgpt: 68, gemini: 58, claude: 64, perplexity: 60, google: 0 } },
     { cluster: "industry", mentionRate: 85, byModel: { chatgpt: 88, gemini: 80, claude: 86, perplexity: 84, google: 0 } },
   ],
 
   clusterBreakdown: [
-    { cluster: "direct", mentionRate: 95, avgRank: 1.1, firstMentionPct: 88 },
-    { cluster: "related", mentionRate: 82, avgRank: 2.0, firstMentionPct: 45 },
-    { cluster: "comparative", mentionRate: 88, avgRank: 1.6, firstMentionPct: 58 },
-    { cluster: "network", mentionRate: 62, avgRank: 2.9, firstMentionPct: 22 },
+    { cluster: "brand", mentionRate: 95, avgRank: 1.1, firstMentionPct: 88 },
+    { cluster: "brand", mentionRate: 82, avgRank: 2.0, firstMentionPct: 45 },
+    { cluster: "brand", mentionRate: 88, avgRank: 1.6, firstMentionPct: 58 },
+    { cluster: "brand", mentionRate: 62, avgRank: 2.9, firstMentionPct: 22 },
     { cluster: "industry", mentionRate: 85, avgRank: 1.78, firstMentionPct: 52.3 },
   ],
 

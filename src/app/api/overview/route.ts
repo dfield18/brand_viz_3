@@ -252,7 +252,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const clusterOrder = ["direct", "related", "comparative", "network", "industry"];
+  const clusterOrder = ["brand", "industry"];
   const clusterVisibility = clusterOrder
     .filter((c) => mergedClusters.has(c))
     .map((cluster) => {

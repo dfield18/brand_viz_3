@@ -18,18 +18,12 @@ interface ClusterVisibilityChartProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  direct: "Direct",
-  related: "Related",
-  comparative: "Comparative",
-  network: "Network",
+  brand: "Brand",
   industry: "Industry",
 };
 
 const CLUSTER_DESCRIPTIONS: Record<string, string> = {
-  direct: "The brand is explicitly named as a primary answer to the user's question.",
-  related: "The brand is mentioned in context, but not as the primary answer.",
-  comparative: "The brand is discussed in contrast to competitors.",
-  network: "The brand appears as part of a broader ecosystem or association network.",
+  brand: "The brand is explicitly named or directly relevant to the user's query.",
   industry: "The brand is mentioned in broad industry-level queries not targeting any specific brand.",
 };
 

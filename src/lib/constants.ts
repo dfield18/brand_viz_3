@@ -10,13 +10,10 @@ export const MODEL_LABELS: Record<string, string> = {
   google: "Google AI Overview",
 };
 
-export const VALID_CLUSTERS: string[] = ["direct", "related", "comparative", "network", "industry"];
+export const VALID_CLUSTERS: string[] = ["brand", "industry"];
 
 export const CLUSTER_LABELS: Record<string, string> = {
   all: "All Question Types",
-  direct: "Direct",
-  related: "Related",
-  comparative: "Comparative",
-  network: "Network",
+  brand: "Brand",
   industry: "Industry",
 };

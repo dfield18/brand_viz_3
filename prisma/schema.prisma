@@ -30,7 +30,7 @@ model Brand {
 model Prompt {
   id           String   @id @default(cuid())
   text         String
-  cluster      String   // direct|related|comparative|network|industry
+  cluster      String   // brand|industry
   intent       String   // informational|high-intent
   topicKey     String?  // classified topic key from TOPIC_TAXONOMY
   createdAt    DateTime @default(now())

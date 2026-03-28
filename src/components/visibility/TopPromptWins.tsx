@@ -8,10 +8,7 @@ interface TopPromptWinsProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  direct: "Direct",
-  related: "Related",
-  comparative: "Comparative",
-  network: "Network",
+  brand: "Brand",
   industry: "Industry",
 };
 
