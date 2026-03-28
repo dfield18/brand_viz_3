@@ -19,9 +19,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
 
-  const proto = req.headers.get("x-forwarded-proto") ?? "http";
-  const host = req.headers.get("host") ?? "localhost:3000";
-  const origin = `${proto}://${host}`;
+  const host = req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const origin = host
+    ? `${proto}://${host}`
+    : process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const cookie = req.headers.get("cookie") ?? "";
   const fetchOpts: RequestInit = { headers: { cookie }, cache: "no-store" };
   const qs = `brandSlug=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(model)}&range=${range}`;
