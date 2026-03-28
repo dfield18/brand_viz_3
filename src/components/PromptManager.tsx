@@ -162,7 +162,7 @@ export function PromptManager({ brandSlug, model, range }: PromptManagerProps) {
     setSaving(false);
   }
 
-  const suggested = prompts.filter((p) => p.source === "suggested");
+  const suggested = prompts.filter((p) => p.source !== "custom");
   const custom = prompts.filter((p) => p.source === "custom");
 
   /** Expand {brand} and {industry} placeholders for display */

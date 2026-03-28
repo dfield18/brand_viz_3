@@ -75,7 +75,7 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
   }, [fetchPrompts]);
 
   const enabledCount = prompts.filter((p) => p.enabled).length;
-  const suggested = prompts.filter((p) => p.source === "suggested");
+  const suggested = prompts.filter((p) => p.source !== "custom");
   const custom = prompts.filter((p) => p.source === "custom");
 
   async function handleToggle(id: string, currentEnabled: boolean) {
