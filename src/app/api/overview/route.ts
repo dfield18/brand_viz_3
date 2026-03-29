@@ -463,11 +463,12 @@ export async function GET(req: NextRequest) {
       }
 
       // KPI deltas (30-day window, matching visibility tab)
+      // Uses allIndustryRuns (full range), NOT industryRuns (24h snapshot)
       const now = Date.now();
       const oneMonthAgo = new Date(now - 30 * 86_400_000);
       const twoMonthsAgo = new Date(now - 60 * 86_400_000);
-      const thisMonthRuns = industryRuns.filter((r) => r.createdAt >= oneMonthAgo);
-      const priorMonthRuns = industryRuns.filter(
+      const thisMonthRuns = allIndustryRuns.filter((r) => r.createdAt >= oneMonthAgo);
+      const priorMonthRuns = allIndustryRuns.filter(
         (r) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
       );
       const hasDelta = thisMonthRuns.length > 0 && priorMonthRuns.length > 0;
