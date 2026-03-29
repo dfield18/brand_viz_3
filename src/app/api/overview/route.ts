@@ -327,9 +327,9 @@ export async function GET(req: NextRequest) {
   let shareOfVoice = 0;
   let kpiDeltas: import("@/types/api").KpiDeltas | null = null;
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
-  // Two snapshot pools for overview scorecards:
-  // 1. industrySnapshotRuns: latest 24h, industry-only — for Brand Recall
-  // 2. allSnapshotRuns: latest 48h, all prompt types — for Narrative, Sentiment, Sources
+  // Two snapshot pools for overview scorecards (both latest 24h):
+  // 1. industrySnapshotRuns: industry-only — for Brand Recall
+  // 2. allSnapshotRuns: all prompt types — for Narrative, Sentiment, Sources
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let industrySnapshotRuns: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -349,10 +349,10 @@ export async function GET(req: NextRequest) {
     const industryRunIds = industryRuns.map((r) => r.id);
     industrySnapshotRuns = industryRuns;
 
-    // All-prompt snapshot: latest 48h, all clusters — for Narrative, Sentiment, Sources
+    // All-prompt snapshot: latest 24h, all clusters — for Narrative, Sentiment, Sources
     const scopedRuns = filterRunsToBrandScope(visRuns, visBrandIdentity);
     const latestAnyDate = scopedRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-    const allSnapshotCutoff = new Date(latestAnyDate.getTime() - 48 * 60 * 60 * 1000);
+    const allSnapshotCutoff = new Date(latestAnyDate.getTime() - 24 * 60 * 60 * 1000);
     const recentAllRuns = scopedRuns.filter((r) => r.createdAt >= allSnapshotCutoff);
     allSnapshotRuns = recentAllRuns.length > 0 ? recentAllRuns : scopedRuns;
 
@@ -483,7 +483,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Sentiment split (latest 48h, all prompt types) ---
+  // --- Sentiment split (latest 24h, all prompt types) ---
   let sentimentSplit: { positive: number; neutral: number; negative: number } | null = null;
   if (allSnapshotRuns.length > 0) {
     let pos = 0, neu = 0, neg = 0;
@@ -509,7 +509,7 @@ export async function GET(req: NextRequest) {
   // --- Recompute frames & model comparison from latest 24h snapshot (matches Brand Recall) ---
   if (visResult && visResult.ok) {
     const { isAll } = visResult;
-    // Use the latest 48h all-prompt snapshot for narrative frames
+    // Use the latest 24h all-prompt snapshot for narrative frames
     const frameRuns = allSnapshotRuns.length > 0
       ? allSnapshotRuns
       : filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
@@ -633,7 +633,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Top cited source type (latest 48h, all prompt types) ---
+  // --- Top cited source type (latest 24h, all prompt types) ---
   let topSourceType: { category: string; count: number; totalSources: number } | null = null;
   if (allSnapshotRuns.length > 0) {
     const snapshotRunIds = allSnapshotRuns.map((r: { id: string }) => r.id);
