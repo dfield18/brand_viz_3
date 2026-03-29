@@ -73,8 +73,8 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Top Result Rate",
-      key: "topResultRate",
+      label: "Share of Voice",
+      key: "shareOfVoice",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null || v === 0 ? "—" : `${v}%`}
@@ -82,8 +82,8 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Share of Voice",
-      key: "shareOfVoice",
+      label: "Top Result Rate",
+      key: "topResultRate",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null || v === 0 ? "—" : `${v}%`}
