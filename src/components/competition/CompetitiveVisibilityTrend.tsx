@@ -44,7 +44,7 @@ const METRIC_CONFIG: Record<MetricMode, {
 }> = {
   visibility: {
     title: "How Often AI Mentions Each Brand",
-    subtitle: "% of AI responses that mention each brand",
+    subtitle: "% of AI responses that mention each brand (top 10)",
     yAxisLabel: "Brand Recall",
     yDomain: [0, 100],
     tickFormatter: (v) => `${v}%`,
