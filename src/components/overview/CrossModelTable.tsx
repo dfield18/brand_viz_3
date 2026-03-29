@@ -73,6 +73,15 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
+      label: "Top Result Rate",
+      key: "topResultRate",
+      render: (v, isBest) => (
+        <span className={isBest ? "text-primary font-semibold" : ""}>
+          {v === null || v === 0 ? "—" : `${v}%`}
+        </span>
+      ),
+    },
+    {
       label: "Avg Position",
       key: "avgRank",
       render: (v, isBest) => (
@@ -90,15 +99,6 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
         const { text, className } = getSentimentLabel(m?.sentimentSplit);
         return <span className={`text-sm font-medium ${className}`}>{text}</span>;
       },
-    },
-    {
-      label: "Top Result Rate",
-      key: "topResultRate",
-      render: (v, isBest) => (
-        <span className={isBest ? "text-primary font-semibold" : ""}>
-          {v === null || v === 0 ? "—" : `${v}%`}
-        </span>
-      ),
     },
     {
       label: "Message Consistency",
