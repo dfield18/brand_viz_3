@@ -34,6 +34,9 @@ const MODELS: { value: "all" | ModelKey; label: string }[] = [
   { value: "all", label: "All" },
   { value: "chatgpt", label: "ChatGPT" },
   { value: "gemini", label: "Gemini" },
+  { value: "claude", label: "Claude" },
+  { value: "perplexity", label: "Perplexity" },
+  { value: "google", label: "Google AI Overview" },
 ];
 
 function HeaderInner() {

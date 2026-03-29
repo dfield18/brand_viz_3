@@ -9,11 +9,11 @@ interface CrossModelTableProps {
 }
 
 const MODEL_LABELS: Record<string, string> = {
-  chatgpt: "CHATGPT",
-  gemini: "GEMINI",
-  claude: "CLAUDE",
-  perplexity: "PERPLEXITY",
-  google: "GOOGLE AIO",
+  chatgpt: "ChatGPT",
+  gemini: "Gemini",
+  claude: "Claude",
+  perplexity: "Perplexity",
+  google: "Google AI Overview",
 };
 
 /**

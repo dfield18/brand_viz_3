@@ -14,7 +14,7 @@ const MODEL_LABELS: Record<string, string> = {
   gemini: "Gemini",
   claude: "Claude",
   perplexity: "Perplexity",
-  google: "Google AIO",
+  google: "Google AI Overview",
 };
 
 interface RunPreview {
