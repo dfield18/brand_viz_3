@@ -131,12 +131,12 @@ function OverviewSection({ d }: { d: Record<string, unknown> }) {
         <>
           <SH3>By AI Platform</SH3>
           <Tbl
-            headers={["Platform", "Brand Recall", "Avg Sentiment", "Avg Position", "Message Consistency"]}
+            headers={["Platform", "Brand Recall", "Avg Sentiment", "Top Result Rate", "Message Consistency"]}
             rows={o.modelComparison.map((m) => [
               MODEL_LABELS[m.model] ?? m.model,
               pct(m.mentionRate),
               sentimentLabel(m.sentimentSplit),
-              m.avgRank != null ? pos(m.avgRank) : "\u2014",
+              (m as Record<string, unknown>).topResultRate != null ? `${(m as Record<string, unknown>).topResultRate}%` : "\u2014",
               m.narrativeStability != null ? stabilityLabel(m.narrativeStability) : "\u2014",
             ])}
           />

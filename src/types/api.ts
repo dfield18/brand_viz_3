@@ -52,6 +52,7 @@ export interface ModelComparison {
   sentimentSplit?: { positive: number; neutral: number; negative: number };
   narrativeStability: number;
   avgRank: number | null;
+  topResultRate: number;
 }
 
 export interface OverviewResponse {

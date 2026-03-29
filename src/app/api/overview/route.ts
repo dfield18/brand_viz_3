@@ -275,6 +275,7 @@ export async function GET(req: NextRequest) {
     sentiment: 0,             // recomputed from scoped narrativeJson below
     narrativeStability: 80,   // recomputed from scoped analyses below
     avgRank: data!.avgRank,
+    topResultRate: 0,         // recomputed from latest snapshot below
   }));
   overview.modelComparison = modelComparison;
 
@@ -369,7 +370,7 @@ export async function GET(req: NextRequest) {
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
 
-    // Recompute per-model mentionRate + avgRank from the same latest-snapshot pool
+    // Recompute per-model mentionRate, avgRank, topResultRate from the same latest-snapshot pool
     // so the "By AI Platform" table matches the scorecard exactly
     for (const mc of overview.modelComparison) {
       const modelIndustryRuns = industryRuns.filter((r) => r.model === mc.model);
@@ -380,6 +381,7 @@ export async function GET(req: NextRequest) {
         computeBrandRank(r.rawResponseText, visBrand.name, visBrand.slug, r.analysisJson, brandAliases),
       );
       mc.avgRank = computeAvgRank(modelRanks);
+      mc.topResultRate = computeRank1RateAll(modelRanks);
     }
 
     // SoV + competitive rank + KPI deltas — text-based (no EntityResponseMetric)
