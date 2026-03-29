@@ -357,11 +357,11 @@ export function NarrativeMetricCards({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl bg-card px-5 py-6 shadow-kpi flex flex-col transition-all border-l-[3px]${card.scrollTarget ? " cursor-pointer hover:border-l-primary/60 hover:shadow-md" : ""}`}
+          className={`rounded-xl bg-card px-5 py-5 shadow-kpi flex flex-col transition-colors border-l-[3px]${card.scrollTarget ? " cursor-pointer hover:border-l-primary/60" : ""}`}
           style={{ borderLeftColor: card.donutColor || "var(--border)" }}
           onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
