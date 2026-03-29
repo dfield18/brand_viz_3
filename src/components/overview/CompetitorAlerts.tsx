@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
@@ -19,6 +20,13 @@ interface AlertsApiResponse {
   error?: string;
 }
 
+interface CompetitionApiResponse {
+  hasData: boolean;
+  competition?: {
+    competitors: { entityId: string; name: string; isBrand: boolean }[];
+  };
+}
+
 interface Props {
   brandSlug: string;
   model: string;
@@ -28,7 +36,15 @@ interface Props {
 
 export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Props) {
   const url = `/api/competitor-alerts?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
+  const compUrl = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data, loading, error } = useCachedFetch<AlertsApiResponse>(url, { staleMs: 60_000 });
+  const { data: compData } = useCachedFetch<CompetitionApiResponse>(compUrl);
+
+  // Only show alerts for entities in the competition leaderboard
+  const trackedEntityIds = useMemo(() => {
+    if (!compData?.competition?.competitors) return null;
+    return new Set(compData.competition.competitors.map((c) => c.entityId));
+  }, [compData]);
 
   if (loading) {
     return (
@@ -48,7 +64,11 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
     );
   }
 
-  const allAlerts = data?.competitorAlerts ?? [];
+  const rawAlerts = data?.competitorAlerts ?? [];
+  // Filter to only entities shown in the Issue Landscape / Competitive Leaderboard
+  const allAlerts = trackedEntityIds
+    ? rawAlerts.filter((a) => trackedEntityIds.has(a.entityId))
+    : rawAlerts;
   const periodLabel = data?.comparisonPeriodLabel ?? "prior period";
   if (allAlerts.length === 0) return null;
 
