@@ -21,9 +21,9 @@ const MODEL_LABELS: Record<string, string> = {
  * Matches the overview KPI card's stabilityLabel thresholds.
  */
 function getStabilityLabel(value: number): { text: string; className: string } {
-  if (value >= 70) return { text: "High", className: "text-emerald-600" };
-  if (value >= 40) return { text: "Medium", className: "text-amber-600" };
-  return { text: "Low", className: "text-red-500" };
+  if (value >= 70) return { text: "Consistent", className: "text-emerald-600" };
+  if (value >= 40) return { text: "Variable", className: "text-amber-600" };
+  return { text: "Volatile", className: "text-red-500" };
 }
 
 /**
@@ -33,18 +33,11 @@ function getStabilityLabel(value: number): { text: string; className: string } {
 function getSentimentLabel(split?: { positive: number; neutral: number; negative: number }): { text: string; className: string } {
   if (!split) return { text: "—", className: "text-muted-foreground" };
   const { positive, neutral, negative } = split;
-  const max = Math.max(positive, neutral, negative);
-  const min = Math.min(positive, neutral, negative);
-  // Near three-way tie — no category is clearly dominant
-  if (max - min <= 10 && max < 45) return { text: "Mixed", className: "text-amber-600" };
-  // Find dominant category
-  if (positive >= neutral && positive >= negative) {
-    return { text: `${positive}% Positive`, className: positive >= 40 ? "text-emerald-600" : "text-amber-600" };
-  }
-  if (negative >= neutral) {
-    return { text: `${negative}% Negative`, className: "text-red-500" };
-  }
-  return { text: `${neutral}% Neutral`, className: "text-muted-foreground" };
+  if (positive >= 60) return { text: "Strongly positive", className: "text-emerald-600" };
+  if (positive >= 40) return { text: "Mostly positive", className: "text-emerald-600" };
+  if (negative >= 40) return { text: "Mostly negative", className: "text-red-500" };
+  if (neutral >= 50) return { text: "Mostly neutral", className: "text-muted-foreground" };
+  return { text: "Mixed", className: "text-amber-600" };
 }
 
 interface MetricDef {
