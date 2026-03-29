@@ -402,9 +402,11 @@ export async function GET(req: NextRequest) {
     );
     const promptMatrix = matrixRows.slice(0, MAX_MATRIX_ROWS);
 
-    // Win/Loss
+    // Win/Loss — uses latest 24h snapshot (same as scorecard metrics)
+    const snapshotRunIds = new Set(recallSnapshotRuns.map((r) => r.id));
     const brandMetricsByRun = new Map<string, Metric>();
     for (const m of brandMetrics) {
+      if (!snapshotRunIds.has(m.runId)) continue;
       brandMetricsByRun.set(m.runId, m);
     }
 
@@ -415,7 +417,7 @@ export async function GET(req: NextRequest) {
     // so topLosses and byCompetitor are consistent
     for (const [competitorId, entityMetrics] of byEntity) {
       if (competitorId === brand.slug) continue;
-      const competitorMetrics = entityMetrics;
+      const competitorMetrics = entityMetrics.filter((m) => snapshotRunIds.has(m.runId));
       let wins = 0;
       let losses = 0;
 
