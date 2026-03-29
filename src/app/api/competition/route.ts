@@ -14,7 +14,7 @@ import {
 import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
 import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
-import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
+import { getSovCountsForRun, getRankedEntitiesForRun } from "@/lib/visibility/rankedEntities";
 import {
   splitSentences,
   getEntityContextWindow,
@@ -215,30 +215,34 @@ export async function GET(req: NextRequest) {
     const recallSnapshotRuns = rawLatestIndustry.length > 0 ? rawLatestIndustry : rawIndustryRuns;
     const recallSnapshotTotal = recallSnapshotRuns.length;
 
-    // SoV denominator: canonical ranked entities (same as Full Data CSV + Overview/Visibility)
+    // SoV: use getRankedEntitiesForRun to get canonical ranked entities per run.
+    // This matches the scorecard/trend/by-AI-platform SoV methodology exactly.
     let sovTotalEntityMentions = 0;
+    const sovEntityCounts = new Map<string, number>(); // entityId → mention count
     for (const run of recallSnapshotRuns) {
-      const counts = getSovCountsForRun({
+      const ranked = getRankedEntitiesForRun({
         rawResponseText: run.rawResponseText,
         analysisJson: run.analysisJson,
         brandName: brand.name,
         brandSlug: brand.slug,
+        includeBrand: true,
+        limit: Infinity,
       });
-      sovTotalEntityMentions += counts.totalMentions;
+      sovTotalEntityMentions += ranked.length;
+      const seen = new Set<string>();
+      for (const entity of ranked) {
+        if (seen.has(entity.canonicalId)) continue;
+        seen.add(entity.canonicalId);
+        sovEntityCounts.set(entity.canonicalId, (sovEntityCounts.get(entity.canonicalId) ?? 0) + 1);
+      }
     }
 
-    // Compute all four metrics for every entity using isRunInBrandScope + computeBrandRank.
-    // Brand and competitors both go through the same scope-aware detection:
-    // - Non-ambiguous names: text mention is sufficient (identical for brand and competitors)
-    // - Ambiguous names: requires supporting evidence (analysisJson.competitors list,
-    //   2+ distinct mentions, etc.) — works for competitors because GPT's competitor
-    //   extraction provides the evidence signal
+    // Compute mentionRate, mentionShare, rank1Rate, avgRank for every entity
     for (const comp of competitors) {
       const entityIdentity: import("@/lib/visibility/brandScope").BrandScopeIdentity = {
         brandName: comp.name,
         brandSlug: comp.entityId,
       };
-      // Brand gets its full identity (with aliases); competitors get name + entityId
       const identity = comp.isBrand ? brandIdentity : entityIdentity;
       const rankName = comp.isBrand ? brand.name : comp.name;
       const rankSlug = comp.isBrand ? brand.slug : comp.entityId;
@@ -254,8 +258,10 @@ export async function GET(req: NextRequest) {
       }
 
       comp.mentionRate = computeMentionRate(entityMentions, recallSnapshotTotal);
+      // SoV numerator: entity-mention count from ranked entities (matches scorecard methodology)
+      const entitySovCount = sovEntityCounts.get(comp.entityId) ?? 0;
       comp.mentionShare = sovTotalEntityMentions > 0
-        ? Math.round((entityMentions / sovTotalEntityMentions) * 10000) / 100
+        ? Math.round((entitySovCount / sovTotalEntityMentions) * 10000) / 100
         : 0;
       comp.rank1Rate = computeRank1RateAll(entityRanks);
       comp.avgRank = computeAvgRank(entityRanks);
