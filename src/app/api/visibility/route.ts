@@ -564,34 +564,59 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => a.date.localeCompare(b.date) || a.model.localeCompare(b.model));
 
-    // Build rank distribution — latest snapshot only (matches scorecard)
-    const latestNonNullRanks = latestIndustryRanks.filter((r): r is number => r !== null);
+    // Build rank distribution — latest snapshot only, ALL runs including nulls
+    // (matches Top Result Rate and Position Over Time denominator)
     const rankCounts: Record<number, number> = {};
-    for (const r of latestNonNullRanks) {
+    let notMentionedCount = 0;
+    for (const r of latestIndustryRanks) {
+      if (r === null) { notMentionedCount++; continue; }
       rankCounts[r] = (rankCounts[r] || 0) + 1;
     }
-    const rankDistribution = Object.entries(rankCounts)
-      .map(([rank, count]) => ({
-        rank: Number(rank),
-        count,
-        percentage: computeMentionRate(count, latestNonNullRanks.length),
-      }))
-      .sort((a, b) => a.rank - b.rank);
+    const totalRanksCount = latestIndustryRanks.length;
+    const rankDistribution = [
+      ...Object.entries(rankCounts)
+        .map(([rank, count]) => ({
+          rank: Number(rank),
+          count,
+          percentage: computeMentionRate(count, totalRanksCount),
+        }))
+        .sort((a, b) => a.rank - b.rank),
+      ...(notMentionedCount > 0 ? [{
+        rank: 0, // 0 = "Not Mentioned"
+        count: notMentionedCount,
+        percentage: computeMentionRate(notMentionedCount, totalRanksCount),
+      }] : []),
+    ];
 
     // Position distribution — latest snapshot, "all" + per-model
-    const buildPosDist = (posRanks: number[], modelLabel: string) => {
+    // Uses ALL runs (including nulls) as denominator, matching scorecard
+    const buildPosDist = (posRanks: (number | null)[], modelLabel: string) => {
+      const total = posRanks.length;
       const counts: Record<number, number> = {};
-      for (const r of posRanks) counts[r] = (counts[r] || 0) + 1;
-      return Object.entries(counts)
+      let nmCount = 0;
+      for (const r of posRanks) {
+        if (r === null) { nmCount++; continue; }
+        counts[r] = (counts[r] || 0) + 1;
+      }
+      const result = Object.entries(counts)
         .map(([pos, count]) => ({
           position: Number(pos),
           model: modelLabel,
           count,
-          percentage: posRanks.length > 0 ? Math.round((count / posRanks.length) * 100) : 0,
+          percentage: total > 0 ? Math.round((count / total) * 100) : 0,
         }))
         .sort((a, b) => a.position - b.position);
+      if (nmCount > 0) {
+        result.push({
+          position: 0, // 0 = "Not Mentioned"
+          model: modelLabel,
+          count: nmCount,
+          percentage: total > 0 ? Math.round((nmCount / total) * 100) : 0,
+        });
+      }
+      return result;
     };
-    // Build per-model latest ranks
+    // Build per-model latest ranks (keep nulls for consistent denominator)
     const latestRanksByModel: Record<string, (number | null)[]> = {};
     for (const r of latestIndustryRuns) {
       if (!latestRanksByModel[r.model]) latestRanksByModel[r.model] = [];
@@ -599,13 +624,9 @@ export async function GET(req: NextRequest) {
         computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
       );
     }
-    const latestNonNullByModel: Record<string, number[]> = {};
-    for (const [m, mRanks] of Object.entries(latestRanksByModel)) {
-      latestNonNullByModel[m] = mRanks.filter((r): r is number => r !== null);
-    }
     const positionDistribution = [
-      ...buildPosDist(latestNonNullRanks, "all"),
-      ...Object.entries(latestNonNullByModel).flatMap(([m, mRanks]) => buildPosDist(mRanks, m)),
+      ...buildPosDist(latestIndustryRanks, "all"),
+      ...Object.entries(latestRanksByModel).flatMap(([m, mRanks]) => buildPosDist(mRanks, m)),
     ];
 
     // Results by Question: per-prompt metrics across all models, industry-only
