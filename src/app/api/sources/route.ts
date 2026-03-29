@@ -444,6 +444,19 @@ export async function GET(req: NextRequest) {
         },
         summary,
         topDomains,
+        // Category breakdown across ALL domains (not just top 25) for the donut chart
+        allDomainCategoryBreakdown: (() => {
+          const catCounts: Record<string, number> = {};
+          let total = 0;
+          for (const o of occurrences) {
+            const cat = categories[o.domain] ?? "other";
+            catCounts[cat] = (catCounts[cat] ?? 0) + 1;
+            total++;
+          }
+          return Object.entries(catCounts)
+            .map(([category, count]) => ({ category, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }))
+            .sort((a, b) => b.count - a.count);
+        })(),
         modelSplit,
         emerging,
         crossCitation,

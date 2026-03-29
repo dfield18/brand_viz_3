@@ -72,32 +72,24 @@ const DONUT_COLORS: Record<string, string> = {
 
 /* ─── Mini Donut ──────────────────────────────────────────────────── */
 
-function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: TopDomainRow[]; overallTotalCitations: number }) {
+function SourceTypeDonut({ categoryBreakdown }: { categoryBreakdown: { category: string; count: number; pct: number }[] }) {
   const { pieData, chartTotal } = useMemo(() => {
-    const counts: Record<string, number> = {};
-    let total = 0;
-    for (const d of topDomains) {
-      const cat = d.category || "other";
-      counts[cat] = (counts[cat] ?? 0) + d.citations;
-      total += d.citations;
-    }
-    if (total === 0) return { pieData: [], chartTotal: 0 };
-    const rawSlices = Object.entries(counts)
-      .map(([key, value]) => ({
-        key,
-        name: CATEGORY_LABELS[key] ?? key,
-        value,
-        pct: total > 0 ? (value / total) * 100 : 0,
-      }))
-      .sort((a, b) => b.value - a.value);
+    if (categoryBreakdown.length === 0) return { pieData: [], chartTotal: 0 };
+    const total = categoryBreakdown.reduce((s, c) => s + c.count, 0);
     // Roll up categories under 5% into "Other"
     let otherValue = 0;
-    const slices: typeof rawSlices = [];
-    for (const slice of rawSlices) {
-      if (slice.pct < 5 || slice.key === "other") {
-        otherValue += slice.value;
+    const slices: { key: string; name: string; value: number; pct: number }[] = [];
+    for (const entry of categoryBreakdown) {
+      const pct = total > 0 ? (entry.count / total) * 100 : 0;
+      if (pct < 5 || entry.category === "other") {
+        otherValue += entry.count;
       } else {
-        slices.push({ ...slice, pct: Math.round(slice.pct) });
+        slices.push({
+          key: entry.category,
+          name: CATEGORY_LABELS[entry.category] ?? entry.category,
+          value: entry.count,
+          pct: Math.round(pct),
+        });
       }
     }
     if (otherValue > 0) {
@@ -109,7 +101,7 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
       });
     }
     return { pieData: slices, chartTotal: total };
-  }, [topDomains]);
+  }, [categoryBreakdown]);
 
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
 
@@ -119,7 +111,7 @@ function SourceTypeDonut({ topDomains, overallTotalCitations }: { topDomains: To
     <div className="flex flex-col items-center">
       <p className="text-sm font-semibold mb-1">Source Types</p>
       <p className="text-[10px] text-muted-foreground/60 mb-2 text-center leading-snug">
-        Center shows all normalized citations. Slices show category mix of top sources.
+        Category breakdown across all cited domains.
       </p>
       <div className="relative" style={{ width: 200, height: 200, margin: "0 auto" }}>
         <ResponsiveContainer width={200} height={200}>
@@ -318,8 +310,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
         {/* Right: source type donut (45%) */}
         <div className="hidden sm:block" style={{ flex: "0 1 45%" }}>
           <SourceTypeDonut
-            topDomains={apiData.sources.topDomains}
-            overallTotalCitations={apiData.sources.summary.totalCitations}
+            categoryBreakdown={apiData.sources.allDomainCategoryBreakdown ?? []}
           />
         </div>
       </div>
