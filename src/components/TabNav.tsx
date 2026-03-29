@@ -42,10 +42,10 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
             <Link
               key={tab.segment}
               href={href}
-              className={`px-3.5 py-2.5 text-[13px] font-medium rounded-t-md transition-all ${
+              className={`px-3.5 py-2.5 text-[13px] font-medium rounded-t-md border-b-2 transition-colors ${
                 isActive
-                  ? "bg-background text-foreground border-b-2 border-primary -mb-px"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                  ? "bg-background text-foreground border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground hover:bg-background/60"
               }`}
             >
               {tab.label}
@@ -60,10 +60,10 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
               <Link
                 key={tab.segment}
                 href={href}
-                className={`px-2.5 py-2.5 text-[11px] rounded-t-md transition-all ${
+                className={`px-2.5 py-2.5 text-[11px] rounded-t-md border-b-2 transition-colors ${
                   isActive
-                    ? "bg-background text-foreground font-medium border-b-2 border-primary -mb-px"
-                    : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-background/40"
+                    ? "bg-background text-foreground font-medium border-primary"
+                    : "text-muted-foreground/50 border-transparent hover:text-muted-foreground hover:bg-background/40"
                 }`}
               >
                 {tab.label}
