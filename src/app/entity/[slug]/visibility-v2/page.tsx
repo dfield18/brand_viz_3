@@ -204,7 +204,7 @@ function VisibilityV2Inner() {
   };
 
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard", heading: "Visibility" },
+    { id: "kpi-summary", label: "Scorecard" },
     { id: "metric-deep-dive", label: "Trend Over Time" },
     { id: "ranking-breakdown", label: "Position Over Time", heading: "Ranking" },
     { id: "ranking-distribution", label: "Position Distribution" },
@@ -221,9 +221,6 @@ function VisibilityV2Inner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
-        {/* ── Visibility ─────────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
-
         {/* Scorecard KPI Cards */}
         <div id="kpi-summary" className="scroll-mt-24">
           <SummaryCardsDonut
