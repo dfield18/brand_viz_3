@@ -103,11 +103,11 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                   <span className={`text-sm truncate ${row.isBrand ? "font-semibold text-primary" : "font-medium"}`}>
                     {row.name}
                   </span>
-                  {row.avgRank !== null && (
+                  {row.rank1Rate != null && (
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
-                      Avg position: #{row.avgRank.toFixed(1)}
+                      Top result: {row.rank1Rate}%
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-56 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
-                        Average position when mentioned in AI responses. #1 means this {isOrg ? "organization" : "brand"} is typically listed first.
+                        % of industry AI responses where this {isOrg ? "organization" : "brand"} is the #1 recommendation.
                       </span>
                     </span>
                   )}
