@@ -47,13 +47,12 @@ export async function computeTopSourceType(
     }
   }
 
-  // Top 25 domains by count
-  const top25 = [...domainCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 25);
+  // All domains sorted by count (classify all, not just top 25)
+  const allDomains = [...domainCounts.entries()]
+    .sort((a, b) => b[1] - a[1]);
 
   // Classify any domains without cached categories
-  const uncategorized = top25.filter(([d]) => !domainCategories.has(d)).map(([d]) => d);
+  const uncategorized = allDomains.filter(([d]) => !domainCategories.has(d)).map(([d]) => d);
   if (uncategorized.length > 0) {
     const classified = await classifyDomains(uncategorized);
     for (const [d, cat] of Object.entries(classified)) {
@@ -61,10 +60,10 @@ export async function computeTopSourceType(
     }
   }
 
-  // Aggregate by category
+  // Aggregate by category across ALL domains
   const catCounts: Record<string, number> = {};
   let total = 0;
-  for (const [domain, count] of top25) {
+  for (const [domain, count] of allDomains) {
     const cat = domainCategories.get(domain) ?? "other";
     catCounts[cat] = (catCounts[cat] ?? 0) + count;
     total += count;
