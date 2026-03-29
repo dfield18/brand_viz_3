@@ -140,7 +140,7 @@ function OverviewInner() {
 
   const isOrg = apiData.brandCategory === "political_advocacy";
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard", heading: "Visibility" },
+    { id: "kpi-summary", label: "Scorecard" },
     { id: "key-insights", label: "Key Insights" },
     { id: "visibility-trend", label: "Brand Recall Trend" },
     { id: "cross-model", label: "By AI Platform" },
@@ -168,9 +168,6 @@ function OverviewInner() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
-        {/* ── Visibility ─────────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2">Visibility</h2>
-
         {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {kpis && (
