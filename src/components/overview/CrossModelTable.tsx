@@ -82,14 +82,13 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Avg Position",
-      key: "avgRank",
+      label: "Share of Voice",
+      key: "shareOfVoice",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
-          {v === null || v === 0 ? "—" : `#${Number(v).toFixed(1)}`}
+          {v === null || v === 0 ? "—" : `${v}%`}
         </span>
       ),
-      lowerIsBetter: true,
     },
     {
       label: "Avg Sentiment",

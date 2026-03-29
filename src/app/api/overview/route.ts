@@ -276,6 +276,7 @@ export async function GET(req: NextRequest) {
     narrativeStability: 80,   // recomputed from scoped analyses below
     avgRank: data!.avgRank,
     topResultRate: 0,         // recomputed from latest snapshot below
+    shareOfVoice: 0,          // recomputed from latest snapshot below
   }));
   overview.modelComparison = modelComparison;
 
@@ -370,7 +371,7 @@ export async function GET(req: NextRequest) {
     avgRankScore = computeAvgRank(industryRanks) ?? 0;
     firstMentionRate = computeRank1RateAll(industryRanks);
 
-    // Recompute per-model mentionRate, avgRank, topResultRate from the same latest-snapshot pool
+    // Recompute per-model metrics from the same latest-snapshot pool
     // so the "By AI Platform" table matches the scorecard exactly
     for (const mc of overview.modelComparison) {
       const modelIndustryRuns = industryRuns.filter((r) => r.model === mc.model);
@@ -382,6 +383,19 @@ export async function GET(req: NextRequest) {
       );
       mc.avgRank = computeAvgRank(modelRanks);
       mc.topResultRate = computeRank1RateAll(modelRanks);
+      // SoV per model: brand entity mentions / total entity mentions
+      let modelBm = 0, modelTotal = 0;
+      for (const run of modelIndustryRuns) {
+        const counts = getSovCountsForRun({
+          rawResponseText: run.rawResponseText,
+          analysisJson: run.analysisJson,
+          brandName: visBrand.name,
+          brandSlug: visBrand.slug,
+        });
+        modelBm += counts.brandMentions;
+        modelTotal += counts.totalMentions;
+      }
+      mc.shareOfVoice = computeShareOfVoice(modelBm, modelTotal);
     }
 
     // SoV + competitive rank + KPI deltas — text-based (no EntityResponseMetric)

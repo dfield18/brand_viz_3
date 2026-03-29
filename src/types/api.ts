@@ -53,6 +53,7 @@ export interface ModelComparison {
   narrativeStability: number;
   avgRank: number | null;
   topResultRate: number;
+  shareOfVoice: number;
 }
 
 export interface OverviewResponse {
