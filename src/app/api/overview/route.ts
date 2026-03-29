@@ -327,6 +327,9 @@ export async function GET(req: NextRequest) {
   let shareOfVoice = 0;
   let kpiDeltas: import("@/types/api").KpiDeltas | null = null;
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
+  // Latest-24h industry snapshot — shared by ALL overview scorecard KPIs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let latestSnapshotRuns: any[] = [];
 
   if (visResult && visResult.ok) {
     const { brand: visBrand, runs: visRuns } = visResult;
@@ -340,6 +343,7 @@ export async function GET(req: NextRequest) {
     const latestIndustryRuns = allIndustryRuns.filter((r) => r.createdAt >= latestIndustryCutoff);
     const industryRuns = latestIndustryRuns.length > 0 ? latestIndustryRuns : allIndustryRuns;
     const industryRunIds = industryRuns.map((r) => r.id);
+    latestSnapshotRuns = industryRuns;
 
     // Mention rate — scope-aware detection, full denominator
     const industryMentions = industryRuns.filter((r) =>
@@ -468,13 +472,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Sentiment split (from scoped runs, matching narrative tab) ---
-  // Reuse the brand-scoped visRuns from the KPI block above (not raw visResult.runs)
+  // --- Sentiment split (latest 24h snapshot, industry-only — matches Brand Recall) ---
   let sentimentSplit: { positive: number; neutral: number; negative: number } | null = null;
-  if (visResult && visResult.ok) {
-    const scopedVisRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+  if (latestSnapshotRuns.length > 0) {
     let pos = 0, neu = 0, neg = 0;
-    for (const r of scopedVisRuns) {
+    for (const r of latestSnapshotRuns) {
       const nj = r.narrativeJson as Record<string, unknown> | null;
       if (!nj) continue;
       const sent = nj.sentiment as { label?: string } | undefined;
@@ -493,13 +495,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Recompute frames & model comparison from scoped runs (matches narrative tab exactly) ---
+  // --- Recompute frames & model comparison from latest 24h snapshot (matches Brand Recall) ---
   if (visResult && visResult.ok) {
     const { isAll } = visResult;
-    const scopedFrameRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
-    // Use industry-cluster when available (matches narrative tab methodology)
-    const industryFrameRuns = scopedFrameRuns.filter((r) => r.prompt.cluster === "industry");
-    const frameRuns = industryFrameRuns.length > 0 ? industryFrameRuns : scopedFrameRuns;
+    // Use the same latest-24h industry snapshot as Brand Recall
+    const frameRuns = latestSnapshotRuns.length > 0
+      ? latestSnapshotRuns
+      : filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
 
     // Parse analyses from scoped runs
     const dedupedAnalyses = frameRuns
@@ -581,9 +583,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Recompute model comparison sentiment/authority/stability from scoped data
-    const runsByModel = new Map<string, typeof scopedFrameRuns>();
-    for (const r of scopedFrameRuns) {
+    // Recompute model comparison sentiment/authority/stability from snapshot data
+    const runsByModel = new Map<string, typeof frameRuns>();
+    for (const r of frameRuns) {
       if (!runsByModel.has(r.model)) runsByModel.set(r.model, []);
       runsByModel.get(r.model)!.push(r);
     }
@@ -620,12 +622,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Top cited source type from scoped runs (matches Sources API) ---
+  // --- Top cited source type (latest 24h snapshot — matches Brand Recall) ---
   let topSourceType: { category: string; count: number; totalSources: number } | null = null;
-  if (visResult && visResult.ok) {
-    const scopedSourceRuns = filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
-    const scopedSourceRunIds = scopedSourceRuns.map((r) => r.id);
-    topSourceType = await computeTopSourceType(scopedSourceRunIds).catch((e) => {
+  if (latestSnapshotRuns.length > 0) {
+    const snapshotRunIds = latestSnapshotRuns.map((r: { id: string }) => r.id);
+    topSourceType = await computeTopSourceType(snapshotRunIds).catch((e) => {
       console.error("Source type error:", e);
       return null;
     });
