@@ -44,13 +44,29 @@ const FRAME_COLORS = [
   },
 ];
 
+/** Check if a quote's matchedFrame or themes align with a display frame name.
+ *  Uses multi-word overlap to avoid false positives from single common words. */
 function matchesFrame(example: NarrativeExample, frameName: string): boolean {
   const lower = frameName.toLowerCase();
-  const frameWords = lower.split(/\s+/).filter((w) => w.length > 2);
+  const frameWords = lower.split(/[\s\-]+/).filter((w) => w.length > 2);
+
+  // 1. Check matchedFrame (from narrative API) — case-insensitive + fuzzy
+  if (example.matchedFrame) {
+    const mf = example.matchedFrame.toLowerCase();
+    if (mf === lower || mf.includes(lower) || lower.includes(mf)) return true;
+    // Check if 2+ significant words overlap (handles renamed frames)
+    const mfWords = mf.split(/[\s\-]+/).filter((w) => w.length > 2);
+    const overlap = frameWords.filter((w) => mfWords.some((mw) => mw.includes(w) || w.includes(mw)));
+    if (overlap.length >= 2) return true;
+  }
+
+  // 2. Fall back to theme matching — require 2+ word overlap to reduce false positives
   return example.themes.some((t) => {
     const tl = t.toLowerCase();
     if (tl.includes(lower) || lower.includes(tl)) return true;
-    return frameWords.some((w) => tl.includes(w));
+    const themeWords = tl.split(/[\s\-]+/).filter((w) => w.length > 2);
+    const overlap = frameWords.filter((w) => themeWords.some((tw) => tw.includes(w) || w.includes(tw)));
+    return overlap.length >= 2;
   });
 }
 
@@ -214,12 +230,11 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
   const quotesByFrame = useMemo(() => {
     const usedIds = new Set<number>();
     const result = topFrames.map((frame) => {
-      // Prefer GPT-assigned matchedFrame, fall back to keyword matching
+      // Match quotes to frames using matchedFrame + fuzzy theme matching
       const matching = examples
         .map((ex, i) => ({ ex, i }))
         .filter(({ ex, i }) => {
           if (usedIds.has(i)) return false;
-          if (ex.matchedFrame) return ex.matchedFrame === frame.frame;
           return matchesFrame(ex, frame.frame);
         });
       const picked = matching.slice(0, 2);
