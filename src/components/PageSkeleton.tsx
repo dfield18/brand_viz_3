@@ -20,6 +20,11 @@ export function PageSkeleton({
     return (
       <div className="space-y-8">
         {children}
+        {/* Loading indicator */}
+        <div className="flex items-center gap-2.5 px-1">
+          <Loader2 className="h-4 w-4 animate-spin text-primary/60" />
+          <span className="text-sm text-muted-foreground">{label || "Loading data — this may take a moment..."}</span>
+        </div>
         {/* KPI card skeletons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -47,9 +52,7 @@ export function PageSkeleton({
       {children}
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-primary/50" />
-        {label && (
-          <span className="text-sm text-muted-foreground">{label}</span>
-        )}
+        <span className="text-sm text-muted-foreground">{label || "Loading data — this may take a moment..."}</span>
       </div>
     </div>
   );
