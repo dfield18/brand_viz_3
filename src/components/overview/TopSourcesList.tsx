@@ -212,7 +212,7 @@ const MODEL_OPTIONS: { value: string; label: string }[] = [
 
 export function TopSourcesList({ brandSlug, model, range }: Props) {
   const [localModel, setLocalModel] = useState(model);
-  const url = `/api/sources?brandSlug=${encodeURIComponent(brandSlug)}&model=${localModel}&range=${range}&latest=true`;
+  const url = `/api/sources?brandSlug=${encodeURIComponent(brandSlug)}&model=${localModel}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<SourcesApiResponse>(url);
 
   if (loading) {
