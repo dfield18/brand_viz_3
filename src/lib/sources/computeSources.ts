@@ -132,18 +132,20 @@ export function computeTopDomains(
       .filter((m): m is EntityMetricInput => m !== undefined);
 
     const citedRanks = citedBrandMetrics
-      .map((m) => m.rankPosition)
-      .filter((r): r is number => r !== null);
+      .map((m) => m.rankPosition);
+    const nonNullRanks = citedRanks.filter((r): r is number => r !== null);
 
     const avgRankWhenCited =
-      citedRanks.length > 0
-        ? Math.round((citedRanks.reduce((s, r) => s + r, 0) / citedRanks.length) * 100) / 100
+      nonNullRanks.length > 0
+        ? Math.round((nonNullRanks.reduce((s, r) => s + r, 0) / nonNullRanks.length) * 100) / 100
         : null;
 
-    const rank1Count = citedRanks.filter((r) => r === 1).length;
+    // Top Result Rate: uses all citing runs as denominator (including not-ranked),
+    // matching Visibility tab's computeRank1RateAll methodology
+    const rank1Count = nonNullRanks.filter((r) => r === 1).length;
     const rank1RateWhenCited =
-      citedRanks.length > 0
-        ? Math.round((rank1Count / citedRanks.length) * 100)
+      responses > 0
+        ? Math.round((rank1Count / responses) * 100)
         : 0;
 
     const rankLift =
