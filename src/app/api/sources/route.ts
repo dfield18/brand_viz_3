@@ -371,9 +371,10 @@ export async function GET(req: NextRequest) {
       });
 
       // Determine the top 8 domains by total citation count (across all time)
+      // Normalize to root domain (matches top sources list / table)
       const domainTotals = new Map<string, number>();
       for (const o of allHistorical) {
-        const d = o.source.domain;
+        const d = getRootDomain(o.source.domain);
         domainTotals.set(d, (domainTotals.get(d) ?? 0) + 1);
       }
       const topDomainKeys = [...domainTotals.entries()]
@@ -385,7 +386,7 @@ export async function GET(req: NextRequest) {
       // Build map: `${date}|${model}` → { domain → count }
       const buckets = new Map<string, Map<string, number>>();
       for (const o of allHistorical) {
-        const domain = o.source.domain;
+        const domain = getRootDomain(o.source.domain);
         if (!topSet.has(domain)) continue;
         const jobDate = o.run.job.finishedAt;
         if (!jobDate) continue;
