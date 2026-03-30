@@ -61,6 +61,7 @@ interface ApiResponse {
 interface Props {
   topDomains: TopDomainRow[];
   modelSplit: SourceModelSplitRow[];
+  categoryBreakdown?: { category: string; count: number; pct: number }[];
   onDomainClick?: (domain: string) => void;
   brandSlug: string;
   range: number;
@@ -70,7 +71,7 @@ interface Props {
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function TopCitedSources({ topDomains: initialTopDomains, modelSplit: initialModelSplit, onDomainClick, brandSlug, range, pageModel, brandName }: Props) {
+export default function TopCitedSources({ topDomains: initialTopDomains, modelSplit: initialModelSplit, categoryBreakdown: initialCategoryBreakdown, onDomainClick, brandSlug, range, pageModel, brandName }: Props) {
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
@@ -87,6 +88,9 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
   const modelSplit = needsFetch && apiData?.sources?.modelSplit
     ? apiData.sources.modelSplit
     : needsFetch && apiData && !apiData.sources ? [] : initialModelSplit;
+  const categoryBreakdown = needsFetch && apiData?.sources?.allDomainCategoryBreakdown
+    ? apiData.sources.allDomainCategoryBreakdown
+    : needsFetch && apiData && !apiData.sources ? undefined : initialCategoryBreakdown;
 
   const rows = topDomains;
   if (!loading && rows.length === 0) return null;
@@ -101,41 +105,54 @@ export default function TopCitedSources({ topDomains: initialTopDomains, modelSp
     }
   }
 
-  // Compute category breakdown
-  const categoryTotals = new Map<string, number>();
-  let totalCitations = 0;
-  for (const d of topDomains) {
-    const cat = d.category || "other";
-    categoryTotals.set(cat, (categoryTotals.get(cat) || 0) + d.citations);
-    totalCitations += d.citations;
-  }
+  // Compute category breakdown from all domains (if available) or top domains
+  const { pieData, totalCitations } = (() => {
+    let categoryTotals: Map<string, number>;
+    let total: number;
 
-  const rawSlices = [...categoryTotals.entries()]
-    .map(([cat, count]) => ({
-      name: CATEGORY_LABELS_MAP[cat] || cat,
-      value: count,
-      key: cat,
-      pct: totalCitations > 0 ? (count / totalCitations) * 100 : 0,
-    }))
-    .sort((a, b) => b.value - a.value);
-
-  let otherValue = 0;
-  const pieData: typeof rawSlices = [];
-  for (const slice of rawSlices) {
-    if (slice.pct < 5 || slice.key === "other") {
-      otherValue += slice.value;
+    if (categoryBreakdown && categoryBreakdown.length > 0) {
+      // All-domain breakdown from API
+      categoryTotals = new Map(categoryBreakdown.map((c) => [c.category, c.count]));
+      total = categoryBreakdown.reduce((s, c) => s + c.count, 0);
     } else {
-      pieData.push({ ...slice, pct: Math.round(slice.pct) });
+      // Fallback: compute from top 25 domains
+      categoryTotals = new Map<string, number>();
+      total = 0;
+      for (const d of topDomains) {
+        const cat = d.category || "other";
+        categoryTotals.set(cat, (categoryTotals.get(cat) || 0) + d.citations);
+        total += d.citations;
+      }
     }
-  }
-  if (otherValue > 0) {
-    pieData.push({
-      name: "Other",
-      value: otherValue,
-      key: "other",
-      pct: totalCitations > 0 ? Math.round((otherValue / totalCitations) * 100) : 0,
-    });
-  }
+
+    const rawSlices = [...categoryTotals.entries()]
+      .map(([cat, count]) => ({
+        name: CATEGORY_LABELS_MAP[cat] || cat,
+        value: count,
+        key: cat,
+        pct: total > 0 ? (count / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    let otherValue = 0;
+    const slices: typeof rawSlices = [];
+    for (const slice of rawSlices) {
+      if (slice.pct < 5 || slice.key === "other") {
+        otherValue += slice.value;
+      } else {
+        slices.push({ ...slice, pct: Math.round(slice.pct) });
+      }
+    }
+    if (otherValue > 0) {
+      slices.push({
+        name: "Other",
+        value: otherValue,
+        key: "other",
+        pct: total > 0 ? Math.round((otherValue / total) * 100) : 0,
+      });
+    }
+    return { pieData: slices, totalCitations: total };
+  })();
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">

@@ -124,7 +124,7 @@ function SourcesInner() {
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         {/* KPI Summary */}
         <div id="kpi-summary" className="scroll-mt-24">
-          <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} range={range} />
+          <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} categoryBreakdown={data.allDomainCategoryBreakdown} range={range} />
         </div>
 
         <div className="px-5 py-4 mt-2">
@@ -138,7 +138,7 @@ function SourcesInner() {
 
         {/* Top Cited Sources */}
         <div id="top-cited" className="scroll-mt-24">
-          <TopCitedSources topDomains={data.topDomains} modelSplit={data.modelSplit} onDomainClick={setSelectedDomain} brandSlug={params.slug} range={range} pageModel={model} brandName={brandName} />
+          <TopCitedSources topDomains={data.topDomains} modelSplit={data.modelSplit} categoryBreakdown={data.allDomainCategoryBreakdown} onDomainClick={setSelectedDomain} brandSlug={params.slug} range={range} pageModel={model} brandName={brandName} />
         </div>
 
         {/* Top Source Trends */}

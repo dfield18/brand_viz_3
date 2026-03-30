@@ -9,6 +9,7 @@ interface Props {
   summary: SourceSummary;
   emerging: EmergingSource[];
   topDomains: TopDomainRow[];
+  categoryBreakdown?: { category: string; count: number; pct: number }[];
   range?: number;
 }
 
@@ -125,9 +126,19 @@ interface CardConfig {
   scrollTarget?: string;
 }
 
-export default function SourceSummaryCards({ scope, summary, emerging, topDomains, range = 90 }: Props) {
-  // Compute source type breakdown
+export default function SourceSummaryCards({ scope, summary, emerging, topDomains, categoryBreakdown, range = 90 }: Props) {
+  // Use all-domain category breakdown if available, fall back to top-domains-only
   const typeBreakdown = useMemo(() => {
+    if (categoryBreakdown && categoryBreakdown.length > 0) {
+      const total = categoryBreakdown.reduce((s, c) => s + c.count, 0);
+      return categoryBreakdown.map((c) => ({
+        category: c.category,
+        label: CATEGORY_LABELS[c.category] ?? c.category,
+        citations: c.count,
+        pct: total > 0 ? Math.round((c.count / total) * 1000) / 10 : 0,
+      })).sort((a, b) => b.citations - a.citations);
+    }
+    // Fallback: compute from topDomains (top 25)
     const counts: Record<string, number> = {};
     let total = 0;
     for (const d of topDomains) {
@@ -144,7 +155,7 @@ export default function SourceSummaryCards({ scope, summary, emerging, topDomain
         pct: Math.round((citations / total) * 1000) / 10,
       }))
       .sort((a, b) => b.citations - a.citations);
-  }, [topDomains]);
+  }, [topDomains, categoryBreakdown]);
 
   const topType = typeBreakdown.find((t) => t.category !== "other") ?? typeBreakdown[0];
 
