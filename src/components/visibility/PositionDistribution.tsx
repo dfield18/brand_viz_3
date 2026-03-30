@@ -19,6 +19,7 @@ const POSITION_BANDS = [
   { label: "2–3", min: 2, max: 3, color: "hsl(217, 70%, 62%)" },
   { label: "4–5", min: 4, max: 5, color: "hsl(217, 45%, 72%)" },
   { label: "6+", min: 6, max: Infinity, color: "hsl(218, 15%, 82%)" },
+  { label: "Not Mentioned", min: 0, max: 0, color: "hsl(218, 11%, 88%)" },
 ] as const;
 
 export function PositionDistribution({ data, inline, externalModel, brandName = "This Brand" }: PositionDistributionProps) {
@@ -77,7 +78,7 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
         <div>
           <h2 className={headingClass}>{brandName}&apos;s Ranking Breakdown</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How often {brandName} lands in each ranking position when mentioned by AI — based on the selected time period
+            How often {brandName} lands in each ranking position across all industry AI responses — based on the selected time period
           </p>
         </div>
         {!externalModel && <select
