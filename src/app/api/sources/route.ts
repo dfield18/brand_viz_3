@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
   const cluster = req.nextUrl.searchParams.get("cluster") ?? "";
-  const latestOnly = req.nextUrl.searchParams.get("latest") === "true";
+  // latest param no longer needed — Sources tab always uses 24h snapshot now
 
   type MinimalRun = { id: string; model: string; promptId: string; createdAt: Date; analysisJson: unknown; rawResponseText: string };
   const result = await fetchBrandRuns<MinimalRun>({
@@ -43,17 +43,15 @@ export async function GET(req: NextRequest) {
     const brandIdentity = buildBrandIdentity(brand);
     const scopedRuns = filterRunsToBrandScope(rawRuns, brandIdentity);
 
-    // When latest=true (used by Overview tab), only use runs from the most recent
-    // date (24h window) so Top Cited Sources reflects the current snapshot.
-    // The Sources tab omits this param and gets the full deduped range.
-    let runs = scopedRuns;
-    if (latestOnly) {
-      const latestRunDate = scopedRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-      const latestCutoff = new Date(latestRunDate.getTime() - 24 * 60 * 60 * 1000);
-      const latestRuns = scopedRuns.filter((r) => r.createdAt >= latestCutoff);
-      if (latestRuns.length > 0) runs = latestRuns;
-    }
+    // Default to latest 24h snapshot for all source metrics.
+    // Full range (scopedRuns) is only used for time-comparison sections
+    // (domainOverTime, emerging sources, categoryOverTime).
+    const latestRunDate = scopedRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
+    const latestCutoff = new Date(latestRunDate.getTime() - 24 * 60 * 60 * 1000);
+    const latestRuns = scopedRuns.filter((r) => r.createdAt >= latestCutoff);
+    const runs = latestRuns.length > 0 ? latestRuns : scopedRuns;
     const runIds = runs.map((r) => r.id);
+    const allScopedRunIds = scopedRuns.map((r) => r.id);
     const totalResponses = runIds.length;
 
     if (totalResponses === 0) {
@@ -185,11 +183,26 @@ export async function GET(req: NextRequest) {
     }
 
     const modelSplit = computeSourceModelSplit(occurrences);
-    const rawEmerging = detectEmergingSources(occurrences, midpoint);
+
+    // Full-range occurrences for time-comparison sections (emerging, trends)
+    const fullRangeOccurrences = allScopedRunIds.length > runIds.length
+      ? await (async () => {
+          const raw = await prisma.sourceOccurrence.findMany({
+            where: { run: { id: { in: allScopedRunIds } }, ...clusterPromptFilter },
+            select: { runId: true, promptId: true, model: true, entityId: true, normalizedUrl: true, createdAt: true, source: { select: { domain: true } } },
+          });
+          return raw.map((o) => ({
+            runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId,
+            domain: getRootDomain(o.source.domain), normalizedUrl: o.normalizedUrl, createdAt: o.createdAt,
+          })) as typeof occurrences;
+        })()
+      : occurrences;
+
+    const rawEmerging = detectEmergingSources(fullRangeOccurrences, midpoint);
 
     // Enrich emerging sources with prompt examples
     const emergingDomains = new Set(rawEmerging.map((e) => e.domain));
-    const emergingOccurrences = occurrences.filter((o) => emergingDomains.has(o.domain));
+    const emergingOccurrences = fullRangeOccurrences.filter((o) => emergingDomains.has(o.domain));
     const emergingPromptIds = [...new Set(emergingOccurrences.map((o) => o.promptId))];
     const emergingPrompts = emergingPromptIds.length > 0
       ? await prisma.prompt.findMany({
@@ -291,12 +304,12 @@ export async function GET(req: NextRequest) {
       return { domain: d.domain, prompts };
     });
 
-    // Source category distribution over time
+    // Source category distribution over time (uses full range for trend data)
     // Group occurrences by run date + model → category counts, then compute percentages
     const categoryOverTime = (() => {
       // Build map: `${date}|${model}` → { category → count }
       const buckets = new Map<string, Map<string, number>>();
-      for (const o of occurrences) {
+      for (const o of fullRangeOccurrences) {
         const runDate = runDateMap.get(o.runId);
         const date = (runDate ?? o.createdAt).toISOString().slice(0, 10);
         const cat = categories[o.domain] ?? "other";
