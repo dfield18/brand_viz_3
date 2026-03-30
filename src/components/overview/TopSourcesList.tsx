@@ -302,7 +302,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
           {apiData.sources.topDomains.length > 5 && (
             <p className="text-[11px] text-muted-foreground mt-3">
               +{apiData.sources.topDomains.length - 5} more sources — see the Sources tab for details.
-              Category breakdown shows top {apiData.sources.topDomains.length} domains. Citations are deduplicated by normalized URL per response.
+              Category breakdown reflects all cited domains. Citations are deduplicated by normalized URL per response.
             </p>
           )}
         </div>
