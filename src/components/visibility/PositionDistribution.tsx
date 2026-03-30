@@ -78,7 +78,7 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
         <div>
           <h2 className={headingClass}>{brandName}&apos;s Ranking Breakdown</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How often {brandName} lands in each ranking position across all industry AI responses — based on the selected time period
+            How often {brandName} lands in each ranking position across all industry AI responses — based on the most recent data
           </p>
         </div>
         {!externalModel && <select
