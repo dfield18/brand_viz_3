@@ -690,20 +690,29 @@ export async function GET(req: NextRequest) {
     }
 
     // Build trend points from deduped as-of-date snapshots.
-    // ALL entities use isBrandMentioned/computeBrandRank — same methodology as leaderboard.
+    // ALL entities use getRankedEntitiesForRun for SoV — same methodology as snapshot leaderboard.
     const competitiveTrend: CompetitiveTrendPoint[] = [];
     for (const [date, dateRuns] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const dateTotal = dateRuns.length;
-      // SoV denominator: canonical ranked entities (same as CSV export)
+      // Build per-entity SoV counts from ranked entities (matches snapshot methodology)
       let dateSovTotal = 0;
+      const dateSovEntityCounts = new Map<string, number>();
       for (const r of dateRuns) {
-        const counts = getSovCountsForRun({
+        const ranked = getRankedEntitiesForRun({
           rawResponseText: r.rawResponseText,
           analysisJson: r.analysisJson,
           brandName: brand.name,
           brandSlug: brand.slug,
+          includeBrand: true,
+          limit: Infinity,
         });
-        dateSovTotal += counts.totalMentions;
+        dateSovTotal += ranked.length;
+        const seen = new Set<string>();
+        for (const entity of ranked) {
+          if (seen.has(entity.canonicalId)) continue;
+          seen.add(entity.canonicalId);
+          dateSovEntityCounts.set(entity.canonicalId, (dateSovEntityCounts.get(entity.canonicalId) ?? 0) + 1);
+        }
       }
 
       const mentionRate: Record<string, number> = {};
@@ -714,11 +723,9 @@ export async function GET(req: NextRequest) {
       for (const entityId of trendEntityIds) {
         const entity = leaderboardEntities.find((e) => e.entityId === entityId);
         if (!entity) continue;
-        const entityIdentity: import("@/lib/visibility/brandScope").BrandScopeIdentity = {
-          brandName: entity.name,
-          brandSlug: entity.entityId,
-        };
-        const identity = entity.isBrand ? brandIdentity : entityIdentity;
+        const identity: import("@/lib/visibility/brandScope").BrandScopeIdentity = entity.isBrand
+          ? brandIdentity
+          : { brandName: entity.name, brandSlug: entity.entityId };
         const rankName = entity.isBrand ? brand.name : entity.name;
         const rankSlug = entity.isBrand ? brand.slug : entity.entityId;
         const rankAliases = entity.isBrand ? brandAliases : undefined;
@@ -733,8 +740,10 @@ export async function GET(req: NextRequest) {
         }
         mentionRate[entityId] = dateTotal > 0
           ? Math.round((entityMentions / dateTotal) * 10000) / 100 : 0;
+        // SoV numerator: entity-mention count from ranked entities (matches snapshot)
+        const entitySovCount = dateSovEntityCounts.get(entityId) ?? 0;
         mentionShare[entityId] = dateSovTotal > 0
-          ? Math.round((entityMentions / dateSovTotal) * 10000) / 100 : 0;
+          ? Math.round((entitySovCount / dateSovTotal) * 10000) / 100 : 0;
         rank1Rate[entityId] = computeRank1RateAll(entityRanks);
         avgPosition[entityId] = computeAvgRank(entityRanks);
       }
