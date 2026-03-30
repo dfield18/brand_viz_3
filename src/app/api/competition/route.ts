@@ -893,9 +893,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build entityId → set of runIds where entity appears
+    // Build entityId → set of runIds where entity appears (latest 24h snapshot)
     const entityRunIds = new Map<string, Set<string>>();
     for (const m of metrics) {
+      if (!snapshotRunIds.has(m.runId)) continue;
       const entityId = aliasMap.get(m.entityId) ?? m.entityId;
       if (!trackedSet.has(entityId) || entityId === brand.slug) continue;
       const set = entityRunIds.get(entityId) ?? new Set<string>();
