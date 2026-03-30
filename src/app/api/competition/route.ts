@@ -267,10 +267,11 @@ export async function GET(req: NextRequest) {
       comp.avgRank = computeAvgRank(entityRanks);
     }
 
-    // --- Per-entity sentiment ---
+    // --- Per-entity sentiment (latest 24h snapshot — matches mention rate) ---
+    const snapshotRunIdSet = new Set(recallSnapshotRuns.map((r) => r.id));
     // Build runId→rawResponseText map and cache split sentences
     const runTextMap = new Map<string, string>();
-    for (const run of runs) {
+    for (const run of recallSnapshotRuns) {
       runTextMap.set(run.id, run.rawResponseText);
     }
     const sentenceCache = new Map<string, string[]>();
@@ -293,7 +294,8 @@ export async function GET(req: NextRequest) {
     }
 
     for (const comp of competitors) {
-      const entityMetrics = byEntity.get(comp.entityId) ?? [];
+      // Filter to latest 24h snapshot so sentiment matches mention rate time window
+      const entityMetrics = (byEntity.get(comp.entityId) ?? []).filter((m) => snapshotRunIdSet.has(m.runId));
       if (entityMetrics.length === 0) continue;
 
       let totalScore = 0;
@@ -324,11 +326,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Override brand sentiment with narrativeJson labels (matches Overview/Narrative)
+    // Override brand sentiment with narrativeJson labels (latest 24h snapshot)
     const brandComp = competitors.find((c) => c.isBrand);
     if (brandComp) {
       let bPos = 0, bNeu = 0, bNeg = 0;
-      for (const run of runs) {
+      for (const run of recallSnapshotRuns) {
         const nj = run.narrativeJson as Record<string, unknown> | null;
         if (!nj) continue;
         const sent = nj.sentiment as { label?: string } | undefined;
