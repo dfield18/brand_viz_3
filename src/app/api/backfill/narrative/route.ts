@@ -10,10 +10,6 @@ import { checkRateLimit } from "@/lib/rateLimit";
  * Optional: pass brandSlug to limit to one brand, otherwise processes all.
  */
 export async function POST(req: NextRequest) {
-  const { userId, error: authError } = await requireAuth();
-  if (authError) return authError;
-  const rlError = await checkRateLimit(userId, "expensive");
-  if (rlError) return rlError;
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
 
   const where = brandSlug
