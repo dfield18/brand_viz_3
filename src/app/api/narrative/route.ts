@@ -705,9 +705,16 @@ Rules:
     }
   }
 
+  // Compute hedgingRate from narrativeJson signals (matches delta and tooltip formula)
+  // A response is "hedged" if it has zero authority AND zero trust signals
+  const signalBasedHedgingRate = narrativeCount > 0
+    ? Math.round((narratives.filter((n) => n.parsed.trustSignals === 0 && n.parsed.authoritySignals === 0).length / narrativeCount) * 100)
+    : narrativeBase.hedgingRate; // fallback to analysisJson-based rate if no narrativeJson
+
   // Merge enhanced data into narrative response
   const narrative = {
     ...narrativeBase,
+    hedgingRate: signalBasedHedgingRate,
     ...(narrativeCount > 0
       ? {
           sentimentSplit,
