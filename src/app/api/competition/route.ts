@@ -587,6 +587,8 @@ export async function GET(req: NextRequest) {
       entityRunSets.set(entityId, new Set(ms.map((m) => m.runId)));
     }
 
+    // Directional co-mentions: A→B = coCount / appearances(A)
+    // Emits two entries per pair so the heatmap can show asymmetric rates
     const coMentions: CoMentionPair[] = [];
     for (let i = 0; i < trackedIds.length; i++) {
       for (let j = i + 1; j < trackedIds.length; j++) {
@@ -599,12 +601,19 @@ export async function GET(req: NextRequest) {
           if (setB.has(runId)) count++;
         }
         if (count > 0) {
-          const minApp = Math.min(setA.size, setB.size);
+          // A→B: "of A's appearances, what % also mention B?"
           coMentions.push({
             entityA: a,
             entityB: b,
             coMentionCount: count,
-            coMentionRate: minApp > 0 ? Math.round((count / minApp) * 100) : 0,
+            coMentionRate: setA.size > 0 ? Math.round((count / setA.size) * 100) : 0,
+          });
+          // B→A: "of B's appearances, what % also mention A?"
+          coMentions.push({
+            entityA: b,
+            entityB: a,
+            coMentionCount: count,
+            coMentionRate: setB.size > 0 ? Math.round((count / setB.size) * 100) : 0,
           });
         }
       }

@@ -27,11 +27,10 @@ export function CoMentionHeatmap({
     return <p className="text-sm text-muted-foreground">No co-mention data available.</p>;
   }
 
-  // Build lookup
+  // Build directional lookup — A→B rate may differ from B→A
   const lookup = new Map<string, number>();
   for (const cm of coMentions) {
     lookup.set(`${cm.entityA}|${cm.entityB}`, cm.coMentionRate);
-    lookup.set(`${cm.entityB}|${cm.entityA}`, cm.coMentionRate);
   }
 
   return (
