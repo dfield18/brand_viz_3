@@ -225,7 +225,7 @@ function VisibilitySection({ d }: { d: Record<string, unknown> }) {
       {v.rankDistribution && v.rankDistribution.length > 0 && (
         <>
           <SH3>Position Distribution</SH3>
-          <Tbl headers={["Position", "Count", "%"]} rows={v.rankDistribution.map((r) => [`#${r.rank}`, r.count, `${r.percentage}%`])} />
+          <Tbl headers={["Position", "Count", "%"]} rows={v.rankDistribution.map((r) => [r.rank === 0 ? "Not Mentioned" : `#${r.rank}`, r.count, `${r.percentage}%`])} />
         </>
       )}
 
