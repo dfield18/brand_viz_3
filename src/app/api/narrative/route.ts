@@ -250,10 +250,11 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.count - a.count);
 
   // Polarization: qualitative label based on sentiment distribution
+  // Uses sentimentTotal (all scoped runs with labels) to match posCount/negCount scope
   const polarization: "Low" | "Moderate" | "High" = (() => {
-    if (narrativeCount === 0) return "Low";
-    const pos = posCount / narrativeCount;
-    const neg = negCount / narrativeCount;
+    if (sentimentTotal === 0) return "Low";
+    const pos = posCount / sentimentTotal;
+    const neg = negCount / sentimentTotal;
     const minSide = Math.min(pos, neg);
     // High: both positive and negative are significant (each ≥ 15%)
     if (minSide >= 0.15) return "High";
