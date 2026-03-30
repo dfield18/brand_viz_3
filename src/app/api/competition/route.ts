@@ -582,10 +582,10 @@ export async function GET(req: NextRequest) {
     opportunities.sort((a, b) => b.impactScore - a.impactScore);
     const competitiveOpportunities = opportunities.slice(0, 20);
 
-    // --- Co-Mention Pairs ---
+    // --- Co-Mention Pairs (latest 24h snapshot) ---
     const entityRunSets = new Map<string, Set<string>>();
     for (const entityId of trackedIds) {
-      const ms = byEntity.get(entityId) ?? [];
+      const ms = (byEntity.get(entityId) ?? []).filter((m) => snapshotRunIds.has(m.runId));
       entityRunSets.set(entityId, new Set(ms.map((m) => m.runId)));
     }
 
