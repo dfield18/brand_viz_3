@@ -246,19 +246,21 @@ export async function GET(req: NextRequest) {
       rawTopDomains.slice(0, 15).map((d) => d.domain),
     );
 
-    // "Sources Not Citing Brand": uses ALL rawRuns occurrences (not just content-scoped)
-    // to find domains cited only in non-brand-mentioned responses.
-    // brandMentionedRunIds = full-range scoped run IDs (not just 24h snapshot),
-    // so a domain that cited the brand earlier in the range isn't incorrectly flagged.
+    // "Sources Not Citing Brand": finds domains cited in scoped runs that
+    // don't mention the brand. Uses full-range scoped runs (not rawRuns) to
+    // avoid out-of-scope runs leaking in for ambiguous brands.
     const brandMentionedRunIds = new Set(allScopedRunIds);
-    const allRawRunIds = rawRuns.map((r) => r.id);
-    const rawRunOccurrences = allRawRunIds.length > runIds.length
-      ? await prisma.sourceOccurrence.findMany({
-          where: { run: { id: { in: allRawRunIds } }, ...clusterPromptFilter },
-          select: { runId: true, promptId: true, model: true, entityId: true, normalizedUrl: true, createdAt: true, source: { select: { domain: true } } },
-        }).then((rows) => rows.map((o) => ({ runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId, domain: getRootDomain(o.source.domain), normalizedUrl: o.normalizedUrl, createdAt: o.createdAt })))
-      : occurrences; // if no difference, reuse existing
-    const domainsNotCitingBrand = computeDomainsNotCitingBrand(rawRunOccurrences, brandMentionedRunIds);
+    // Reuse fullRangeOccurrences if available (already scoped + normalized),
+    // otherwise use the snapshot occurrences
+    const uncitedOccurrences = fullRangeOccurrences !== occurrences
+      ? fullRangeOccurrences
+      : allScopedRunIds.length > runIds.length
+        ? await prisma.sourceOccurrence.findMany({
+            where: { run: { id: { in: allScopedRunIds } }, ...clusterPromptFilter },
+            select: { runId: true, promptId: true, model: true, entityId: true, normalizedUrl: true, createdAt: true, source: { select: { domain: true } } },
+          }).then((rows) => rows.map((o) => ({ runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId, domain: getRootDomain(o.source.domain), normalizedUrl: o.normalizedUrl, createdAt: o.createdAt })))
+        : occurrences;
+    const domainsNotCitingBrand = computeDomainsNotCitingBrand(uncitedOccurrences, brandMentionedRunIds);
 
     // Classify domains (uses DB cache → static map → GPT fallback)
     // Classify top domains via GPT, then bulk-fetch cached categories for all others
