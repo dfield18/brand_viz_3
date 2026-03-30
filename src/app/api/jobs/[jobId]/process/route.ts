@@ -714,9 +714,10 @@ export async function POST(
 
         extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug)
           .then((narrative) => {
-            prisma.run.update({ where: { id: run.id }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } }).catch(() => {});
+            prisma.run.update({ where: { id: run.id }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } })
+              .catch((e) => console.error(`[process] Failed to save narrativeJson for run ${run.id}:`, e.message));
           })
-          .catch(() => {});
+          .catch((e) => console.error(`[process] extractNarrativeForRun failed for run ${run.id}:`, e.message));
 
         // Extract competitor narratives
         const analysisObj = analysis as { competitors?: { name: string }[] } | null;
@@ -726,9 +727,9 @@ export async function POST(
               prisma.run.update({
                 where: { id: run.id },
                 data: { competitorNarrativesJson: JSON.parse(JSON.stringify(compNarratives)) },
-              }).catch(() => {});
+              }).catch((e) => console.error(`[process] Failed to save competitorNarrativesJson for run ${run.id}:`, e.message));
             })
-            .catch(() => {});
+            .catch((e) => console.error(`[process] extractCompetitorNarratives failed for run ${run.id}:`, e.message));
         }
 
         persistSourcesForRun({
