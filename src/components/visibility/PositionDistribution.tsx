@@ -14,13 +14,40 @@ interface PositionDistributionProps {
   brandName?: string;
 }
 
-const POSITION_BANDS = [
-  { label: "#1", min: 1, max: 1, color: "hsl(217, 91%, 50%)" },
-  { label: "2–3", min: 2, max: 3, color: "hsl(217, 70%, 62%)" },
-  { label: "4–5", min: 4, max: 5, color: "hsl(217, 45%, 72%)" },
-  { label: "6+", min: 6, max: Infinity, color: "hsl(218, 15%, 82%)" },
-  { label: "Not Mentioned", min: 0, max: 0, color: "hsl(218, 11%, 88%)" },
-] as const;
+/** Color scale: #1 is strongest, fades as rank increases, Not Mentioned is gray */
+function positionColor(position: number): string {
+  if (position === 0) return "hsl(218, 11%, 88%)";  // Not Mentioned — light gray
+  if (position === 1) return "hsl(217, 91%, 50%)";  // #1 — vivid blue
+  if (position <= 3) return "hsl(217, 70%, 62%)";   // #2-3
+  if (position <= 5) return "hsl(217, 45%, 72%)";   // #4-5
+  return "hsl(218, 25%, 80%)";                       // 6+
+}
+
+function positionLabel(position: number): string {
+  if (position === 0) return "Not Mentioned";
+  return `#${position}`;
+}
+
+/** Transform API data into sorted rows: exact positions first (ascending), Not Mentioned last */
+export function buildPositionRows(
+  filtered: PositionDistributionEntry[],
+): { label: string; position: number; count: number; percentage: number; color: string }[] {
+  const totalCount = filtered.reduce((s, d) => s + d.count, 0);
+  const rows = filtered.map((d) => ({
+    label: positionLabel(d.position),
+    position: d.position,
+    count: d.count,
+    percentage: totalCount > 0 ? Math.round((d.count / totalCount) * 100) : 0,
+    color: positionColor(d.position),
+  }));
+  // Sort: ranked positions ascending (1, 2, 3...), Not Mentioned (0) last
+  rows.sort((a, b) => {
+    if (a.position === 0) return 1;
+    if (b.position === 0) return -1;
+    return a.position - b.position;
+  });
+  return rows;
+}
 
 export function PositionDistribution({ data, inline, externalModel, brandName = "This Brand" }: PositionDistributionProps) {
   const [internalModel, setInternalModel] = useState("all");
@@ -37,25 +64,11 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
     [data, selectedModel],
   );
 
-  // Bucket into bands matching the time series chart
-  const banded = useMemo(() => {
-    const totalCount = filtered.reduce((s, d) => s + d.count, 0);
-    return POSITION_BANDS.map((band) => {
-      const count = filtered
-        .filter((d) => d.position >= band.min && d.position <= band.max)
-        .reduce((s, d) => s + d.count, 0);
-      return {
-        label: band.label,
-        color: band.color,
-        count,
-        percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
-      };
-    }); // always show all bands, including 0%
-  }, [filtered]);
+  const rows = useMemo(() => buildPositionRows(filtered), [filtered]);
 
   const maxPct = useMemo(
-    () => Math.max(...banded.map((d) => d.percentage), 1),
-    [banded],
+    () => Math.max(...rows.map((d) => d.percentage), 1),
+    [rows],
   );
 
   const Wrapper = inline ? "div" : "section";
@@ -93,7 +106,7 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
         </select>}
       </div>
       <div className="space-y-3.5 mt-5">
-        {banded.map((entry) => (
+        {rows.map((entry) => (
           <div key={entry.label} className="flex items-center gap-3">
             <span className="text-sm w-28 shrink-0 text-muted-foreground">
               {entry.label}
@@ -104,12 +117,15 @@ export function PositionDistribution({ data, inline, externalModel, brandName = 
                 style={{ width: `${(entry.percentage / maxPct) * 100}%`, backgroundColor: entry.color }}
               />
             </div>
+            <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">
+              {entry.count}
+            </span>
             <span className="text-sm font-semibold tabular-nums w-10 text-right">
               {entry.percentage}%
             </span>
           </div>
         ))}
-        {banded.length === 0 && (
+        {rows.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">
             No position data for this model.
           </p>
