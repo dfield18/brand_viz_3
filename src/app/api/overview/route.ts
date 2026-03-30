@@ -815,6 +815,21 @@ Rules:
     topSourceType,
     totals: { totalRuns, analyzedRuns: totalAnalyzed },
     ...(model === "all" ? { activeModels } : {}),
+    _diagnostics: {
+      allSnapshotRunCount: allSnapshotRuns.length,
+      runsWithNarrativeJson: allSnapshotRuns.filter((r: { narrativeJson: unknown }) => r.narrativeJson != null).length,
+      runsWithSentimentLabel: (() => {
+        let count = 0;
+        for (const r of allSnapshotRuns) {
+          const nj = (r as { narrativeJson: unknown }).narrativeJson as Record<string, unknown> | null;
+          if (!nj) continue;
+          const sent = nj.sentiment as { label?: string } | undefined;
+          if (sent?.label) count++;
+        }
+        return count;
+      })(),
+      sentimentSplitResult: sentimentSplit,
+    },
   };
 
   // Cache the response
