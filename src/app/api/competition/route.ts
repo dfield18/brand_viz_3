@@ -803,10 +803,8 @@ export async function GET(req: NextRequest) {
       if (tj.finishedAt) jobDateMap.set(tj.id, tj.finishedAt.toISOString().slice(0, 10));
     }
 
-    // Build per-entity, per-date sentiment scores
-    type SentimentBucket = { posCount: number; count: number };
-    const sentimentByDateEntity = new Map<string, Map<string, SentimentBucket>>();
-
+    // Build per-entity, per-date sentiment scores using cumulative-deduped runs
+    // (matches the visibility/competition trend methodology)
     const trendSentenceCache = new Map<string, string[]>();
     function getTrendSentences(runId: string): string[] {
       let cached = trendSentenceCache.get(runId);
@@ -818,52 +816,56 @@ export async function GET(req: NextRequest) {
       return cached;
     }
 
+    // Build a set of entity IDs per run from trend metrics for quick lookup
+    const trendMetricsByRun = new Map<string, Set<string>>();
     for (const m of scopedTrendMetrics) {
       if (!trendEntitySet.has(m.entityId)) continue;
-      const jobId = runJobMap.get(m.runId);
-      if (!jobId) continue;
-      const date = jobDateMap.get(jobId);
-      if (!date) continue;
-      const text = trendRunTextMap.get(m.runId);
-      if (!text) continue;
-
-      const comp = competitors.find((c) => c.entityId === m.entityId);
-      if (!comp) continue;
-
-      const sentences = getTrendSentences(m.runId);
-      const context = getEntityContextWindow(sentences, comp.name, comp.entityId);
-      if (context.length === 0) continue;
-
-      const contextText = context.join(" ");
-      const authority = countSignalHits(contextText, AUTHORITY_SIGNALS);
-      const trust = countSignalHits(contextText, TRUST_SIGNALS);
-      const weakness = countSignalHits(contextText, WEAKNESS_SIGNALS);
-      const pos = authority + trust;
-      const neg = weakness;
-      const total = Math.max(1, pos + neg);
-      const score = (pos - neg) / total;
-      // Count as "positive" if signal score maps to Strong or Positive (>= 0.15)
-      const isPositive = score >= 0.15;
-
-      if (!sentimentByDateEntity.has(date)) sentimentByDateEntity.set(date, new Map());
-      const dateMap = sentimentByDateEntity.get(date)!;
-      if (!dateMap.has(m.entityId)) dateMap.set(m.entityId, { posCount: 0, count: 0 });
-      const bucket = dateMap.get(m.entityId)!;
-      bucket.count++;
-      if (isPositive) bucket.posCount++;
+      if (!trendMetricsByRun.has(m.runId)) trendMetricsByRun.set(m.runId, new Set());
+      trendMetricsByRun.get(m.runId)!.add(m.entityId);
     }
 
     const sentimentTrend: CompetitiveSentimentTrendPoint[] = [];
-    for (const [date] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      const dateMap = sentimentByDateEntity.get(date);
+    for (const [date, dateRuns] of [...dedupedTrendByDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const sentiment: Record<string, number> = {};
+
+      // Per-entity sentiment from the cumulative-deduped runs for this date
       for (const entityId of trendEntityIds) {
-        const bucket = dateMap?.get(entityId);
-        if (bucket && bucket.count > 0) {
-          sentiment[entityId] = Math.round((bucket.posCount / bucket.count) * 100);
+        const comp = competitors.find((c) => c.entityId === entityId);
+        if (!comp) continue;
+
+        let posCount = 0;
+        let count = 0;
+        for (const run of dateRuns) {
+          // Only score runs where this entity appears (per EntityResponseMetric)
+          const runEntities = trendMetricsByRun.get(run.id);
+          if (!runEntities?.has(entityId)) continue;
+
+          const text = trendRunTextMap.get(run.id);
+          if (!text) continue;
+
+          const sentences = getTrendSentences(run.id);
+          const context = getEntityContextWindow(sentences, comp.name, comp.entityId);
+          if (context.length === 0) continue;
+
+          const contextText = context.join(" ");
+          const authority = countSignalHits(contextText, AUTHORITY_SIGNALS);
+          const trust = countSignalHits(contextText, TRUST_SIGNALS);
+          const weakness = countSignalHits(contextText, WEAKNESS_SIGNALS);
+          const posSignals = authority + trust;
+          const negSignals = weakness;
+          const total = Math.max(1, posSignals + negSignals);
+          const score = (posSignals - negSignals) / total;
+          const isPositive = score >= 0.15;
+
+          count++;
+          if (isPositive) posCount++;
+        }
+
+        if (count > 0) {
+          sentiment[entityId] = Math.round((posCount / count) * 100);
         }
       }
-      // Only include dates where at least one entity has data
+
       if (Object.keys(sentiment).length > 0) {
         sentimentTrend.push({ date, sentiment });
       }
