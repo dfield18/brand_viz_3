@@ -152,15 +152,16 @@ export async function GET(req: NextRequest) {
         filterRunsToBrandScope(historicalRuns, brandIdentity).map((r) => r.id),
       );
 
-      const earliestByDomain = await prisma.sourceOccurrence.groupBy({
+      const datesByDomain = await prisma.sourceOccurrence.groupBy({
         by: ["sourceId"],
         where: {
           source: { domain: { in: topDomainNames } },
           runId: { in: [...scopedHistoricalIds] },
         },
         _min: { createdAt: true },
+        _max: { createdAt: true },
       });
-      const sourceIds = [...new Set(earliestByDomain.map((e) => e.sourceId))];
+      const sourceIds = [...new Set(datesByDomain.map((e) => e.sourceId))];
       const sources = sourceIds.length > 0
         ? await prisma.source.findMany({
             where: { id: { in: sourceIds } },
@@ -169,16 +170,26 @@ export async function GET(req: NextRequest) {
         : [];
       const sourceDomainMap = new Map(sources.map((s) => [s.id, s.domain]));
       const earliestMap = new Map<string, string>();
-      for (const row of earliestByDomain) {
+      const latestMap = new Map<string, string>();
+      for (const row of datesByDomain) {
         const domain = sourceDomainMap.get(row.sourceId);
-        if (!domain || !row._min.createdAt) continue;
-        const dateStr = row._min.createdAt.toISOString().slice(0, 10);
-        const existing = earliestMap.get(domain);
-        if (!existing || dateStr < existing) earliestMap.set(domain, dateStr);
+        if (!domain) continue;
+        if (row._min.createdAt) {
+          const dateStr = row._min.createdAt.toISOString().slice(0, 10);
+          const existing = earliestMap.get(domain);
+          if (!existing || dateStr < existing) earliestMap.set(domain, dateStr);
+        }
+        if (row._max.createdAt) {
+          const dateStr = row._max.createdAt.toISOString().slice(0, 10);
+          const existing = latestMap.get(domain);
+          if (!existing || dateStr > existing) latestMap.set(domain, dateStr);
+        }
       }
       for (const d of rawTopDomains) {
         const earliest = earliestMap.get(d.domain);
         if (earliest && earliest < d.firstSeen) d.firstSeen = earliest;
+        const latest = latestMap.get(d.domain);
+        if (latest && latest > d.lastSeen) d.lastSeen = latest;
       }
     }
 
