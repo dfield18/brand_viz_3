@@ -256,7 +256,7 @@ export async function GET(req: NextRequest) {
       ? await prisma.sourceOccurrence.findMany({
           where: { run: { id: { in: allRawRunIds } }, ...clusterPromptFilter },
           select: { runId: true, promptId: true, model: true, entityId: true, normalizedUrl: true, createdAt: true, source: { select: { domain: true } } },
-        }).then((rows) => rows.map((o) => ({ runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId, domain: o.source.domain, normalizedUrl: o.normalizedUrl, createdAt: o.createdAt })))
+        }).then((rows) => rows.map((o) => ({ runId: o.runId, promptId: o.promptId, model: o.model, entityId: o.entityId, domain: getRootDomain(o.source.domain), normalizedUrl: o.normalizedUrl, createdAt: o.createdAt })))
       : occurrences; // if no difference, reuse existing
     const domainsNotCitingBrand = computeDomainsNotCitingBrand(rawRunOccurrences, brandMentionedRunIds);
 
