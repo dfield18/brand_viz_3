@@ -689,6 +689,7 @@ export interface SourcesResponse {
   scope: SourcesScope;
   summary: SourceSummary;
   topDomains: TopDomainRow[];
+  allDomainCategoryBreakdown?: { category: string; count: number; pct: number }[];
   modelSplit: SourceModelSplitRow[];
   emerging: EmergingSource[];
   crossCitation: CompetitorCrossCitation[];
