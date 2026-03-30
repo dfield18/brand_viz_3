@@ -71,7 +71,7 @@ export function CoMentionHeatmap({
                   <td
                     key={colId}
                     className={`px-3 py-2 text-center tabular-nums ${intensityClass(rate)}`}
-                    title={`${entityNames[rowId]} & ${entityNames[colId]}: ${rate}% co-mention rate`}
+                    title={`${rate}% of ${entityNames[rowId]}'s responses also mention ${entityNames[colId]}`}
                   >
                     {rate > 0 ? `${rate}%` : "\u2014"}
                   </td>
@@ -82,7 +82,7 @@ export function CoMentionHeatmap({
         </tbody>
       </table>
       <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-        Shows how often AI mentions two brands in the same response. Higher percentages mean AI frequently discusses these brands together.
+        Each cell shows: of all responses mentioning the row brand, what % also mention the column brand. Values may differ in each direction.
       </p>
     </div>
   );
