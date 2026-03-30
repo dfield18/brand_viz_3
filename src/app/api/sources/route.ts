@@ -248,8 +248,9 @@ export async function GET(req: NextRequest) {
 
     // "Sources Not Citing Brand": uses ALL rawRuns occurrences (not just content-scoped)
     // to find domains cited only in non-brand-mentioned responses.
-    // brandMentionedRunIds = the content-scoped run IDs (runs where brand is genuinely mentioned)
-    const brandMentionedRunIds = new Set(runIds);
+    // brandMentionedRunIds = full-range scoped run IDs (not just 24h snapshot),
+    // so a domain that cited the brand earlier in the range isn't incorrectly flagged.
+    const brandMentionedRunIds = new Set(allScopedRunIds);
     const allRawRunIds = rawRuns.map((r) => r.id);
     const rawRunOccurrences = allRawRunIds.length > runIds.length
       ? await prisma.sourceOccurrence.findMany({
