@@ -24,7 +24,7 @@ const SERIES = [
   { key: "pos1", label: "Rank #1", color: "hsl(160, 60%, 45%)" },       // green — best
   { key: "pos2_3", label: "Rank #2–#3", color: "hsl(217, 91%, 55%)" },  // blue
   { key: "pos4_5", label: "Rank #4–#5", color: "hsl(38, 92%, 50%)" },   // amber
-  { key: "pos6plus", label: "Rank #6+", color: "hsl(0, 72%, 55%)" },  // red — worst
+  { key: "pos6plus", label: "Rank #6+ / Not Mentioned", color: "hsl(0, 72%, 55%)" },  // red — worst / not mentioned
 ] as const;
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
@@ -42,7 +42,7 @@ function buildSummary(
     { label: "the #1 recommendation", pct: latest.pos1 },
     { label: "ranked 2nd–3rd", pct: latest.pos2_3 },
     { label: "ranked 4th–5th", pct: latest.pos4_5 },
-    { label: "ranked 6th or lower", pct: latest.pos6plus },
+    { label: "ranked 6th or lower / not mentioned", pct: latest.pos6plus },
   ];
   const dominant = bands.reduce((a, b) => (b.pct > a.pct ? b : a));
 
@@ -113,7 +113,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
             When AI recommends brands in this space, where does {brandName} appear in the list? Position #1 means AI mentions {brandName} first. Lower positions mean competitors are being recommended ahead of {brandName}.
           </p>
           <p className="text-[11px] text-muted-foreground/60 mt-1">
-            Note: Only includes responses where {brandName} is actually mentioned. Responses that don&apos;t mention {brandName} at all are excluded.
+            Note: Includes all industry responses. Responses that don&apos;t mention {brandName} are counted in the &ldquo;Rank #6+ / Not Mentioned&rdquo; band.
           </p>
         </div>
         <select
@@ -223,7 +223,7 @@ export function PositionDistributionOverTime({ id, data, children, brandName = "
           </ResponsiveContainer>
 
           <p className="text-xs text-muted-foreground/60 text-center mt-3">
-            Green = Rank #1 (top recommendation) &middot; Blue = Rank #2–#3 &middot; Amber = Rank #4–#5 &middot; Red = Rank #6+
+            Green = Rank #1 (top recommendation) &middot; Blue = Rank #2–#3 &middot; Amber = Rank #4–#5 &middot; Red = Rank #6+ / Not Mentioned
           </p>
         </div>
       )}
