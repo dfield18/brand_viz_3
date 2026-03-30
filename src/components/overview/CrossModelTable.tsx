@@ -70,7 +70,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       key: "shareOfVoice",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
-          {v === null || v === 0 ? "—" : `${v}%`}
+          {v === null ? "—" : `${v}%`}
         </span>
       ),
     },
@@ -79,7 +79,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       key: "topResultRate",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
-          {v === null || v === 0 ? "—" : `${v}%`}
+          {v === null ? "—" : `${v}%`}
         </span>
       ),
     },
@@ -109,7 +109,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     let bestModel = "";
     for (const mod of models) {
       const val = mod[m.key] as number | null;
-      if (val === null || val === 0) continue;
+      if (val === null) continue;
       if (bestVal === null || (m.lowerIsBetter ? val < bestVal : val > bestVal)) {
         bestVal = val;
         bestModel = mod.model;
