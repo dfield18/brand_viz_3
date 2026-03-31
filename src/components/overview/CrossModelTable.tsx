@@ -43,6 +43,7 @@ function getSentimentLabel(split?: { positive: number; neutral: number; negative
 interface MetricDef {
   label: string;
   key: keyof ModelComparison;
+  tooltip: string;
   render: (value: number | null, isBest: boolean, model: string) => React.ReactNode;
   lowerIsBetter?: boolean;
 }
@@ -61,6 +62,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Brand Recall",
       key: "mentionRate",
+      tooltip: "How often this platform mentions the brand in response to broad industry questions where no brand is named.",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>{v}%</span>
       ),
@@ -68,6 +70,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Share of Voice",
       key: "shareOfVoice",
+      tooltip: "The brand's share of all entity mentions — how much of the conversation this brand owns on each platform.",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null ? "—" : `${v}%`}
@@ -77,6 +80,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Top Result Rate",
       key: "topResultRate",
+      tooltip: "How often this platform lists the brand as the #1 recommendation in its response.",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null ? "—" : `${v}%`}
@@ -86,6 +90,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Overall Tone",
       key: "sentiment",
+      tooltip: "Whether this platform describes the brand in a positive, neutral, or negative way.",
       render: (_v, _isBest, model) => {
         const m = models.find((mod) => mod.model === model);
         const { text, className } = getSentimentLabel(m?.sentimentSplit);
@@ -95,6 +100,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "How Consistent",
       key: "narrativeStability",
+      tooltip: "Whether this platform tells the same story about the brand each time, or changes its message.",
       render: (v) => {
         const { text, className } = getStabilityLabel(v ?? 0);
         return <span className={`text-sm font-medium ${className}`}>{text}</span>;
@@ -133,7 +139,12 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
                   key={metric.key}
                   className="text-center text-xs font-medium tracking-wide text-muted-foreground uppercase py-3 px-4"
                 >
-                  {metric.label}
+                  <span className="relative group cursor-default">
+                    {metric.label}
+                    <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-52 rounded-lg border border-border bg-popover p-2.5 text-[11px] font-normal normal-case tracking-normal text-popover-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
+                      {metric.tooltip}
+                    </span>
+                  </span>
                 </th>
               ))}
             </tr>
