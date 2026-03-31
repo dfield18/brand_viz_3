@@ -346,7 +346,7 @@ function VisibilityV2Inner() {
         {/* Performance: Where AI Ranks Brand + Performance by Question */}
         <div id="brand-position" className="scroll-mt-24 rounded-xl bg-card px-6 pt-5 pb-6 shadow-section">
           <div className="flex items-start justify-between mb-6">
-            <p className="text-sm text-muted-foreground">How {brandName} performs across individual AI queries — broken down by platform and question</p>
+            <p className="text-sm text-muted-foreground">How {brandName} performs across individual AI queries — broken down by platform and question. Click on circles to read the full prompt response.</p>
             <select
               value={promptModel}
               onChange={(e) => setPromptModel(e.target.value)}
