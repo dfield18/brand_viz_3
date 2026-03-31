@@ -105,7 +105,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                   </span>
                   {row.rank1Rate != null && (
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
-                      Ranked #1: {row.rank1Rate}%
+                      Top result: {row.rank1Rate}%
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-56 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                         How often AI lists this {isOrg ? "organization" : "brand"} first when answering industry questions.
                       </span>

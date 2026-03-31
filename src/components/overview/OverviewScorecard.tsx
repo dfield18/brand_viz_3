@@ -190,8 +190,8 @@ export function OverviewScorecard({
         badge: sourceLabel
           ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
           : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-        description: "The type of website AI links to most often",
-        tooltip: "When AI discusses this brand, it often references websites. This shows which category (News, Reviews, Government, etc.) comes up most.",
+        description: "The most common type of source AI cites",
+        tooltip: "The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this brand.",
         delta: null,
         deltaFormat: () => "",
         scrollTarget: "sources-trend",

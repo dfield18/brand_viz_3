@@ -66,7 +66,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Your Share of Mentions",
+      label: "Share of Voice",
       key: "shareOfVoice",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
@@ -75,7 +75,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Ranked #1",
+      label: "Top Result Rate",
       key: "topResultRate",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
