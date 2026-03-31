@@ -754,7 +754,7 @@ export async function GET(req: NextRequest) {
       brandName,
       industry: industry ?? "this space",
       brandRecall: overallMentionRate,
-      brandRecallDescription: `${overallMentionRate}% of AI responses to general industry questions (that don't mention ${brandName} by name) still bring up ${brandName}`,
+      brandRecallDescription: `When users ask AI broad questions about ${industry ?? "this space"} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
       sentiment: sentLabel,
       topNarrative: topFrame,
       ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
@@ -775,7 +775,7 @@ Rules:
 - Focus on the ONE most noteworthy finding — don't try to mention every metric.
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
-- When referencing brand recall, make it clear that the % refers to AI answers where ${brandName} was NOT named in the question but AI brought it up anyway. Say something like "even when not named in the query" or "without being asked about ${brandName} directly."
+- Brand recall measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
         },
