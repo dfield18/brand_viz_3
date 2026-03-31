@@ -2,7 +2,10 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { SampleChart, TrendPoint } from "@/components/landing/SampleChart";
+import { GET as getVisibility } from "@/app/api/visibility/route";
+import { NextRequest } from "next/server";
+import { LandingDashboard } from "@/components/landing/LandingDashboard";
+import type { VisibilityTrendPoint } from "@/types/api";
 
 const FEATURES = [
   {
@@ -62,136 +65,44 @@ const PRICING_TIERS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Sample trend data — fetched from DB, cached per request
+// Fetch real visibility trend from the API for a sample brand
 // ---------------------------------------------------------------------------
 
-async function getSampleTrendData(): Promise<{
+async function getSampleVisibilityData(): Promise<{
   brandName: string;
-  points: TrendPoint[];
-  scorecard: { brandRecall: number; shareOfVoice: number; topResultRate: number };
+  trend: VisibilityTrendPoint[];
 } | null> {
   try {
-    // Pick the brand with the most completed jobs
-    const brand = await prisma.brand.findFirst({
-      where: { jobs: { some: { finishedAt: { not: null } } } },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, slug: true, name: true, displayName: true, aliases: true },
+    // Find a brand with data (prefer ACLU, fall back to oldest brand)
+    let brand = await prisma.brand.findFirst({
+      where: { slug: "aclu", jobs: { some: { finishedAt: { not: null } } } },
+      select: { slug: true, name: true, displayName: true },
     });
-    if (!brand) return null;
-
-    const cutoff = new Date(Date.now() - 90 * 86_400_000);
-
-    const runs = await prisma.run.findMany({
-      where: {
-        brandId: brand.id,
-        createdAt: { gte: cutoff },
-        prompt: { cluster: "industry" },
-      },
-      select: {
-        id: true,
-        model: true,
-        promptId: true,
-        createdAt: true,
-        analysisJson: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 3000,
-    });
-
-    if (runs.length < 10) return null;
-
-    // Dedup: latest per model+promptId
-    const seen = new Set<string>();
-    const deduped = runs.filter((r) => {
-      const key = `${r.model}|${r.promptId}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    const runIds = deduped.map((r) => r.id);
-
-    // Brand entity name variants
-    const brandNames = [
-      brand.slug.toLowerCase(),
-      brand.name.toLowerCase(),
-      ...(brand.aliases ?? []).map((a) => a.toLowerCase()),
-    ];
-
-    // Brand rank metrics
-    const brandMetrics = await prisma.entityResponseMetric.findMany({
-      where: { runId: { in: runIds }, entityId: { in: brandNames } },
-      select: { runId: true, rankPosition: true, frequencyScore: true },
-    });
-    const brandMetricMap = new Map(
-      brandMetrics.map((m) => [m.runId, { rank: m.rankPosition, freq: m.frequencyScore ?? 1 }]),
-    );
-
-    // Total entity frequency per run (for SoV denominator)
-    const totalFreqs = await prisma.entityResponseMetric.groupBy({
-      by: ["runId"],
-      where: { runId: { in: runIds } },
-      _sum: { frequencyScore: true },
-    });
-    const totalFreqMap = new Map(totalFreqs.map((e) => [e.runId, e._sum?.frequencyScore ?? 0]));
-
-    // Accumulate by date + model
-    type Bucket = {
-      total: number;
-      mentioned: number;
-      rank1: number;
-      brandFreq: number;
-      totalFreq: number;
-    };
-    const buckets = new Map<string, Bucket>();
-
-    for (const run of deduped) {
-      const date = run.createdAt.toISOString().slice(0, 10);
-      const key = `${date}|${run.model}`;
-      const b = buckets.get(key) ?? { total: 0, mentioned: 0, rank1: 0, brandFreq: 0, totalFreq: 0 };
-      b.total++;
-
-      const analysis = run.analysisJson as { brandMentioned?: boolean } | null;
-      if (analysis?.brandMentioned) b.mentioned++;
-
-      const bm = brandMetricMap.get(run.id);
-      if (bm?.rank === 1) b.rank1++;
-      b.brandFreq += bm?.freq ?? 0;
-      b.totalFreq += totalFreqMap.get(run.id) ?? 0;
-
-      buckets.set(key, b);
-    }
-
-    // Build trend points (skip dates with < 2 runs per model)
-    const points: TrendPoint[] = [];
-    for (const [key, b] of buckets) {
-      if (b.total < 2) continue;
-      const [date, model] = key.split("|");
-      points.push({
-        date,
-        model,
-        brandRecall: Math.round((b.mentioned / b.total) * 100),
-        shareOfVoice: b.totalFreq > 0 ? Math.round((b.brandFreq / b.totalFreq) * 100) : 0,
-        topResultRate: Math.round((b.rank1 / b.total) * 100),
+    if (!brand) {
+      brand = await prisma.brand.findFirst({
+        where: { jobs: { some: { finishedAt: { not: null } } } },
+        orderBy: { createdAt: "asc" },
+        select: { slug: true, name: true, displayName: true },
       });
     }
+    if (!brand) return null;
 
-    if (points.length < 3) return null;
+    // Call the visibility API handler directly
+    const url = new URL(
+      `/api/visibility?brandSlug=${encodeURIComponent(brand.slug)}&model=all&range=90`,
+      "http://localhost:3000",
+    );
+    const req = new NextRequest(url);
+    const res = await getVisibility(req);
+    if (!res.ok) return null;
 
-    // Scorecard: average of latest date across models
-    const sortedPoints = points.sort((a, b) => a.date.localeCompare(b.date));
-    const latestDate = sortedPoints[sortedPoints.length - 1].date;
-    const latestPoints = sortedPoints.filter((p) => p.date === latestDate);
-    const avg = (arr: number[]) => (arr.length > 0 ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0);
+    const json = await res.json();
+    const trend: VisibilityTrendPoint[] = json?.visibility?.trend ?? [];
+    if (trend.length < 3) return null;
 
     return {
       brandName: brand.displayName || brand.name,
-      points: sortedPoints,
-      scorecard: {
-        brandRecall: avg(latestPoints.map((p) => p.brandRecall)),
-        shareOfVoice: avg(latestPoints.map((p) => p.shareOfVoice)),
-        topResultRate: avg(latestPoints.map((p) => p.topResultRate)),
-      },
+      trend,
     };
   } catch {
     return null;
@@ -206,7 +117,7 @@ export default async function LandingPage() {
   const { userId } = await auth();
   if (userId) redirect("/dashboard");
 
-  const trendData = await getSampleTrendData();
+  const visData = await getSampleVisibilityData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,40 +169,21 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Dashboard preview — real data or static fallback */}
+      {/* Dashboard preview — real component or static fallback */}
       <section className="max-w-5xl mx-auto px-6 pb-28">
         <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
-          <div className="p-6 sm:p-10">
-            {trendData ? (
-              <SampleChart
-                brandName={trendData.brandName}
-                points={trendData.points}
-                scorecard={trendData.scorecard}
-              />
+          <div className="p-6 sm:p-8">
+            {visData ? (
+              <LandingDashboard brandName={visData.brandName} trend={visData.trend} />
             ) : (
-              /* Static fallback when no DB data */
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                  {[
-                    { label: "Brand Recall", value: "73%" },
-                    { label: "Share of Voice", value: "18%" },
-                    { label: "Top Result Rate", value: "31%" },
-                  ].map((kpi) => (
-                    <div key={kpi.label} className="rounded-lg border border-border/80 bg-background px-4 py-3">
-                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
-                      <p className="mt-1.5 text-xl font-bold text-foreground">{kpi.value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="rounded-lg border border-border/80 bg-background p-5">
-                  <p className="text-sm font-medium text-foreground mb-5">Brand Recall Over Time</p>
-                  <svg viewBox="0 0 600 100" className="w-full h-auto" preserveAspectRatio="none">
-                    <path d="M0,70 C80,68 140,55 200,48 C260,42 320,38 380,30 C440,25 500,22 560,24 L600,20" fill="none" stroke="hsl(160, 60%, 45%)" strokeWidth="2" />
-                    <path d="M0,80 C80,76 140,70 200,62 C260,56 320,48 380,44 C440,40 500,38 560,40 L600,36" fill="none" stroke="hsl(199, 89%, 48%)" strokeWidth="2" />
-                    <path d="M0,85 C80,82 140,78 200,72 C260,67 320,60 380,56 C440,52 500,50 560,52 L600,48" fill="none" stroke="hsl(24, 95%, 53%)" strokeWidth="2" />
-                  </svg>
-                </div>
-              </>
+              <div className="rounded-lg border border-border/80 bg-background p-5">
+                <p className="text-sm font-medium text-foreground mb-5">Brand Recall Over Time</p>
+                <svg viewBox="0 0 600 100" className="w-full h-auto" preserveAspectRatio="none">
+                  <path d="M0,70 C80,68 140,55 200,48 C260,42 320,38 380,30 C440,25 500,22 560,24 L600,20" fill="none" stroke="hsl(160, 60%, 45%)" strokeWidth="2" />
+                  <path d="M0,80 C80,76 140,70 200,62 C260,56 320,48 380,44 C440,40 500,38 560,40 L600,36" fill="none" stroke="hsl(199, 89%, 48%)" strokeWidth="2" />
+                  <path d="M0,85 C80,82 140,78 200,72 C260,67 320,60 380,56 C440,52 500,50 560,52 L600,48" fill="none" stroke="hsl(24, 95%, 53%)" strokeWidth="2" />
+                </svg>
+              </div>
             )}
           </div>
         </div>
