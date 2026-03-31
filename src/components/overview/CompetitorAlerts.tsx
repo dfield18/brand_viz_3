@@ -110,11 +110,11 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
               )}
               <span className="text-sm font-medium truncate">{alert.displayName}</span>
               <span className="text-xs tabular-nums text-muted-foreground">
-                {alert.recentMentionRate}% <span className="text-muted-foreground/60">recall</span>
+                {alert.recentMentionRate}% <span className="text-muted-foreground/60">mentioned</span>
               </span>
               {!isStable ? (
                 <span className={`text-xs tabular-nums ${isRising ? (isOrg ? "text-blue-600" : "text-red-600") : "text-emerald-600"}`}>
-                  {isRising ? "+" : ""}{Math.round(alert.mentionRateChange)} pts <span className="text-muted-foreground/60">vs. {periodLabel}</span>
+                  {isRising ? "+" : ""}{Math.round(alert.mentionRateChange)} percentage pts <span className="text-muted-foreground/60">vs. {periodLabel}</span>
                 </span>
               ) : (
                 <span className="text-xs tabular-nums text-muted-foreground/60">

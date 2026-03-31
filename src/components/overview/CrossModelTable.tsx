@@ -66,7 +66,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Share of Voice",
+      label: "Your Share of Mentions",
       key: "shareOfVoice",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
@@ -75,7 +75,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Top Result Rate",
+      label: "Ranked #1",
       key: "topResultRate",
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
@@ -84,7 +84,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       ),
     },
     {
-      label: "Avg Sentiment",
+      label: "Overall Tone",
       key: "sentiment",
       render: (_v, _isBest, model) => {
         const m = models.find((mod) => mod.model === model);
@@ -93,7 +93,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
       },
     },
     {
-      label: "Message Consistency",
+      label: "How Consistent",
       key: "narrativeStability",
       render: (v) => {
         const { text, className } = getStabilityLabel(v ?? 0);

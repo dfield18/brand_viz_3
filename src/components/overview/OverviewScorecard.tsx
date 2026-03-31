@@ -136,7 +136,7 @@ export function OverviewScorecard({
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },
     {
-      label: dominantFrames.length > 1 ? "DOMINANT NARRATIVES" : "DOMINANT NARRATIVE",
+      label: dominantFrames.length > 1 ? "TOP MESSAGES" : "TOP MESSAGE",
       value: topFrame ? `${topFrame.percentage}%` : "\u2014",
       percentage: topFrame?.percentage ?? 0,
       color: "hsl(263, 70%, 55%)",
@@ -145,8 +145,8 @@ export function OverviewScorecard({
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
       description: dominantFrames.length > 1
         ? `${dominantFrames.length} themes tied at ${topFrame?.percentage}% of responses`
-        : "The main theme AI uses to describe this brand",
-      tooltip: "The most common narrative frame AI models use when discussing this brand, based on structured analysis of AI responses.",
+        : "The most common way AI describes this brand",
+      tooltip: "The most common angle or perspective AI uses when talking about this brand, based on analysis of AI responses.",
       isNarrative: true,
       narrativeFrames: dominantFrames.length > 0 ? dominantFrames : undefined,
       delta: null,
@@ -169,8 +169,8 @@ export function OverviewScorecard({
       badge: sentimentSplit
         ? getSentimentBadge(sentimentSplit)
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()}` : "How AI talks about you",
-      tooltip: "Breakdown of how AI models frame the brand — positive, neutral, or negative — based on authority and trust signals in responses.",
+      description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()} in tone` : "How positive or negative AI is about you",
+      tooltip: "Whether AI describes this brand in a positive, neutral, or negative way across all responses.",
       isSentiment: true,
       sentimentData: sentimentSplit ?? undefined,
       sentimentLabel: dominant?.label,
@@ -190,8 +190,8 @@ export function OverviewScorecard({
         badge: sourceLabel
           ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
           : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-        description: "The most common type of source AI cites",
-        tooltip: "The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this brand.",
+        description: "The type of website AI links to most often",
+        tooltip: "When AI discusses this brand, it often references websites. This shows which category (News, Reviews, Government, etc.) comes up most.",
         delta: null,
         deltaFormat: () => "",
         scrollTarget: "sources-trend",
