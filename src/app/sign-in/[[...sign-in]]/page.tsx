@@ -6,10 +6,9 @@ export default function SignInPage() {
       <div className="flex flex-col items-center gap-8 w-full max-w-sm px-4">
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-blue-700 shadow-md">
-            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 2L3 5v6l5 3 5-3V5L8 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-              <circle cx="8" cy="8" r="2" fill="white" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#111827] shadow-md">
+            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 10l7 14 7-14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
           </div>
           <div>

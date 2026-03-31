@@ -125,10 +125,9 @@ export default async function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-700 shadow-sm">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 2L3 5v6l5 3 5-3V5L8 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                <circle cx="8" cy="8" r="2" fill="white" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 10l7 14 7-14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             </div>
             <span className="text-[15px] font-semibold tracking-tight">Visibility</span>
@@ -300,10 +299,9 @@ export default async function LandingPage() {
       <footer className="border-t border-border/60">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-gradient-to-br from-primary to-blue-700">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 2L3 5v6l5 3 5-3V5L8 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                <circle cx="8" cy="8" r="2" fill="white" />
+            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-[#111827]">
+              <svg width="10" height="10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 10l7 14 7-14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             </div>
             <span className="text-xs text-muted-foreground">Visibility</span>
