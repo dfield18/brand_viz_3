@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
   };
 
   const totalMissing = await prisma.run.count({ where });
+  console.log(`[backfill/narrative] brandSlug=${brandSlug}, totalMissing=${totalMissing}, limit=${limit}, offset=${offset}`);
 
   const runs = await prisma.run.findMany({
     where,
