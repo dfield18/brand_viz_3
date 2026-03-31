@@ -221,16 +221,18 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
               ))}
             </select>
           )}
-          <select
-            value={focusModel}
-            onChange={(e) => setFocusModel(e.target.value)}
-            className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
-          >
-            <option value="all">All AI Platforms</option>
-            {availableModels.map((m) => (
-              <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
-            ))}
-          </select>
+          {!compact && (
+            <select
+              value={focusModel}
+              onChange={(e) => setFocusModel(e.target.value)}
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
+            >
+              <option value="all">All AI Platforms</option>
+              {availableModels.map((m) => (
+                <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
