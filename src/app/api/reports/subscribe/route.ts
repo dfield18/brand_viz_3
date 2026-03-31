@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const subscription = await prisma.emailSubscription.upsert({
     where: { brandId_email: { brandId: brand.id, email } },
-    create: { brandId: brand.id, email, frequency, enabled: true },
+    create: { brandId: brand.id, email, frequency, enabled: true, unsubscribeToken: crypto.randomUUID() },
     update: { frequency, enabled: true },
   });
 

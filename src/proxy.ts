@@ -3,6 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/unsubscribe(.*)",
   // Read-only data routes — public so report self-fetch and cron work.
   // Mutation routes (jobs POST, prompts POST, subscribe POST) have their
   // own requireAuth() checks as a second layer of protection.

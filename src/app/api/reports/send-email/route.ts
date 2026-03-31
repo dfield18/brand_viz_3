@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
 import { renderReportEmail } from "@/lib/email/renderReportEmail";
@@ -73,8 +74,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: 0, message: "No subscriptions due" });
   }
 
+  // Ensure every subscription has an unsubscribe token
+  for (const sub of subscriptions) {
+    if (!sub.unsubscribeToken) {
+      const token = crypto.randomUUID();
+      await prisma.emailSubscription.update({
+        where: { id: sub.id },
+        data: { unsubscribeToken: token },
+      });
+      sub.unsubscribeToken = token;
+    }
+  }
+
   // Group by brand
-  const byBrand = new Map<string, { brandSlug: string; brandName: string; emails: { id: string; email: string }[] }>();
+  const byBrand = new Map<string, { brandSlug: string; brandName: string; emails: { id: string; email: string; unsubscribeToken: string }[] }>();
   for (const sub of subscriptions) {
     const key = sub.brandId;
     if (!byBrand.has(key)) {
@@ -84,7 +97,7 @@ export async function POST(req: NextRequest) {
         emails: [],
       });
     }
-    byBrand.get(key)!.emails.push({ id: sub.id, email: sub.email });
+    byBrand.get(key)!.emails.push({ id: sub.id, email: sub.email, unsubscribeToken: sub.unsubscribeToken! });
   }
 
   let sent = 0;
@@ -117,16 +130,19 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const { subject, html } = renderReportEmail(reportJson.report);
+      const baseUrl = `https://${prodHost}`;
 
-      // Send to each subscriber
-      for (const { id, email } of group.emails) {
+      // Send to each subscriber (per-subscriber render for unique unsubscribe link)
+      for (const { id, email, unsubscribeToken } of group.emails) {
         try {
+          const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${unsubscribeToken}`;
+          const { subject, html } = renderReportEmail(reportJson.report, unsubscribeUrl);
           await resend.emails.send({
             from: FROM_ADDRESS,
             to: email,
             subject,
             html,
+            headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` },
           });
           await prisma.emailSubscription.update({
             where: { id },
