@@ -712,24 +712,28 @@ export async function POST(
           analysisJson: analysis,
         }).catch(() => {});
 
-        extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug)
-          .then((narrative) => {
-            prisma.run.update({ where: { id: run.id }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } })
-              .catch((e) => console.error(`[process] Failed to save narrativeJson for run ${run.id}:`, e.message));
-          })
-          .catch((e) => console.error(`[process] extractNarrativeForRun failed for run ${run.id}:`, e.message));
+        // Await narrative extraction so it completes before the function ends.
+        // Previously fire-and-forget, which caused narrativeJson to stay null
+        // if the GPT call timed out or the function exited before completion.
+        try {
+          const narrative = await extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug);
+          await prisma.run.update({ where: { id: run.id }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } });
+        } catch (e) {
+          console.error(`[process] extractNarrativeForRun failed for run ${run.id}:`, e instanceof Error ? e.message : e);
+        }
 
-        // Extract competitor narratives
+        // Extract competitor narratives (also awaited)
         const analysisObj = analysis as { competitors?: { name: string }[] } | null;
         if (analysisObj?.competitors && analysisObj.competitors.length > 0) {
-          extractCompetitorNarratives(responseText, analysisObj.competitors)
-            .then((compNarratives) => {
-              prisma.run.update({
-                where: { id: run.id },
-                data: { competitorNarrativesJson: JSON.parse(JSON.stringify(compNarratives)) },
-              }).catch((e) => console.error(`[process] Failed to save competitorNarrativesJson for run ${run.id}:`, e.message));
-            })
-            .catch((e) => console.error(`[process] extractCompetitorNarratives failed for run ${run.id}:`, e.message));
+          try {
+            const compNarratives = await extractCompetitorNarratives(responseText, analysisObj.competitors);
+            await prisma.run.update({
+              where: { id: run.id },
+              data: { competitorNarrativesJson: JSON.parse(JSON.stringify(compNarratives)) },
+            });
+          } catch (e) {
+            console.error(`[process] extractCompetitorNarratives failed for run ${run.id}:`, e instanceof Error ? e.message : e);
+          }
         }
 
         persistSourcesForRun({

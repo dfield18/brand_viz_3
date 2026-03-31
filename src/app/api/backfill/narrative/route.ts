@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 
 /**
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   const where = {
     brand: { slug: brandSlug },
     rawResponseText: { not: "" },
-    ...(force ? {} : { narrativeJson: null }),
+    ...(force ? {} : { narrativeJson: { equals: Prisma.DbNull } }),
   };
 
   const totalMissing = await prisma.run.count({ where });
