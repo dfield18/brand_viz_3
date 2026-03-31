@@ -138,7 +138,7 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
           <div className="flex items-center gap-3">
             {!compact && (
               <h2 className="text-sm text-muted-foreground font-medium">
-                {effectiveMetric === "visibility" ? <>{brandName ? <>{brandName}&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? "Top Result Rate Over Time" : <>{brandName ? <>{brandName}&apos;s</> : "Brand"} Share of Voice Over Time</>}
+                {effectiveMetric === "visibility" ? <>{brandName ? <>{brandName}&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <>{brandName}&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <>{brandName}&apos;s</> : "Brand"} Share of Voice Over Time</>}
               </h2>
             )}
             {!fixedMetric && (
