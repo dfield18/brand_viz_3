@@ -29,11 +29,21 @@ const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as co
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandName, compact }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
   const effectiveMetric = fixedMetric ?? metric;
+
+  // Derive prompts from trend data when not explicitly passed
+  const prompts = useMemo(() => {
+    if (promptsProp.length > 0) return promptsProp;
+    const set = new Set<string>();
+    for (const t of trend) {
+      if (t.prompt && t.prompt !== "all") set.add(t.prompt);
+    }
+    return [...set].sort();
+  }, [promptsProp, trend]);
 
   // Filter trend by selected prompt, then pivot
   const filteredTrend = useMemo(() => {
@@ -198,32 +208,30 @@ export function VisibilityTrendChart({ trend, prompts = [], fixedMetric, brandNa
             </p>
           )}
         </div>
-        {!compact && (
-          <div className="flex items-center gap-2 shrink-0 ml-4">
-            {prompts.length > 0 && (
-              <select
-                value={focusPrompt}
-                onChange={(e) => setFocusPrompt(e.target.value)}
-                className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card max-w-[220px] truncate"
-              >
-                <option value="all">All Questions</option>
-                {prompts.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            )}
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          {prompts.length > 0 && (
             <select
-              value={focusModel}
-              onChange={(e) => setFocusModel(e.target.value)}
-              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
+              value={focusPrompt}
+              onChange={(e) => setFocusPrompt(e.target.value)}
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card max-w-[220px] truncate"
             >
-              <option value="all">All AI Platforms</option>
-              {availableModels.map((m) => (
-                <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+              <option value="all">All Questions</option>
+              {prompts.map((p) => (
+                <option key={p} value={p}>{p}</option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+          <select
+            value={focusModel}
+            onChange={(e) => setFocusModel(e.target.value)}
+            className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
+          >
+            <option value="all">All AI Platforms</option>
+            {availableModels.map((m) => (
+              <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {chartData.length === 0 ? (
