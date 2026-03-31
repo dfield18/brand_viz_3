@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
  * Disables an email subscription.
  */
 export async function DELETE(req: NextRequest) {
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const body = await req.json();
   const { brandSlug, email } = body;
 

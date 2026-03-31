@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
+import { requireAuth } from "@/lib/auth";
 import { renderReportEmail } from "@/lib/email/renderReportEmail";
 import { GET as getReport } from "@/app/api/report/route";
 
@@ -29,8 +30,11 @@ export async function POST(req: NextRequest) {
     } catch { /* not JSON — cron request */ }
   }
 
-  // For cron requests, verify secret. On-demand requests skip this.
-  if (!onDemandBrandSlug) {
+  // Auth: on-demand requires Clerk auth, cron requires secret
+  if (onDemandBrandSlug) {
+    const { error: authError } = await requireAuth();
+    if (authError) return authError;
+  } else {
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {

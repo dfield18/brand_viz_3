@@ -21,6 +21,10 @@ interface ReportData {
   };
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function pct(v: number): string {
   return `${Math.round(v)}%`;
 }
@@ -47,7 +51,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   const sc = overview?.scorecard;
   const sent = overview?.sentimentSplit;
 
-  const subject = `${brandName} AI Visibility Report — ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  const subject = `${brandName} AI Visibility Report \u2014 ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
   const kpiCards = sc ? [
     { label: "Brand Recall", value: pct(sc.brandRecall), desc: "% of AI responses mentioning you" },
@@ -73,7 +77,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
 
   <!-- Header -->
   <div style="background:#111827;color:#fff;padding:24px 28px;border-radius:12px 12px 0 0;">
-    <h1 style="margin:0;font-size:20px;font-weight:700;">${brandName}</h1>
+    <h1 style="margin:0;font-size:20px;font-weight:700;">${esc(brandName)}</h1>
     <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">AI Visibility Report &middot; ${meta.range}-day window &middot; ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
   </div>
 
@@ -104,14 +108,14 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   ${overview?.aiSummary ? `
   <!-- AI Summary -->
   <div style="background:#fff;padding:20px 28px;border-left:1px solid #e5e5e5;border-right:1px solid #e5e5e5;border-top:1px solid #f0f0f0;">
-    <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">${overview.aiSummary.replace(/\n/g, "<br>")}</p>
+    <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">${esc(overview.aiSummary).replace(/\n/g, "<br>")}</p>
   </div>` : ""}
 
   ${perceptionIssue ? `
   <!-- Perception Issue -->
   <div style="background:#fffbeb;padding:16px 28px;border-left:1px solid #e5e5e5;border-right:1px solid #e5e5e5;border-top:1px solid #f0f0f0;">
     <p style="margin:0;font-size:12px;font-weight:600;color:#92400e;">Perception Issue</p>
-    <p style="margin:6px 0 0;font-size:13px;color:#78350f;line-height:1.5;">${perceptionIssue}</p>
+    <p style="margin:6px 0 0;font-size:13px;color:#78350f;line-height:1.5;">${esc(perceptionIssue)}</p>
   </div>` : ""}
 
   ${rising.length > 0 ? `
@@ -120,7 +124,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
     <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#111827;">Rising Competitors</p>
     ${rising.map((a) => `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">
-      <strong style="color:#111827;">${a.displayName}</strong> &mdash; ${a.previousMentionRate}% &rarr; ${a.recentMentionRate}% mention rate
+      <strong style="color:#111827;">${esc(a.displayName)}</strong> &mdash; ${a.previousMentionRate}% &rarr; ${a.recentMentionRate}% mention rate
     </p>`).join("")}
   </div>` : ""}
 
@@ -130,7 +134,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
     <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#111827;">Top Prompt Opportunities</p>
     ${opportunities.map((o) => `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">
-      &ldquo;${o.prompt}&rdquo; <span style="color:#9ca3af;">&mdash; ${o.competitorCount} competitor${o.competitorCount !== 1 ? "s" : ""} ranking</span>
+      &ldquo;${esc(o.prompt)}&rdquo; <span style="color:#9ca3af;">&mdash; ${o.competitorCount} competitor${o.competitorCount !== 1 ? "s" : ""} ranking</span>
     </p>`).join("")}
   </div>` : ""}
 
