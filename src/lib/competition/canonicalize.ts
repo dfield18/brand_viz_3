@@ -107,6 +107,11 @@ export function canonicalizeEntityId(name: string): string {
     }
   }
 
+  // Strip parenthesized abbreviation or full name
+  // "american civil liberties union (aclu)" → "american civil liberties union"
+  // "aclu (american civil liberties union)" → "aclu"
+  s = s.replace(/\s*\([^)]+\)\s*$/, "").trim();
+
   // Final trim of trailing punctuation
   s = s.replace(/[.,;:!?]+$/, "").trim();
 
@@ -208,6 +213,40 @@ export function buildEntityAliasGroups(
       const finalTarget = familyMerges.get(mapped);
       if (finalTarget) {
         baseMap.set(raw, finalTarget);
+      }
+    }
+  }
+
+  // Step 4: Abbreviation merging
+  // If a short entity (≤6 chars) exists and a longer canonical form contains
+  // it in parentheses in the original names, merge them under the short form.
+  // E.g., "aclu" + "american civil liberties union" → both map to "aclu"
+  const currentCanonicals = new Set(baseMap.values());
+  const shortCanonicals = [...currentCanonicals].filter((c) => c.length <= 6 && /^[a-z]+$/.test(c));
+  if (shortCanonicals.length > 0) {
+    // Check original entity IDs for parenthesized abbreviations
+    // Maps canonicalized long form → abbreviation for merging
+    const abbrToLong = new Map<string, string>();
+    for (const rawId of entityIds) {
+      const lower = rawId.toLowerCase();
+      const parenMatch = lower.match(/\(([a-z]{2,6})\)/);
+      if (parenMatch) {
+        const abbr = parenMatch[1];
+        if (currentCanonicals.has(abbr)) {
+          const longForm = lower.replace(/\s*\([^)]+\)/, "").trim();
+          const longCanonical = canonicalizeEntityId(longForm);
+          abbrToLong.set(longCanonical, abbr);
+        }
+      }
+    }
+    // Apply abbreviation merges — check canonicalized mapped value
+    if (abbrToLong.size > 0) {
+      for (const [raw, mapped] of baseMap) {
+        const mappedCanonical = canonicalizeEntityId(mapped);
+        const target = abbrToLong.get(mappedCanonical);
+        if (target && mapped !== target) {
+          baseMap.set(raw, target);
+        }
       }
     }
   }
