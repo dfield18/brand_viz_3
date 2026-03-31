@@ -188,43 +188,9 @@ function HeaderInner() {
             </div>
           )}
 
-          {/* Right: Filters */}
+          {/* Spacer to keep layout balanced */}
           {isEntityPage && (
-            <div className="flex items-center gap-2">
-              {/* Range selector */}
-              <div className="flex items-center rounded-md border border-border overflow-hidden">
-                {RANGES.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => updateQuery("range", String(r))}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      range === r
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {r}d
-                  </button>
-                ))}
-              </div>
-
-              {/* Model selector */}
-              <div className="flex items-center rounded-md border border-border overflow-hidden">
-                {MODELS.map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => updateQuery("model", m.value)}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      model === m.value
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <div />
           )}
 
           {/* User avatar */}
