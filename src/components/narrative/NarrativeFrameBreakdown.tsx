@@ -56,22 +56,30 @@ function wrapLabel(text: string, maxChars = 18): string[] {
   return lines;
 }
 
+/** Shorten a label to at most maxWords, adding "..." if truncated */
+function shortenLabel(text: string, maxWords = 3): string {
+  const words = text.split(" ");
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ") + "...";
+}
+
 function RadarTickLabel(props: {
   x?: number; y?: number; payload?: { value: string };
   cx?: number; cy?: number;
 }) {
   const { x = 0, y = 0, payload, cx = 0, cy = 0 } = props;
-  const label = payload?.value ?? "";
+  const fullLabel = payload?.value ?? "";
+  const label = shortenLabel(fullLabel, 3);
   const lines = wrapLabel(label, 14);
   const dx = x - cx;
   const dy = y - cy;
   const anchor = dx > 5 ? "start" : dx < -5 ? "end" : "middle";
-  // Push labels outward from center to avoid overlapping the chart
   const nudgeX = dx > 5 ? 6 : dx < -5 ? -6 : 0;
   const nudgeY = dy > 5 ? 6 : dy < -5 ? -6 : 0;
 
   return (
     <g transform={`translate(${x + nudgeX},${y + nudgeY})`}>
+      <title>{fullLabel}</title>
       {lines.map((line, i) => (
         <text
           key={i}
