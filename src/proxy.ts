@@ -3,7 +3,23 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/(.*)",
+  // Read-only data routes — public so report self-fetch and cron work.
+  // Mutation routes (jobs POST, prompts POST, subscribe POST) have their
+  // own requireAuth() checks as a second layer of protection.
+  "/api/overview(.*)",
+  "/api/visibility(.*)",
+  "/api/narrative(.*)",
+  "/api/competition(.*)",
+  "/api/sources(.*)",
+  "/api/topics(.*)",
+  "/api/recommendations(.*)",
+  "/api/responses(.*)",
+  "/api/response-detail(.*)",
+  "/api/report(.*)",
+  "/api/reports/send-email(.*)",
+  "/api/competitor-alerts(.*)",
+  "/api/brand-info(.*)",
+  "/api/backfill(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
