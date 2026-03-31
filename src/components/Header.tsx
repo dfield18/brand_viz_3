@@ -156,6 +156,9 @@ function HeaderInner() {
   }, [router, searchParams]);
 
   const isEntityPage = pathname.startsWith("/entity/");
+  const isLandingPage = pathname === "/";
+
+  if (isLandingPage) return null;
 
   return (
     <>
