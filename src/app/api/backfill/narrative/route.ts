@@ -48,7 +48,14 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   const errors: string[] = [];
 
+  const startTime = Date.now();
+  const MAX_MS = 50_000; // stop before Vercel's 60s timeout
+
   for (const run of runs) {
+    if (Date.now() - startTime > MAX_MS) {
+      errors.push("Stopped early: approaching function timeout");
+      break;
+    }
     try {
       const brandName = (run.brand as unknown as { displayName?: string | null }).displayName || run.brand.name;
       const narrative = await extractNarrativeForRun(
