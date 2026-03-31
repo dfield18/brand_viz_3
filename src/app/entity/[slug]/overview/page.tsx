@@ -19,6 +19,7 @@ import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch, prefetchAll } from "@/lib/useCachedFetch";
 import { useBrandName } from "@/lib/useBrandName";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { DataFooter } from "@/components/DataFooter";
 
 interface ApiResponse {
   hasData: boolean;
@@ -171,14 +172,17 @@ function OverviewInner() {
         {/* Scorecard */}
         <div id="kpi-summary" className="scroll-mt-24">
           {kpis && (
-            <OverviewScorecard
-              overallMentionRate={kpis.overallMentionRate}
-              kpiDeltas={apiData.kpiDeltas ?? null}
-              brandName={brandName}
-              dominantFrames={dominantFrames}
-              sentimentSplit={apiData.sentimentSplit ?? null}
-              topSourceType={apiData.topSourceType ?? null}
-            />
+            <>
+              <OverviewScorecard
+                overallMentionRate={kpis.overallMentionRate}
+                kpiDeltas={apiData.kpiDeltas ?? null}
+                brandName={brandName}
+                dominantFrames={dominantFrames}
+                sentimentSplit={apiData.sentimentSplit ?? null}
+                topSourceType={apiData.topSourceType ?? null}
+              />
+              <DataFooter prompts="industry" date="latest" />
+            </>
           )}
         </div>
 
@@ -197,6 +201,9 @@ function OverviewInner() {
             )}
             {/* Top Recommendation — inline separator */}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
+            <div className="px-5 pb-2">
+              <DataFooter prompts="all" date={range} />
+            </div>
           </div>
         </div>
 
@@ -205,12 +212,14 @@ function OverviewInner() {
           <div id="visibility-trend" className="scroll-mt-24">
             <section className="rounded-xl bg-card p-6 shadow-section">
               <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} />
+              <DataFooter prompts="industry" date={range} />
             </section>
           </div>
         )}
 
         <div id="cross-model" className="scroll-mt-24">
           <CrossModelTable models={data.modelComparison} brandName={brandName} />
+          <DataFooter prompts="all" date="latest" />
         </div>
 
         {/* ── Narrative ──────────────────────────── */}
@@ -231,6 +240,7 @@ function OverviewInner() {
             }))}
             brandName={brandName}
           />
+          <DataFooter prompts="all" date={range} />
         </div>
 
         {/* Standout Quotes */}
@@ -239,6 +249,7 @@ function OverviewInner() {
             <section className="rounded-xl bg-card px-5 py-4 shadow-section">
               <h2 className="text-sm font-semibold mb-2">What AI Is Saying About {brandName}</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
+              <DataFooter prompts="all" date={range} />
             </section>
           </div>
         )}
@@ -248,10 +259,12 @@ function OverviewInner() {
 
         <div id="competitor-snapshot" className="scroll-mt-24">
           <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
+          <DataFooter prompts="industry" date="latest" />
         </div>
 
         <div id="competitor-alerts" className="scroll-mt-24">
           <CompetitorAlerts brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} />
+          <DataFooter prompts="industry" date={range} />
         </div>
 
         {/* ── Sources ────────────────────────────── */}
@@ -259,6 +272,7 @@ function OverviewInner() {
 
         <div id="sources-trend" className="scroll-mt-24">
           <TopSourcesList brandSlug={params.slug} model={model} range={range} />
+          <DataFooter prompts="all" date="latest" />
         </div>
       </div>
     </div>
