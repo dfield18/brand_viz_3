@@ -182,7 +182,7 @@ function OverviewInner() {
                 sentimentSplit={apiData.sentimentSplit ?? null}
                 topSourceType={apiData.topSourceType ?? null}
               />
-              <DataFooter prompts="mixed" date="latest" />
+              <DataFooter prompts="mixed" date={range} />
             </>
           )}
         </div>
@@ -217,7 +217,7 @@ function OverviewInner() {
 
         <div id="cross-model" className="scroll-mt-24">
           <CrossModelTable models={data.modelComparison} brandName={brandName} />
-          <DataFooter prompts="mixed" date="latest" />
+          <DataFooter prompts="mixed" date={range} />
         </div>
 
         {/* ── Narrative ──────────────────────────── */}

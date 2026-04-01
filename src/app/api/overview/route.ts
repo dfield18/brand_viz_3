@@ -340,23 +340,17 @@ export async function GET(req: NextRequest) {
   if (visResult && visResult.ok) {
     const { brand: visBrand, runs: visRuns } = visResult;
     const visBrandIdentity = buildBrandIdentity(visBrand);
-    const allIndustryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
-
-    // Latest snapshot: only use runs from the most recent date (24h window)
-    // so Brand Recall matches the visibility tab scorecard exactly
-    const latestIndustryDate = allIndustryRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-    const latestIndustryCutoff = new Date(latestIndustryDate.getTime() - 24 * 60 * 60 * 1000);
-    const latestIndustryRuns = allIndustryRuns.filter((r) => r.createdAt >= latestIndustryCutoff);
-    const industryRuns = latestIndustryRuns.length > 0 ? latestIndustryRuns : allIndustryRuns;
+    // Industry runs: use the full deduped set from fetchBrandRuns (latest per model+prompt).
+    // No additional 24h filter — the dedup already gives the current state, and this ensures
+    // the scorecard matches the latest trend chart data point exactly.
+    const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
     industrySnapshotRuns = industryRuns;
 
-    // All-prompt snapshot: latest 24h, all clusters — for Narrative, Sentiment, Sources
+    // All-prompt snapshot: all clusters, brand-scoped — for Narrative, Sentiment, Sources.
+    // Uses the full deduped set (latest per model+prompt) to stay consistent with the trend chart.
     const scopedRuns = filterRunsToBrandScope(visRuns, visBrandIdentity);
-    const latestAnyDate = scopedRuns.reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-    const allSnapshotCutoff = new Date(latestAnyDate.getTime() - 24 * 60 * 60 * 1000);
-    const recentAllRuns = scopedRuns.filter((r) => r.createdAt >= allSnapshotCutoff);
-    allSnapshotRuns = recentAllRuns.length > 0 ? recentAllRuns : scopedRuns;
+    allSnapshotRuns = scopedRuns;
 
     // Mention rate — scope-aware detection, full denominator
     const industryMentions = industryRuns.filter((r) =>
@@ -463,13 +457,12 @@ export async function GET(req: NextRequest) {
       }
 
       // KPI deltas (30-day window, matching visibility tab)
-      // Uses allIndustryRuns (full range), NOT industryRuns (24h snapshot)
       const now = Date.now();
       const oneMonthAgo = new Date(now - 30 * 86_400_000);
       const twoMonthsAgo = new Date(now - 60 * 86_400_000);
-      const thisMonthRuns = allIndustryRuns.filter((r) => r.createdAt >= oneMonthAgo);
-      const priorMonthRuns = allIndustryRuns.filter(
-        (r) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
+      const thisMonthRuns = industryRuns.filter((r: { createdAt: Date }) => r.createdAt >= oneMonthAgo);
+      const priorMonthRuns = industryRuns.filter(
+        (r: { createdAt: Date }) => r.createdAt >= twoMonthsAgo && r.createdAt < oneMonthAgo,
       );
       const hasDelta = thisMonthRuns.length > 0 && priorMonthRuns.length > 0;
 
