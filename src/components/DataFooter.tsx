@@ -10,7 +10,7 @@ export function DataFooter({ prompts, date }: DataFooterProps) {
     prompts === "industry"
       ? "Generic industry questions (no brands mentioned)"
       : prompts === "mixed"
-        ? "Brand Recall uses generic industry questions; other metrics use all prompt types"
+        ? "Brand Recall uses generic industry questions (no brands mentioned); other metrics use all prompt types"
         : "All prompt types";
   const dateLabel =
     date === "latest"
