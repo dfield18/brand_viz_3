@@ -182,7 +182,7 @@ function OverviewInner() {
                 sentimentSplit={apiData.sentimentSplit ?? null}
                 topSourceType={apiData.topSourceType ?? null}
               />
-              <DataFooter prompts="industry" date="latest" />
+              <DataFooter prompts="mixed" date="latest" />
             </>
           )}
         </div>
