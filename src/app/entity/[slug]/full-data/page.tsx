@@ -21,11 +21,23 @@ interface RunData {
   cost: { response: number; extraction: number; total: number };
 }
 
+interface CostSummary {
+  responseCost: number;
+  extractionCost: number;
+  totalCost: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  model: string;
+  note: string;
+}
+
 interface ApiResponse {
   hasData: boolean;
   reason?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
   runs?: RunData[];
+  costs?: CostSummary;
 }
 
 function FullDataInner() {
@@ -164,7 +176,7 @@ ${runs.map((r) => `
   }
 
   if (!apiData?.runs) return null;
-  const { runs, job } = apiData;
+  const { runs, job, costs } = apiData;
 
   const filteredRuns = runs.filter((r) => {
     if (filterModel !== "all" && r.model !== filterModel) return false;
@@ -215,6 +227,37 @@ ${runs.map((r) => `
           <> &middot; Completed {new Date(job.finishedAt).toLocaleString()}</>
         )}
       </p>
+
+      {/* Cost summary */}
+      {costs && (
+        <div className="rounded-xl bg-card p-6 shadow-section">
+          <h3 className="text-sm font-medium mb-3">Estimated API Costs</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Cost</p>
+              <p className="text-lg font-semibold">${costs.totalCost.toFixed(4)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Response Generation</p>
+              <p className="text-sm font-medium">${costs.responseCost.toFixed(4)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Analysis Extraction</p>
+              <p className="text-sm font-medium">${costs.extractionCost.toFixed(4)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Tokens</p>
+              <p className="text-sm font-medium" suppressHydrationWarning>{costs.totalTokens.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground" suppressHydrationWarning>
+                {costs.totalInputTokens.toLocaleString()} in / {costs.totalOutputTokens.toLocaleString()} out
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-3">
+            {costs.note}
+          </p>
+        </div>
+      )}
 
       {/* Toolbar: filter + export */}
       <div className="flex items-center gap-3 flex-wrap">
