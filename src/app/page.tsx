@@ -147,7 +147,7 @@ export default async function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 sm:pt-28 pb-20">
+      <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-12">
         <div className="max-w-2xl">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             ChatGPT is recommending your competitors.
@@ -169,7 +169,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Dashboard preview — real component or static fallback */}
-      <section className="max-w-5xl mx-auto px-6 pb-28">
+      <section className="max-w-5xl mx-auto px-6 pb-14">
         <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
           <div className="p-6 sm:p-8">
             {visData ? (
@@ -190,14 +190,14 @@ export default async function LandingPage() {
 
       {/* Features */}
       <section id="features" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-20 sm:py-28">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-4">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             What you get
           </h2>
-          <p className="text-muted-foreground mb-12 max-w-md">
+          <p className="text-muted-foreground mb-8 max-w-md">
             A dashboard built for one question: how does AI represent your brand?
           </p>
-          <div className="grid sm:grid-cols-2 gap-x-16 gap-y-10">
+          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
             {FEATURES.map((feature) => (
               <div key={feature.title}>
                 <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
@@ -210,11 +210,11 @@ export default async function LandingPage() {
 
       {/* How it works */}
       <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-20 sm:py-28">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-12">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
             How it works
           </h2>
-          <div className="grid sm:grid-cols-3 gap-12">
+          <div className="grid sm:grid-cols-3 gap-10">
             {[
               { title: "Add your brand", description: "Type in a name. We figure out the right prompts to ask each AI model about your industry." },
               { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way your customers use them." },
@@ -231,11 +231,11 @@ export default async function LandingPage() {
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-20 sm:py-28">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-4">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             Pricing
           </h2>
-          <p className="text-muted-foreground mb-12">
+          <p className="text-muted-foreground mb-8">
             Start free. No credit card required.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl">
@@ -280,7 +280,7 @@ export default async function LandingPage() {
 
       {/* Bottom CTA */}
       <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-20 sm:py-28">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground max-w-lg">
             Your brand is already part of the AI conversation. Find out what it&apos;s saying.
           </h2>
