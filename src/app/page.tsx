@@ -127,7 +127,7 @@ export default async function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 10l7 14 7-14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <path d="M7 13l9 6 9-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             </div>
             <span className="text-[15px] font-semibold tracking-tight">Visibility</span>
@@ -301,7 +301,7 @@ export default async function LandingPage() {
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center w-6 h-6 rounded-md bg-[#111827]">
               <svg width="10" height="10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 10l7 14 7-14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <path d="M7 13l9 6 9-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             </div>
             <span className="text-xs text-muted-foreground">Visibility</span>
