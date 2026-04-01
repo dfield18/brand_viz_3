@@ -19,7 +19,6 @@ function getTabs(category?: string | null) {
 }
 
 const SECONDARY_TABS = [
-  { label: "Responses", segment: "responses" },
   { label: "Full Data", segment: "full-data" },
   { label: "Prompts", segment: "prompts" },
 ];
