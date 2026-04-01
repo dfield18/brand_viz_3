@@ -210,8 +210,8 @@ function OverviewInner() {
           <div id="visibility-trend" className="scroll-mt-24">
             <section className="rounded-xl bg-card p-6 shadow-section">
               <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} />
-              <DataFooter prompts="industry" date={range} />
             </section>
+            <DataFooter prompts="industry" date={range} />
           </div>
         )}
 
@@ -246,8 +246,8 @@ function OverviewInner() {
             <section className="rounded-xl bg-card px-5 py-4 shadow-section">
               <h2 className="text-sm font-semibold mb-2">What AI Is Saying About {brandName}</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
-              <DataFooter prompts="all" date={range} />
             </section>
+            <DataFooter prompts="all" date={range} />
           </div>
         )}
 
