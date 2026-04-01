@@ -202,9 +202,6 @@ function OverviewInner() {
             )}
             {/* Top Recommendation — inline separator */}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
-            <div className="px-5 pb-2">
-              <DataFooter prompts="all" date={range} />
-            </div>
           </div>
         </div>
 
