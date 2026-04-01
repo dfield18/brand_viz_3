@@ -314,21 +314,10 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-  // Drift + trend: fetch historical runs using the same scope rule as the cards.
-  // Fetch ALL clusters for trend — sentiment uses all clusters for consistency with Overview.
-  // Theme drift still filters to industry below.
-  type TrendRun = { rawResponseText: string; narrativeJson: unknown; analysisJson: unknown; createdAt: Date; model: string; prompt: { cluster: string } };
-  const trendRunWhere = isAll
-    ? { brandId: brand.id, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } }
-    : { brandId: brand.id, model, createdAt: { gte: rangeCutoff }, job: { status: "done" as const } };
-  const rawTrendRuns = await prisma.run.findMany({
-    where: trendRunWhere,
-    select: { rawResponseText: true, narrativeJson: true, analysisJson: true, createdAt: true, model: true, prompt: { select: { cluster: true } } },
-    orderBy: { createdAt: "asc" },
-  }) as TrendRun[];
-
-  // Apply brand-scope filter to trend runs (same disambiguation as top-of-page)
-  const allTrendRuns = filterRunsToBrandScope(rawTrendRuns, brandIdentity);
+  // Drift + trend: use the same deduped scoped runs as the scorecard.
+  // This ensures the latest trend point matches the scorecard values exactly.
+  // allScopedRuns comes from fetchBrandRuns (deduped latest per model+prompt).
+  const allTrendRuns = allScopedRuns;
   // Theme drift uses industry runs only (narrative-specific); sentiment trend uses all clusters
   const driftRuns = allTrendRuns.filter((r) => r.narrativeJson != null && r.prompt.cluster === "industry");
 
