@@ -118,15 +118,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // KPI metrics: latest snapshot only (not full period)
-    // Find the most recent createdAt date among industry runs
-    const latestDate = runs
-      .filter((r) => r.prompt.cluster === "industry")
-      .reduce((max, r) => (r.createdAt > max ? r.createdAt : max), new Date(0));
-    // Latest snapshot = runs from the same date (within 24h of the latest)
-    const latestCutoff = new Date(latestDate.getTime() - 24 * 60 * 60 * 1000);
+    // KPI metrics: use the full deduped set from fetchBrandRuns (latest per model+prompt).
+    // No additional 24h filter — matches the overview tab and ensures the scorecard
+    // aligns with the trend chart's most recent data point.
     const latestIndustryRuns = runs.filter(
-      (r) => r.prompt.cluster === "industry" && r.createdAt >= latestCutoff,
+      (r) => r.prompt.cluster === "industry",
     );
     const latestIndustryRanks: (number | null)[] = latestIndustryRuns.map((r) =>
       computeBrandRank(r.rawResponseText, brand.name, brand.slug, r.analysisJson, brandAliases),
@@ -151,6 +147,7 @@ export async function GET(req: NextRequest) {
 
     // Share of Voice: uses canonical ranked entities (same as Full Data CSV Brand 1..5).
     // Denominator = text-verified deduped entity count, NOT raw analysisJson.competitors.length.
+    // Uses the same full deduped industry set for both scorecard SoV and per-question SoV.
     const industryRuns2 = latestIndustryRuns;
     let sovBrandMentions = 0;
     let sovTotalEntityMentions = 0;
@@ -306,14 +303,14 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Mention rate: latest snapshot industry-cluster only (matches scorecard scope)
+    // Mention rate: full deduped industry set (matches overview tab scorecard)
     const latestIndustryMentions = latestIndustryRuns.filter((r) =>
       isRunInBrandScope(r, brandIdentity),
     ).length;
     const overallMentionRate = computeMentionRate(latestIndustryMentions, latestIndustryRuns.length);
 
-    // Month-over-month KPI deltas (full period industry runs, not just latest snapshot)
-    const allIndustryRuns = runs.filter((r) => r.prompt.cluster === "industry");
+    // Month-over-month KPI deltas (same full deduped industry runs)
+    const allIndustryRuns = latestIndustryRuns;
     const now = new Date();
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
