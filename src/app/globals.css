@@ -173,6 +173,16 @@
   animation: fadeInUp 0.4s ease-out both;
 }
 
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+.skeleton-shimmer {
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
