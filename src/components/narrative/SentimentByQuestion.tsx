@@ -583,7 +583,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
             {/* Custom HTML tooltip on hover */}
             {hoveredIdx !== null && dotPixels[hoveredIdx] && (
               <div
-                className="absolute z-50 rounded-lg border border-border bg-popover p-3 shadow-md text-xs space-y-1 w-64"
+                className="absolute z-50 rounded-lg border border-border bg-popover p-3 shadow-md text-xs space-y-1 w-64 max-w-[calc(100vw-2rem)]"
                 style={{
                   left: Math.min(dotPixels[hoveredIdx].cx + 16, (chartContainerRef.current?.offsetWidth ?? 800) - 280),
                   top: dotPixels[hoveredIdx].cy - 10,
@@ -615,7 +615,7 @@ export function SentimentByQuestion({ data: initialData, brandName, brandSlug, r
 
               return (
                 <div
-                  className="absolute z-40 w-80 max-h-[340px] overflow-y-auto rounded-xl bg-card shadow-lg animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute z-40 w-80 max-w-[calc(100vw-2rem)] max-h-[340px] overflow-y-auto rounded-xl bg-card shadow-lg animate-in fade-in zoom-in-95 duration-150"
                   style={{
                     top: Math.max(8, (dot?.cy ?? 100) - 40),
                     ...(showRight

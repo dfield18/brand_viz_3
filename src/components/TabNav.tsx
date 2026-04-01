@@ -32,7 +32,7 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/60 bg-card">
-      <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end">
+      <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end overflow-x-auto scrollbar-none">
         {tabs.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
           const isActive = pathname === `/entity/${slug}/${tab.segment}`;
@@ -40,7 +40,7 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
             <Link
               key={tab.segment}
               href={href}
-              className={`px-3.5 py-2.5 text-[13px] font-medium rounded-t-md border-b-2 transition-colors ${
+              className={`px-3.5 py-2.5 text-[13px] font-medium rounded-t-md border-b-2 transition-colors whitespace-nowrap ${
                 isActive
                   ? "bg-background text-foreground border-primary"
                   : "text-muted-foreground border-transparent hover:text-foreground hover:bg-background/60"
@@ -58,7 +58,7 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
               <Link
                 key={tab.segment}
                 href={href}
-                className={`px-2.5 py-2.5 text-[11px] rounded-t-md border-b-2 transition-colors ${
+                className={`px-2.5 py-2.5 text-[11px] rounded-t-md border-b-2 transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-background text-foreground font-medium border-primary"
                     : "text-muted-foreground/50 border-transparent hover:text-muted-foreground hover:bg-background/40"

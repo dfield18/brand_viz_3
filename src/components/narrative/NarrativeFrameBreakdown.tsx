@@ -208,7 +208,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
               <YAxis
                 type="category"
                 dataKey="frame"
-                width={190}
+                width={140}
                 tickLine={false}
                 tick={(props: object) => <BarYAxisTick {...props as Parameters<typeof BarYAxisTick>[0]} />}
               />

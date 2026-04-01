@@ -143,9 +143,9 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
   return (
     <div>
       {/* Header row: title + toggle + hero stat + dropdowns */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {!compact && (
               <h2 className="text-sm text-muted-foreground font-medium">
                 {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}

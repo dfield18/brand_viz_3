@@ -376,8 +376,8 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
         </button>
       </div>
 
-      <div className="overflow-x-auto max-h-[680px] overflow-y-auto">
-        <table className="w-full text-[13px]">
+      <div className="overflow-x-auto max-h-[680px] overflow-y-auto scrollbar-none">
+        <table className="w-full text-[13px] min-w-[600px]">
           <thead className="sticky top-0 bg-card z-10">
             <tr className="border-b border-border/60 text-[11px] text-muted-foreground uppercase tracking-wider">
               <th className="pb-3 pr-4 pl-1 text-left font-medium cursor-pointer select-none align-bottom" onClick={() => handleSort("promptText")}>
