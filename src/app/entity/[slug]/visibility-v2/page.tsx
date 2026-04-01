@@ -20,6 +20,7 @@ import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { DataFooter } from "@/components/DataFooter";
 // DUMMY DATA — remove this import and the override block below to revert to real API calls
 import { PATAGONIA_DUMMY_VISIBILITY, PATAGONIA_DUMMY_TOTALS, PATAGONIA_DUMMY_JOB, NUCLEAR_ENERGY_DUMMY_VISIBILITY, NUCLEAR_ENERGY_DUMMY_TOTALS, NUCLEAR_ENERGY_DUMMY_JOB } from "@/lib/dummyVisibilityData";
 
@@ -234,6 +235,7 @@ function VisibilityV2Inner() {
             activeMetric={activeMetric}
             sparklines={sparklines}
           />
+          <DataFooter prompts="industry" date={range} />
         </div>
 
         <div className="px-5 py-4 mt-2">
@@ -321,6 +323,7 @@ function VisibilityV2Inner() {
             )}
           </div>
         </div>
+        <DataFooter prompts="industry" date={range} />
 
         {/* ── Ranking ──────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Ranking</h2>
@@ -339,6 +342,7 @@ function VisibilityV2Inner() {
             )}
           </PositionDistributionOverTime>
         )}
+        <DataFooter prompts="industry" date={range} />
 
         {/* ── Performance ──────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Performance</h2>
@@ -367,6 +371,7 @@ function VisibilityV2Inner() {
             <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} isOrg={isOrg} />
           </div>
         </div>
+        <DataFooter prompts="industry" date={range} />
       </div>
     </div>
   );
