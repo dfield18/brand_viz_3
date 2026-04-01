@@ -220,7 +220,7 @@ function OverviewInner() {
 
         <div id="cross-model" className="scroll-mt-24">
           <CrossModelTable models={data.modelComparison} brandName={brandName} />
-          <DataFooter prompts="all" date="latest" />
+          <DataFooter prompts="mixed" date="latest" />
         </div>
 
         {/* ── Narrative ──────────────────────────── */}
@@ -241,7 +241,7 @@ function OverviewInner() {
             }))}
             brandName={brandName}
           />
-          <DataFooter prompts="all" date={range} />
+          <DataFooter prompts="all" date="latest" />
         </div>
 
         {/* Standout Quotes */}
@@ -260,7 +260,7 @@ function OverviewInner() {
 
         <div id="competitor-snapshot" className="scroll-mt-24">
           <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
-          <DataFooter prompts="industry" date="latest" />
+          <DataFooter prompts="all" date={range} />
         </div>
 
         <div id="competitor-alerts" className="scroll-mt-24">
@@ -273,7 +273,7 @@ function OverviewInner() {
 
         <div id="sources-trend" className="scroll-mt-24">
           <TopSourcesList brandSlug={params.slug} model={model} range={range} />
-          <DataFooter prompts="all" date="latest" />
+          <DataFooter prompts="all" date={range} />
         </div>
 
         {/* ── Run Prompts ──────────────────────────── */}
