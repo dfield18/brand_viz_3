@@ -8,7 +8,7 @@ interface DataFooterProps {
 export function DataFooter({ prompts, date }: DataFooterProps) {
   const promptLabel =
     prompts === "industry"
-      ? "Industry prompts only (no brand named)"
+      ? "Generic industry questions (no brands mentioned)"
       : "All prompt types";
   const dateLabel =
     date === "latest"
