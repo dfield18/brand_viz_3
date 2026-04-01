@@ -1,6 +1,7 @@
 "use client";
 
 import type { ModelComparison } from "@/types/api";
+import { CircleHelp } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 
 interface CrossModelTableProps {
@@ -139,8 +140,9 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
                   key={metric.key}
                   className="text-center text-xs font-medium tracking-wide text-muted-foreground uppercase py-3 px-4"
                 >
-                  <span className="relative group cursor-default">
+                  <span className="relative group cursor-default inline-flex items-center gap-1 justify-center">
                     {metric.label}
+                    <CircleHelp className="h-3 w-3 text-muted-foreground/40" />
                     <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-52 rounded-lg border border-border bg-popover p-2.5 text-[11px] font-normal normal-case tracking-normal text-popover-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
                       {metric.tooltip}
                     </span>
