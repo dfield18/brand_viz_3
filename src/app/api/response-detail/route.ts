@@ -77,9 +77,12 @@ export async function GET(req: NextRequest) {
     templateText = templateText.replace(new RegExp(escName, "gi"), "{brand}");
 
     // Also try replacing industry placeholder back
+    // expandPromptPlaceholders expands {industry} to "the X industry", so reverse that pattern first
     const industry = (brand as unknown as { industry?: string | null }).industry;
     if (industry) {
       const escIndustry = industry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Match the full expanded form "the X industry" first, then bare industry name
+      templateText = templateText.replace(new RegExp(`the ${escIndustry} industry`, "gi"), "{industry}");
       templateText = templateText.replace(new RegExp(escIndustry, "gi"), "{industry}");
     }
 
