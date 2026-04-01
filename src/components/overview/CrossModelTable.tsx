@@ -128,7 +128,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
   return (
     <div className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-sm font-semibold mb-4">How Each AI Platform Sees {brandName}</h2>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-none">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
