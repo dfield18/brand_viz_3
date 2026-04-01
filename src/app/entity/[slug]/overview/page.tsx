@@ -241,7 +241,6 @@ function OverviewInner() {
             }))}
             brandName={brandName}
           />
-          <DataFooter prompts="all" date="latest" />
         </div>
 
         {/* Standout Quotes */}
