@@ -14,7 +14,7 @@ const FEATURES = [
   },
   {
     title: "Sentiment & Narrative",
-    description: "What stories is AI telling about you? Positive, negative, or somewhere in between?",
+    description: "Is AI framing your organization positively or negatively? What narratives is it spreading about your cause?",
   },
   {
     title: "Competitive Share",
