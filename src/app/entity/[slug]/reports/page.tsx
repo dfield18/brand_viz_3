@@ -950,70 +950,9 @@ function ReportInner() {
 
   if (loading) {
     return (
-      <div className="max-w-[900px] mx-auto px-8 py-10">
-        {/* Header skeleton */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="h-7 w-72 bg-muted/60 rounded skeleton-shimmer mb-2" />
-            <div className="h-3.5 w-48 bg-muted/40 rounded skeleton-shimmer" />
-          </div>
-          <div className="h-9 w-36 bg-muted/40 rounded-lg skeleton-shimmer" />
-        </div>
-
-        {/* Email subscribe skeleton */}
-        <div className="h-12 w-full bg-muted/30 rounded-lg skeleton-shimmer mb-8" />
-
-        {/* Section: Executive Summary */}
-        <div className="h-5 w-48 bg-muted/50 rounded skeleton-shimmer mb-4 mt-6" />
-        <div className="space-y-2 mb-8">
-          <div className="h-3 w-full bg-muted/30 rounded skeleton-shimmer" />
-          <div className="h-3 w-5/6 bg-muted/30 rounded skeleton-shimmer" />
-          <div className="h-3 w-2/3 bg-muted/30 rounded skeleton-shimmer" />
-        </div>
-
-        {/* Section: KPI cards */}
-        <div className="h-5 w-40 bg-muted/50 rounded skeleton-shimmer mb-4" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-border/40 p-4">
-              <div className="h-2.5 w-20 bg-muted/40 rounded skeleton-shimmer mb-3" />
-              <div className="h-6 w-14 bg-muted/50 rounded skeleton-shimmer" />
-            </div>
-          ))}
-        </div>
-
-        {/* Section: Model Comparison table */}
-        <div className="h-5 w-56 bg-muted/50 rounded skeleton-shimmer mb-4" />
-        <div className="space-y-3 mb-8">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex gap-6">
-              <div className="h-3 w-24 bg-muted/40 rounded skeleton-shimmer" />
-              <div className="h-3 w-12 bg-muted/30 rounded skeleton-shimmer" />
-              <div className="h-3 w-12 bg-muted/30 rounded skeleton-shimmer" />
-              <div className="h-3 w-16 bg-muted/30 rounded skeleton-shimmer" />
-              <div className="h-3 w-16 bg-muted/30 rounded skeleton-shimmer" />
-            </div>
-          ))}
-        </div>
-
-        {/* Section: Competition */}
-        <div className="h-5 w-44 bg-muted/50 rounded skeleton-shimmer mb-4" />
-        <div className="space-y-2 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="h-3 w-28 bg-muted/40 rounded skeleton-shimmer" />
-              <div className="h-4 flex-1 bg-muted/20 rounded skeleton-shimmer" />
-              <div className="h-3 w-10 bg-muted/30 rounded skeleton-shimmer" />
-            </div>
-          ))}
-        </div>
-
-        {/* Section: Narrative */}
-        <div className="h-5 w-36 bg-muted/50 rounded skeleton-shimmer mb-4" />
-        <div className="space-y-2">
-          <div className="h-3 w-full bg-muted/30 rounded skeleton-shimmer" />
-          <div className="h-3 w-4/5 bg-muted/30 rounded skeleton-shimmer" />
-          <div className="h-3 w-3/5 bg-muted/30 rounded skeleton-shimmer" />
+      <div>
+        <div className="fixed top-0 left-0 right-0 z-[100] h-[3px]">
+          <div className="h-full bg-primary/80 progress-bar-animate" />
         </div>
       </div>
     );

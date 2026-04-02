@@ -192,6 +192,18 @@
   display: none;
 }
 
+/* Top progress bar */
+@keyframes progressBar {
+  0% { width: 0%; }
+  20% { width: 30%; }
+  50% { width: 60%; }
+  80% { width: 85%; }
+  100% { width: 95%; }
+}
+.progress-bar-animate {
+  animation: progressBar 8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
