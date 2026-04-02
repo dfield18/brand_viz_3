@@ -32,7 +32,7 @@ model EmailSubscription {
   id               String   @id @default(cuid())
   brandId          String
   email            String
-  frequency        String   @default("weekly") // "weekly" | "monthly"
+  frequency        String   @default("weekly") // "daily" | "weekly" | "monthly"
   enabled          Boolean  @default(true)
   unsubscribeToken String?  @unique
   lastSentAt       DateTime?

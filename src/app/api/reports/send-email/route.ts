@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     where.brandId = brand.id;
   } else {
     where.frequency = frequency;
-    const cooldownDays = frequency === "monthly" ? 27 : 6;
+    const cooldownDays = frequency === "monthly" ? 27 : frequency === "daily" ? 0.8 : 6;
     const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
     where.OR = [
       { lastSentAt: null },

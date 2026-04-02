@@ -855,6 +855,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           onChange={(e) => setFrequency(e.target.value)}
           className="text-xs px-2 py-1.5 rounded-lg border border-border bg-background"
         >
+          <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
         </select>
@@ -879,7 +880,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">
-                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; next report: {frequency === "weekly" ? "Monday 9am UTC" : "1st of month 9am UTC"}
+                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; next report: {frequency === "daily" ? "daily at 9am UTC" : frequency === "weekly" ? "Monday 9am UTC" : "1st of month 9am UTC"}
               </p>
             </div>
             <button

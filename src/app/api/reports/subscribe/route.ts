@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
   if (!brandSlug || !email) {
     return NextResponse.json({ error: "brandSlug and email are required" }, { status: 400 });
   }
-  if (!["weekly", "monthly"].includes(frequency)) {
-    return NextResponse.json({ error: "frequency must be weekly or monthly" }, { status: 400 });
+  if (!["daily", "weekly", "monthly"].includes(frequency)) {
+    return NextResponse.json({ error: "frequency must be daily, weekly, or monthly" }, { status: 400 });
   }
   // Basic email validation
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
