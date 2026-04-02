@@ -1,14 +1,28 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useBrands } from "@/lib/useBrands";
+import { prefetchAll } from "@/lib/useCachedFetch";
 import { Brand } from "@/types/api";
 import { dataClient } from "@/dataClient";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { brands, loading } = useBrands();
+
+  // Prefetch overview + visibility APIs for all brands so tabs load instantly
+  useEffect(() => {
+    if (brands.length === 0) return;
+    const urls: string[] = [];
+    for (const brand of brands) {
+      const base = `brandSlug=${encodeURIComponent(brand.slug)}&model=all&range=90`;
+      urls.push(`/api/overview?${base}`);
+      urls.push(`/api/visibility?${base}`);
+    }
+    prefetchAll(urls);
+  }, [brands]);
 
   function handleBrandClick(brand: Brand) {
     dataClient.setLastViewedBrand(brand.slug);
