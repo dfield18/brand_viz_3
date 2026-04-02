@@ -22,7 +22,7 @@ const FEATURES = [
   },
   {
     title: "Source Attribution",
-    description: "Which websites does AI cite when talking about your brand? Are they yours?",
+    description: "Which websites does AI cite when discussing your issues? Are they your publications — or your opponents'?",
   },
   {
     title: "Platform Comparison",
