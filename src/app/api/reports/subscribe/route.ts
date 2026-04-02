@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   const subscriptions = await prisma.emailSubscription.findMany({
     where: { brandId: brand.id },
-    select: { id: true, email: true, frequency: true, preferredHour: true, enabled: true, lastSentAt: true },
+    select: { id: true, email: true, frequency: true, preferredHour: true, preferredDay: true, enabled: true, lastSentAt: true },
   });
 
   return NextResponse.json({ subscriptions });
@@ -39,9 +39,10 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
 
   const body = await req.json();
-  const { brandSlug, email, frequency = "weekly", preferredHour } = body;
+  const { brandSlug, email, frequency = "weekly", preferredHour, preferredDay } = body;
   const hour = typeof preferredHour === "number" && preferredHour >= 0 && preferredHour <= 23
     ? Math.round(preferredHour) : 9;
+  const day = typeof preferredDay === "number" ? Math.round(preferredDay) : (frequency === "weekly" ? 1 : 1);
 
   if (!brandSlug || !email) {
     return NextResponse.json({ error: "brandSlug and email are required" }, { status: 400 });
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest) {
 
   const subscription = await prisma.emailSubscription.upsert({
     where: { brandId_email: { brandId: brand.id, email } },
-    create: { brandId: brand.id, email, frequency, preferredHour: hour, enabled: true, unsubscribeToken: crypto.randomUUID() },
-    update: { frequency, preferredHour: hour, enabled: true },
+    create: { brandId: brand.id, email, frequency, preferredHour: hour, preferredDay: day, enabled: true, unsubscribeToken: crypto.randomUUID() },
+    update: { frequency, preferredHour: hour, preferredDay: day, enabled: true },
   });
 
   return NextResponse.json({ subscription });

@@ -56,9 +56,14 @@ export async function POST(req: NextRequest) {
     where.brandId = brand.id;
   } else {
     where.frequency = frequency;
-    // Only send to subscribers whose preferred hour matches the current UTC hour
-    const currentHour = new Date().getUTCHours();
-    where.preferredHour = currentHour;
+    // Only send to subscribers whose preferred hour/day matches now (UTC)
+    const now = new Date();
+    where.preferredHour = now.getUTCHours();
+    if (frequency === "weekly") {
+      where.preferredDay = now.getUTCDay(); // 0=Sun..6=Sat
+    } else if (frequency === "monthly") {
+      where.preferredDay = now.getUTCDate(); // 1-28
+    }
     const cooldownDays = frequency === "monthly" ? 27 : frequency === "daily" ? 0.8 : 6;
     const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
     where.OR = [

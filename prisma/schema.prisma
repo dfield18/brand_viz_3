@@ -34,6 +34,7 @@ model EmailSubscription {
   email            String
   frequency        String   @default("weekly") // "daily" | "weekly" | "monthly"
   preferredHour    Int      @default(9) // 0-23 UTC hour for delivery
+  preferredDay     Int      @default(1) // weekly: 0=Sun..6=Sat (default Mon); monthly: 1-28 (default 1st)
   enabled          Boolean  @default(true)
   unsubscribeToken String?  @unique
   lastSentAt       DateTime?

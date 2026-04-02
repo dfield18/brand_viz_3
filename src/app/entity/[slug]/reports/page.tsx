@@ -767,10 +767,11 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
   const [email, setEmail] = useState("");
   const [frequency, setFrequency] = useState("weekly");
   const [preferredHour, setPreferredHour] = useState(9);
+  const [preferredDay, setPreferredDay] = useState(1); // weekly: 1=Mon; monthly: 1=1st
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [sendError, setSendError] = useState<string | null>(null);
-  const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; preferredHour?: number; enabled: boolean }[]>([]);
+  const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; preferredHour?: number; preferredDay?: number; enabled: boolean }[]>([]);
 
   useEffect(() => {
     fetch(`/api/reports/subscribe?brandSlug=${encodeURIComponent(brandSlug)}`)
@@ -786,7 +787,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
       const res = await fetch("/api/reports/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandSlug, email: email.trim(), frequency, preferredHour }),
+        body: JSON.stringify({ brandSlug, email: email.trim(), frequency, preferredHour, preferredDay }),
       });
       if (res.ok) {
         setStatus("saved");
@@ -860,6 +861,30 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
         </select>
+        {frequency === "weekly" && (
+          <select
+            value={preferredDay}
+            onChange={(e) => setPreferredDay(Number(e.target.value))}
+            className="text-xs px-2 py-1.5 rounded-lg border border-border bg-background"
+          >
+            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((name, i) => (
+              <option key={i} value={i}>{name}</option>
+            ))}
+          </select>
+        )}
+        {frequency === "monthly" && (
+          <select
+            value={preferredDay}
+            onChange={(e) => setPreferredDay(Number(e.target.value))}
+            className="text-xs px-2 py-1.5 rounded-lg border border-border bg-background"
+          >
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {d}{d === 1 ? "st" : d === 2 ? "nd" : d === 3 ? "rd" : "th"}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           value={preferredHour}
           onChange={(e) => setPreferredHour(Number(e.target.value))}
@@ -892,7 +917,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">
-                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; {frequency === "daily" ? "daily" : frequency === "weekly" ? "Mondays" : "1st of month"} at {preferredHour === 0 ? "12am" : preferredHour < 12 ? `${preferredHour}am` : preferredHour === 12 ? "12pm" : `${preferredHour - 12}pm`} UTC
+                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; {frequency === "daily" ? "Daily" : frequency === "weekly" ? `${["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][preferredDay] ?? "Mondays"}` : `${preferredDay}${preferredDay === 1 ? "st" : preferredDay === 2 ? "nd" : preferredDay === 3 ? "rd" : "th"} of each month`} at {preferredHour === 0 ? "12am" : preferredHour < 12 ? `${preferredHour}am` : preferredHour === 12 ? "12pm" : `${preferredHour - 12}pm`} UTC
               </p>
             </div>
             <button
