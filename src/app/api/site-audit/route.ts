@@ -202,8 +202,9 @@ async function fetchWithTimeout(
       signal: controller.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; SiteAuditBot/1.0; +https://visibility.app)",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
       redirect: "follow",
     });
@@ -375,7 +376,7 @@ async function auditWebsite(url: string): Promise<SiteAuditResult> {
   // --- Homepage ---
   if (pageRes.status === "fulfilled") {
     const res = pageRes.value;
-    base.reachable = res.ok;
+    base.reachable = res.status < 500;
     base.security.isHttps = url.startsWith("https://");
     base.security.hasHSTS = !!res.headers.get("strict-transport-security");
     base.performance.loadTimeMs = Date.now() - startTime;
