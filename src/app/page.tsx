@@ -26,7 +26,7 @@ const FEATURES = [
   },
   {
     title: "Platform Comparison",
-    description: "ChatGPT and Gemini can tell very different stories. See the breakdown by model.",
+    description: "ChatGPT and Gemini can frame your organization very differently. See which platforms help or hurt your message.",
   },
   {
     title: "Weekly Reports",
