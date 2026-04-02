@@ -395,14 +395,14 @@ function NarrativeSection({ d }: { d: Record<string, unknown> }) {
       {n.strengths && n.strengths.length > 0 && (
         <>
           <SH3>Strengths</SH3>
-          {n.strengths.map((s, i) => <P key={i}><strong>{s.text}</strong> \u2014 {s.count} mention{s.count !== 1 ? "s" : ""}</P>)}
+          {n.strengths.map((s, i) => <P key={i}><strong>{s.text}</strong> &mdash; {s.count} mention{s.count !== 1 ? "s" : ""}</P>)}
         </>
       )}
 
       {n.weaknesses && n.weaknesses.length > 0 && (
         <>
           <SH3>Weaknesses</SH3>
-          {n.weaknesses.map((w, i) => <P key={i}><strong>{w.text}</strong> \u2014 {w.count} mention{w.count !== 1 ? "s" : ""}</P>)}
+          {n.weaknesses.map((w, i) => <P key={i}><strong>{w.text}</strong> &mdash; {w.count} mention{w.count !== 1 ? "s" : ""}</P>)}
         </>
       )}
 
@@ -1032,7 +1032,7 @@ function ReportInner() {
 
       <div className="flex items-center justify-between mb-8 no-print">
         <div>
-          <h1 className="text-2xl font-bold">{r.meta.brandName} \u2014 AI Visibility Report</h1>
+          <h1 className="text-2xl font-bold">{r.meta.brandName} &mdash; AI Visibility Report</h1>
           <p className="text-sm text-gray-500 mt-1">
             {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; Generated {new Date(r.meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </p>
@@ -1051,7 +1051,7 @@ function ReportInner() {
       </div>
 
       <div className="hidden print:block mb-6">
-        <h1 className="text-xl font-bold">{r.meta.brandName} \u2014 AI Visibility Report</h1>
+        <h1 className="text-xl font-bold">{r.meta.brandName} &mdash; AI Visibility Report</h1>
         <p className="text-xs text-gray-500 mt-1">
           {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; {new Date(r.meta.generatedAt).toLocaleDateString()}
         </p>

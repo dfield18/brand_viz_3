@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   platformConsistencyFromPolarization,
   modelConfidenceFromHedgingRate,
@@ -60,7 +61,14 @@ export async function GET(req: NextRequest) {
     fetchApi("/api/competitor-alerts"),
   ]);
 
+  // Look up proper display name from DB (avoids showing slug like "l-l-bean")
+  const brandRecord = await prisma.brand.findUnique({
+    where: { slug: brandSlug },
+    select: { name: true, displayName: true },
+  });
   const brandName =
+    brandRecord?.displayName ??
+    brandRecord?.name ??
     overviewRes?.overview?.brandName ??
     narrativeRes?.narrative?.brandName ??
     visibilityRes?.brandName ??
