@@ -216,9 +216,9 @@ export default async function LandingPage() {
           </h2>
           <div className="grid sm:grid-cols-3 gap-10">
             {[
-              { title: "Add your brand", description: "Type in a name. We figure out the right prompts to ask each AI model about your industry." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way your customers use them." },
-              { title: "See what comes back", description: "Brand recall, sentiment, competitor share, source citations. Updated on a schedule you pick." },
+              { title: "Add your organization", description: "Enter your organization\u2019s name. We generate targeted questions about your issue area for each AI platform." },
+              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way voters and donors use them." },
+              { title: "See what comes back", description: "Visibility scores, sentiment analysis, peer organization tracking, and source citations. Updated on your schedule." },
             ].map((item) => (
               <div key={item.title}>
                 <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
