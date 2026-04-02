@@ -150,9 +150,9 @@ export default async function LandingPage() {
       <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-12">
         <div className="max-w-2xl">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
-            ChatGPT is recommending your competitors.
+            Millions of users ask AI about policy issues every day.
             <br />
-            <span className="text-muted-foreground">Is it recommending you?</span>
+            <span className="text-muted-foreground">Is AI telling your organization&apos;s story — or someone else&apos;s?</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
             Visibility tracks what AI platforms say about your brand across ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews.
