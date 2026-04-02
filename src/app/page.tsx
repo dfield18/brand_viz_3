@@ -195,7 +195,7 @@ export default async function LandingPage() {
             What you get
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md">
-            A dashboard built for one question: how does AI represent your brand?
+            Built for advocacy organizations and campaigns that need to know how AI is shaping their public narrative.
           </p>
           <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
             {FEATURES.map((feature) => (
