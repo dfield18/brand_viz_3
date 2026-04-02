@@ -18,7 +18,7 @@ const FEATURES = [
   },
   {
     title: "Competitive Share",
-    description: "Who does AI recommend instead of you? Track share of voice shifts over time.",
+    description: "When AI discusses your issue, which organizations does it highlight? Track how your share of the conversation shifts over time.",
   },
   {
     title: "Source Attribution",
