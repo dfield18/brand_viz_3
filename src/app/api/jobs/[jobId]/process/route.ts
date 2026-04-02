@@ -678,8 +678,9 @@ export async function POST(
       }),
     );
 
-    // Save results to DB
+    // Phase 3: Save results to DB (fast — no GPT calls)
     let processedThisCall = 0;
+    const savedRuns: { runId: string; responseText: string; analysis: unknown }[] = [];
     for (const { prompt, promptTextHash, responseText, analysis, citations } of responses) {
       const requestHash = prompt.competitor
         ? sha256(`${jobId}|${prompt.id}|${prompt.competitor}|v1`)
@@ -701,7 +702,9 @@ export async function POST(
           },
         });
 
-        // Non-blocking side effects — fire and forget so the response returns fast
+        savedRuns.push({ runId: run.id, responseText, analysis });
+
+        // Non-blocking side effects — fire and forget
         persistProminenceForRun({
           runId: run.id,
           model: job.model,
@@ -711,30 +714,6 @@ export async function POST(
           responseText,
           analysisJson: analysis,
         }).catch(() => {});
-
-        // Await narrative extraction so it completes before the function ends.
-        // Previously fire-and-forget, which caused narrativeJson to stay null
-        // if the GPT call timed out or the function exited before completion.
-        try {
-          const narrative = await extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug);
-          await prisma.run.update({ where: { id: run.id }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } });
-        } catch (e) {
-          console.error(`[process] extractNarrativeForRun failed for run ${run.id}:`, e instanceof Error ? e.message : e);
-        }
-
-        // Extract competitor narratives (also awaited)
-        const analysisObj = analysis as { competitors?: { name: string }[] } | null;
-        if (analysisObj?.competitors && analysisObj.competitors.length > 0) {
-          try {
-            const compNarratives = await extractCompetitorNarratives(responseText, analysisObj.competitors);
-            await prisma.run.update({
-              where: { id: run.id },
-              data: { competitorNarrativesJson: JSON.parse(JSON.stringify(compNarratives)) },
-            });
-          } catch (e) {
-            console.error(`[process] extractCompetitorNarratives failed for run ${run.id}:`, e instanceof Error ? e.message : e);
-          }
-        }
 
         persistSourcesForRun({
           runId: run.id,
@@ -762,6 +741,35 @@ export async function POST(
         }
       }
     }
+
+    // Phase 4: Narrative extraction — all runs in parallel
+    // This is the slowest step (2 GPT calls per run), so we do it after saving
+    // all runs and run all extractions concurrently.
+    await Promise.allSettled(
+      savedRuns.map(async ({ runId, responseText, analysis }) => {
+        // Narrative extraction
+        try {
+          const narrative = await extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug);
+          await prisma.run.update({ where: { id: runId }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } });
+        } catch (e) {
+          console.error(`[process] extractNarrativeForRun failed for run ${runId}:`, e instanceof Error ? e.message : e);
+        }
+
+        // Competitor narrative extraction
+        const analysisObj = analysis as { competitors?: { name: string }[] } | null;
+        if (analysisObj?.competitors && analysisObj.competitors.length > 0) {
+          try {
+            const compNarratives = await extractCompetitorNarratives(responseText, analysisObj.competitors);
+            await prisma.run.update({
+              where: { id: runId },
+              data: { competitorNarrativesJson: JSON.parse(JSON.stringify(compNarratives)) },
+            });
+          } catch (e) {
+            console.error(`[process] extractCompetitorNarratives failed for run ${runId}:`, e instanceof Error ? e.message : e);
+          }
+        }
+      }),
+    );
 
     // Recompute completed count
     const completedPrompts = await prisma.run.count({ where: { jobId } });
