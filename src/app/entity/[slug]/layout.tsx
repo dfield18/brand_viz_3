@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import { TabNav } from "@/components/TabNav";
 import { ResponseViewerProvider } from "@/components/ResponseViewer";
 import { useBrands } from "@/lib/useBrands";
@@ -20,18 +22,69 @@ export default function EntityLayout({
   const { brands } = useBrands();
   const brand = brands.find((b) => b.slug === slug);
 
-  // Prefetch all main tab APIs so switching tabs feels instant
+  const [viewCheck, setViewCheck] = useState<{
+    allowed: boolean;
+    viewedToday: number;
+    limit: number;
+    brandsToday: string[];
+  } | null>(null);
+
+  // Check brand view limit
   useEffect(() => {
     if (!slug) return;
+    fetch("/api/brand-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandSlug: slug }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setViewCheck(data); })
+      .catch(() => {});
+  }, [slug]);
+
+  // Prefetch all main tab APIs so switching tabs feels instant
+  useEffect(() => {
+    if (!slug || viewCheck?.allowed === false) return;
     const model = searchParams.get("model") || "all";
     const range = searchParams.get("range") || "90";
     const qs = `brandSlug=${encodeURIComponent(slug)}&model=${model}&range=${range}`;
-    // Slight delay so the current tab loads first
     const timer = setTimeout(() => {
       prefetchAll(PREFETCH_TABS.map((tab) => `/api/${tab}?${qs}`));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [slug, searchParams]);
+  }, [slug, searchParams, viewCheck?.allowed]);
+
+  // Show paywall if over limit
+  if (viewCheck && !viewCheck.allowed) {
+    return (
+      <div>
+        <TabNav slug={slug} category={brand?.category} />
+        <div className="max-w-lg mx-auto px-6 py-20 text-center">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-6">
+            <Lock className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Daily limit reached</h2>
+          <p className="text-muted-foreground mb-2">
+            You&apos;ve viewed {viewCheck.viewedToday} of {viewCheck.limit} brands today on the free plan.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Brands viewed today: {viewCheck.brandsToday.join(", ")}
+          </p>
+          <div className="flex flex-col items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+            >
+              Back to Dashboard
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Upgrade to Pro for unlimited brands. Coming soon.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ResponseViewerProvider>

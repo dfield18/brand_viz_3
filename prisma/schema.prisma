@@ -12,6 +12,17 @@ datasource db {
   provider = "postgresql"
 }
 
+model BrandView {
+  id        String   @id @default(cuid())
+  userId    String
+  brandSlug String
+  date      String   // "YYYY-MM-DD" UTC
+  createdAt DateTime @default(now())
+
+  @@unique([userId, brandSlug, date])
+  @@index([userId, date])
+}
+
 model Brand {
   id          String   @id @default(cuid())
   name        String
