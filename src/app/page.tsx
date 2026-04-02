@@ -155,7 +155,7 @@ export default async function LandingPage() {
             <span className="text-muted-foreground">Is AI telling your organization&apos;s story — or someone else&apos;s?</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-            Visibility tracks what AI platforms say about your brand across ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews.
+            Visibility monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.
           </p>
           <div className="mt-8">
             <Link
