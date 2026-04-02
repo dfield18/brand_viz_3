@@ -1,41 +1,33 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Free tier brand access control.
+ *
+ * Free users can view a curated set of preset demo brands.
+ * Paid users (once Stripe is integrated) can add and view any brand.
+ *
+ * To change the preset brands, edit the PRESET_BRAND_SLUGS array.
+ */
 
-const FREE_TIER_DAILY_LIMIT = 5;
+export const PRESET_BRAND_SLUGS = [
+  "aclu",
+  "aipac",
+  "common-cause",
+  "fairshake",
+  "adl",
+];
 
 /**
- * Check if a user can view a brand today (free tier: 5 unique brands/day).
- * Records the view if allowed. Returns { allowed, viewedToday, limit }.
+ * Check if a user can access a brand.
+ * Free tier: only preset brands. Paid tier: any brand.
+ *
+ * TODO: Check Stripe subscription status for paid users.
  */
-export async function checkAndRecordBrandView(
-  userId: string,
-  brandSlug: string,
-): Promise<{ allowed: boolean; viewedToday: number; limit: number; brandsToday: string[] }> {
-  const today = new Date().toISOString().slice(0, 10);
+export function canAccessBrand(brandSlug: string, _userId: string): { allowed: boolean; isPreset: boolean } {
+  const isPreset = PRESET_BRAND_SLUGS.includes(brandSlug);
 
-  // Get all brands this user has viewed today
-  const todaysViews = await prisma.brandView.findMany({
-    where: { userId, date: today },
-    select: { brandSlug: true },
-  });
+  // TODO: Once Stripe is integrated, check subscription here:
+  // const isPaid = await checkStripeSubscription(userId);
+  // if (isPaid) return { allowed: true, isPreset };
+  const isPaid = false;
 
-  const brandsToday = [...new Set(todaysViews.map((v) => v.brandSlug))];
-
-  // If this brand was already viewed today, always allow (doesn't count as new)
-  if (brandsToday.includes(brandSlug)) {
-    return { allowed: true, viewedToday: brandsToday.length, limit: FREE_TIER_DAILY_LIMIT, brandsToday };
-  }
-
-  // Check if at limit
-  if (brandsToday.length >= FREE_TIER_DAILY_LIMIT) {
-    return { allowed: false, viewedToday: brandsToday.length, limit: FREE_TIER_DAILY_LIMIT, brandsToday };
-  }
-
-  // Record the new view
-  await prisma.brandView.upsert({
-    where: { userId_brandSlug_date: { userId, brandSlug, date: today } },
-    create: { userId, brandSlug, date: today },
-    update: {},
-  });
-
-  return { allowed: true, viewedToday: brandsToday.length + 1, limit: FREE_TIER_DAILY_LIMIT, brandsToday: [...brandsToday, brandSlug] };
+  return { allowed: isPreset || isPaid, isPreset };
 }

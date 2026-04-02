@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { checkAndRecordBrandView } from "@/lib/brandViewLimit";
+import { canAccessBrand, PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 
 /**
  * POST /api/brand-view
  * Body: { brandSlug }
  *
- * Records a brand view for the current user and returns whether
- * they're within the free tier daily limit.
+ * Checks if the current user can access this brand.
+ * Free tier: preset brands only. Paid tier: any brand.
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -21,6 +21,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
 
-  const result = await checkAndRecordBrandView(userId, brandSlug);
-  return NextResponse.json(result);
+  const result = canAccessBrand(brandSlug, userId);
+  return NextResponse.json({ ...result, presetBrands: PRESET_BRAND_SLUGS });
 }
