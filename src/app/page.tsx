@@ -30,7 +30,7 @@ const FEATURES = [
   },
   {
     title: "Weekly Reports",
-    description: "KPI snapshots, competitor alerts, and missed opportunities — delivered to your inbox.",
+    description: "Automated reports with visibility scores, peer organization alerts, and narrative shifts — delivered to your inbox.",
   },
 ];
 
