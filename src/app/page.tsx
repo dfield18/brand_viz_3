@@ -282,7 +282,7 @@ export default async function LandingPage() {
       <section className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground max-w-lg">
-            Your brand is already part of the AI conversation. Find out what it&apos;s saying.
+            Your organization is already part of the AI conversation. Find out how AI is framing your cause.
           </h2>
           <div className="mt-6">
             <Link
