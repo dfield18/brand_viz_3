@@ -10,7 +10,7 @@ import type { VisibilityTrendPoint } from "@/types/api";
 const FEATURES = [
   {
     title: "Brand Recall",
-    description: "How often does AI mention you when someone asks about your industry?",
+    description: "When voters ask AI about your policy area, how often does your organization come up?",
   },
   {
     title: "Sentiment & Narrative",
