@@ -35,6 +35,10 @@ export function BrandSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuItem onSelect={() => onAddBrand()}>
+          + Add Brand
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {brands.length === 0 && (
           <DropdownMenuItem disabled className="text-muted-foreground">
             No brands yet
@@ -56,10 +60,6 @@ export function BrandSelector({
             {brand.name}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => onAddBrand()}>
-          + Add Brand
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
