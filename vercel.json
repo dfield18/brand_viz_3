@@ -2,15 +2,15 @@
   "crons": [
     {
       "path": "/api/reports/send-email?frequency=daily",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/reports/send-email?frequency=weekly",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * 1"
     },
     {
       "path": "/api/reports/send-email?frequency=monthly",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 1 * *"
     }
   ]
 }
