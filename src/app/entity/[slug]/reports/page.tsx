@@ -766,10 +766,11 @@ interface ReportData {
 function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
   const [email, setEmail] = useState("");
   const [frequency, setFrequency] = useState("weekly");
+  const [preferredHour, setPreferredHour] = useState(9);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [sendError, setSendError] = useState<string | null>(null);
-  const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; enabled: boolean }[]>([]);
+  const [subscriptions, setSubscriptions] = useState<{ email: string; frequency: string; preferredHour?: number; enabled: boolean }[]>([]);
 
   useEffect(() => {
     fetch(`/api/reports/subscribe?brandSlug=${encodeURIComponent(brandSlug)}`)
@@ -785,7 +786,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
       const res = await fetch("/api/reports/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandSlug, email: email.trim(), frequency }),
+        body: JSON.stringify({ brandSlug, email: email.trim(), frequency, preferredHour }),
       });
       if (res.ok) {
         setStatus("saved");
@@ -859,6 +860,17 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
         </select>
+        <select
+          value={preferredHour}
+          onChange={(e) => setPreferredHour(Number(e.target.value))}
+          className="text-xs px-2 py-1.5 rounded-lg border border-border bg-background"
+        >
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>
+              {h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`} UTC
+            </option>
+          ))}
+        </select>
         <button
           onClick={handleSubscribe}
           disabled={status === "saving" || !email.trim()}
@@ -880,7 +892,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">
-                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; next report: {frequency === "daily" ? "daily at 9am UTC" : frequency === "weekly" ? "Monday 9am UTC" : "1st of month 9am UTC"}
+                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; {frequency === "daily" ? "daily" : frequency === "weekly" ? "Mondays" : "1st of month"} at {preferredHour === 0 ? "12am" : preferredHour < 12 ? `${preferredHour}am` : preferredHour === 12 ? "12pm" : `${preferredHour - 12}pm`} UTC
               </p>
             </div>
             <button

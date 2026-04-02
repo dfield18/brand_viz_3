@@ -33,6 +33,7 @@ model EmailSubscription {
   brandId          String
   email            String
   frequency        String   @default("weekly") // "daily" | "weekly" | "monthly"
+  preferredHour    Int      @default(9) // 0-23 UTC hour for delivery
   enabled          Boolean  @default(true)
   unsubscribeToken String?  @unique
   lastSentAt       DateTime?

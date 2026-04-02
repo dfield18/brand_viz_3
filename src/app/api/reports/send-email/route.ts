@@ -56,6 +56,9 @@ export async function POST(req: NextRequest) {
     where.brandId = brand.id;
   } else {
     where.frequency = frequency;
+    // Only send to subscribers whose preferred hour matches the current UTC hour
+    const currentHour = new Date().getUTCHours();
+    where.preferredHour = currentHour;
     const cooldownDays = frequency === "monthly" ? 27 : frequency === "daily" ? 0.8 : 6;
     const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
     where.OR = [
