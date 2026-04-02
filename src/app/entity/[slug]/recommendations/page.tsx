@@ -623,7 +623,7 @@ function RecommendationsInner() {
 
   return (
     <div className="flex gap-8 xl:-ml-52">
-      <div className="w-40 shrink-0">
+      <div className="hidden lg:block w-40 shrink-0">
         <OnThisPage sections={activeSections} />
       </div>
 

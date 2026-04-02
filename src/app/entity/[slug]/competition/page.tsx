@@ -139,7 +139,7 @@ function CompetitionInner() {
   return (
     <div className="flex gap-8 xl:-ml-52">
       {/* Sidebar */}
-      <div className="w-40 shrink-0">
+      <div className="hidden lg:block w-40 shrink-0">
         <OnThisPage sections={sections} />
       </div>
 
