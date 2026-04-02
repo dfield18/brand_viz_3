@@ -57,6 +57,7 @@ function stripMarkdown(text: string): string {
     .replace(/`/g, "")
     .replace(/~~/g, "")
     .replace(/\(\s*\)/g, "")
+    .replace(/^[\s•\-–—]+/gm, "") // strip leading bullets/dashes
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -234,11 +235,15 @@ function NarrativeInner() {
                   <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
                   <p className="text-[13px] text-foreground/70 leading-relaxed">
                     <span className="font-medium text-amber-700 mr-1.5">Perception Issue:</span>
-                    {stripMarkdown(
-                      recsData.negativeNarratives.narrativeSummary
+                    {(() => {
+                      const raw = recsData.negativeNarratives.narrativeSummary
                         ? recsData.negativeNarratives.narrativeSummary.split("\n").filter(Boolean)[0]
-                        : recsData.negativeNarratives.weaknesses[0].suggestion
-                    )}
+                        : recsData.negativeNarratives.weaknesses[0].weakness;
+                      // Strip the suggestion suffix (e.g. " — consider publishing content...")
+                      const cleaned = stripMarkdown(raw).replace(/\s*[—–-]+\s*consider\s.*/i, "");
+                      return `"${cleaned}"`;
+                    })()}{" — "}
+                    <span className="text-muted-foreground">consider publishing content that directly addresses this perception.</span>
                   </p>
                 </div>
               )}
