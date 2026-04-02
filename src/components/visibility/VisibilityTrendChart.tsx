@@ -199,13 +199,18 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             )}
           </div>
           {!compact && (
-            <p className="text-sm text-muted-foreground mt-2 mb-2">
-              {effectiveMetric === "visibility"
-                ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
-                : effectiveMetric === "topResult"
-                ? "How often the brand appears as the #1 recommendation in AI responses"
-                : "The brand's share of all entity mentions across AI responses"}
-            </p>
+            <>
+              <p className="text-sm text-muted-foreground mt-2 mb-1">
+                {effectiveMetric === "visibility"
+                  ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
+                  : effectiveMetric === "topResult"
+                  ? "How often the brand appears as the #1 recommendation in AI responses"
+                  : "The brand's share of all entity mentions across AI responses"}
+              </p>
+              <p className="text-[11px] text-muted-foreground/50 italic mb-2">
+                Note: historical data points are estimated from the latest available response per model and question as of each date.
+              </p>
+            </>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-4">
