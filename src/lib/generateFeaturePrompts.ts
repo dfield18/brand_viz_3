@@ -387,9 +387,11 @@ Generate exactly 8 questions that:
 Return ONLY a JSON array of objects with "text" and "intent" fields.
 Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
 
+If you reference a year, use ${new Date().getFullYear()}.
+
 Example format (for a running shoe brand):
 [
-  {"text": "What are the best running shoes in 2025?", "intent": "high-intent"},
+  {"text": "What are the best running shoes in ${new Date().getFullYear()}?", "intent": "high-intent"},
   {"text": "What should I look for when buying running shoes?", "intent": "informational"}
 ]`,
         },
