@@ -166,6 +166,9 @@ export default async function LandingPage() {
             >
               Try it free
             </Link>
+            <p className="text-[10px] text-muted-foreground/40 mt-3">
+              By signing up you agree to receive occasional product updates via email.
+            </p>
           </div>
         </div>
       </section>
