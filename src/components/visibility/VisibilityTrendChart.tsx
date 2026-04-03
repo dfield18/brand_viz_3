@@ -23,13 +23,15 @@ interface VisibilityTrendChartProps {
   brandName?: string;
   /** Hide description text for a cleaner look */
   compact?: boolean;
+  /** Override the default metric description text */
+  descriptionOverride?: Record<string, string>;
 }
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact, descriptionOverride }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
@@ -201,11 +203,11 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
           {!compact && (
             <>
               <p className="text-sm text-muted-foreground mt-2 mb-1">
-                {effectiveMetric === "visibility"
+                {descriptionOverride?.[effectiveMetric] ?? (effectiveMetric === "visibility"
                   ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
                   : effectiveMetric === "topResult"
                   ? "How often the brand appears as the #1 recommendation in AI responses"
-                  : "The brand's share of all entity mentions across AI responses"}
+                  : "The brand's share of all entity mentions across AI responses")}
               </p>
               <p className="text-[11px] text-muted-foreground/50 italic mb-2">
                 Note: historical data points are estimated from the latest available response per model and question as of each date.
