@@ -14,7 +14,7 @@ function getTabs(category?: string | null) {
     { label: "Sources", segment: "sources" },
     { label: "Recommendations", segment: "recommendations" },
     { label: "Site Audit", segment: "site-audit" },
-    { label: "Reports", segment: "reports" },
+    { label: "Email Reports", segment: "reports" },
   ];
 }
 

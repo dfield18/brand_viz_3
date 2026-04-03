@@ -892,7 +892,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
         >
           {Array.from({ length: 24 }, (_, h) => (
             <option key={h} value={h}>
-              {h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`} UTC
+              {h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`} EST
             </option>
           ))}
         </select>
@@ -917,7 +917,7 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">
-                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; {frequency === "daily" ? "Daily" : frequency === "weekly" ? `${["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][preferredDay] ?? "Mondays"}` : `${preferredDay}${preferredDay === 1 ? "st" : preferredDay === 2 ? "nd" : preferredDay === 3 ? "rd" : "th"} of each month`} at {preferredHour === 0 ? "12am" : preferredHour < 12 ? `${preferredHour}am` : preferredHour === 12 ? "12pm" : `${preferredHour - 12}pm`} UTC
+                {activeCount} subscriber{activeCount !== 1 ? "s" : ""} &mdash; {frequency === "daily" ? "Daily" : frequency === "weekly" ? `${["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][preferredDay] ?? "Mondays"}` : `${preferredDay}${preferredDay === 1 ? "st" : preferredDay === 2 ? "nd" : preferredDay === 3 ? "rd" : "th"} of each month`} at {preferredHour === 0 ? "12am" : preferredHour < 12 ? `${preferredHour}am` : preferredHour === 12 ? "12pm" : `${preferredHour - 12}pm`} EST
               </p>
             </div>
             <button
