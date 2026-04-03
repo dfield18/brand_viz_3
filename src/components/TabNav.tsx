@@ -20,7 +20,7 @@ function getTabs(category?: string | null) {
 
 const SECONDARY_TABS = [
   { label: "Full Prompt Data", segment: "full-data" },
-  { label: "Prompts", segment: "prompts" },
+  { label: "Refine Prompts", segment: "prompts" },
 ];
 
 function TabNavInner({ slug, category }: { slug: string; category?: string | null }) {
