@@ -168,7 +168,9 @@ function HeaderInner() {
           <a href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 13l9 6 9-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <line x1="7" y1="11" x2="25" y2="11" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
+                <line x1="7" y1="16" x2="21" y2="16" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+                <line x1="7" y1="21" x2="17" y2="21" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
               </svg>
             </div>
             <span className="text-[15px] font-semibold tracking-tight text-foreground">
