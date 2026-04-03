@@ -154,6 +154,13 @@ function OverviewInner() {
   ];
 
   const kpis = apiData.visibilityKpis;
+  const industry = apiData.brandIndustry;
+  const industryLabel = industry || "this space";
+  const trendDescriptions: Record<string, string> = {
+    visibility: `How often AI platforms mention ${brandName} when users ask about ${industryLabel} — without naming any organization`,
+    topResult: `How often ${brandName} appears as the #1 recommendation when AI answers questions about ${industryLabel}`,
+    sov: `${brandName}'s share of all organization mentions when AI discusses ${industryLabel}`,
+  };
   // Collect all frames tied at the top percentage (sort to ensure highest first)
   const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);
   const topPct = sortedFrames[0]?.percentage ?? 0;
@@ -209,7 +216,7 @@ function OverviewInner() {
         {visData?.visibility?.trend && visData.visibility.trend.length > 0 && (
           <div id="visibility-trend" className="scroll-mt-24">
             <section className="rounded-xl bg-card p-6 shadow-section">
-              <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} />
+              <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} descriptionOverride={trendDescriptions} />
             </section>
             <DataFooter prompts="industry" date={range} />
           </div>
