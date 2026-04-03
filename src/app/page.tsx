@@ -152,9 +152,9 @@ export default async function LandingPage() {
       <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-12">
         <div className="max-w-2xl">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
-            Millions of users ask AI about policy issues every day.
+            AI is shaping how people understand your cause.
             <br />
-            <span className="text-muted-foreground">Is AI telling your organization&apos;s story — or someone else&apos;s?</span>
+            <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
             Visibility monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.
