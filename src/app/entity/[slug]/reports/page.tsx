@@ -942,116 +942,18 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
 
 function ReportInner() {
   const params = useParams<{ slug: string }>();
-  const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
-  const range = Number(searchParams.get("range") ?? 90);
-  const model = searchParams.get("model") ?? "all";
-
-  const [report, setReport] = useState<ReportData["report"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const qs = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
-        const res = await fetch(`/api/report?${qs}`);
-        if (!res.ok) throw new Error(`Report API returned ${res.status}`);
-        const data = await res.json();
-        if (cancelled) return;
-        setReport(data.report ?? null);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load report data");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [params.slug, model, range]);
-
-  if (loading) {
-    return (
-      <div>
-        <div className="fixed top-0 left-0 right-0 z-[100] h-[3px]">
-          <div className="h-full bg-primary/80 progress-bar-animate" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !report) {
-    return (
-      <div className="max-w-[900px] mx-auto px-8 py-16 text-center">
-        <p className="text-sm text-gray-500">{error ?? "No report data available. Run prompts first."}</p>
-      </div>
-    );
-  }
-
-  const r = report;
 
   return (
-    <div className="max-w-[900px] mx-auto px-8 py-10 print:px-0 print:py-0 print:max-w-none">
-      <style>{`
-        @media print {
-          nav, header, .no-print, .print-hide { display: none !important; }
-          body { font-size: 11px; color: #111; }
-          h2 { page-break-after: avoid; }
-          h3 { page-break-after: avoid; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; }
-        }
-        @page { margin: 0.6in; }
-      `}</style>
-
-      <div className="flex items-center justify-between mb-8 no-print">
-        <div>
-          <h1 className="text-2xl font-bold">{r.meta.brandName} &mdash; AI Visibility Report</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; Generated {new Date(r.meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          </p>
-        </div>
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Printer className="h-4 w-4" />
-          Print / Save PDF
-        </button>
-      </div>
-
-      <div className="mb-6 no-print">
-        <EmailSubscribePanel brandSlug={params.slug} />
-      </div>
-
-      <div className="hidden print:block mb-6">
-        <h1 className="text-xl font-bold">{r.meta.brandName} &mdash; AI Visibility Report</h1>
-        <p className="text-xs text-gray-500 mt-1">
-          {MODEL_LABELS[r.meta.model] ?? r.meta.model} &middot; {r.meta.range}-day window &middot; {new Date(r.meta.generatedAt).toLocaleDateString()}
+    <div className="max-w-[900px] mx-auto px-8 py-10">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-1">{brandName} &mdash; Reports</h1>
+        <p className="text-sm text-gray-500">
+          Set up automated email reports for your team.
         </p>
       </div>
 
-      <SH>Overview</SH>
-      {r.overview ? <OverviewSection d={r.overview} /> : <Empty label="No overview data available." />}
-
-      <SH>Visibility</SH>
-      {r.visibility ? <VisibilitySection d={r.visibility} /> : <Empty label="No visibility data available." />}
-
-      <SH>Narrative</SH>
-      {r.narrative ? <NarrativeSection d={r.narrative} /> : <Empty label="No narrative data available." />}
-
-      <SH>Issue Landscape</SH>
-      {r.landscape ? <LandscapeSection d={r.landscape} /> : <Empty label="No landscape data available." />}
-
-      <SH>Sources</SH>
-      {r.sources ? <SourcesSection d={r.sources} /> : <Empty label="No sources data available." />}
-
-      <div className="mt-10 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center print:mt-6">
-        {r.meta.brandName} AI Visibility Report &middot; {new Date(r.meta.generatedAt).toLocaleDateString()}
-      </div>
+      <EmailSubscribePanel brandSlug={params.slug} />
     </div>
   );
 }
