@@ -2,7 +2,8 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useCallback, useMemo, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
+import { RunPromptsPanel } from "@/components/RunPromptsPanel";
 import { ModelKey } from "@/types/api";
 import { dataClient } from "@/dataClient";
 import { useBrands, invalidateBrands } from "@/lib/useBrands";
@@ -55,6 +56,7 @@ function HeaderInner() {
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [entityType, setEntityType] = useState<"company" | "cause">("company");
+  const [runOpen, setRunOpen] = useState(false);
 
   const range = (Number(searchParams.get("range")) || 90) as 7 | 30 | 90;
   const model = (searchParams.get("model") || "all") as "all" | ModelKey;
@@ -190,13 +192,17 @@ function HeaderInner() {
             </div>
           )}
 
-          {/* Spacer to keep layout balanced */}
-          {isEntityPage && (
-            <div />
-          )}
-
-          {/* User avatar */}
-          <div className="ml-4">
+          {/* Right: Run button + User avatar */}
+          <div className="flex items-center gap-3">
+            {isEntityPage && currentSlug && (
+              <button
+                onClick={() => setRunOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+              >
+                <Play className="h-3 w-3" />
+                Run
+              </button>
+            )}
             <UserButton />
           </div>
         </div>
@@ -385,6 +391,18 @@ function HeaderInner() {
                 </Button>
               </div>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Run Prompts dialog */}
+      <Dialog open={runOpen} onOpenChange={setRunOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Run Prompts</DialogTitle>
+          </DialogHeader>
+          {currentSlug && (
+            <RunPromptsPanel brandSlug={currentSlug} model={model} range={range} />
           )}
         </DialogContent>
       </Dialog>

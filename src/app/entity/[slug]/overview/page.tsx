@@ -20,7 +20,6 @@ import { useCachedFetch, prefetchAll } from "@/lib/useCachedFetch";
 import { useBrandName } from "@/lib/useBrandName";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { DataFooter } from "@/components/DataFooter";
-import { RunPromptsPanel } from "@/components/RunPromptsPanel";
 
 interface ApiResponse {
   hasData: boolean;
@@ -279,12 +278,6 @@ function OverviewInner() {
           <DataFooter prompts="all" date={range} />
         </div>
 
-        {/* ── Run Prompts ──────────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Run Prompts</h2>
-
-        <div id="run-prompts" className="scroll-mt-24">
-          <RunPromptsPanel brandSlug={params.slug} model={model} range={range} />
-        </div>
       </div>
     </div>
   );
