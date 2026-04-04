@@ -209,9 +209,6 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                   ? "How often the brand appears as the #1 recommendation in AI responses"
                   : "The brand's share of all entity mentions across AI responses")}
               </p>
-              <p className="text-[11px] text-muted-foreground/50 italic mb-2">
-                Note: historical data points are estimated from the latest available response per model and question as of each date.
-              </p>
             </>
           )}
         </div>
@@ -400,6 +397,12 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
       </ResponsiveContainer>
 
       </>
+      )}
+
+      {!compact && (
+        <p className="text-[11px] text-muted-foreground/50 italic mt-3">
+          Note: historical data points are estimated from the latest available response per model and question as of each date.
+        </p>
       )}
 
     </div>
