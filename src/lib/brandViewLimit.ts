@@ -9,7 +9,7 @@
 
 export const PRESET_BRAND_SLUGS = [
   "aclu",
-  "aipac",
+  "senate-majority-pac",
   "common-cause",
   "fairshake",
   "adl",
