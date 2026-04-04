@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useCallback, useMemo, Suspense } from "react";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { RunPromptsPanel } from "@/components/RunPromptsPanel";
 import { ModelKey } from "@/types/api";
 import { dataClient } from "@/dataClient";
@@ -199,8 +199,8 @@ function HeaderInner() {
                 onClick={() => setRunOpen(true)}
                 className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors"
               >
-                <Play className="h-3 w-3" />
-                Run
+                <RefreshCw className="h-3 w-3" />
+                Rerun
               </button>
             )}
             <UserButton />
