@@ -14,9 +14,9 @@ export default function SignInPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Visibility</h1>
+            <h1 className="text-2xl font-bold tracking-tight">aiSaysWhat</h1>
             <p className="text-sm text-muted-foreground mt-1.5 max-w-xs leading-relaxed">
-              Monitor and improve how AI platforms represent your brand
+              Monitor how AI platforms describe your organization
             </p>
           </div>
         </div>

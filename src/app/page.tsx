@@ -132,7 +132,7 @@ export default async function LandingPage() {
                 <line x1="7" y1="21" x2="17" y2="21" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
               </svg>
             </div>
-            <span className="text-[15px] font-semibold tracking-tight">Visibility</span>
+            <span className="text-[15px] font-semibold tracking-tight">aiSaysWhat</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/sign-in" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -157,7 +157,7 @@ export default async function LandingPage() {
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-            Visibility monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.
+            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.
           </p>
           <div className="mt-8">
             <Link
@@ -311,7 +311,7 @@ export default async function LandingPage() {
                 <line x1="7" y1="21" x2="17" y2="21" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
               </svg>
             </div>
-            <span className="text-xs text-muted-foreground">Visibility</span>
+            <span className="text-xs text-muted-foreground">aiSaysWhat</span>
           </div>
           <p className="text-xs text-muted-foreground/50">
             &copy; {new Date().getFullYear()}

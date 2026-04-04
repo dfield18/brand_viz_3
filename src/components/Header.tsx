@@ -174,7 +174,7 @@ function HeaderInner() {
               </svg>
             </div>
             <span className="text-[15px] font-semibold tracking-tight text-foreground">
-              Visibility
+              aiSaysWhat
             </span>
           </a>
 

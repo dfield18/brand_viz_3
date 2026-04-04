@@ -51,7 +51,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   const sc = overview?.scorecard;
   const sent = overview?.sentimentSplit;
 
-  const subject = `${brandName} AI Visibility Report \u2014 ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  const subject = `${brandName} aiSaysWhat Report \u2014 ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
   const kpiCards = sc ? [
     { label: "Brand Recall", value: pct(sc.brandRecall), desc: "% of AI responses mentioning you" },
@@ -78,7 +78,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   <!-- Header -->
   <div style="background:#111827;color:#fff;padding:24px 28px;border-radius:12px 12px 0 0;">
     <h1 style="margin:0;font-size:20px;font-weight:700;">${esc(brandName)}</h1>
-    <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">AI Visibility Report &middot; ${meta.range}-day window &middot; ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+    <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">aiSaysWhat Report &middot; ${meta.range}-day window &middot; ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
   </div>
 
   ${kpiCards.length > 0 ? `<!-- KPI Cards -->
@@ -141,7 +141,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   <!-- Footer -->
   <div style="background:#f9fafb;padding:20px 28px;border-radius:0 0 12px 12px;border:1px solid #e5e5e5;border-top:1px solid #f0f0f0;">
     <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">
-      This report was generated automatically by AI Visibility.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe</a>` : ""}
+      This report was generated automatically by aiSaysWhat.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe</a>` : ""}
     </p>
   </div>
 

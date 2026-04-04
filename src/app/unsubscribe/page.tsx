@@ -39,7 +39,7 @@ export default async function UnsubscribePage({
           <>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 12px" }}>Unsubscribed</h1>
             <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-              You&apos;ve been unsubscribed from <strong>{brandName}</strong> AI Visibility reports. You won&apos;t receive any more emails for this brand.
+              You&apos;ve been unsubscribed from <strong>{brandName}</strong> aiSaysWhat reports. You won&apos;t receive any more emails for this brand.
             </p>
           </>
         )}

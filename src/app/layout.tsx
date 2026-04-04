@@ -4,8 +4,8 @@ import "./globals.css";
 import { ClientHeader } from "@/components/ClientHeader";
 
 export const metadata: Metadata = {
-  title: "AI Visibility",
-  description: "AI Search Visibility Dashboard",
+  title: "aiSaysWhat",
+  description: "Monitor how AI platforms describe your organization",
 };
 
 export default function RootLayout({
