@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useState, useCallback, useMemo, Suspense } from "react";
+import { useState, useCallback, useMemo, useEffect, Suspense } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { RunPromptsPanel } from "@/components/RunPromptsPanel";
 import { ModelKey } from "@/types/api";
 import { dataClient } from "@/dataClient";
 import { useBrands, invalidateBrands } from "@/lib/useBrands";
+import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 import { BrandSelector } from "./BrandSelector";
 import {
   Dialog,
@@ -57,6 +58,25 @@ function HeaderInner() {
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [entityType, setEntityType] = useState<"company" | "cause">("company");
   const [runOpen, setRunOpen] = useState(false);
+  const [isPro, setIsPro] = useState<boolean | null>(null);
+
+  // Check pro status
+  useEffect(() => {
+    if (!pathname.startsWith("/entity/")) return;
+    fetch("/api/brand-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandSlug: PRESET_BRAND_SLUGS[0] }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setIsPro(data.isPro ?? false); })
+      .catch(() => {});
+  }, [pathname]);
+
+  // Filter brands for free users — only show presets
+  const visibleBrands = isPro === false
+    ? brands.filter((b) => PRESET_BRAND_SLUGS.includes(b.slug))
+    : brands;
 
   const range = (Number(searchParams.get("range")) || 90) as 7 | 30 | 90;
   const model = (searchParams.get("model") || "all") as "all" | ModelKey;
@@ -184,7 +204,7 @@ function HeaderInner() {
           {isEntityPage && (
             <div className="flex-1 flex justify-start ml-6">
               <BrandSelector
-                brands={brands}
+                brands={visibleBrands}
                 currentSlug={currentSlug}
                 onSelect={handleBrandChange}
                 onAddBrand={handleAddBrand}
