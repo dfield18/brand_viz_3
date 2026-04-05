@@ -48,8 +48,12 @@ export default function DashboardPage() {
   }
 
   function handleAddBrand() {
-    if (brands.length > 0) {
-      router.push(`/entity/${brands[0].slug}/overview`);
+    // Navigate to a preset brand page with ?addBrand=true to auto-open the dialog
+    const presetBrand = brands.find((b) => PRESET_BRAND_SLUGS.includes(b.slug));
+    if (presetBrand) {
+      router.push(`/entity/${presetBrand.slug}/overview?addBrand=true`);
+    } else if (brands.length > 0) {
+      router.push(`/entity/${brands[0].slug}/overview?addBrand=true`);
     } else {
       router.push("/dashboard/new");
     }

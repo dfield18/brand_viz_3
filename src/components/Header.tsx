@@ -98,6 +98,19 @@ function HeaderInner() {
     router.push(`/entity/${slug}/overview?${params.toString()}`);
   }
 
+  // Auto-open add brand dialog if ?addBrand=true
+  useEffect(() => {
+    if (searchParams.get("addBrand") === "true") {
+      handleAddBrand();
+      // Remove the query param so it doesn't re-trigger
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("addBrand");
+      const qs = params.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleAddBrand() {
     setNewBrandName("");
     setRunningSlug(null);
