@@ -96,22 +96,6 @@ export default function DashboardPage() {
             <span className="text-[10px] text-muted-foreground/50">Pro plan</span>
           </button>
 
-          {customBrands
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((brand) => (
-              <button
-                key={brand.id}
-                onClick={() => handleBrandClick(brand)}
-                className="flex flex-col items-center justify-center gap-2 h-36 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all cursor-pointer text-center px-3 relative"
-              >
-                <Lock className="absolute top-2.5 right-2.5 h-3 w-3 text-muted-foreground/30" />
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted/50 text-muted-foreground font-bold text-lg">
-                  {brand.name.charAt(0).toUpperCase()}
-                </div>
-                <span className="text-sm font-medium text-foreground leading-tight">{brand.name}</span>
-                <span className="text-[10px] text-muted-foreground/50">Pro</span>
-              </button>
-            ))}
         </div>
       </div>
     </div>
