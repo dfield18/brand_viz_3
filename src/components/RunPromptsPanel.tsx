@@ -214,20 +214,28 @@ export function RunPromptsPanel({ brandSlug, model, range }: RunPromptsPanelProp
         </p>
       </div>
 
-      {/* Run button */}
-      <Button
-        size="sm"
-        onClick={handleRun}
-        disabled={isRunning}
-        className="gap-2"
-      >
-        {isRunning ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Play className="h-3.5 w-3.5" />
-        )}
-        {isRunning ? `Running${modelProgress ? ` — ${modelProgress}` : ""}...` : "Run prompts (90-day trend)"}
-      </Button>
+      {/* Run + Modify buttons */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={handleRun}
+          disabled={isRunning}
+          className="gap-2"
+        >
+          {isRunning ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+          {isRunning ? `Running${modelProgress ? ` — ${modelProgress}` : ""}...` : "Run prompts (90-day trend)"}
+        </Button>
+        <a
+          href={`/entity/${brandSlug}/prompts`}
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 h-8 rounded-md border border-border hover:bg-muted/50 transition-colors"
+        >
+          Modify Prompts
+        </a>
+      </div>
 
       {/* Progress */}
       {status && status !== "queued" && isRunning && (
