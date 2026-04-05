@@ -56,13 +56,18 @@ export async function POST(req: NextRequest) {
     where.brandId = brand.id;
   } else {
     where.frequency = frequency;
-    // Only send to subscribers whose preferred hour/day matches now (UTC)
+    // Only send to subscribers whose preferred hour/day matches now.
+    // preferredHour/Day are stored in EST (UTC-5). Convert current UTC to EST.
     const now = new Date();
-    where.preferredHour = now.getUTCHours();
+    const estOffset = -5;
+    const estHour = (now.getUTCHours() + estOffset + 24) % 24;
+    // If EST offset pushes us to the previous day, adjust day accordingly
+    const estDate = new Date(now.getTime() + estOffset * 3600_000);
+    where.preferredHour = estHour;
     if (frequency === "weekly") {
-      where.preferredDay = now.getUTCDay(); // 0=Sun..6=Sat
+      where.preferredDay = estDate.getUTCDay(); // 0=Sun..6=Sat in EST
     } else if (frequency === "monthly") {
-      where.preferredDay = now.getUTCDate(); // 1-28
+      where.preferredDay = estDate.getUTCDate(); // 1-28 in EST
     }
     const cooldownDays = frequency === "monthly" ? 27 : frequency === "daily" ? 0.8 : 6;
     const cooldownDate = new Date(Date.now() - cooldownDays * 86_400_000);
