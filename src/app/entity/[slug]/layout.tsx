@@ -59,8 +59,16 @@ export default function EntityLayout({
     try {
       const res = await fetch("/api/stripe/checkout", { method: "POST" });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Stripe checkout error:", data);
+        alert(data.error || "Failed to start checkout. Please try again.");
+        setCheckoutLoading(false);
+      }
+    } catch (err) {
+      console.error("Checkout failed:", err);
+      alert("Failed to start checkout. Please try again.");
       setCheckoutLoading(false);
     }
   }, []);
