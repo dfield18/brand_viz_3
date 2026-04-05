@@ -10,41 +10,54 @@ import { prisma } from "@/lib/prisma";
  * Creates a Stripe Checkout session for the Pro plan.
  */
 export async function POST() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  // Find or create Stripe customer
-  let sub = await prisma.userSubscription.findUnique({ where: { userId } });
-  let customerId = sub?.stripeCustomerId;
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return NextResponse.json({ error: "STRIPE_SECRET_KEY not configured" }, { status: 500 });
+    }
 
-  if (!customerId) {
-    const customer = await getStripe().customers.create({
+    const priceId = process.env.STRIPE_PRO_PRICE_ID;
+    if (!priceId) {
+      return NextResponse.json({ error: "STRIPE_PRO_PRICE_ID not configured" }, { status: 500 });
+    }
+
+    // Find or create Stripe customer
+    let sub = await prisma.userSubscription.findUnique({ where: { userId } });
+    let customerId = sub?.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await getStripe().customers.create({
+        metadata: { userId },
+      });
+      customerId = customer.id;
+      sub = await prisma.userSubscription.create({
+        data: { userId, stripeCustomerId: customerId, plan: "free", status: "inactive" },
+      });
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+    const session = await getStripe().checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard?upgraded=true`,
+      cancel_url: `${appUrl}/dashboard`,
       metadata: { userId },
     });
-    customerId = customer.id;
-    sub = await prisma.userSubscription.create({
-      data: { userId, stripeCustomerId: customerId, plan: "free", status: "inactive" },
-    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    console.error("[stripe/checkout] Error:", err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Checkout failed" },
+      { status: 500 },
+    );
   }
-
-  const priceId = process.env.STRIPE_PRO_PRICE_ID;
-  if (!priceId) {
-    return NextResponse.json({ error: "STRIPE_PRO_PRICE_ID not configured" }, { status: 500 });
-  }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-
-  const session = await getStripe().checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?upgraded=true`,
-    cancel_url: `${appUrl}/dashboard`,
-    metadata: { userId },
-  });
-
-  return NextResponse.json({ url: session.url });
 }
