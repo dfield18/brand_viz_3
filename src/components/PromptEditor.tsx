@@ -53,6 +53,7 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
   const [saving, setSaving] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
   const [industry, setIndustry] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const fetchPrompts = useCallback(async () => {
     try {
@@ -153,6 +154,26 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
     setSaving(false);
   }
 
+  async function handleRegenerate() {
+    if (!confirm("This will replace all auto-generated prompts with fresh ones. Your custom prompts will be kept. Continue?")) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch("/api/prompts/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandSlug }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPrompts(data.prompts);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
@@ -188,15 +209,27 @@ export function PromptEditor({ brandSlug, brandName, entityType, onStartAnalysis
           <span className="font-medium text-foreground">{enabledCount}</span> of{" "}
           {prompts.length} prompts enabled
         </span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs gap-1"
-          onClick={() => setShowAddForm(true)}
-        >
-          <Plus className="h-3 w-3" />
-          Add Custom
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={handleRegenerate}
+            disabled={regenerating}
+          >
+            {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            {regenerating ? "Regenerating..." : "Regenerate Prompts"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus className="h-3 w-3" />
+            Add Custom
+          </Button>
+        </div>
       </div>
 
       {/* Add custom prompt form */}
