@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 import { TabNav } from "@/components/TabNav";
 import { ResponseViewerProvider } from "@/components/ResponseViewer";
 import { useBrands } from "@/lib/useBrands";
@@ -53,6 +53,18 @@ export default function EntityLayout({
     return () => clearTimeout(timer);
   }, [slug, searchParams, viewCheck?.allowed]);
 
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const handleUpgrade = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/stripe/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setCheckoutLoading(false);
+    }
+  }, []);
+
   // Show upgrade prompt if brand not accessible
   if (viewCheck && !viewCheck.allowed) {
     return (
@@ -62,20 +74,25 @@ export default function EntityLayout({
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-6">
             <Lock className="h-7 w-7 text-primary" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Pro feature</h2>
+          <h2 className="text-xl font-bold mb-2">Upgrade to Pro</h2>
           <p className="text-muted-foreground mb-6">
             Custom brands require a Pro subscription. On the free plan, you can explore our preset demo brands.
           </p>
           <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={handleUpgrade}
+              disabled={checkoutLoading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 transition-colors"
+            >
+              {checkoutLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Upgrade to Pro — $49/mo
+            </button>
             <Link
               href="/dashboard"
-              className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              View Available Brands
+              View free demo brands
             </Link>
-            <p className="text-xs text-muted-foreground">
-              Upgrade to Pro to add and monitor any brand. Coming soon.
-            </p>
           </div>
         </div>
       </div>

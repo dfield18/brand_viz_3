@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { canAccessBrand, PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
+import { canAccessBrand } from "@/lib/brandViewLimitServer";
+import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 
 /**
  * POST /api/brand-view
  * Body: { brandSlug }
  *
  * Checks if the current user can access this brand.
- * Free tier: preset brands only. Paid tier: any brand.
+ * Free tier: preset brands only. Pro tier: any brand.
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -21,6 +22,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
 
-  const result = canAccessBrand(brandSlug, userId);
+  const result = await canAccessBrand(brandSlug, userId);
   return NextResponse.json({ ...result, presetBrands: PRESET_BRAND_SLUGS });
 }

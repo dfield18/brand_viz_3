@@ -12,6 +12,18 @@ datasource db {
   provider = "postgresql"
 }
 
+model UserSubscription {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  stripeCustomerId     String   @unique
+  stripeSubscriptionId String?  @unique
+  plan                 String   @default("free") // "free" | "pro"
+  status               String   @default("inactive") // "active" | "canceled" | "past_due" | "inactive"
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
 model BrandView {
   id        String   @id @default(cuid())
   userId    String
