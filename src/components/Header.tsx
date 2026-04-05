@@ -56,7 +56,7 @@ function HeaderInner() {
   const [closeBlocked, setCloseBlocked] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [entityType, setEntityType] = useState<"company" | "cause">("company");
+  const [entityType, setEntityType] = useState<"company" | "cause">("cause");
   const [runOpen, setRunOpen] = useState(false);
   const [isPro, setIsPro] = useState<boolean | null>(null);
 
@@ -268,17 +268,6 @@ function HeaderInner() {
                 <div className="flex items-center rounded-md border border-border overflow-hidden">
                   <button
                     type="button"
-                    onClick={() => setEntityType("company")}
-                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                      entityType === "company"
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    Company
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setEntityType("cause")}
                     className={`px-2.5 py-1 text-xs font-medium transition-colors ${
                       entityType === "cause"
@@ -287,6 +276,17 @@ function HeaderInner() {
                     }`}
                   >
                     Cause / Advocacy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityType("company")}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                      entityType === "company"
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    Company
                   </button>
                 </div>
               </div>
