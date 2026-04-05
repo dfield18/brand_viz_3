@@ -282,27 +282,109 @@ interface GeneratedPrompt {
 }
 
 /**
+ * Step 1 for advocacy orgs: GPT analyzes the org and generates relevant
+ * question categories tailored to what real people would ask about this
+ * specific type of organization.
+ */
+async function generateAdvocacyCategories(
+  brandName: string,
+  industry: string,
+): Promise<string[]> {
+  const defaults = [
+    "effectiveness and impact",
+    "trust and credibility",
+    "donation worthiness",
+    "political leaning and perception",
+    "comparison to peer organizations",
+    "controversies or criticism",
+    "how to get involved",
+    "policy influence",
+  ];
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+      max_tokens: 400,
+      messages: [
+        {
+          role: "system",
+          content: `You help identify what real voters, donors, activists, and journalists would want to know about a political or advocacy organization.
+
+Given an organization name and its issue area, return 8 question categories that represent the most important things people would ask AI about this type of organization.
+
+Think about what a marketing or communications person at this org would care about — what are people asking AI about them?
+
+Rules:
+- Each category should be a short phrase (2-6 words)
+- Categories should be specific to this type of org, not generic
+- Include at least one about perception/reputation, one about effectiveness, one about comparison to peers
+- Return ONLY a JSON array of 8 strings`,
+        },
+        {
+          role: "user",
+          content: `What would people ask AI about "${brandName}" (a ${industry} organization)? Return 8 question categories.`,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content?.trim();
+    if (!content) return defaults;
+
+    const parsed = JSON.parse(
+      content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+    );
+    if (Array.isArray(parsed) && parsed.length >= 5 && parsed.every((c: unknown) => typeof c === "string")) {
+      return parsed.slice(0, 8);
+    }
+    return defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+/**
  * Generate brand-cluster prompts — questions a real user would ask about
- * the specific brand. Mentions the brand by name.
+ * the specific brand/org. Mentions the name directly.
+ *
+ * For advocacy orgs: uses dynamic categories tailored to the org type.
+ * For commercial brands: uses standard brand research questions.
  */
 export async function generateBrandPrompts(
   brandName: string,
   industry: string,
   category: BrandCategory,
 ): Promise<GeneratedPrompt[]> {
-  const context = category === "political_advocacy"
-    ? `"${brandName}" is a political/advocacy organization in the ${industry} space.`
-    : `"${brandName}" is a brand/company in the ${industry} industry.`;
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 800,
-      messages: [
-        {
-          role: "system",
-          content: `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) to learn about a specific brand or organization.
+    let categories: string[] | null = null;
+    if (category === "political_advocacy") {
+      categories = await generateAdvocacyCategories(brandName, industry);
+    }
+
+    const context = category === "political_advocacy"
+      ? `"${brandName}" is a political/advocacy organization in the ${industry} space.
+
+You have identified these question categories as most relevant for this org:
+${(categories ?? []).map((c, i) => `${i + 1}. ${c}`).join("\n")}
+
+Generate one natural-sounding question per category that mentions "${brandName}" by name. These should sound like what a real voter, donor, journalist, or activist would type into ChatGPT or Perplexity.`
+      : `"${brandName}" is a brand/company in the ${industry} industry.`;
+
+    const systemPrompt = category === "political_advocacy"
+      ? `You generate search queries that real voters, donors, activists, and journalists would type into AI assistants about a specific organization.
+
+${context}
+
+Rules:
+- Generate exactly 8 questions, one per category
+- Each must mention "${brandName}" by name
+- Sound natural and conversational — not formal or academic
+- Mix of short and longer questions
+- If "${brandName}" has a real, well-known controversy, reference it specifically in the relevant category question (don't fabricate one)
+
+Return ONLY a JSON array of objects with "text" and "intent" fields.
+Intent: "informational" (learning) or "high-intent" (deciding/evaluating).`
+      : `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) to learn about a specific brand or organization.
 
 ${context}
 
@@ -314,19 +396,15 @@ Generate 7-8 questions that:
 - If "${brandName}" has been involved in a notable controversy, scandal, or public criticism, include ONE question about that specific controversy (referencing the actual issue, not a generic "any controversies?" question). Only include this if there is a real, well-known controversy — do not fabricate one.
 
 Return ONLY a JSON array of objects with "text" and "intent" fields.
-Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
+Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).`;
 
-Example format:
-[
-  {"text": "Is Nike worth the price?", "intent": "high-intent"},
-  {"text": "What is Nike known for?", "intent": "informational"},
-  {"text": "What happened with Nike's sweatshop labor controversy?", "intent": "informational"}
-]`,
-        },
-        {
-          role: "user",
-          content: `Generate 8 search queries about "${brandName}"`,
-        },
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 800,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Generate 8 search queries about "${brandName}"` },
       ],
     });
 
@@ -352,28 +430,49 @@ Example format:
 }
 
 /**
- * Generate industry-cluster prompts — broad category questions that do NOT
- * mention the brand by name. These test whether AI surfaces the brand
- * organically when users ask about the category.
+ * Generate industry-cluster prompts — broad questions that do NOT mention
+ * the org by name. Tests whether AI surfaces the org organically.
+ *
+ * For advocacy orgs: uses the same dynamic categories but rephrases as
+ * generic issue-area questions.
+ * For commercial brands: uses standard category-level questions.
  */
 export async function generateIndustryPrompts(
   brandName: string,
   industry: string,
   category: BrandCategory,
 ): Promise<GeneratedPrompt[]> {
-  const context = category === "political_advocacy"
-    ? `"${brandName}" operates in the ${industry} space (political/advocacy).`
-    : `"${brandName}" is in the ${industry} industry.`;
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 800,
-      messages: [
-        {
-          role: "system",
-          content: `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) when exploring a category or industry — NOT asking about a specific brand.
+    let categories: string[] | null = null;
+    if (category === "political_advocacy") {
+      categories = await generateAdvocacyCategories(brandName, industry);
+    }
+
+    const context = category === "political_advocacy"
+      ? `"${brandName}" operates in the ${industry} space (political/advocacy).
+
+You have identified these question categories as most relevant:
+${(categories ?? []).map((c, i) => `${i + 1}. ${c}`).join("\n")}
+
+Generate one natural-sounding question per category about the ${industry} space in general. These must NOT mention "${brandName}" — they should be generic questions about the issue area that a voter, donor, or activist would ask AI.`
+      : `"${brandName}" is in the ${industry} industry.`;
+
+    const systemPrompt = category === "political_advocacy"
+      ? `You generate search queries that real voters, donors, and activists would type into AI assistants when researching an issue area — NOT asking about a specific organization.
+
+${context}
+
+Rules:
+- Generate exactly 8 questions, one per category
+- Do NOT mention "${brandName}" anywhere in any question
+- Ask about the broader issue area: ${industry}
+- Sound like a real person asking ChatGPT or Perplexity
+- Questions should naturally lead AI to potentially mention organizations like "${brandName}"
+- If you reference a year, use ${new Date().getFullYear()}
+
+Return ONLY a JSON array of objects with "text" and "intent" fields.
+Intent: "informational" (learning) or "high-intent" (deciding/evaluating).`
+      : `You generate search queries that real people would type into an AI assistant (ChatGPT, Gemini, Claude, Perplexity) when exploring a category or industry — NOT asking about a specific brand.
 
 ${context}
 
@@ -387,18 +486,15 @@ Generate exactly 8 questions that:
 Return ONLY a JSON array of objects with "text" and "intent" fields.
 Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
 
-If you reference a year, use ${new Date().getFullYear()}.
+If you reference a year, use ${new Date().getFullYear()}.`;
 
-Example format (for a running shoe brand):
-[
-  {"text": "What are the best running shoes in ${new Date().getFullYear()}?", "intent": "high-intent"},
-  {"text": "What should I look for when buying running shoes?", "intent": "informational"}
-]`,
-        },
-        {
-          role: "user",
-          content: `Generate 8 category-level search queries for the ${industry} space (the brand is "${brandName}" but do NOT mention it)`,
-        },
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 800,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Generate 8 ${category === "political_advocacy" ? "issue-area" : "category-level"} search queries for the ${industry} space (the org is "${brandName}" but do NOT mention it)` },
       ],
     });
 
@@ -411,7 +507,6 @@ Example format (for a running shoe brand):
 
     if (!Array.isArray(parsed)) return [];
 
-    // Safety check: reject any prompt that mentions the brand name
     const brandLower = brandName.toLowerCase();
     return parsed
       .filter((p) => !p.text.toLowerCase().includes(brandLower))
