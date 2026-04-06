@@ -934,9 +934,67 @@ function EmailSubscribePanel({ brandSlug }: { brandSlug: string }) {
           {sendStatus === "error" && (
             <p className="text-xs text-red-500 mt-1">Failed to send{sendError ? `: ${sendError}` : ". Check that RESEND_API_KEY is configured."}</p>
           )}
+
+          {/* Subscription list with remove */}
+          <div className="mt-3 space-y-1.5">
+            {subscriptions.filter((s) => s.enabled).map((sub) => (
+              <div key={sub.email} className="flex items-center justify-between text-xs py-1">
+                <span className="text-muted-foreground">{sub.email} &middot; {sub.frequency}</span>
+                <button
+                  onClick={async () => {
+                    const res = await fetch("/api/reports/subscribe", {
+                      method: "DELETE",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ brandSlug, email: sub.email }),
+                    });
+                    if (res.ok) {
+                      setSubscriptions((prev) => prev.map((s) => s.email === sub.email ? { ...s, enabled: false } : s));
+                    }
+                  }}
+                  className="text-red-500 hover:text-red-700 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function ManageSubscriptionButton() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.error === "No subscription found") {
+        // No Pro subscription — silently ignore
+        setLoading(false);
+      } else {
+        alert(data.error || "Failed to open billing portal");
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 transition-colors"
+    >
+      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+      Manage Pro Subscription
+    </button>
   );
 }
 
@@ -946,11 +1004,14 @@ function ReportInner() {
 
   return (
     <div className="max-w-[900px] mx-auto px-8 py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1">{brandName} &mdash; Reports</h1>
-        <p className="text-sm text-gray-500">
-          Set up automated email reports for your team.
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">{brandName} &mdash; Reports</h1>
+          <p className="text-sm text-gray-500">
+            Set up automated email reports for your team.
+          </p>
+        </div>
+        <ManageSubscriptionButton />
       </div>
 
       <EmailSubscribePanel brandSlug={params.slug} />
