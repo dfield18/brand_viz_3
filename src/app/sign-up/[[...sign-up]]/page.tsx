@@ -6,7 +6,7 @@ export default function SignUpPage() {
       <div className="flex flex-col items-center gap-6 w-full max-w-sm px-4">
         <SignUp />
         <p className="text-[11px] text-muted-foreground/60 text-center leading-relaxed max-w-xs">
-          By signing up, you agree to receive occasional updates and insights from aiSaysWhat. You can unsubscribe anytime.
+          By signing up, you agree to receive occasional updates and insights from aiSaysWhat, a service of BrooklyEcho LLC. You can unsubscribe anytime.
         </p>
       </div>
     </div>

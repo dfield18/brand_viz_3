@@ -314,7 +314,7 @@ export default async function LandingPage() {
             <span className="text-xs text-muted-foreground">aiSaysWhat</span>
           </div>
           <p className="text-xs text-muted-foreground/50">
-            &copy; {new Date().getFullYear()}
+            &copy; {new Date().getFullYear()} BrooklyEcho LLC
           </p>
         </div>
       </footer>

@@ -34,7 +34,7 @@ export default function AccountPage() {
   return (
     <div className="max-w-lg mx-auto px-6 py-16">
       <h1 className="text-2xl font-bold mb-2">Account Settings</h1>
-      <p className="text-sm text-muted-foreground mb-8">Manage your aiSaysWhat account.</p>
+      <p className="text-sm text-muted-foreground mb-8">Manage your aiSaysWhat account. aiSaysWhat is a service of BrooklyEcho LLC.</p>
 
       <div className="space-y-6">
         {/* Back to dashboard */}

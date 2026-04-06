@@ -141,7 +141,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   <!-- Footer -->
   <div style="background:#f9fafb;padding:20px 28px;border-radius:0 0 12px 12px;border:1px solid #e5e5e5;border-top:1px solid #f0f0f0;">
     <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">
-      This report was generated automatically by aiSaysWhat.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe</a>` : ""}
+      This report was generated automatically by aiSaysWhat, a service of BrooklyEcho LLC.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe</a>` : ""}
     </p>
   </div>
 
