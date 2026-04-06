@@ -268,7 +268,7 @@ export default async function LandingPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/sign-up"
+                  href={tier.cta === "Contact Us" ? "mailto:support@aisayswhat.com" : "/sign-up"}
                   className={`mt-6 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     tier.highlighted
                       ? "bg-foreground text-background hover:bg-foreground/90"
@@ -313,9 +313,10 @@ export default async function LandingPage() {
             </div>
             <span className="text-xs text-muted-foreground">aiSaysWhat</span>
           </div>
-          <p className="text-xs text-muted-foreground/50">
-            &copy; {new Date().getFullYear()} BrooklyEcho LLC
-          </p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground/50">
+            <a href="mailto:support@aisayswhat.com" className="hover:text-muted-foreground transition-colors">Support</a>
+            <span>&copy; {new Date().getFullYear()} BrooklyEcho LLC</span>
+          </div>
         </div>
       </footer>
     </div>

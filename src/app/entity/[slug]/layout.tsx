@@ -101,6 +101,9 @@ export default function EntityLayout({
             >
               View free demo brands
             </Link>
+            <a href="mailto:support@aisayswhat.com" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+              Questions? support@aisayswhat.com
+            </a>
           </div>
         </div>
       </div>
