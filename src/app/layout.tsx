@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { ClientHeader } from "@/components/ClientHeader";
+
+const GA_ID = "G-VSPTQ3C4MN";
 
 export const metadata: Metadata = {
   title: "aiSaysWhat",
@@ -16,6 +19,15 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+          <Script id="gtag-init" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA_ID}');`}
+          </Script>
+        </head>
         <body
           className="antialiased"
           style={{
