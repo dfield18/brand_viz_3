@@ -14,8 +14,8 @@ interface PromptWinsAndOpportunitiesProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };
 
 export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, brandName, isOrg }: PromptWinsAndOpportunitiesProps) {

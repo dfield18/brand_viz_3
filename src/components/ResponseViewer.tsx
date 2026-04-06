@@ -94,8 +94,8 @@ export function ResponseViewerProvider({ children }: { children: ReactNode }) {
 /* ------------------------------------------------------------------ */
 
 const CLUSTER_LABELS: Record<string, string> = {
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };
 
 function ResponseModalBody({ data, onClose }: { data: ResponseViewerData; onClose: () => void }) {

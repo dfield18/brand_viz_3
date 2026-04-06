@@ -18,8 +18,8 @@ interface ClusterChartProps {
 }
 
 const CLUSTER_LABELS: Record<string, { name: string; desc: string }> = {
-  brand: { name: "Brand", desc: "Brand-specific queries" },
-  industry: { name: "Industry", desc: "Industry-wide searches" },
+  brand: { name: "Direct Questions", desc: "Questions that name the organization" },
+  industry: { name: "Issue Area", desc: "Broad questions about the issue space" },
 };
 
 interface ChartDatum {

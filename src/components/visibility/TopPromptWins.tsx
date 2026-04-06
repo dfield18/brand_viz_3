@@ -8,8 +8,8 @@ interface TopPromptWinsProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };
 
 export function TopPromptWins({ wins }: TopPromptWinsProps) {

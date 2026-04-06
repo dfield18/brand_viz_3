@@ -18,8 +18,8 @@ interface ClusterVisibilityChartProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };
 
 const CLUSTER_DESCRIPTIONS: Record<string, string> = {

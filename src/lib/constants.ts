@@ -14,6 +14,6 @@ export const VALID_CLUSTERS: string[] = ["brand", "industry"];
 
 export const CLUSTER_LABELS: Record<string, string> = {
   all: "All Question Types",
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };

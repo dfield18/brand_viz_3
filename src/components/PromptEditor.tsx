@@ -34,8 +34,8 @@ interface PromptEditorProps {
 }
 
 const CLUSTER_LABELS: Record<string, string> = {
-  brand: "Brand",
-  industry: "Industry",
+  brand: "Direct Questions",
+  industry: "Issue Area",
 };
 
 const CLUSTER_OPTIONS = ["brand", "industry"];
