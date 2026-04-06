@@ -86,7 +86,12 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold mb-2">Your Brands</h1>
+      <div className="flex items-start justify-between">
+        <h1 className="text-2xl font-bold mb-2">Your Brands</h1>
+        <a href="/account" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+          Account Settings
+        </a>
+      </div>
       <p className="text-muted-foreground mb-8">Select a brand to view its AI visibility dashboard.</p>
 
       {/* Preset demo brands */}
