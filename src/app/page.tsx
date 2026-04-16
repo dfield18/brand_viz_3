@@ -193,47 +193,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
-            What you get
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md">
-            Built for advocacy organizations and campaigns that need to know how AI is shaping their public narrative.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
-            {FEATURES.map((feature) => (
-              <div key={feature.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
-            How it works
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-10">
-            {[
-              { title: "Add your organization", description: "Enter your organization\u2019s name. We generate targeted questions about your issue area for each AI platform." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way voters and donors use them." },
-              { title: "See what comes back", description: "Visibility scores, sentiment analysis, peer organization tracking, and source citations. Updated on your schedule." },
-            ].map((item) => (
-              <div key={item.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
@@ -277,6 +236,47 @@ export default async function LandingPage() {
                 >
                   {tier.cta}
                 </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+            What you get
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Built for advocacy organizations and campaigns that need to know how AI is shaping their public narrative.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
+            {FEATURES.map((feature) => (
+              <div key={feature.title}>
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
+            How it works
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-10">
+            {[
+              { title: "Add your organization", description: "Enter your organization\u2019s name. We generate targeted questions about your issue area for each AI platform." },
+              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way voters and donors use them." },
+              { title: "See what comes back", description: "Visibility scores, sentiment analysis, peer organization tracking, and source citations. Updated on your schedule." },
+            ].map((item) => (
+              <div key={item.title}>
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
