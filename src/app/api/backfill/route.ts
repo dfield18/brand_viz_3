@@ -210,16 +210,23 @@ async function processWeek(
         // Skip narrative extraction during backfill to reduce API load —
         // narrative data is extracted during the main Phase 1 analysis for the current week.
 
-        // Persist source occurrences (non-blocking)
-        persistSourcesForRun({
-          runId: run.id,
-          model,
-          promptId: prompt.id,
-          brandName,
-          brandSlug: brand.slug,
-          responseText,
-          analysisJson: analysis,
-        }).catch(() => {});
+        // SourceOccurrence has no DB-level uniqueness guard today, so avoid
+        // re-persisting sources for runs that already have saved citations.
+        const existingSourceCount = await prisma.sourceOccurrence.count({
+          where: { runId: run.id },
+        });
+        if (existingSourceCount === 0) {
+          // Persist source occurrences (non-blocking)
+          persistSourcesForRun({
+            runId: run.id,
+            model,
+            promptId: prompt.id,
+            brandName,
+            brandSlug: brand.slug,
+            responseText,
+            analysisJson: analysis,
+          }).catch(() => {});
+        }
       } catch {
         hasError = true;
       }

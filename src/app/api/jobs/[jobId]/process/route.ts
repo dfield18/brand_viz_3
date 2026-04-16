@@ -715,16 +715,23 @@ export async function POST(
           analysisJson: analysis,
         }).catch(() => {});
 
-        persistSourcesForRun({
-          runId: run.id,
-          model: job.model,
-          promptId: prompt.id,
-          brandName: brandDisplayName,
-          brandSlug: job.brand.slug,
-          responseText,
-          analysisJson: analysis,
-          apiCitations: citations,
-        }).catch(() => {});
+        // SourceOccurrence has no DB-level uniqueness guard today, so avoid
+        // re-persisting sources for runs that already have saved citations.
+        const existingSourceCount = await prisma.sourceOccurrence.count({
+          where: { runId: run.id },
+        });
+        if (existingSourceCount === 0) {
+          persistSourcesForRun({
+            runId: run.id,
+            model: job.model,
+            promptId: prompt.id,
+            brandName: brandDisplayName,
+            brandSlug: job.brand.slug,
+            responseText,
+            analysisJson: analysis,
+            apiCitations: citations,
+          }).catch(() => {});
+        }
 
         processedThisCall++;
       } catch (e: unknown) {
