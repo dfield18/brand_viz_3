@@ -104,7 +104,7 @@ export function useCachedFetch<T>(url: string | null, options?: UseCachedFetchOp
       // No data — fetch from network
       doFetch(url, false);
     }
-  }, [url]);
+  }, [url, alwaysRefetch, staleMs]);
 
   const refetch = useCallback(() => {
     const current = urlRef.current;

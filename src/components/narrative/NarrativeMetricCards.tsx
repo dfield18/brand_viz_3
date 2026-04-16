@@ -6,8 +6,6 @@ import type { NarrativeSentimentSplit, NarrativeFrame, SentimentTrendPoint, Narr
 
 interface NarrativeMetricCardsProps {
   sentimentSplit?: NarrativeSentimentSplit;
-  trustRate?: number;
-  weaknessRate?: number;
   polarization?: "Low" | "Moderate" | "High";
   frames?: NarrativeFrame[];
   hedgingRate?: number;
@@ -161,7 +159,6 @@ const CONFIDENCE_COLOR_CARD = (confidence: number) =>
 // CONSISTENCY_PCT maps polarization level → consistency percentage (inverted)
 // Low polarization = high consistency, High polarization = low consistency
 const CONSISTENCY_PCT: Record<string, number> = { Low: 85, Moderate: 60, High: 30 };
-const POLARIZATION_PCT: Record<string, number> = { Low: 20, Moderate: 55, High: 90 };
 // Colors for the consistency donut: green when consistent (Low polarization), red when divided (High)
 const POLARIZATION_COLOR: Record<string, string> = {
   Low: "hsl(160, 60%, 45%)",
@@ -229,8 +226,6 @@ function InfoPopover({ tooltip, formula }: { tooltip: string; formula?: string }
 
 export function NarrativeMetricCards({
   sentimentSplit,
-  trustRate,
-  weaknessRate,
   polarization,
   frames,
   hedgingRate,

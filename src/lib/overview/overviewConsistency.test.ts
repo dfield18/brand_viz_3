@@ -17,7 +17,7 @@ import {
   type BrandScopeRun,
   type BrandScopeIdentity,
 } from "../visibility/brandScope";
-import { parseAnalysis, computeStability } from "../aggregateAnalysis";
+import { parseAnalysis } from "../aggregateAnalysis";
 
 function makeRun(overrides: Partial<BrandScopeRun & { analysisJson: unknown }> = {}): BrandScopeRun {
   return { rawResponseText: "", analysisJson: null, narrativeJson: undefined, ...overrides };

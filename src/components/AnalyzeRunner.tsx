@@ -275,6 +275,8 @@ export function AnalyzeRunner({ brandSlug, model, range, onDone }: AnalyzeRunner
   useEffect(() => {
     runJob();
     return () => {
+      // generationRef is a mutation counter, not a DOM ref — intentionally read at cleanup time
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       generationRef.current++;
       abortControllerRef.current?.abort();
     };

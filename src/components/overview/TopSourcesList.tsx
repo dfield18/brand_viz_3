@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import type { SourcesResponse, TopDomainRow } from "@/types/api";
+import type { SourcesResponse } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
-import { MODEL_LABELS } from "@/lib/constants";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reviews: "Reviews",

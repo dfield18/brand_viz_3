@@ -172,26 +172,6 @@ function resolveLabels(
   return result;
 }
 
-interface PointMeta {
-  siblingIndex: number;
-  siblingCount: number;
-}
-
-function assignPointMeta(points: { x: number; y: number }[]): PointMeta[] {
-  const counts = new Map<string, number>();
-  for (const p of points) {
-    const key = `${p.x}|${p.y}`;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  const seen = new Map<string, number>();
-  return points.map((p) => {
-    const key = `${p.x}|${p.y}`;
-    const idx = seen.get(key) ?? 0;
-    seen.set(key, idx + 1);
-    return { siblingIndex: idx, siblingCount: counts.get(key)! };
-  });
-}
-
 export function SentimentByQuestion({ data: initialData, brandName, brandSlug, range, pageModel }: SentimentByQuestionProps) {
   const [model, setModel] = useState(pageModel);
   const { openResponse } = useResponseDetail(brandSlug);

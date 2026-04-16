@@ -31,16 +31,6 @@ interface ValidationResult {
   alternatives: { name: string; description: string }[];
 }
 
-const RANGES = [7, 30, 90] as const;
-const MODELS: { value: "all" | ModelKey; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "chatgpt", label: "ChatGPT" },
-  { value: "gemini", label: "Gemini" },
-  { value: "claude", label: "Claude" },
-  { value: "perplexity", label: "Perplexity" },
-  { value: "google", label: "Google AI Overview" },
-];
-
 function HeaderInner() {
   const router = useRouter();
   const pathname = usePathname();
@@ -85,12 +75,6 @@ function HeaderInner() {
     const match = pathname.match(/^\/entity\/([^/]+)/);
     return match ? match[1] : null;
   }, [pathname]);
-
-  function updateQuery(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(key, value);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
 
   function handleBrandChange(slug: string) {
     dataClient.setLastViewedBrand(slug);

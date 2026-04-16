@@ -12,7 +12,7 @@ import {
   Legend,
 } from "recharts";
 import type { DomainOverTimeEntry, SourcesResponse } from "@/types/api";
-import { VALID_MODELS, MODEL_LABELS, VALID_CLUSTERS, CLUSTER_LABELS } from "@/lib/constants";
+import { MODEL_LABELS, CLUSTER_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
 interface Props {
@@ -52,11 +52,11 @@ export default function SourceCategoryOverTime({ data: initialData, brandSlug, r
     : null;
   const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
 
-  const data = needsFetch && apiData?.sources?.domainOverTime
-    ? apiData.sources.domainOverTime
-    : needsFetch && apiData && !apiData.sources
-    ? []
-    : initialData;
+  const data = useMemo(() => {
+    if (needsFetch && apiData?.sources?.domainOverTime) return apiData.sources.domainOverTime;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialData;
+  }, [needsFetch, apiData, initialData]);
 
   const models = useMemo(() => {
     const set = new Set(data.map((d) => d.model));

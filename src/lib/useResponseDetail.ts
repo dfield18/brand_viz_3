@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useResponseViewer, type ResponseViewerData } from "@/components/ResponseViewer";
+import { useResponseViewer } from "@/components/ResponseViewer";
 
 interface PromptQuery {
   promptText: string;

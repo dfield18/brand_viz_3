@@ -190,8 +190,6 @@ function NarrativeInner() {
         <div id="kpi-summary" className="scroll-mt-24">
           <NarrativeMetricCards
             sentimentSplit={data.sentimentSplit}
-            trustRate={data.trustRate}
-            weaknessRate={data.weaknessRate}
             polarization={data.polarization}
             frames={frames}
             hedgingRate={data.hedgingRate}
@@ -281,7 +279,7 @@ function NarrativeInner() {
               examples={data.examples}
               brandName={brandName}
               frameTrend={data.frameTrend}
-              onFrameClick={(frame) => {
+              onFrameClick={() => {
                 const el = document.getElementById("frame-trend");
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
               }}

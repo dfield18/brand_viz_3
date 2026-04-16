@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
 import { parseAnalysis, computeStability } from "@/lib/aggregateAnalysis";
-import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 import {
   computeAvgRank,
   computeRank1RateAll,
@@ -195,9 +195,6 @@ export async function GET(req: NextRequest) {
   function avgArr(nums: number[]): number {
     return nums.length === 0 ? 0 : nums.reduce((s, n) => s + n, 0) / nums.length;
   }
-  function pctOf(count: number, total: number): number {
-    return total === 0 ? 0 : Math.round((count / total) * 100);
-  }
 
   if (withData.length === 0) {
     return NextResponse.json({ hasData: false, reason: "no_completed_job" });
@@ -296,8 +293,6 @@ export async function GET(req: NextRequest) {
     prompt: { text: string; cluster: string; intent: string };
   };
 
-  const latestJobIds = withData.map((w) => w.data!.latestJob.id);
-
   // Single fetchBrandRuns call — reused for KPIs, competitive rank, and sentiment
   const visResultPromise = fetchBrandRuns<OverviewVisRun>({
     brandSlug: brand.slug,
@@ -329,11 +324,7 @@ export async function GET(req: NextRequest) {
   let shareOfVoice = 0;
   let kpiDeltas: import("@/types/api").KpiDeltas | null = null;
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
-  // Two snapshot pools for overview scorecards (both latest 24h):
-  // 1. industrySnapshotRuns: industry-only — for Brand Recall
-  // 2. allSnapshotRuns: all prompt types — for Narrative, Sentiment, Sources
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let industrySnapshotRuns: any[] = [];
+  // allSnapshotRuns: latest 24h pool, all prompt types, brand-scoped — for Narrative, Sentiment, Sources
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let allSnapshotRuns: any[] = [];
 
@@ -345,7 +336,6 @@ export async function GET(req: NextRequest) {
     // the scorecard matches the latest trend chart data point exactly.
     const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
-    industrySnapshotRuns = industryRuns;
 
     // All-prompt snapshot: all clusters, brand-scoped — for Narrative, Sentiment, Sources.
     // Uses the full deduped set (latest per model+prompt) to stay consistent with the trend chart.

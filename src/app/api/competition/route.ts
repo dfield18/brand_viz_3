@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
+import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { parseAnalysis } from "@/lib/aggregateAnalysis";
 import {
   computeFragmentation,
   computeWinLoss,
   computeMentionRate,
-  computeShareOfVoice,
   computeAvgRank,
   computeRank1RateAll,
 } from "@/lib/competition/computeCompetition";
-import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, buildTrendPoint, type LeaderboardEntity, type LeaderboardRun } from "@/lib/competition/leaderboardMetrics";
+import { computeTextRanks, buildLeaderboardRows, buildPerModelRows, buildRankDistribution, type LeaderboardEntity } from "@/lib/competition/leaderboardMetrics";
 import { computeBrandRank, wordBoundaryIndex } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { getSovCountsForRun, getRankedEntitiesForRun } from "@/lib/visibility/rankedEntities";
@@ -157,7 +156,6 @@ export async function GET(req: NextRequest) {
 
     // Find brand entity metrics
     const brandMetrics = byEntity.get(brand.slug) ?? [];
-    const brandRunIds = new Set(brandMetrics.map((m) => m.runId));
 
     // Auto-discover competitors: top N by total appearances (not just co-occurrence with brand)
     // This ensures competitors are shown even when the brand has low mention rate
@@ -562,7 +560,6 @@ export async function GET(req: NextRequest) {
       }
       if (!topCompId || topCompRank === Infinity) continue;
 
-      const compCell = row.entities[topCompId];
       const rawScore = (1 / topCompRank) * (brandAbsent ? 1.5 : 1.0);
       opportunities.push({
         promptText: row.promptText,

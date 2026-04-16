@@ -112,7 +112,7 @@ export async function persistSourcesForRun(args: {
           try {
             await prisma.sourceOccurrence.create({ data: occ });
             saved++;
-          } catch (innerErr) {
+          } catch {
             // Skip duplicates or other per-row errors silently
           }
         }

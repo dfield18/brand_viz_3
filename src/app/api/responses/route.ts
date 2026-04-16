@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
-import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "@/lib/visibility/rankedEntities";
 import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { AlertTriangle, Trophy, TrendingDown } from "lucide-react";
-import type { CompetitorRow, WinLossData, CompetitionResponse } from "@/types/api";
+import { AlertTriangle, Trophy } from "lucide-react";
+import type { CompetitionResponse } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
-import { titleCase } from "@/lib/utils";
 
 interface CompetitionApiResponse {
   hasData: boolean;

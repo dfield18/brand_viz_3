@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Suspense, useState, useCallback } from "react";
 import { Loader2, Globe, RefreshCw } from "lucide-react";
 import { useBrandName } from "@/lib/useBrandName";
@@ -536,7 +536,6 @@ const PAGE_SECTIONS: PageSection[] = [
 
 function SiteAuditInner() {
   const params = useParams<{ slug: string }>();
-  const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
 
   const [customUrl, setCustomUrl] = useState("");

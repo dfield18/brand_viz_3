@@ -120,7 +120,6 @@ export function CompetitorMatrix({
               return (
                 <MatrixRow
                   key={rowKey}
-                  rowKey={rowKey}
                   row={row}
                   entityIds={entityIds}
                   entityNames={entityNames}
@@ -149,7 +148,6 @@ export function CompetitorMatrix({
 /* ── Matrix Row ────────────────────────────────────────────────────── */
 
 function MatrixRow({
-  rowKey,
   row,
   entityIds,
   entityNames,
@@ -158,7 +156,6 @@ function MatrixRow({
   onToggle,
   onViewResponse,
 }: {
-  rowKey: string;
   row: PromptMatrixRow;
   entityIds: string[];
   entityNames: Record<string, string>;

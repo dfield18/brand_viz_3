@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
-import { isBrandMentioned, computeBrandRank } from "@/lib/visibility/brandMention";
+import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
-import { titleCase, buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
+import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import {
   computeAvgRank,
   computeRank1RateAll,
@@ -777,7 +777,6 @@ export async function GET(req: NextRequest) {
             const p1 = bucket.ranks.filter((r) => r === 1).length;
             const p23 = bucket.ranks.filter((r) => r !== null && r >= 2 && r <= 3).length;
             const p45 = bucket.ranks.filter((r) => r !== null && r >= 4 && r <= 5).length;
-            const p6 = bucket.ranks.filter((r) => r !== null && r >= 6).length;
             const rPos1 = Math.round((p1 / total) * 100);
             const rPos23 = Math.round((p23 / total) * 100);
             const rPos45 = Math.round((p45 / total) * 100);

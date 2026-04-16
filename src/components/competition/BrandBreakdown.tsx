@@ -5,7 +5,6 @@ import { ChevronRight } from "lucide-react";
 import type { CompetitorRow, CompetitionResponse, WinLossData, ModelSplitRow } from "@/types/api";
 import { CompetitorRankDistribution } from "@/components/competition/CompetitorRankDistribution";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
-import { titleCase } from "@/lib/utils";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 
 interface PromptOption {
@@ -25,6 +24,8 @@ interface BrandBreakdownProps {
   brandEntityId?: string;
   prompts?: PromptOption[];
 }
+
+const SENTIMENT_ORDER: Record<string, number> = { Strong: 5, Positive: 4, Neutral: 3, Conditional: 2, Negative: 1 };
 
 interface ApiResponse {
   hasData: boolean;
@@ -89,8 +90,6 @@ export function BrandBreakdown({
       return next;
     });
   };
-
-  const SENTIMENT_ORDER: Record<string, number> = { Strong: 5, Positive: 4, Neutral: 3, Conditional: 2, Negative: 1 };
 
   // Multi-level sort: brand first, then visibility → share → top result → avg position (asc) → sentiment
   const sorted = useMemo(() => {

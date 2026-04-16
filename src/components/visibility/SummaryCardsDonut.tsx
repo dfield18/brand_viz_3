@@ -115,7 +115,7 @@ function positionColor(score: number): string {
   return "rgb(239 68 68)";                       // red-500
 }
 
-function PositionScale({ score, color }: { score: number; color: string }) {
+function PositionScale({ score }: { score: number }) {
   const marks = [1, 2, 3, 4, 5];
   // Clamp position to 1–5 for the marker
   const clamped = Math.max(1, Math.min(5, score));
@@ -286,7 +286,7 @@ export function SummaryCardsDonut({
           <div className="flex items-center justify-center mb-4 h-[90px]">
             {card.rankValue != null ? (
               <div className="w-full flex items-center">
-                <PositionScale score={card.rankValue} color={card.color} />
+                <PositionScale score={card.rankValue} />
               </div>
             ) : (
               <div className="relative">

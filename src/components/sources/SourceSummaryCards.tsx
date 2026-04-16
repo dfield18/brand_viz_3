@@ -75,20 +75,6 @@ function getDomainBadge(count: number): { text: string; color: string } {
   return { text: "Limited sources", color: "text-orange-700 bg-orange-50 border-orange-200" };
 }
 
-function getCoverageBadge(pct: number): { text: string; color: string } {
-  if (pct >= 80) return { text: "High coverage", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (pct >= 50) return { text: "Moderate coverage", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  if (pct >= 25) return { text: "Low coverage", color: "text-orange-700 bg-orange-50 border-orange-200" };
-  return { text: "Very low coverage", color: "text-red-700 bg-red-50 border-red-200" };
-}
-
-function getAuthorityBadge(count: number): { text: string; color: string } {
-  if (count >= 5) return { text: "Strong authority base", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-  if (count >= 2) return { text: "Some authority drivers", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  if (count >= 1) return { text: "Limited authority", color: "text-orange-700 bg-orange-50 border-orange-200" };
-  return { text: "No authority drivers", color: "text-red-700 bg-red-50 border-red-200" };
-}
-
 function getEmergingBadge(growthRate: number): { text: string; color: string } {
   if (growthRate >= 200) return { text: "Rapid growth", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
   if (growthRate >= 100) return { text: "Strong growth", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
@@ -126,7 +112,7 @@ interface CardConfig {
   scrollTarget?: string;
 }
 
-export default function SourceSummaryCards({ scope, summary, emerging, topDomains, categoryBreakdown, range = 90 }: Props) {
+export default function SourceSummaryCards({ summary, emerging, topDomains, categoryBreakdown, range = 90 }: Props) {
   // Use all-domain category breakdown if available, fall back to top-domains-only
   const typeBreakdown = useMemo(() => {
     if (categoryBreakdown && categoryBreakdown.length > 0) {

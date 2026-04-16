@@ -36,11 +36,11 @@ export default function EmergingSourcesList({ emerging: initialEmerging, brandSl
     : null;
   const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
 
-  const emerging = needsFetch && apiData?.sources?.emerging
-    ? apiData.sources.emerging
-    : needsFetch && apiData && !apiData.sources
-    ? []
-    : initialEmerging;
+  const emerging = useMemo(() => {
+    if (needsFetch && apiData?.sources?.emerging) return apiData.sources.emerging;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialEmerging;
+  }, [needsFetch, apiData, initialEmerging]);
 
   // Sort by growth rate desc, tiebreak by citation count desc.
   // If all sources are new (previousCitations === 0), sort by citation count instead.

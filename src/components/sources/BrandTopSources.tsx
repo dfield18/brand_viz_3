@@ -66,7 +66,7 @@ export default function BrandTopSources({ sources, brandName, onDomainClick }: P
   }, [sources]);
 
   // Compute category breakdown for donut
-  const { pieData, totalCitations } = useMemo(() => {
+  const { pieData } = useMemo(() => {
     const categoryTotals = new Map<string, number>();
     let total = 0;
     for (const s of sources) {

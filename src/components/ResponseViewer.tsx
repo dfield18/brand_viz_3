@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { parseResponse, highlightBrand, type FormattedSection, type TextSegment } from "@/lib/formatResponse";
+import { parseResponse, highlightBrand, type FormattedSection } from "@/lib/formatResponse";
 import { MODEL_LABELS } from "@/lib/constants";
 
 /* ------------------------------------------------------------------ */

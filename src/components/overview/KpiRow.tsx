@@ -9,12 +9,6 @@ interface KpiRowProps {
 
 type Sentiment = "good" | "neutral" | "poor";
 
-const SENTIMENT_STYLE: Record<Sentiment, { dot: string; label: string; text: string }> = {
-  good:    { dot: "bg-emerald-500", label: "Strong",  text: "text-emerald-600 dark:text-emerald-400" },
-  neutral: { dot: "bg-amber-500",   label: "Average", text: "text-amber-600 dark:text-amber-400" },
-  poor:    { dot: "bg-red-500",     label: "Weak",    text: "text-red-600 dark:text-red-400" },
-};
-
 function rateSentiment(value: number, good: number, poor: number): Sentiment {
   if (value >= good) return "good";
   if (value >= poor) return "neutral";

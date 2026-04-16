@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth";
  * Returns current subscription status for this brand + user email.
  */
 export async function GET(req: NextRequest) {
-  const { userId, error: authError } = await requireAuth();
+  const { error: authError } = await requireAuth();
   if (authError) return authError;
 
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
  * Creates or re-enables an email subscription.
  */
 export async function POST(req: NextRequest) {
-  const { userId, error: authError } = await requireAuth();
+  const { error: authError } = await requireAuth();
   if (authError) return authError;
 
   const body = await req.json();

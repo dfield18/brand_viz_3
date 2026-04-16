@@ -69,13 +69,6 @@ const KPI_TITLE_LABELS: Record<string, string> = {
   shareOfVoice: "Share of Voice",
 };
 
-const KPI_DESCRIPTIONS: Record<string, (name: string) => string> = {
-  mentionRate: (n) => `how often AI platforms mention ${n}`,
-  avgProminence: (n) => `how prominently AI platforms feature ${n}`,
-  firstMentionRate: (n) => `how often ${n} appears as the top recommendation`,
-  avgRank: (n) => `where ${n} ranks among competitors`,
-};
-
 type DimensionTab = "model" | "topic" | "model_topic";
 
 const DIMENSION_TABS: { key: DimensionTab; label: string; description: string }[] = [
@@ -238,11 +231,9 @@ interface Props {
   inline?: boolean;
   /** Strip header, description, and footer for a minimal look */
   compact?: boolean;
-  /** True for cause/advocacy organizations — adjusts terminology */
-  isOrg?: boolean;
 }
 
-export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandName, inline, compact, isOrg }: Props) {
+export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandName, inline, compact }: Props) {
   const [internalKpi, setInternalKpi] = useState(fixedKpi ?? "mentionRate");
   const selectedKpi = fixedKpi ?? internalKpi;
   const [activeTab, setActiveTab] = useState<DimensionTab>("model");
@@ -296,7 +287,6 @@ export function DriverDecomposition({ brandSlug, model, range, fixedKpi, brandNa
   const isInverseKpi = selectedKpi === "avgRank";
   const isImprovement = isInverseKpi ? decomp.totalDelta < -0.05 : decomp.totalDelta > 0.05;
   const isDecline = isInverseKpi ? decomp.totalDelta > 0.05 : decomp.totalDelta < -0.05;
-  const deltaLabel = isImprovement ? "improvement" : isDecline ? "decline" : "no change";
   const deltaColor = isImprovement ? "text-emerald-600" : isDecline ? "text-red-500" : "text-muted-foreground";
 
   const content = (

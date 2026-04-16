@@ -714,7 +714,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn("[competitorAlerts] GPT filter failed, keeping all:", err);
     }
   }

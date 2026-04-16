@@ -194,7 +194,6 @@ function VisibilityV2Inner() {
   // Has data — render
   if (!apiData?.visibility) return null;
   const data = apiData.visibility;
-  const totals = apiData.totals ?? { totalRuns: 0, totalMentions: 0 };
   const industryLabel = apiData.brandIndustry || `${brandName}'s industry`;
   const expandPrompt = (text: string) =>
     text.replace(/\{brand\}/g, brandName).replace(/\{industry\}/g, industryLabel);

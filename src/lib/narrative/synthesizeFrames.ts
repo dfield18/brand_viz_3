@@ -151,7 +151,7 @@ export async function ensureMinimumFrames<T extends FrameWithOptionalByModel>(
 export async function synthesizeFramesFromResponses(
   runs: RunInput[],
   brandName: string,
-  activeModel: string,
+  _activeModel: string,
 ): Promise<NarrativeFrame[]> {
   if (runs.length === 0) return [];
 

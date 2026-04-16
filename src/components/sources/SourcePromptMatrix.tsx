@@ -33,12 +33,17 @@ export default function SourcePromptMatrix({ matrix: initialMatrix, prompts: ini
     : null;
   const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
 
-  const matrix = needsFetch && apiData?.sources?.sourcePromptMatrix
-    ? apiData.sources.sourcePromptMatrix
-    : needsFetch && apiData && !apiData.sources ? [] : initialMatrix;
-  const prompts = needsFetch && apiData?.sources?.matrixPrompts
-    ? apiData.sources.matrixPrompts
-    : needsFetch && apiData && !apiData.sources ? [] : initialPrompts;
+  const matrix = useMemo(() => {
+    if (needsFetch && apiData?.sources?.sourcePromptMatrix) return apiData.sources.sourcePromptMatrix;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialMatrix;
+  }, [needsFetch, apiData, initialMatrix]);
+
+  const prompts = useMemo(() => {
+    if (needsFetch && apiData?.sources?.matrixPrompts) return apiData.sources.matrixPrompts;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialPrompts;
+  }, [needsFetch, apiData, initialPrompts]);
 
   // Only include prompts that have at least one citation across the matrix
   const activePrompts = useMemo(() => {

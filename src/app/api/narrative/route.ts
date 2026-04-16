@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { parseAnalysis, aggregateNarrative } from "@/lib/aggregateAnalysis";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
@@ -11,7 +9,6 @@ import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrat
 import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow, isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
-import { isBrandMentioned } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
@@ -68,9 +65,8 @@ export async function GET(req: NextRequest) {
     },
   });
   if (!result.ok) return result.response;
-  const { brand, job, runs: rawRuns, isAll, rangeCutoff } = result;
+  const { brand, job, runs: rawRuns, isAll } = result;
   const brandName = brand.displayName || brand.name;
-  const brandAliases = brand.aliases?.length ? brand.aliases : [];
   const brandIdentity = buildBrandIdentity(brand);
 
   // Brand-scope filter: exclude runs about unrelated entities sharing the brand phrase
@@ -514,7 +510,6 @@ export async function GET(req: NextRequest) {
 
   // Use GPT to extract the relevant quote AND explanation from each response
   // GPT reads the full text and finds the specific part about the brand + frame
-  type PendingExample = typeof pendingExamples[number];
   if (pendingExamples.length > 0) {
     try {
       const oai = getOpenAIDefault();

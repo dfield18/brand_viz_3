@@ -14,7 +14,7 @@ import type {
   TopicFragmentationRow,
 } from "@/types/api";
 import { TOPIC_TAXONOMY } from "./topicTaxonomy";
-import { titleCase, resolveEntityName } from "@/lib/utils";
+import { resolveEntityName } from "@/lib/utils";
 
 export interface TopicMetricInput {
   runId: string;

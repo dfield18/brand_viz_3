@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
-import { useBrandName } from "@/lib/useBrandName";
 
 /* ─── API Response Types ────────────────────────────────────────────── */
 
@@ -152,7 +151,7 @@ function cleanUrls(text: string): string {
       return `(${inner})`;
     })
     // [label](url) — standard markdown link
-    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, (_, label: string, url: string) => {
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, (_, label: string) => {
       // If label is a URL/domain, show domain label
       if (/^(https?:\/\/|www\.)/.test(label)) return domainToLabel(label);
       if (/^[a-z0-9-]+\.[a-z]{2,}/i.test(label)) return domainToLabel(label);
@@ -248,7 +247,7 @@ function TopPrioritiesSection({ data, brandName }: { data: ApiResponse; brandNam
   );
 }
 
-function PromptOpportunitiesSection({ data, brandName, summary }: { data: ApiResponse["promptOpportunities"]; brandName: string; summary: string }) {
+function PromptOpportunitiesSection({ data, brandName }: { data: ApiResponse["promptOpportunities"]; brandName: string }) {
   // Deduplicate prompts across models — hook must be called before early return
   const grouped = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -552,7 +551,6 @@ function SectionBlock({ id, title, children }: { id: string; title: string; chil
 function RecommendationsInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
-  const brandName = useBrandName(params.slug);
   const range = Number(searchParams.get("range") ?? 90);
   const model = searchParams.get("model") ?? "all";
 
@@ -642,7 +640,7 @@ function RecommendationsInner() {
         <h2 className="text-lg font-semibold border-b border-border pb-2">Content Gaps</h2>
 
         <SectionBlock id="prompt-opportunities" title="Where You're Missing">
-          <PromptOpportunitiesSection data={apiData.promptOpportunities} brandName={name} summary={apiData.promptOpportunitySummary} />
+          <PromptOpportunitiesSection data={apiData.promptOpportunities} brandName={name} />
         </SectionBlock>
 
         {showPlaybooks && (

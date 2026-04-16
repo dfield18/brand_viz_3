@@ -78,39 +78,6 @@ function getWinRateBadge(rate: number): { text: string; color: string } {
   return { text: "Trailing", color: "text-red-700 bg-red-50 border-red-200" };
 }
 
-function getSentimentBadge(sentiment: string | undefined): { text: string; color: string } {
-  switch (sentiment) {
-    case "Strong": return { text: "Strong", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-    case "Positive": return { text: "Positive", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-    case "Neutral": return { text: "Neutral", color: "text-amber-700 bg-amber-50 border-amber-200" };
-    case "Conditional": return { text: "Conditional", color: "text-orange-700 bg-orange-50 border-orange-200" };
-    case "Negative": return { text: "Negative", color: "text-red-700 bg-red-50 border-red-200" };
-    default: return { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" };
-  }
-}
-
-function getSentimentDonutPct(sentiment: string | undefined): number {
-  switch (sentiment) {
-    case "Strong": return 90;
-    case "Positive": return 70;
-    case "Neutral": return 50;
-    case "Conditional": return 30;
-    case "Negative": return 15;
-    default: return 0;
-  }
-}
-
-function getSentimentDonutColor(sentiment: string | undefined): string {
-  switch (sentiment) {
-    case "Strong": return "hsl(162, 63%, 30%)";
-    case "Positive": return "hsl(168, 55%, 48%)";
-    case "Neutral": return "hsl(218, 11%, 72%)";
-    case "Conditional": return "hsl(38, 92%, 55%)";
-    case "Negative": return "hsl(0, 72%, 55%)";
-    default: return "hsl(218, 11%, 72%)";
-  }
-}
-
 /* ── Main component ────────────────────────────────────────────────── */
 
 interface CardConfig {

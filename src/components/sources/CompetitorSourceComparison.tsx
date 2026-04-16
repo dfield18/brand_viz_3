@@ -96,13 +96,17 @@ export default function CompetitorSourceComparison({
   const { data: apiData, loading } = useCachedFetch<ApiResponse>(url);
 
   // ── Brand view data ──────────────────────────
-  const crossCitation = needsFetch && apiData?.sources?.crossCitation
-    ? apiData.sources.crossCitation
-    : needsFetch && apiData && !apiData.sources ? [] : initialCrossCitation;
+  const crossCitation = useMemo(() => {
+    if (needsFetch && apiData?.sources?.crossCitation) return apiData.sources.crossCitation;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialCrossCitation;
+  }, [needsFetch, apiData, initialCrossCitation]);
 
-  const topDomains = needsFetch && apiData?.sources?.topDomains
-    ? apiData.sources.topDomains
-    : needsFetch && apiData && !apiData.sources ? [] : (initialTopDomains ?? []);
+  const topDomains = useMemo(() => {
+    if (needsFetch && apiData?.sources?.topDomains) return apiData.sources.topDomains;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialTopDomains ?? [];
+  }, [needsFetch, apiData, initialTopDomains]);
 
   const totalByDomain = useMemo(() => {
     const map = new Map<string, number>();
@@ -158,12 +162,17 @@ export default function CompetitorSourceComparison({
   }, [sortedBrand, otherByDomain]);
 
   // ── Question view data ───────────────────────
-  const matrix = needsFetch && apiData?.sources?.sourcePromptMatrix
-    ? apiData.sources.sourcePromptMatrix
-    : needsFetch && apiData && !apiData.sources ? [] : (initialMatrix ?? []);
-  const prompts = needsFetch && apiData?.sources?.matrixPrompts
-    ? apiData.sources.matrixPrompts
-    : needsFetch && apiData && !apiData.sources ? [] : (initialPrompts ?? []);
+  const matrix = useMemo(() => {
+    if (needsFetch && apiData?.sources?.sourcePromptMatrix) return apiData.sources.sourcePromptMatrix;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialMatrix ?? [];
+  }, [needsFetch, apiData, initialMatrix]);
+
+  const prompts = useMemo(() => {
+    if (needsFetch && apiData?.sources?.matrixPrompts) return apiData.sources.matrixPrompts;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialPrompts ?? [];
+  }, [needsFetch, apiData, initialPrompts]);
 
   // Deduplicate prompts by text — multiple promptIds can share the same text
   const { activePrompts, promptIdGroups } = useMemo(() => {
@@ -227,9 +236,11 @@ export default function CompetitorSourceComparison({
   }, [matrix, activePrompts, promptIdGroups]);
 
   // ── Platform view data ───────────────────────
-  const modelSplit = needsFetch && apiData?.sources?.modelSplit
-    ? apiData.sources.modelSplit
-    : needsFetch && apiData && !apiData.sources ? [] : (initialModelSplit ?? []);
+  const modelSplit = useMemo(() => {
+    if (needsFetch && apiData?.sources?.modelSplit) return apiData.sources.modelSplit;
+    if (needsFetch && apiData && !apiData.sources) return [];
+    return initialModelSplit ?? [];
+  }, [needsFetch, apiData, initialModelSplit]);
 
   // Pivot modelSplit (rows=models, cols=domains) → rows=domains, cols=models
   const { platformModels, platformByDomain, maxCountPlatform } = useMemo(() => {

@@ -28,6 +28,8 @@ const SENTIMENT_STYLES: Record<string, string> = {
   Negative: "text-red-600",
 };
 
+const MODEL_DISPLAY_ORDER = ["chatgpt", "gemini", "claude", "perplexity", "google"];
+
 const STATUS_BADGE: Record<RowStatus, { label: string; className: string }> = {
   win: { label: "Win", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" },
   competitive: { label: "Competitive", className: "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" },
@@ -53,9 +55,9 @@ function SortIcon({ column, sortKey, sortDir }: { column: SortKey; sortKey: Sort
     : <ChevronDown className="h-3 w-3 text-foreground" />;
 }
 
-function ColumnHeader({ label, sublabel, tooltip, column, sortKey, sortDir, onSort }: {
+function ColumnHeader({ label, sublabel, tooltip, column, onSort }: {
   label: string; sublabel: string; tooltip: string;
-  column: SortKey; sortKey: SortKey | null; sortDir: SortDir;
+  column: SortKey;
   onSort: (key: SortKey) => void;
 }) {
   return (
@@ -159,9 +161,6 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
     for (const o of opportunities) map.set(o.prompt, o);
     return map;
   }, [opportunities]);
-
-  // Canonical model display order
-  const MODEL_DISPLAY_ORDER = ["chatgpt", "gemini", "claude", "perplexity", "google"];
 
   // Build rows — one per prompt, averaging across all contributing models
   const rows = useMemo(() => {
@@ -306,7 +305,6 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
   if (results.length === 0 && opportunities.length === 0) return null;
 
   const Wrapper = inline ? "div" : "section";
-  const headingClass = inline ? "text-sm text-muted-foreground" : "text-base font-semibold";
 
   return (
     <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section"}>
@@ -398,11 +396,11 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                   <SortIcon column="status" sortKey={sortKey} sortDir={sortDir} />
                 </div>
               </th>
-              <ColumnHeader label="AI Visibility" sublabel="% mentioned" tooltip={COLUMN_TOOLTIPS.aiVisibility} column="aiVisibility" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <ColumnHeader label="Share of Voice" sublabel="% of brand mentions" tooltip={COLUMN_TOOLTIPS.shareOfVoice} column="shareOfVoice" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <ColumnHeader label="Top Result Rate" sublabel="% of time brand is listed first" tooltip={COLUMN_TOOLTIPS.firstPosition} column="firstPosition" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <ColumnHeader label="Avg. Position" sublabel="position when shown" tooltip={COLUMN_TOOLTIPS.avgPosition} column="avgPosition" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <ColumnHeader label="Avg. Sentiment" sublabel="" tooltip={COLUMN_TOOLTIPS.avgSentiment} column="avgSentiment" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <ColumnHeader label="AI Visibility" sublabel="% mentioned" tooltip={COLUMN_TOOLTIPS.aiVisibility} column="aiVisibility" onSort={handleSort} />
+              <ColumnHeader label="Share of Voice" sublabel="% of brand mentions" tooltip={COLUMN_TOOLTIPS.shareOfVoice} column="shareOfVoice" onSort={handleSort} />
+              <ColumnHeader label="Top Result Rate" sublabel="% of time brand is listed first" tooltip={COLUMN_TOOLTIPS.firstPosition} column="firstPosition" onSort={handleSort} />
+              <ColumnHeader label="Avg. Position" sublabel="position when shown" tooltip={COLUMN_TOOLTIPS.avgPosition} column="avgPosition" onSort={handleSort} />
+              <ColumnHeader label="Avg. Sentiment" sublabel="" tooltip={COLUMN_TOOLTIPS.avgSentiment} column="avgSentiment" onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

@@ -55,7 +55,6 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
     console.error("GET /api/prompts error:", e);
     return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });
   }
@@ -129,7 +128,6 @@ export async function POST(req: NextRequest) {
       },
     }, { status: 201 });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
     console.error("POST /api/prompts error:", e);
     return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });
   }

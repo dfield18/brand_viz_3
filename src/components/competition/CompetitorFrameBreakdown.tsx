@@ -135,13 +135,12 @@ export function CompetitorEntityDropdown({
   );
 }
 
-export function CompetitorFrameBreakdown({ narratives, competitors, brandName, selectedEntity: externalEntity, onEntityChange }: CompetitorFrameBreakdownProps) {
+export function CompetitorFrameBreakdown({ narratives, competitors, selectedEntity: externalEntity }: CompetitorFrameBreakdownProps) {
   // Default to competitor with highest brand recall (mentionRate), excluding the brand itself
   const defaultEntityId = useDefaultCompetitorEntity(narratives, competitors);
 
-  const [internalEntity, setInternalEntity] = useState(defaultEntityId);
+  const [internalEntity] = useState(defaultEntityId);
   const selectedEntity = externalEntity ?? internalEntity;
-  const setSelectedEntity = onEntityChange ?? setInternalEntity;
 
   // Filter narratives that have theme data for the dropdown
   const availableNarratives = useMemo(() => {
