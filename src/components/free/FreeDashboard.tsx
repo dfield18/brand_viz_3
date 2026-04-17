@@ -78,7 +78,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models }: Props) {
           Brand name
         </label>
         <div
-          className="relative cursor-text text-2xl sm:text-3xl font-semibold tracking-tight leading-tight"
+          className="relative cursor-text text-3xl sm:text-4xl font-semibold tracking-tight leading-tight"
           onClick={() => inputRef.current?.focus()}
         >
           {/* Invisible input sits on top and captures typing. Visible text + fake cursor are rendered underneath. */}
