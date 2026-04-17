@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -6,6 +7,42 @@ import { GET as getVisibility } from "@/app/api/visibility/route";
 import { NextRequest } from "next/server";
 import { LandingDashboard } from "@/components/landing/LandingDashboard";
 import type { VisibilityTrendPoint } from "@/types/api";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "aiSaysWhat — See what ChatGPT, Gemini & Claude say about your cause",
+  },
+  description:
+    "AI brand visibility for advocacy organizations and campaigns. Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your cause. Track sentiment, peer organizations, and source citations. Start free.",
+  alternates: { canonical: "/" },
+};
+
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "aiSaysWhat",
+      url: "https://aisayswhat.com",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "AI brand visibility platform for advocacy organizations. Monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization — with visibility scores, sentiment analysis, peer tracking, and source citations.",
+      offers: [
+        { "@type": "Offer", name: "Starter", price: "0", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Pro", price: "49", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Enterprise", price: "0", priceCurrency: "USD", description: "Custom pricing" },
+      ],
+    },
+    {
+      "@type": "Organization",
+      name: "aiSaysWhat",
+      url: "https://aisayswhat.com",
+      email: "support@aisayswhat.com",
+      description: "AI brand visibility for advocacy organizations and campaigns.",
+    },
+  ],
+};
 
 const FEATURES = [
   {
@@ -121,6 +158,10 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between h-16 px-6">
