@@ -146,6 +146,12 @@ export default async function HomePage() {
       {/* Hero (matches /marketing formatting) */}
       <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-8">
         <div className="max-w-2xl">
+          <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">
+              {FREE_TIER_CONFIG.runsPerIpPerDay} free {FREE_TIER_CONFIG.runsPerIpPerDay === 1 ? "search" : "searches"} a day
+            </span>{" "}
+            — or see example results for any S&amp;P 100 company, or any leading Democratic or Republican presidential candidate.
+          </p>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             AI is shaping how people discover your brand.
             <br />
