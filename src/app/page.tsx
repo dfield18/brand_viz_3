@@ -157,9 +157,6 @@ export default async function HomePage() {
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
-          </p>
           <div className="mt-10">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
@@ -167,6 +164,9 @@ export default async function HomePage() {
               models={FREE_TIER_CONFIG.models}
             />
           </div>
+          <p className="mt-10 text-lg text-muted-foreground leading-relaxed max-w-lg">
+            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
+          </p>
         </div>
       </section>
 
