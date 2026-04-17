@@ -9,19 +9,19 @@ const GA_ID = "G-VSPTQ3C4MN";
 export const metadata: Metadata = {
   metadataBase: new URL("https://aisayswhat.com"),
   title: {
-    default: "aiSaysWhat — AI brand visibility for advocacy organizations",
+    default: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     template: "%s | aiSaysWhat",
   },
   description:
-    "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion. Visibility scores, sentiment analysis, peer tracking, and source citations — all on one dashboard.",
+    "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand and your products. Visibility scores, sentiment analysis, competitor tracking, and source citations — all on one dashboard.",
   keywords: [
     "AI brand monitoring",
     "AI brand visibility",
     "ChatGPT visibility tracking",
     "generative engine optimization",
     "GEO",
-    "nonprofit AI monitoring",
-    "advocacy AI tracking",
+    "brand tracking AI",
+    "competitive brand intelligence",
     "AI search analytics",
     "LLM brand tracking",
   ],
@@ -34,15 +34,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://aisayswhat.com",
     siteName: "aiSaysWhat",
-    title: "aiSaysWhat — AI brand visibility for advocacy organizations",
+    title: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     description:
-      "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.",
+      "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand and your products.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "aiSaysWhat — AI brand visibility for advocacy organizations",
+    title: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     description:
-      "See what AI platforms say about your cause. Visibility scores, sentiment, peer tracking, citations.",
+      "See what AI platforms say about your brand. Visibility scores, sentiment, competitor tracking, citations.",
   },
   robots: {
     index: true,

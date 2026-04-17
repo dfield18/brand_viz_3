@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "aiSaysWhat — AI brand visibility for advocacy organizations";
+export const alt = "aiSaysWhat — AI brand visibility for companies and marketing teams";
 
 export default async function Image() {
   return new ImageResponse(
@@ -44,7 +44,7 @@ export default async function Image() {
               maxWidth: "960px",
             }}
           >
-            See what ChatGPT, Gemini & Claude say about your cause.
+            See what ChatGPT, Gemini & Claude say about your brand.
           </div>
           <div
             style={{
@@ -54,7 +54,7 @@ export default async function Image() {
               lineHeight: 1.3,
             }}
           >
-            AI brand visibility for advocacy organizations.
+            AI brand visibility for companies and marketing teams.
           </div>
         </div>
 

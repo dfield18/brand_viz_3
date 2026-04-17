@@ -10,10 +10,10 @@ import type { VisibilityTrendPoint } from "@/types/api";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "aiSaysWhat — See what ChatGPT, Gemini & Claude say about your cause",
+    absolute: "aiSaysWhat — See what ChatGPT, Gemini & Claude say about your brand",
   },
   description:
-    "AI brand visibility for advocacy organizations and campaigns. Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your cause. Track sentiment, peer organizations, and source citations. Start free.",
+    "AI brand visibility for companies and marketing teams. Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand. Track sentiment, competitors, and source citations. Start free.",
   alternates: { canonical: "/" },
 };
 
@@ -27,7 +27,7 @@ const STRUCTURED_DATA = {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       description:
-        "AI brand visibility platform for advocacy organizations. Monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization — with visibility scores, sentiment analysis, peer tracking, and source citations.",
+        "AI brand visibility platform for companies and marketing teams. Monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand — with visibility scores, sentiment analysis, competitor tracking, and source citations.",
       offers: [
         { "@type": "Offer", name: "Starter", price: "0", priceCurrency: "USD" },
         { "@type": "Offer", name: "Pro", price: "49", priceCurrency: "USD" },
@@ -39,7 +39,7 @@ const STRUCTURED_DATA = {
       name: "aiSaysWhat",
       url: "https://aisayswhat.com",
       email: "support@aisayswhat.com",
-      description: "AI brand visibility for advocacy organizations and campaigns.",
+      description: "AI brand visibility for companies and marketing teams.",
     },
   ],
 };
@@ -47,27 +47,27 @@ const STRUCTURED_DATA = {
 const FEATURES = [
   {
     title: "Brand Recall",
-    description: "When voters ask AI about your policy area, how often does your organization come up?",
+    description: "When customers ask AI about your category, how often does your brand come up?",
   },
   {
     title: "Sentiment & Narrative",
-    description: "Is AI framing your organization positively or negatively? What narratives is it spreading about your cause?",
+    description: "Is AI framing your brand positively or negatively? What story is it telling about your products?",
   },
   {
     title: "Competitive Share",
-    description: "When AI discusses your issue, which organizations does it highlight? Track how your share of the conversation shifts over time.",
+    description: "When AI discusses your category, which brands does it highlight? Track how your share of the conversation shifts over time.",
   },
   {
     title: "Source Attribution",
-    description: "Which websites does AI cite when discussing your issues? Are they your publications — or your opponents'?",
+    description: "Which websites does AI cite when discussing your industry? Are they your properties — or your competitors'?",
   },
   {
     title: "Platform Comparison",
-    description: "ChatGPT and Gemini can frame your organization very differently. See which platforms help or hurt your message.",
+    description: "ChatGPT and Gemini can frame your brand very differently. See which platforms help or hurt your positioning.",
   },
   {
     title: "Weekly Reports",
-    description: "Automated reports with visibility scores, peer organization alerts, and narrative shifts — delivered to your inbox.",
+    description: "Automated reports with visibility scores, competitor alerts, and narrative shifts — delivered to your inbox.",
   },
 ];
 
@@ -76,8 +76,8 @@ const PRICING_TIERS = [
     name: "Starter",
     price: "Free",
     period: "",
-    description: "Explore AI visibility for your organization",
-    features: ["1 organization", "Weekly snapshots", "5 AI platforms", "Core dashboard"],
+    description: "Explore AI visibility for your brand",
+    features: ["1 brand", "Weekly snapshots", "5 AI platforms", "Core dashboard"],
     cta: "Get Started",
     highlighted: false,
   },
@@ -85,8 +85,8 @@ const PRICING_TIERS = [
     name: "Pro",
     price: "$49",
     period: "/mo",
-    description: "For campaigns and advocacy teams tracking multiple issues",
-    features: ["5 organizations", "Daily snapshots", "5 AI platforms", "Full analytics", "Email reports", "CSV exports"],
+    description: "For marketing teams tracking multiple brands or product lines",
+    features: ["5 brands", "Daily snapshots", "5 AI platforms", "Full analytics", "Email reports", "CSV exports"],
     cta: "Start Free Trial",
     highlighted: true,
   },
@@ -94,8 +94,8 @@ const PRICING_TIERS = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For coalitions and national organizations",
-    features: ["Unlimited organizations", "Custom prompts", "API access", "Dedicated support", "SSO"],
+    description: "For multi-brand companies and agencies",
+    features: ["Unlimited brands", "Custom prompts", "API access", "Dedicated support", "SSO"],
     cta: "Contact Us",
     highlighted: false,
   },
@@ -193,12 +193,12 @@ export default async function LandingPage() {
       <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-12">
         <div className="max-w-2xl">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
-            AI is shaping how people understand your cause.
+            AI is shaping how people discover your brand.
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your organization and the issues you champion.
+            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand and your products.
           </p>
           <div className="mt-8">
             <Link
@@ -290,7 +290,7 @@ export default async function LandingPage() {
             What you get
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md">
-            Built for advocacy organizations and campaigns that need to know how AI is shaping their public narrative.
+            Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
           </p>
           <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
             {FEATURES.map((feature) => (
@@ -311,9 +311,9 @@ export default async function LandingPage() {
           </h2>
           <div className="grid sm:grid-cols-3 gap-10">
             {[
-              { title: "Add your organization", description: "Enter your organization\u2019s name. We generate targeted questions about your issue area for each AI platform." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way voters and donors use them." },
-              { title: "See what comes back", description: "Visibility scores, sentiment analysis, peer organization tracking, and source citations. Updated on your schedule." },
+              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
+              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
+              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
             ].map((item) => (
               <div key={item.title}>
                 <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
@@ -328,7 +328,7 @@ export default async function LandingPage() {
       <section className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground max-w-lg">
-            Your organization is already part of the AI conversation. Find out how AI is framing your cause.
+            Your brand is already part of the AI conversation. Find out how AI is framing your story.
           </h2>
           <div className="mt-6">
             <Link
