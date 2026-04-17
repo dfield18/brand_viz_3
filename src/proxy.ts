@@ -2,9 +2,13 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
+  "/marketing(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/unsubscribe(.*)",
+  // Free-tier endpoints — anonymous users need to POST here to run a free analysis.
+  // Abuse protection lives inside the handler (IP + session rate limits).
+  "/api/free-run(.*)",
   // Read-only data routes — public so report self-fetch and cron work.
   // Mutation routes (jobs POST, prompts POST, subscribe POST) have their
   // own requireAuth() checks as a second layer of protection.
