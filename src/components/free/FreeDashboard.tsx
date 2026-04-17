@@ -98,14 +98,22 @@ export function FreeDashboard({ showSignupCta, promptCount, models }: Props) {
           />
           <span className="inline-flex items-baseline">
             {brandName ? (
-              <span className="text-foreground whitespace-pre">{brandName}</span>
+              <>
+                <span className="text-foreground whitespace-pre">{brandName}</span>
+                <span
+                  aria-hidden="true"
+                  className="ml-1 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
+                />
+              </>
             ) : (
-              <span className="text-muted-foreground/50 font-normal">Type in brand name</span>
+              <>
+                <span
+                  aria-hidden="true"
+                  className="mr-2 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
+                />
+                <span className="text-muted-foreground/50 font-normal">Type in brand name</span>
+              </>
             )}
-            <span
-              aria-hidden="true"
-              className="ml-1 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
-            />
           </span>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
