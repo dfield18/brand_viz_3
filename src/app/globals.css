@@ -204,6 +204,15 @@
   animation: progressBar 8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* Terminal-style blinking cursor for inline text inputs */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1.1s linear infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
