@@ -143,10 +143,10 @@ export default async function HomePage() {
         </div>
       </nav>
 
-      {/* Hero (matches /marketing formatting) */}
-      <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-8">
+      {/* Hero + free dashboard — one section so spacing stays tight */}
+      <section className="max-w-5xl mx-auto px-6 pt-14 sm:pt-20 pb-10">
         <div className="max-w-2xl">
-          <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+          <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
             <span className="font-medium text-foreground">
               {FREE_TIER_CONFIG.runsPerIpPerDay} free {FREE_TIER_CONFIG.runsPerIpPerDay === 1 ? "search" : "searches"} a day
             </span>{" "}
@@ -160,23 +160,19 @@ export default async function HomePage() {
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
             aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
           </p>
-        </div>
-      </section>
-
-      {/* Free dashboard */}
-      <section className="max-w-5xl mx-auto px-6 pb-16">
-        <div className="max-w-2xl">
-          <FreeDashboard
-            showSignupCta={FREE_TIER_CONFIG.showSignupCta}
-            promptCount={FREE_TIER_CONFIG.promptCount}
-            models={FREE_TIER_CONFIG.models}
-          />
+          <div className="mt-10">
+            <FreeDashboard
+              showSignupCta={FREE_TIER_CONFIG.showSignupCta}
+              promptCount={FREE_TIER_CONFIG.promptCount}
+              models={FREE_TIER_CONFIG.models}
+            />
+          </div>
         </div>
       </section>
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+        <div className="max-w-5xl mx-auto px-6 py-10 sm:py-12">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             Pricing
           </h2>
