@@ -144,7 +144,7 @@ export default async function HomePage() {
       </nav>
 
       {/* Hero + free dashboard — one section so spacing stays tight */}
-      <section className="max-w-5xl mx-auto px-6 pt-6 sm:pt-10 pb-10">
+      <section className="max-w-5xl mx-auto px-6 pt-3 sm:pt-5 pb-10">
         <div className="max-w-2xl">
           <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
             <span className="font-medium text-foreground">
@@ -164,15 +164,6 @@ export default async function HomePage() {
               models={FREE_TIER_CONFIG.models}
             />
           </div>
-        </div>
-      </section>
-
-      {/* Description — lives on its own so it reads as a lead-in to Pricing */}
-      <section className="max-w-5xl mx-auto px-6 pb-4">
-        <div className="max-w-2xl">
-          <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
-          </p>
         </div>
       </section>
 
@@ -222,6 +213,9 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+          <p className="mt-12 text-lg text-muted-foreground leading-relaxed max-w-lg">
+            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
+          </p>
         </div>
       </section>
 
