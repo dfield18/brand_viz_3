@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s | aiSaysWhat",
   },
   description:
-    "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand and your products. Visibility scores, sentiment analysis, competitor tracking, and source citations — all on one dashboard.",
+    "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand. Visibility scores, sentiment analysis, competitor tracking, and source citations — all on one dashboard.",
   keywords: [
     "AI brand monitoring",
     "AI brand visibility",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: "aiSaysWhat",
     title: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     description:
-      "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand and your products.",
+      "Monitor how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.",
   },
   twitter: {
     card: "summary_large_image",
