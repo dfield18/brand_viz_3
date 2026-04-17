@@ -146,7 +146,7 @@ export default async function HomePage() {
       {/* Hero + free dashboard — one section so spacing stays tight */}
       <section className="max-w-5xl mx-auto px-6 pt-3 sm:pt-5 pb-10">
         <div className="max-w-2xl">
-          <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
+          <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
             <span className="font-medium text-foreground">
               {FREE_TIER_CONFIG.runsPerIpPerDay} free {FREE_TIER_CONFIG.runsPerIpPerDay === 1 ? "search" : "searches"} a day
             </span>{" "}
