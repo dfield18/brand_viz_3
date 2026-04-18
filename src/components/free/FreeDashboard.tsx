@@ -4,13 +4,19 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 
+interface FreePrompt {
+  text: string;
+  intent: string;
+}
+
 interface FreeRunResponse {
   hasData: boolean;
-  status?: "queued" | "running" | "done" | "error";
+  brandName?: string;
+  industry?: string;
+  category?: string;
+  prompts?: FreePrompt[];
   message?: string;
   error?: string;
-  /** Phase 2 will populate these */
-  results?: unknown;
 }
 
 interface Props {
@@ -176,16 +182,35 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
         </div>
       )}
 
-      {result && (
-        <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
-          <h2 className="text-base font-semibold text-foreground mb-2">Result</h2>
-          {result.message ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">{result.message}</p>
-          ) : (
-            <pre className="text-xs text-muted-foreground overflow-x-auto">
-              {JSON.stringify(result, null, 2)}
-            </pre>
+      {result && result.hasData && result.prompts && result.prompts.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+          {result.industry && (
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Detected industry</p>
+              <p className="mt-1 text-xl font-semibold text-foreground">{result.industry}</p>
+            </div>
           )}
+          <div>
+            <p className="text-sm font-medium text-foreground mb-3">
+              {result.prompts.length} sample questions we&apos;ll send to {modelList}:
+            </p>
+            <ol className="space-y-3">
+              {result.prompts.map((p, i) => (
+                <li key={i} className="flex gap-3 text-sm leading-relaxed">
+                  <span className="shrink-0 w-5 font-mono tabular-nums text-muted-foreground">
+                    {i + 1}.
+                  </span>
+                  <span className="text-foreground">{p.text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
+
+      {result && !result.hasData && result.message && (
+        <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+          {result.message}
         </div>
       )}
 
