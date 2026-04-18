@@ -156,7 +156,6 @@ export default async function HomePage() {
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
               models={FREE_TIER_CONFIG.models}
-              runsPerDay={FREE_TIER_CONFIG.runsPerIpPerDay}
               exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
           </div>

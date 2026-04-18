@@ -17,7 +17,6 @@ interface Props {
   showSignupCta: boolean;
   promptCount: number;
   models: string[];
-  runsPerDay: number;
   exampleBrands: string[];
 }
 
@@ -35,7 +34,7 @@ function joinWithAnd(items: string[]): string {
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
-export function FreeDashboard({ showSignupCta, promptCount, models, runsPerDay, exampleBrands }: Props) {
+export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrands }: Props) {
   const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +86,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, runsPerDay, 
         {/* Small free-tier badge sits just above the input */}
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-          <span>
-            Free · {runsPerDay} {runsPerDay === 1 ? "run" : "runs"} / day
-          </span>
+          <span>Free · No sign-up</span>
         </div>
 
         <label htmlFor="freeBrandInput" className="sr-only">
