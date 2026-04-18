@@ -144,25 +144,62 @@ export default async function HomePage() {
       </nav>
 
       {/* Hero + free dashboard — one section so spacing stays tight */}
-      <section className="max-w-5xl mx-auto px-6 pt-3 sm:pt-5 pb-10">
+      <section className="max-w-5xl mx-auto px-6 pt-8 sm:pt-12 pb-10">
         <div className="max-w-2xl">
-          <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
-            <span className="font-medium text-foreground">
-              {FREE_TIER_CONFIG.runsPerIpPerDay} free {FREE_TIER_CONFIG.runsPerIpPerDay === 1 ? "search" : "searches"} a day
-            </span>{" "}
-            — or see example results for any S&amp;P 100 company, or any leading Democratic or Republican presidential candidate.
-          </p>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             AI is shaping how people discover your brand.
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
-          <div className="mt-10">
+          <div className="mt-8">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
               models={FREE_TIER_CONFIG.models}
+              runsPerDay={FREE_TIER_CONFIG.runsPerIpPerDay}
+              exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* How it works — shown first so visitors understand the product before seeing prices */}
+      <section className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
+            How it works
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-10">
+            {[
+              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
+              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
+              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
+            ].map((item) => (
+              <div key={item.title}>
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+            What you get
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
+            {FEATURES.map((feature) => (
+              <div key={feature.title}>
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -216,47 +253,6 @@ export default async function HomePage() {
           <p className="mt-12 text-lg text-muted-foreground leading-relaxed max-w-lg">
             aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
           </p>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
-            What you get
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md">
-            Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
-            {FEATURES.map((feature) => (
-              <div key={feature.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
-            How it works
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-10">
-            {[
-              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
-              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
-            ].map((item) => (
-              <div key={item.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

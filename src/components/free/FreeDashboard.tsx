@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 interface FreeRunResponse {
   hasData: boolean;
@@ -17,6 +17,8 @@ interface Props {
   showSignupCta: boolean;
   promptCount: number;
   models: string[];
+  runsPerDay: number;
+  exampleBrands: string[];
 }
 
 const MODEL_LABELS: Record<string, string> = {
@@ -33,7 +35,7 @@ function joinWithAnd(items: string[]): string {
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
-export function FreeDashboard({ showSignupCta, promptCount, models }: Props) {
+export function FreeDashboard({ showSignupCta, promptCount, models, runsPerDay, exampleBrands }: Props) {
   const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,25 +43,22 @@ export function FreeDashboard({ showSignupCta, promptCount, models }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Autofocus on mount so visitors can just start typing.
     inputRef.current?.focus();
   }, []);
 
   const modelList = joinWithAnd(models.map((m) => MODEL_LABELS[m] ?? m));
   const canSubmit = brandName.trim().length > 0 && !loading;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
+  async function runAnalysis(name: string) {
+    if (!name || loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
-
     try {
       const res = await fetch("/api/free-run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandName: brandName.trim() }),
+        body: JSON.stringify({ brandName: name }),
       });
       const json: FreeRunResponse = await res.json();
       if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
@@ -71,59 +70,100 @@ export function FreeDashboard({ showSignupCta, promptCount, models }: Props) {
     }
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const name = brandName.trim();
+    if (name) runAnalysis(name);
+  }
+
+  function handleExample(name: string) {
+    setBrandName(name);
+    runAnalysis(name);
+  }
+
   return (
     <div className="space-y-10">
       <form onSubmit={handleSubmit}>
+        {/* Small free-tier badge sits just above the input */}
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          <span>
+            Free · {runsPerDay} {runsPerDay === 1 ? "run" : "runs"} / day
+          </span>
+        </div>
+
         <label htmlFor="freeBrandInput" className="sr-only">
           Brand name
         </label>
-        <div
-          className="relative cursor-text text-3xl sm:text-4xl font-semibold tracking-tight leading-tight"
-          onClick={() => inputRef.current?.focus()}
-        >
-          {/* Invisible input sits on top and captures typing. Visible text + fake cursor are rendered underneath. */}
-          <input
-            id="freeBrandInput"
-            ref={inputRef}
-            type="text"
-            value={brandName}
-            onChange={(e) => setBrandName(e.target.value)}
-            autoComplete="off"
-            autoCapitalize="words"
-            spellCheck={false}
-            maxLength={80}
-            disabled={loading}
-            aria-label="Brand name"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-text disabled:cursor-not-allowed"
-          />
-          <span className="inline-flex items-baseline">
-            {brandName ? (
-              <>
-                <span className="text-foreground whitespace-pre">{brandName}</span>
-                <span
-                  aria-hidden="true"
-                  className="ml-1 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
-                />
-              </>
-            ) : (
-              <>
-                <span
-                  aria-hidden="true"
-                  className="mr-2 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
-                />
-                <span className="text-muted-foreground/50 font-normal">Type in brand name</span>
-              </>
-            )}
-          </span>
+        <div className="flex items-baseline gap-4">
+          <div
+            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl font-semibold tracking-tight leading-tight"
+            onClick={() => inputRef.current?.focus()}
+          >
+            <input
+              id="freeBrandInput"
+              ref={inputRef}
+              type="text"
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              autoComplete="off"
+              autoCapitalize="words"
+              spellCheck={false}
+              maxLength={80}
+              disabled={loading}
+              aria-label="Brand name"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-text disabled:cursor-not-allowed"
+            />
+            <span className="inline-flex items-baseline">
+              {brandName ? (
+                <>
+                  <span className="text-foreground whitespace-pre">{brandName}</span>
+                  <span
+                    aria-hidden="true"
+                    className="ml-1 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
+                  />
+                </>
+              ) : (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="mr-2 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
+                  />
+                  <span className="text-muted-foreground/50 font-normal">Type in brand name</span>
+                </>
+              )}
+            </span>
+          </div>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            aria-label="Run free analysis"
+            className="shrink-0 self-center inline-flex items-center justify-center size-11 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+          </button>
         </div>
+
         <p className="mt-3 text-sm text-muted-foreground">
-          Press <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/40 text-xs font-mono">Enter</kbd>{" "}
-          to run a free analysis — {promptCount} questions across {modelList}.
+          {promptCount} questions across {modelList}.
         </p>
-        {/* Hidden submit so Enter works without an explicit button. */}
-        <button type="submit" className="sr-only" disabled={!canSubmit}>
-          Run free analysis
-        </button>
+
+        {exampleBrands.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Try:</span>
+            {exampleBrands.map((brand) => (
+              <button
+                key={brand}
+                type="button"
+                onClick={() => handleExample(brand)}
+                disabled={loading}
+                className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:border-foreground/40 hover:bg-muted/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {brand}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
 
       {loading && (

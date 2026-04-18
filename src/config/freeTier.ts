@@ -56,6 +56,14 @@ export const FREE_TIER_SESSION_COOKIE = envString("FREE_TIER_SESSION_COOKIE", "a
 /** Master switch. Flip to false to hide the free tier entirely (landing falls back to the /marketing page). */
 export const FREE_TIER_ENABLED = envBool("FREE_TIER_ENABLED", true);
 
+/** Example brand chips shown under the free-dashboard input — one click fills and runs. */
+export const FREE_TIER_EXAMPLE_BRANDS = envList("FREE_TIER_EXAMPLE_BRANDS", [
+  "Nike",
+  "Tesla",
+  "Kamala Harris",
+  "ACLU",
+]);
+
 export const FREE_TIER_CONFIG = {
   promptCount: FREE_TIER_PROMPT_COUNT,
   promptCluster: FREE_TIER_PROMPT_CLUSTER,
@@ -66,4 +74,5 @@ export const FREE_TIER_CONFIG = {
   showSignupCta: FREE_TIER_SHOW_SIGNUP_CTA,
   sessionCookie: FREE_TIER_SESSION_COOKIE,
   enabled: FREE_TIER_ENABLED,
+  exampleBrands: FREE_TIER_EXAMPLE_BRANDS,
 } as const;
