@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Check, Loader2, Pencil, X as XIcon } from "lucide-react";
 
 interface FreePrompt {
   text: string;
@@ -45,7 +45,45 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FreeRunResponse | null>(null);
+  const [editingIndustry, setEditingIndustry] = useState(false);
+  const [industryDraft, setIndustryDraft] = useState("");
+  const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
+  const [promptDraft, setPromptDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function startIndustryEdit() {
+    if (!result?.industry) return;
+    setIndustryDraft(result.industry);
+    setEditingIndustry(true);
+  }
+  function saveIndustry() {
+    if (!result) return;
+    const trimmed = industryDraft.trim();
+    if (!trimmed) return;
+    setResult({ ...result, industry: trimmed });
+    setEditingIndustry(false);
+  }
+  function cancelIndustryEdit() {
+    setEditingIndustry(false);
+  }
+
+  function startPromptEdit(index: number) {
+    if (!result?.prompts) return;
+    setPromptDraft(result.prompts[index].text);
+    setEditingPromptIndex(index);
+  }
+  function savePromptEdit() {
+    if (!result?.prompts || editingPromptIndex === null) return;
+    const trimmed = promptDraft.trim();
+    if (!trimmed) return;
+    const updated = [...result.prompts];
+    updated[editingPromptIndex] = { ...updated[editingPromptIndex], text: trimmed };
+    setResult({ ...result, prompts: updated });
+    setEditingPromptIndex(null);
+  }
+  function cancelPromptEdit() {
+    setEditingPromptIndex(null);
+  }
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -187,7 +225,48 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
           {result.industry && (
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Detected industry</p>
-              <p className="mt-1 text-xl font-semibold text-foreground">{result.industry}</p>
+              {editingIndustry ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={industryDraft}
+                    onChange={(e) => setIndustryDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); saveIndustry(); }
+                      if (e.key === "Escape") { e.preventDefault(); cancelIndustryEdit(); }
+                    }}
+                    className="text-xl font-semibold text-foreground bg-background border border-border rounded-md px-2 py-1 max-w-xs focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveIndustry}
+                    aria-label="Save industry"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelIndustryEdit}
+                    aria-label="Cancel"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-xl font-semibold text-foreground">{result.industry}</p>
+                  <button
+                    type="button"
+                    onClick={startIndustryEdit}
+                    aria-label="Edit industry"
+                    className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
           <div>
@@ -196,11 +275,52 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             </p>
             <ol className="space-y-3">
               {result.prompts.map((p, i) => (
-                <li key={i} className="flex gap-3 text-sm leading-relaxed">
-                  <span className="shrink-0 w-5 font-mono tabular-nums text-muted-foreground">
+                <li key={i} className="flex gap-3 text-sm leading-relaxed group">
+                  <span className="shrink-0 w-5 font-mono tabular-nums text-muted-foreground pt-0.5">
                     {i + 1}.
                   </span>
-                  <span className="text-foreground">{p.text}</span>
+                  {editingPromptIndex === i ? (
+                    <div className="flex-1 flex items-start gap-2">
+                      <input
+                        autoFocus
+                        value={promptDraft}
+                        onChange={(e) => setPromptDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); savePromptEdit(); }
+                          if (e.key === "Escape") { e.preventDefault(); cancelPromptEdit(); }
+                        }}
+                        className="flex-1 text-sm text-foreground bg-background border border-border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={savePromptEdit}
+                        aria-label="Save question"
+                        className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelPromptEdit}
+                        aria-label="Cancel"
+                        className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-foreground">{p.text}</span>
+                      <button
+                        type="button"
+                        onClick={() => startPromptEdit(i)}
+                        aria-label={`Edit question ${i + 1}`}
+                        className="shrink-0 self-start p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors opacity-60 group-hover:opacity-100"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
                 </li>
               ))}
             </ol>
