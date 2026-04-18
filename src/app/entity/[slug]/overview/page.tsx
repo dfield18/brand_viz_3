@@ -53,6 +53,13 @@ function OverviewInner() {
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
 
+  // Always land at the top when the overview mounts — e.g. after a free-tier
+  // run redirects here from /, the browser sometimes restores the previous
+  // scroll position mid-page.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
   const range = Number(searchParams.get("range")) || 90;
   const model = searchParams.get("model") || "all";
 

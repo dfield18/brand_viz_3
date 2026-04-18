@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Loader2, Pencil, X as XIcon } from "lucide-react";
 
 interface FreePrompt {
@@ -49,7 +48,6 @@ function joinWithAnd(items: string[]): string {
 }
 
 export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrands }: Props) {
-  const router = useRouter();
   const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,8 +113,10 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
       const json: FreeExecuteResponse = await res.json();
       if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
       if (json.brandSlug) {
-        // Report is saved to the DB — hand the visitor off to the overview tab.
-        router.push(`/entity/${json.brandSlug}/overview`);
+        // Hard navigate so the overview loads fresh (new auth context, cache,
+        // and scroll position) instead of a SPA transition that can get stuck
+        // mid-refresh on anonymous-to-entity handoff.
+        window.location.assign(`/entity/${json.brandSlug}/overview`);
         return;
       }
       setReportResult(json);
@@ -227,7 +227,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             aria-label="Run free analysis"
             className="shrink-0 self-center inline-flex items-center justify-center size-11 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="h-7 w-7 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+            <ArrowRight className="h-5 w-5" />
           </button>
         </div>
 
