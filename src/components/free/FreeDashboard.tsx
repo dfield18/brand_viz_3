@@ -94,7 +94,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
         </label>
         <div className="flex items-baseline gap-4">
           <div
-            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl font-semibold tracking-tight leading-tight"
+            className="relative flex-1 min-w-0 cursor-text text-4xl sm:text-5xl font-semibold tracking-tight leading-tight"
             onClick={() => inputRef.current?.focus()}
           >
             <input
@@ -141,7 +141,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
           </button>
         </div>
 
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-10 text-sm text-muted-foreground">
           {promptCount} questions across {modelList}.
         </p>
 
