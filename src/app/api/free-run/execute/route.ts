@@ -5,6 +5,7 @@ import { findOrCreateBrand } from "@/lib/brand";
 import { getOpenAI } from "@/lib/openai";
 import { getGemini } from "@/lib/gemini";
 import { extractAnalysis } from "@/lib/extractAnalysis";
+import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 import { sha256 } from "@/lib/hash";
 
 // 5 prompts × 2 models = 10 parallel response calls plus 10 analysis
@@ -160,7 +161,15 @@ export async function POST(req: NextRequest) {
           createdPrompts.map(async (prompt) => {
             try {
               const rawResponseText = await runOnModel(model, prompt.text);
-              const analysisJson = await extractAnalysis(rawResponseText, brandName, prompt.text);
+
+              // Run analysis + narrative extraction in parallel — both read
+              // the full response and are independent. Narrative supplies
+              // sentiment/themes that the overview tab reads from
+              // narrativeJson.sentiment.label.
+              const [analysisJson, narrativeJson] = await Promise.all([
+                extractAnalysis(rawResponseText, brandName, prompt.text),
+                extractNarrativeForRun(rawResponseText, brandName, brand.slug),
+              ]);
 
               await prisma.run.create({
                 data: {
@@ -172,6 +181,7 @@ export async function POST(req: NextRequest) {
                   promptTextHash: sha256(`${model}|${prompt.text}`),
                   rawResponseText,
                   analysisJson: JSON.parse(JSON.stringify(analysisJson)),
+                  narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
                 },
               });
             } catch (err) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 function getTabs(category?: string | null) {
   const competitionLabel = category === "political_advocacy" ? "Issue Landscape" : "Competitive Marketplace";
@@ -26,9 +27,12 @@ const SECONDARY_TABS = [
 function TabNavInner({ slug, category }: { slug: string; category?: string | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
   const qs = searchParams.toString();
   const suffix = qs ? `?${qs}` : "";
-  const tabs = getTabs(category);
+  // Email Reports requires an account to subscribe — hide it for anonymous
+  // free-tier visitors so they don't land on a page they can't use.
+  const tabs = getTabs(category).filter((t) => t.segment !== "reports" || isSignedIn);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/60 bg-card">
