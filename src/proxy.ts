@@ -6,6 +6,11 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/unsubscribe(.*)",
+  // Entity/overview pages are viewable by anonymous users so a free run can
+  // redirect straight into the overview. The routes themselves only fetch
+  // from already-public read APIs; Pro-only actions still check auth in their
+  // own handlers.
+  "/entity/(.*)",
   // Free-tier endpoints — anonymous users need to POST here to run a free analysis.
   // Abuse protection lives inside the handler (IP + session rate limits).
   "/api/free-run(.*)",

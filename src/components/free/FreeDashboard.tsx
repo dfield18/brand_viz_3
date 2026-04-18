@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Loader2, Pencil, X as XIcon } from "lucide-react";
 
 interface FreePrompt {
@@ -15,6 +16,13 @@ interface FreeRunResponse {
   industry?: string;
   category?: string;
   prompts?: FreePrompt[];
+  message?: string;
+  error?: string;
+}
+
+interface FreeExecuteResponse {
+  hasData?: boolean;
+  brandSlug?: string;
   message?: string;
   error?: string;
 }
@@ -41,6 +49,7 @@ function joinWithAnd(items: string[]): string {
 }
 
 export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrands }: Props) {
+  const router = useRouter();
   const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +112,13 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
           prompts: result.prompts.map((p) => ({ text: p.text })),
         }),
       });
-      const json = await res.json();
+      const json: FreeExecuteResponse = await res.json();
       if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
+      if (json.brandSlug) {
+        // Report is saved to the DB — hand the visitor off to the overview tab.
+        router.push(`/entity/${json.brandSlug}/overview`);
+        return;
+      }
       setReportResult(json);
     } catch (err) {
       setReportError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
