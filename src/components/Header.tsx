@@ -7,6 +7,7 @@ import { RunPromptsPanel } from "@/components/RunPromptsPanel";
 import { ModelKey } from "@/types/api";
 import { dataClient } from "@/dataClient";
 import { useBrands, invalidateBrands } from "@/lib/useBrands";
+import { useBrandName } from "@/lib/useBrandName";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 import { BrandSelector } from "./BrandSelector";
 import {
@@ -75,6 +76,11 @@ function HeaderInner() {
     const match = pathname.match(/^\/entity\/([^/]+)/);
     return match ? match[1] : null;
   }, [pathname]);
+  // Resolve the current brand's display name from /api/brand-info so the
+  // dropdown label works even when the user's own brand list doesn't include
+  // the slug (e.g. an anonymous free-tier visitor viewing their just-run
+  // brand).
+  const currentBrandName = useBrandName(currentSlug);
 
   function handleBrandChange(slug: string) {
     dataClient.setLastViewedBrand(slug);
@@ -190,6 +196,7 @@ function HeaderInner() {
               <BrandSelector
                 brands={visibleBrands}
                 currentSlug={currentSlug}
+                currentBrandName={currentBrandName}
                 onSelect={handleBrandChange}
                 onAddBrand={handleAddBrand}
               />

@@ -14,6 +14,9 @@ import { ChevronDown } from "lucide-react";
 interface BrandSelectorProps {
   brands: Brand[];
   currentSlug: string | null;
+  /** Fallback label when the current brand isn't in the user's own list
+   *  (e.g. an anonymous free-tier visitor viewing a brand they just ran). */
+  currentBrandName?: string;
   onSelect: (slug: string) => void;
   onAddBrand: () => void;
 }
@@ -21,16 +24,18 @@ interface BrandSelectorProps {
 export function BrandSelector({
   brands,
   currentSlug,
+  currentBrandName,
   onSelect,
   onAddBrand,
 }: BrandSelectorProps) {
   const current = brands.find((b) => b.slug === currentSlug);
+  const label = current?.name ?? currentBrandName ?? "Select Brand";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2">
-          {current?.name ?? "Select Brand"}
+          {label}
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>

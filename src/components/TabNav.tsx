@@ -24,18 +24,22 @@ const SECONDARY_TABS = [
   { label: "Refine Prompts", segment: "prompts" },
 ];
 
+// Segments that require a signed-in account (Pro features or account-bound
+// actions). Hidden from the tab nav for anonymous free-tier visitors.
+const AUTH_ONLY_SEGMENTS = new Set(["reports", "site-audit"]);
+
 function TabNavInner({ slug, category }: { slug: string; category?: string | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isSignedIn } = useAuth();
   const qs = searchParams.toString();
   const suffix = qs ? `?${qs}` : "";
-  // Email Reports requires an account to subscribe — hide it for anonymous
-  // free-tier visitors so they don't land on a page they can't use.
-  const tabs = getTabs(category).filter((t) => t.segment !== "reports" || isSignedIn);
+  // Hide account-bound tabs (Email Reports, Site Audit) from anonymous
+  // free-tier visitors so they don't land on pages they can't use.
+  const tabs = getTabs(category).filter((t) => !AUTH_ONLY_SEGMENTS.has(t.segment) || isSignedIn);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card">
+    <nav className="sticky top-[3.75rem] z-40 border-b border-border/60 bg-card">
       <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end overflow-x-auto scrollbar-none">
         {tabs.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
