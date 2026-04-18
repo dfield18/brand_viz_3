@@ -84,7 +84,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
     <div className="space-y-10">
       <form onSubmit={handleSubmit}>
         {/* Small free-tier badge sits just above the input */}
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+        <div className="mb-5 inline-flex items-center gap-2 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
           <span>Free · No sign-up</span>
         </div>
