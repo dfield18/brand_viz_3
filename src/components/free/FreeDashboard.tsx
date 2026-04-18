@@ -143,7 +143,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             aria-label="Run free analysis"
             className="shrink-0 self-center inline-flex items-center justify-center size-11 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+            {loading ? <Loader2 className="h-7 w-7 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
           </button>
         </div>
 
@@ -170,8 +170,8 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
       </form>
 
       {loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin text-foreground" />
           Running analysis for {brandName.trim()}…
         </div>
       )}
