@@ -49,6 +49,9 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
   const [industryDraft, setIndustryDraft] = useState("");
   const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
   const [promptDraft, setPromptDraft] = useState("");
+  const [runningReport, setRunningReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportResult, setReportResult] = useState<{ message?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function startIndustryEdit() {
@@ -85,6 +88,31 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
     setEditingPromptIndex(null);
   }
 
+  async function runReport() {
+    if (!result?.brandName || !result?.industry || !result?.prompts?.length || runningReport) return;
+    setRunningReport(true);
+    setReportError(null);
+    setReportResult(null);
+    try {
+      const res = await fetch("/api/free-run/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: result.brandName,
+          industry: result.industry,
+          prompts: result.prompts.map((p) => ({ text: p.text })),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
+      setReportResult(json);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setRunningReport(false);
+    }
+  }
+
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -97,6 +125,10 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
     setLoading(true);
     setError(null);
     setResult(null);
+    setReportResult(null);
+    setReportError(null);
+    setEditingIndustry(false);
+    setEditingPromptIndex(null);
     try {
       const res = await fetch("/api/free-run", {
         method: "POST",
@@ -325,6 +357,33 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
               ))}
             </ol>
           </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={runReport}
+              disabled={runningReport || editingIndustry || editingPromptIndex !== null}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {runningReport ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Running report…
+                </>
+              ) : (
+                "Run report"
+              )}
+            </button>
+          </div>
+          {reportError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              {reportError}
+            </div>
+          )}
+          {reportResult?.message && (
+            <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground leading-relaxed">
+              {reportResult.message}
+            </div>
+          )}
         </div>
       )}
 
