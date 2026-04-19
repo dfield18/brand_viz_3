@@ -476,17 +476,24 @@ Intent: "informational" (learning) or "high-intent" (deciding/evaluating).`
 
 ${context}
 
+The goal is to surface questions whose natural answer is a list of BRAND or COMPANY names — not a list of product attributes. This is how we measure which brands AI assistants recommend organically.
+
 Generate exactly 8 questions that:
 - Do NOT mention "${brandName}" by name anywhere in the question
-- Ask about the broader category, industry, or problem space that "${brandName}" operates in
-- Cover a mix of: best/top options, recommendations, comparisons between options, what to look for, recent trends, how to choose
-- Sound natural — the way a real person would phrase a question
-- Would naturally lead AI to potentially mention or recommend "${brandName}" (or its competitors)
+- Ask about the broader category/industry that "${brandName}" operates in
+- Each question's natural answer should be a ranked or enumerated list of COMPANIES, BRANDS, or PRODUCTS by name — not a list of features, qualities, or things to consider
+- Cover a mix of: best/top brands, leading companies, recommended products, most popular options, comparisons between specific players, alternatives to [the category leader], who dominates the market, trusted names for [use case]
+- AVOID question shapes that invite feature-list answers, e.g.:
+  * "What features should I look for when choosing…"  (elicits "range, safety, price")
+  * "What should I consider when buying…"            (elicits considerations, not brands)
+  * "How do I choose a…"                             (elicits criteria, not brands)
+  * "What are the key qualities of a good…"         (elicits qualities)
+- Sound natural — the way a real person would phrase a search
+- Vary between short casual queries and longer specific ones
+- If you reference a year, use ${new Date().getFullYear()}
 
 Return ONLY a JSON array of objects with "text" and "intent" fields.
-Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).
-
-If you reference a year, use ${new Date().getFullYear()}.`;
+Intent must be "informational" (learning/researching) or "high-intent" (deciding/comparing/evaluating).`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
