@@ -38,9 +38,9 @@ export function BrandSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          {label}
-          <ChevronDown className="h-4 w-4 opacity-50" />
+        <Button variant="outline" className="gap-2 max-w-[60vw] sm:max-w-none">
+          <span className="truncate">{label}</span>
+          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">

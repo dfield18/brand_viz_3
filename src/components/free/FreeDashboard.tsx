@@ -182,9 +182,9 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
         <label htmlFor="freeBrandInput" className="sr-only">
           Brand name
         </label>
-        <div className="flex items-baseline gap-4">
+        <div className="flex items-baseline gap-3 sm:gap-4">
           <div
-            className="relative flex-1 min-w-0 cursor-text text-4xl sm:text-5xl font-semibold tracking-tight leading-tight"
+            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-5xl font-semibold tracking-tight leading-tight"
             onClick={() => inputRef.current?.focus()}
           >
             <input

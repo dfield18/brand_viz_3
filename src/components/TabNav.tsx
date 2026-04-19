@@ -45,7 +45,7 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
 
   return (
     <nav className="sticky top-[var(--header-height)] z-40 border-b border-border/60 bg-card">
-      <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end overflow-x-auto scrollbar-none">
+      <div className="max-w-[1220px] mx-auto flex gap-1 px-3 sm:px-6 items-end overflow-x-auto scrollbar-none">
         {tabs.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
           const isActive = pathname === `/entity/${slug}/${tab.segment}`;

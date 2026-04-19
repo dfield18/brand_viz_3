@@ -114,7 +114,7 @@ export default function EntityLayout({
     <ResponseViewerProvider>
       <div>
         <TabNav slug={slug} category={brand?.category} />
-        <div className="max-w-[1060px] mx-auto px-6 py-8 min-h-[calc(100vh-7rem)] animate-in fade-in duration-150">{children}</div>
+        <div className="max-w-[1060px] mx-auto px-4 sm:px-6 py-6 sm:py-8 min-h-[calc(100vh-7rem)] animate-in fade-in duration-150">{children}</div>
       </div>
     </ResponseViewerProvider>
   );

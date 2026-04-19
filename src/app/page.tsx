@@ -112,7 +112,7 @@ export default async function HomePage() {
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between h-16 px-6">
+        <div className="max-w-5xl mx-auto flex items-center justify-between h-16 px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -123,11 +123,13 @@ export default async function HomePage() {
             </div>
             <span className="text-[15px] font-semibold tracking-tight">aiSaysWhat</span>
           </div>
-          <div className="flex items-center gap-5">
-            <Link href="/marketing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <div className="flex items-center gap-3 sm:gap-5">
+            {/* Marketing links eat horizontal room on narrow phones — drop
+                them on mobile; Sign in + Get Started keep the primary CTAs. */}
+            <Link href="/marketing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
               Why us
             </Link>
-            <Link href="/marketing#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/marketing#pricing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
             <Link href="/sign-in" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -135,7 +137,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/sign-up"
-              className="text-sm font-medium px-4 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="text-sm font-medium px-3 sm:px-4 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
               Get Started
             </Link>
@@ -144,9 +146,9 @@ export default async function HomePage() {
       </nav>
 
       {/* Hero + free dashboard — one section so spacing stays tight */}
-      <section className="max-w-5xl mx-auto px-6 pt-8 sm:pt-12 pb-10">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10">
         <div className="max-w-2xl">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             AI is shaping how people discover your brand.
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
@@ -164,7 +166,7 @@ export default async function HomePage() {
 
       {/* How it works — shown first so visitors understand the product before seeing prices */}
       <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
             How it works
           </h2>
@@ -185,7 +187,7 @@ export default async function HomePage() {
 
       {/* Features */}
       <section id="features" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             What you get
           </h2>
@@ -205,7 +207,7 @@ export default async function HomePage() {
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-10 sm:py-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             Pricing
           </h2>
@@ -257,7 +259,7 @@ export default async function HomePage() {
 
       {/* Bottom CTA */}
       <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-6 py-12 sm:py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground max-w-lg">
             Your brand is already part of the AI conversation. Find out how AI is framing your story.
           </h2>
@@ -274,11 +276,11 @@ export default async function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-border/60">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">aiSaysWhat</span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground/50">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted-foreground/50">
             <Link href="/marketing" className="hover:text-muted-foreground transition-colors">About</Link>
             <a href="mailto:support@aisayswhat.com" className="hover:text-muted-foreground transition-colors">Support</a>
             <span>&copy; {new Date().getFullYear()} BrooklyEcho LLC</span>

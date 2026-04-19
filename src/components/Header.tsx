@@ -176,10 +176,10 @@ function HeaderInner() {
   return (
     <>
       <header className="border-b border-border/60 bg-card sticky top-0 z-50 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04),0_2px_8px_-2px_hsl(0_0%_0%/0.06)]">
-        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[var(--header-height)] px-6">
+        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[var(--header-height)] px-3 sm:px-6">
           {/* Left: Logo — links to dashboard when signed in, home otherwise
               so an anonymous free-tier visitor doesn't get bounced to sign-in. */}
-          <a href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <a href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <line x1="7" y1="11" x2="25" y2="11" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
@@ -187,14 +187,16 @@ function HeaderInner() {
                 <line x1="7" y1="21" x2="17" y2="21" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
               </svg>
             </div>
-            <span className="text-[15px] font-semibold tracking-tight text-foreground">
+            {/* Hide the wordmark on entity pages below sm so the brand selector
+                and rerun button have room. Non-entity pages keep it visible. */}
+            <span className={`text-[15px] font-semibold tracking-tight text-foreground ${isEntityPage ? "hidden sm:inline" : ""}`}>
               aiSaysWhat
             </span>
           </a>
 
           {/* Center-left: Brand selector */}
           {isEntityPage && (
-            <div className="flex-1 flex justify-start ml-6">
+            <div className="flex-1 min-w-0 flex justify-start ml-2 sm:ml-6">
               <BrandSelector
                 brands={visibleBrands}
                 currentSlug={currentSlug}
@@ -207,14 +209,15 @@ function HeaderInner() {
           )}
 
           {/* Right: Run button + User avatar */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {isEntityPage && currentSlug && (
               <button
                 onClick={() => setRunOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                aria-label="Rerun analysis"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors"
               >
                 <RefreshCw className="h-3 w-3" />
-                Rerun
+                <span className="hidden sm:inline">Rerun</span>
               </button>
             )}
             <UserButton />

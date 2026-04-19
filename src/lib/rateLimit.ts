@@ -43,10 +43,17 @@ export const rateLimiters = {
 type Tier = keyof typeof rateLimiters;
 
 /** Tiers that protect paid-cost operations (per-anon-IP/session free runs).
- *  If Upstash is unreachable in production, we fail these CLOSED rather
- *  than let abuse burn OpenAI/Gemini spend unchecked. Other tiers still
- *  fail open since they only protect internal QPS, not external $. */
+ *  When FREE_TIER_RATE_LIMIT_STRICT=true and Upstash is unreachable in
+ *  production, we fail these CLOSED rather than let abuse burn
+ *  OpenAI/Gemini spend unchecked. Default is fail-open-with-warning so a
+ *  fresh deploy isn't hard-broken before Upstash is wired up. */
 const FAIL_CLOSED_TIERS: ReadonlySet<Tier> = new Set(["freeRunIp", "freeRunSession"]);
+
+function strictMode(): boolean {
+  const raw = process.env.FREE_TIER_RATE_LIMIT_STRICT;
+  if (!raw) return false;
+  return /^(1|true|yes|on)$/i.test(raw);
+}
 
 /**
  * Check rate limit for the given identifier (usually userId or IP).
@@ -57,16 +64,17 @@ export async function checkRateLimit(
   tier: Tier = "read",
 ): Promise<NextResponse | null> {
   if (!process.env.UPSTASH_REDIS_REST_URL) {
-    // Prod + missing Upstash + cost-sensitive tier → refuse the request.
-    // Staging/dev without Upstash still fails open so local flows work.
     if (process.env.NODE_ENV === "production" && FAIL_CLOSED_TIERS.has(tier)) {
-      console.error(
-        `[rateLimit] Upstash not configured in production for fail-closed tier "${tier}". Rejecting request.`,
+      // Loud warning so operators see this in logs even when we fail open.
+      console.warn(
+        `[rateLimit] Upstash not configured for fail-closed tier "${tier}". Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to enforce the ${tier} limit.`,
       );
-      return NextResponse.json(
-        { error: "Service temporarily unavailable. Please try again shortly." },
-        { status: 503 },
-      );
+      if (strictMode()) {
+        return NextResponse.json(
+          { error: "Service temporarily unavailable. Please try again shortly." },
+          { status: 503 },
+        );
+      }
     }
     return null;
   }
@@ -89,11 +97,15 @@ export async function checkRateLimit(
     }
     return null;
   } catch (e) {
-    // If Upstash itself throws (network, auth), cost-sensitive tiers fail
-    // closed in production so a Redis outage can't open the floodgates.
-    // Other tiers fail open since their only risk is internal QPS.
+    // If Upstash itself throws (network, auth), only fail closed for
+    // cost-sensitive tiers when the operator has opted in with
+    // FREE_TIER_RATE_LIMIT_STRICT. Default is fail-open-with-warning.
     console.error("[rateLimit] Error:", e);
-    if (process.env.NODE_ENV === "production" && FAIL_CLOSED_TIERS.has(tier)) {
+    if (
+      process.env.NODE_ENV === "production" &&
+      FAIL_CLOSED_TIERS.has(tier) &&
+      strictMode()
+    ) {
       return NextResponse.json(
         { error: "Service temporarily unavailable. Please try again shortly." },
         { status: 503 },
