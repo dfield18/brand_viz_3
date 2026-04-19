@@ -195,6 +195,7 @@ function OverviewInner() {
                 overallMentionRate={kpis.overallMentionRate}
                 kpiDeltas={apiData.kpiDeltas ?? null}
                 brandName={brandName}
+                industry={industry}
                 dominantFrames={dominantFrames}
                 sentimentSplit={apiData.sentimentSplit ?? null}
                 topSourceType={apiData.topSourceType ?? null}

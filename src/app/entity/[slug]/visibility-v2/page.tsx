@@ -230,6 +230,7 @@ function VisibilityV2Inner() {
             firstMentionRate={data.firstMentionRate}
             kpiDeltas={data.kpiDeltas}
             brandName={brandName}
+            industry={apiData.brandIndustry}
             onCardClick={handleCardClick}
             activeMetric={activeMetric}
             sparklines={sparklines}

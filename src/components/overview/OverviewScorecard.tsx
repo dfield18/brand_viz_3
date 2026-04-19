@@ -8,6 +8,10 @@ interface OverviewScorecardProps {
   overallMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
+  /** Industry label used in the Brand Recall description (e.g. "athletic
+   *  apparel", "electric vehicles"). Falls back to "industry" when null/
+   *  empty so the copy still reads naturally. */
+  industry?: string | null;
   dominantFrames: { name: string; percentage: number }[];
   sentimentSplit: { positive: number; neutral: number; negative: number } | null;
   topSourceType?: { category: string; count: number; totalSources: number } | null;
@@ -118,11 +122,13 @@ export function OverviewScorecard({
   overallMentionRate,
   kpiDeltas,
   brandName = "Brand",
+  industry,
   dominantFrames,
   sentimentSplit,
   topSourceType,
 }: OverviewScorecardProps) {
   const topFrame = dominantFrames[0] ?? null;
+  const industryLabel = industry?.trim() || "industry";
   const cards: CardConfig[] = [
     {
       label: "BRAND RECALL",
@@ -130,7 +136,7 @@ export function OverviewScorecard({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: getVisibilityBadge(overallMentionRate),
-      description: `% of broad industry questions where AI mentions ${brandName} — no brand is named in the prompt`,
+      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName} — no brand is named in the prompt`,
       tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,

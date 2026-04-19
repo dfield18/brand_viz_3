@@ -13,6 +13,9 @@ interface SummaryCardsDonutProps {
   firstMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
+  /** Industry label used in the Brand Recall description (e.g. "athletic
+   *  apparel"). Falls back to "industry" when null/empty. */
+  industry?: string | null;
   onCardClick?: (metric: MetricTab) => void;
   activeMetric?: MetricTab;
   sparklines?: { visibility: number[]; sov: number[]; topResult: number[] };
@@ -186,6 +189,7 @@ export function SummaryCardsDonut({
   firstMentionRate,
   kpiDeltas,
   brandName = "Brand",
+  industry,
   onCardClick,
   activeMetric,
   sparklines,
@@ -194,6 +198,7 @@ export function SummaryCardsDonut({
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
   const positionBadge = getPositionBadge(avgRankScore);
+  const industryLabel = industry?.trim() || "industry";
 
   const cards: DonutCardConfig[] = [
     {
@@ -202,7 +207,7 @@ export function SummaryCardsDonut({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: visibilityBadge,
-      description: `% of broad industry questions where AI mentions ${brandName} — no brand is named in the prompt`,
+      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName} — no brand is named in the prompt`,
       tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
