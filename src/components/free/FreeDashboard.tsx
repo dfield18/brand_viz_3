@@ -39,7 +39,7 @@ function buildLoadingMessages(brandName: string, promptCount: number, modelList:
   return [
     { atMs: 0, text: `Running analysis for ${brandName}… this can take 30–60 seconds.` },
     { atMs: 8_000, text: `Picking the ${promptCount} prompts real people ask AI about ${brandName}…` },
-    { atMs: 18_000, text: `Sending them to ${modelList}…` },
+    { atMs: 18_000, text: `Sending them to ${modelList} — today plus the last two months…` },
     { atMs: 35_000, text: "Reading responses and pulling out sources…" },
     { atMs: 55_000, text: "Building your report…" },
   ];

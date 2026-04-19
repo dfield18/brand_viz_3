@@ -193,9 +193,55 @@ async function callGemini(promptText: string): Promise<ModelResult> {
   return { text: text + groundingBlock, citations };
 }
 
+/**
+ * Historical-point ChatGPT call — no web_search tool. Feeds the model a
+ * fixed "As of <month/year>" date and asks it to answer from training
+ * knowledge, which is ~3× faster than a search-tool round-trip. The
+ * trend chart needs directional mention-rate data, not fresh citations,
+ * so we skip source extraction entirely for these runs.
+ */
+async function callChatGPTForDate(promptText: string, asOf: Date): Promise<ModelResult> {
+  const dateLabel = asOf.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const input = `As of ${dateLabel}, answer concisely and factually in 5 bullet points based on what you know. Do not search the web.\n\nQuestion: ${promptText}`;
+
+  const response = await getOpenAI().responses.create({
+    model: "gpt-4o-mini",
+    input,
+    max_output_tokens: 1024,
+  });
+
+  let text = "";
+  if (Array.isArray(response.output)) {
+    for (const item of response.output) {
+      if (item.type === "message" && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          if (part.type === "output_text") text += part.text;
+        }
+      }
+    }
+  }
+  if (!text && response.output_text) text = response.output_text;
+  return { text, citations: [] };
+}
+
+async function callGeminiForDate(promptText: string, asOf: Date): Promise<ModelResult> {
+  const dateLabel = asOf.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const input = `As of ${dateLabel}, answer concisely and factually in 5 bullet points based on what you know. Do not search the web.\n\nQuestion: ${promptText}`;
+
+  const model = getGemini().getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  const result = await model.generateContent(input);
+  return { text: result.response.text(), citations: [] };
+}
+
 async function runOnModel(model: string, promptText: string): Promise<ModelResult> {
   if (model === "chatgpt") return callChatGPT(promptText);
   if (model === "gemini") return callGemini(promptText);
+  throw new Error(`Unsupported free-tier model: ${model}`);
+}
+
+async function runOnModelForDate(model: string, promptText: string, asOf: Date): Promise<ModelResult> {
+  if (model === "chatgpt") return callChatGPTForDate(promptText, asOf);
+  if (model === "gemini") return callGeminiForDate(promptText, asOf);
   throw new Error(`Unsupported free-tier model: ${model}`);
 }
 
@@ -317,96 +363,137 @@ export async function POST(req: NextRequest) {
       ),
     );
 
-    // 3. Fan out: one Job per model, each runs all prompts in parallel.
-    //    Per-prompt failures are swallowed so one bad prompt doesn't kill the
-    //    rest, but we count how many runs actually landed. If a model
-    //    produced zero runs, the job is marked "error" — not "done" — so the
-    //    overview tab doesn't silently show empty data for it.
-    const perModelCounts = await Promise.all(
-      FREE_TIER_CONFIG.models.map(async (model) => {
-        const job = await prisma.job.create({
-          data: {
-            brandId: brand.id,
-            model,
-            range: 90,
-            status: "running",
-            startedAt: new Date(),
-          },
-        });
+    // 3. Build the list of time points the run will cover. Today's point
+    //    uses the full set of prompts with live web search; each historical
+    //    point uses a smaller subset (no web_search tool) so the trend
+    //    chart renders without tripling the LLM bill or wall-clock time.
+    const historicalPrompts = createdPrompts.slice(0, FREE_TIER_CONFIG.historicalPromptCount);
+    interface TimePoint {
+      monthsAgo: number;
+      finishedAt: Date;
+      prompts: typeof createdPrompts;
+      useSearch: boolean;
+    }
+    const now = new Date();
+    const timePoints: TimePoint[] = [
+      { monthsAgo: 0, finishedAt: now, prompts: createdPrompts, useSearch: true },
+    ];
+    for (let m = 1; m <= FREE_TIER_CONFIG.historicalMonths; m++) {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - m);
+      timePoints.push({
+        monthsAgo: m,
+        finishedAt: d,
+        prompts: historicalPrompts,
+        useSearch: false,
+      });
+    }
 
-        const results = await Promise.allSettled(
-          createdPrompts.map(async (prompt) => {
-            const { text: rawResponseText, citations } = await runOnModel(model, prompt.text);
-
-            // Run analysis + narrative extraction in parallel — both read
-            // the full response and are independent. Narrative supplies
-            // sentiment/themes that the overview tab reads from
-            // narrativeJson.sentiment.label.
-            const [analysisJson, narrativeJson] = await Promise.all([
-              extractAnalysis(rawResponseText, brandName, prompt.text),
-              extractNarrativeForRun(rawResponseText, brandName, brand.slug),
-            ]);
-
-            const run = await prisma.run.create({
-              data: {
-                jobId: job.id,
-                brandId: brand.id,
-                promptId: prompt.id,
-                model,
-                requestHash: sha256(`free|${brand.id}|${job.id}|${prompt.id}|${model}`),
-                promptTextHash: sha256(`${model}|${prompt.text}`),
-                rawResponseText,
-                analysisJson: JSON.parse(JSON.stringify(analysisJson)),
-                narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
-              },
-            });
-
-            // Persist SourceOccurrence rows so the Sources tab has data.
-            // Awaited (not fire-and-forget) because the free-run request
-            // returns as soon as the Promise.all resolves, and Vercel
-            // functions don't keep running after the response is sent.
-            await persistSourcesForRun({
-              runId: run.id,
+    // 4. Fan out: for each (time point, model) pair create a Job and run its
+    //    prompts in parallel. Every time-point × model × prompt combo fires
+    //    concurrently — historical runs are fast (no web_search) so the
+    //    wall-clock cost is dominated by today's live calls.
+    //
+    //    Per-prompt failures are swallowed so one bad prompt doesn't kill
+    //    the rest, but we count landings. A job that produced zero runs is
+    //    marked "error" (not "done") so the overview tab doesn't silently
+    //    show empty data for it.
+    const perJobCounts = await Promise.all(
+      timePoints.flatMap((tp) =>
+        FREE_TIER_CONFIG.models.map(async (model) => {
+          const job = await prisma.job.create({
+            data: {
+              brandId: brand.id,
               model,
-              promptId: prompt.id,
-              brandName,
-              brandSlug: brand.slug,
-              responseText: rawResponseText,
-              analysisJson,
-              apiCitations: citations,
-            }).catch((err) => {
-              console.error(`[free-run/execute] persistSources failed for run=${run.id}:`, err);
-            });
-          }),
-        );
+              range: 90,
+              status: "running",
+              // Backdate so the trend chart buckets this Job at the right
+              // date. Both startedAt and finishedAt point at the time
+              // point so downstream date filters behave consistently.
+              startedAt: tp.finishedAt,
+            },
+          });
 
-        const succeeded = results.filter((r) => r.status === "fulfilled").length;
-        const firstError = results.find((r) => r.status === "rejected") as
-          | PromiseRejectedResult
-          | undefined;
-        if (firstError) {
-          console.error(
-            `[free-run/execute] ${model}: ${results.length - succeeded}/${results.length} prompts failed. First error:`,
-            firstError.reason,
+          const results = await Promise.allSettled(
+            tp.prompts.map(async (prompt) => {
+              const { text: rawResponseText, citations } = tp.useSearch
+                ? await runOnModel(model, prompt.text)
+                : await runOnModelForDate(model, prompt.text, tp.finishedAt);
+
+              // Run analysis + narrative extraction in parallel — both read
+              // the full response and are independent. Narrative supplies
+              // sentiment/themes that the overview tab reads from
+              // narrativeJson.sentiment.label.
+              const [analysisJson, narrativeJson] = await Promise.all([
+                extractAnalysis(rawResponseText, brandName, prompt.text),
+                extractNarrativeForRun(rawResponseText, brandName, brand.slug),
+              ]);
+
+              const run = await prisma.run.create({
+                data: {
+                  jobId: job.id,
+                  brandId: brand.id,
+                  promptId: prompt.id,
+                  model,
+                  requestHash: sha256(`free|${brand.id}|${job.id}|${prompt.id}|${model}|${tp.monthsAgo}`),
+                  promptTextHash: sha256(`${model}|${prompt.text}`),
+                  rawResponseText,
+                  analysisJson: JSON.parse(JSON.stringify(analysisJson)),
+                  narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
+                },
+              });
+
+              // Only today's runs get source persistence. Historical runs
+              // don't use web_search, so citations are empty and any inline
+              // URLs would just be training-data guesses — not worth
+              // populating SourceOccurrence with.
+              if (tp.useSearch) {
+                await persistSourcesForRun({
+                  runId: run.id,
+                  model,
+                  promptId: prompt.id,
+                  brandName,
+                  brandSlug: brand.slug,
+                  responseText: rawResponseText,
+                  analysisJson,
+                  apiCitations: citations,
+                }).catch((err) => {
+                  console.error(`[free-run/execute] persistSources failed for run=${run.id}:`, err);
+                });
+              }
+            }),
           );
-        }
 
-        await prisma.job.update({
-          where: { id: job.id },
-          data: {
-            status: succeeded === 0 ? "error" : "done",
-            error: succeeded === 0 ? String(firstError?.reason ?? "all prompts failed").slice(0, 500) : null,
-            finishedAt: new Date(),
-          },
-        });
+          const succeeded = results.filter((r) => r.status === "fulfilled").length;
+          const firstError = results.find((r) => r.status === "rejected") as
+            | PromiseRejectedResult
+            | undefined;
+          if (firstError) {
+            console.error(
+              `[free-run/execute] ${model} (m-${tp.monthsAgo}): ${results.length - succeeded}/${results.length} prompts failed. First error:`,
+              firstError.reason,
+            );
+          }
 
-        return { model, succeeded, total: results.length };
-      }),
+          await prisma.job.update({
+            where: { id: job.id },
+            data: {
+              status: succeeded === 0 ? "error" : "done",
+              error: succeeded === 0 ? String(firstError?.reason ?? "all prompts failed").slice(0, 500) : null,
+              finishedAt: tp.finishedAt,
+            },
+          });
+
+          return { model, monthsAgo: tp.monthsAgo, succeeded, total: results.length };
+        }),
+      ),
     );
 
-    // If every model failed every prompt, surface a 502 instead of
-    // redirecting to an empty overview page.
-    const totalSucceeded = perModelCounts.reduce((s, m) => s + m.succeeded, 0);
+    // If every model failed every prompt at every time point, surface a 502
+    // instead of redirecting to an empty overview page. Today's point is
+    // what matters most — if historical failures happen but today landed,
+    // we still ship the report.
+    const totalSucceeded = perJobCounts.reduce((s, j) => s + j.succeeded, 0);
     if (totalSucceeded === 0) {
       const errorRes = NextResponse.json(
         {

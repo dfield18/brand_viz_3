@@ -64,6 +64,14 @@ export const FREE_TIER_EXAMPLE_BRANDS = envList("FREE_TIER_EXAMPLE_BRANDS", [
   "ACLU",
 ]);
 
+/** How many historical time points (in months-ago buckets) the trend chart
+ *  shows in addition to "today". 2 → trend line draws 60d, 30d, today. */
+export const FREE_TIER_HISTORICAL_MONTHS = envInt("FREE_TIER_HISTORICAL_MONTHS", 2);
+
+/** Prompts run per historical time point. Fewer than `promptCount` because
+ *  trend-chart mention rates need directional data, not full coverage. */
+export const FREE_TIER_HISTORICAL_PROMPT_COUNT = envInt("FREE_TIER_HISTORICAL_PROMPT_COUNT", 3);
+
 export const FREE_TIER_CONFIG = {
   promptCount: FREE_TIER_PROMPT_COUNT,
   promptCluster: FREE_TIER_PROMPT_CLUSTER,
@@ -75,4 +83,6 @@ export const FREE_TIER_CONFIG = {
   sessionCookie: FREE_TIER_SESSION_COOKIE,
   enabled: FREE_TIER_ENABLED,
   exampleBrands: FREE_TIER_EXAMPLE_BRANDS,
+  historicalMonths: FREE_TIER_HISTORICAL_MONTHS,
+  historicalPromptCount: FREE_TIER_HISTORICAL_PROMPT_COUNT,
 } as const;
