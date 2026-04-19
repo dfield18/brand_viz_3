@@ -10,6 +10,7 @@ import {
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import type { RunAnalysis } from "@/lib/analysisSchema";
@@ -158,6 +159,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
   if (!model || (model !== "all" && !VALID_MODELS.includes(model))) {
     return NextResponse.json(
       { error: `Invalid model. Must be "all" or one of: ${VALID_MODELS.join(", ")}` },

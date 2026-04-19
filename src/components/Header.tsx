@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AnalyzeRunner } from "@/components/AnalyzeRunner";
 import { PromptEditor } from "@/components/PromptEditor";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useAuth } from "@clerk/nextjs";
 
 interface ValidationResult {
   valid: boolean;
@@ -37,6 +37,7 @@ function HeaderInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const { isSignedIn } = useAuth();
   const { brands } = useBrands();
   const [addOpen, setAddOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
@@ -175,9 +176,10 @@ function HeaderInner() {
   return (
     <>
       <header className="border-b border-border/60 bg-card sticky top-0 z-50 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04),0_2px_8px_-2px_hsl(0_0%_0%/0.06)]">
-        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[3.75rem] px-6">
-          {/* Left: Logo — links to dashboard */}
-          <a href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[var(--header-height)] px-6">
+          {/* Left: Logo — links to dashboard when signed in, home otherwise
+              so an anonymous free-tier visitor doesn't get bounced to sign-in. */}
+          <a href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <line x1="7" y1="11" x2="25" y2="11" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
@@ -199,6 +201,7 @@ function HeaderInner() {
                 currentBrandName={currentBrandName}
                 onSelect={handleBrandChange}
                 onAddBrand={handleAddBrand}
+                canAddBrand={isSignedIn !== false}
               />
             </div>
           )}
@@ -423,7 +426,7 @@ function HeaderInner() {
 
 export function Header() {
   return (
-    <Suspense fallback={<header className="border-b border-border/60 bg-card h-[3.75rem]" />}>
+    <Suspense fallback={<header className="border-b border-border/60 bg-card h-[var(--header-height)]" />}>
       <HeaderInner />
     </Suspense>
   );

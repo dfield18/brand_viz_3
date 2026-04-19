@@ -19,6 +19,9 @@ interface BrandSelectorProps {
   currentBrandName?: string;
   onSelect: (slug: string) => void;
   onAddBrand: () => void;
+  /** Whether to show the "+ Add Brand" menu item. Hidden for anonymous
+   *  visitors since the add-brand flow requires an account. */
+  canAddBrand?: boolean;
 }
 
 export function BrandSelector({
@@ -27,6 +30,7 @@ export function BrandSelector({
   currentBrandName,
   onSelect,
   onAddBrand,
+  canAddBrand = true,
 }: BrandSelectorProps) {
   const current = brands.find((b) => b.slug === currentSlug);
   const label = current?.name ?? currentBrandName ?? "Select Brand";
@@ -40,13 +44,17 @@ export function BrandSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuItem onSelect={() => onAddBrand()}>
-          + Add Brand
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {canAddBrand && (
+          <>
+            <DropdownMenuItem onSelect={() => onAddBrand()}>
+              + Add Brand
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {brands.length === 0 && (
           <DropdownMenuItem disabled className="text-muted-foreground">
-            No brands yet
+            {canAddBrand ? "No brands yet" : "Sign up to add brands"}
           </DropdownMenuItem>
         )}
         {[...brands]

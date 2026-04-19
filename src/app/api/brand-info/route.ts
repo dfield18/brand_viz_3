@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireBrandAccess } from "@/lib/brandAccess";
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
 
   const brand = await prisma.brand.findUnique({
     where: { slug: brandSlug },

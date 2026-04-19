@@ -6,6 +6,7 @@ import { computeCompetitorAlerts } from "@/lib/competitorAlerts";
 import { buildMovementSnapshots, type MovementRun } from "@/lib/buildMovementSnapshots";
 import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 
 /**
  * Lightweight endpoint for competitor movement data.
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
 
   const brand = await prisma.brand.findUnique({
     where: { slug: brandSlug },

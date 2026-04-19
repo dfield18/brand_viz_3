@@ -53,10 +53,14 @@ function OverviewInner() {
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
 
-  // Always land at the top when the overview mounts — e.g. after a free-tier
-  // run redirects here from /, the browser sometimes restores the previous
-  // scroll position mid-page.
+  // Force scroll-to-top only when this is a fresh page load (e.g. after a
+  // free-tier run redirects here from /, where the browser can restore the
+  // landing page's scroll position mid-page). Skip for back/forward
+  // navigation so the browser's own scroll restoration keeps working when
+  // the user returns from another tab.
   useEffect(() => {
+    const entries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    if (entries[0]?.type === "back_forward") return;
     window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
 

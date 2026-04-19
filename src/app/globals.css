@@ -48,6 +48,8 @@
 }
 
 :root {
+  /** Height of the sticky Header. TabNav sticks at top: var(--header-height). */
+  --header-height: 3.75rem;
   --radius: 0.75rem;
   --background: hsl(220 14% 97%);
   --foreground: hsl(222 47% 11%);

@@ -4,6 +4,7 @@ import {
   platformConsistencyFromPolarization,
   modelConfidenceFromHedgingRate,
 } from "@/lib/narrative/reportHelpers";
+import { requireBrandAccess } from "@/lib/brandAccess";
 
 /**
  * GET /api/report?brandSlug=...&model=...&range=...
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
 
   const host = req.headers.get("host");
   const proto = req.headers.get("x-forwarded-proto") ?? "https";

@@ -18,7 +18,10 @@ export function useBrandName(slug: string | null): string {
   const url = slug ? `/api/brand-info?brandSlug=${encodeURIComponent(slug)}` : null;
   const { data } = useCachedFetch<BrandInfo>(url);
   if (!slug) return "";
-  return data?.displayName ?? titleCase(slug);
+  // Free-tier runs append an 8-hex random suffix to keep anonymous brands
+  // isolated (e.g. "apple-a1b2c3d4"). Strip it from the fallback label so
+  // the dropdown shows "Apple" while brand-info loads, not "Apple A1b2c3d4".
+  return data?.displayName ?? titleCase(slug.replace(/-[0-9a-f]{8}$/, ""));
 }
 
 /**

@@ -40,6 +40,21 @@ export async function POST(req: NextRequest) {
   if (!brandName) {
     return NextResponse.json({ error: "brandName is required" }, { status: 400 });
   }
+  if (brandName.length > 100) {
+    return NextResponse.json(
+      { error: "Brand name is too long. Keep it under 100 characters." },
+      { status: 400 },
+    );
+  }
+  // Reject gibberish/punctuation-only input before paying for three GPT calls.
+  // Any run of letters or digits is enough — this still allows names like
+  // "McDonald's", "AT&T", "Kamala Harris", and non-Latin scripts.
+  if (!/\p{L}|\p{N}/u.test(brandName)) {
+    return NextResponse.json(
+      { error: "Enter a brand or organization name." },
+      { status: 400 },
+    );
+  }
 
   try {
     // Category + industry classifications are independent — run in parallel.

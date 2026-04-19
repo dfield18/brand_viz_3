@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity, type BrandScopeRun, type BrandScopeIdentity } from "@/lib/visibility/brandScope";
+import { requireBrandAccess } from "@/lib/brandAccess";
 
 type ScopeMode = "content" | "query_universe";
 
@@ -37,12 +38,14 @@ export async function GET(req: NextRequest) {
         analysisJson: true,
         createdAt: true,
         prompt: { select: { text: true, cluster: true, intent: true } },
-        brand: { select: { name: true, displayName: true, industry: true } },
+        brand: { select: { slug: true, name: true, displayName: true, industry: true } },
       },
     });
     if (!run) {
       return NextResponse.json({ error: "Run not found" }, { status: 404 });
     }
+    const runAccess = await requireBrandAccess(run.brand.slug);
+    if (runAccess) return runAccess;
     const name = run.brand.displayName || run.brand.name;
     const industry = (run.brand as unknown as { industry?: string | null }).industry;
     return respondWith(name, [run], industry);
@@ -51,6 +54,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug or runId" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
 
   const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
   if (!brand) {

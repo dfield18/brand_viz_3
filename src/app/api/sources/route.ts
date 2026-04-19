@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { buildEntityDisplayNames } from "@/lib/utils";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
   const cluster = req.nextUrl.searchParams.get("cluster") ?? "";

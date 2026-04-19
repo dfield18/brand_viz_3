@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { parseAnalysis, aggregateNarrative } from "@/lib/aggregateAnalysis";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
@@ -33,6 +34,8 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const access = await requireBrandAccess(brandSlug);
+  if (access) return access;
   const model = req.nextUrl.searchParams.get("model") ?? "";
   const viewRange = parseInt(req.nextUrl.searchParams.get("range") ?? "90", 10);
 

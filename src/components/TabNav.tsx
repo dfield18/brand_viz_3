@@ -35,11 +35,16 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
   const qs = searchParams.toString();
   const suffix = qs ? `?${qs}` : "";
   // Hide account-bound tabs (Email Reports, Site Audit) from anonymous
-  // free-tier visitors so they don't land on pages they can't use.
-  const tabs = getTabs(category).filter((t) => !AUTH_ONLY_SEGMENTS.has(t.segment) || isSignedIn);
+  // free-tier visitors so they don't land on pages they can't use. While
+  // Clerk is still hydrating `isSignedIn` is `undefined` — keep the tabs
+  // visible in that window so signed-in users don't see them briefly
+  // disappear before re-rendering.
+  const tabs = getTabs(category).filter(
+    (t) => !AUTH_ONLY_SEGMENTS.has(t.segment) || isSignedIn !== false,
+  );
 
   return (
-    <nav className="sticky top-[3.75rem] z-40 border-b border-border/60 bg-card">
+    <nav className="sticky top-[var(--header-height)] z-40 border-b border-border/60 bg-card">
       <div className="max-w-[1220px] mx-auto flex gap-1 px-6 items-end overflow-x-auto scrollbar-none">
         {tabs.map((tab) => {
           const href = `/entity/${slug}/${tab.segment}${suffix}`;
