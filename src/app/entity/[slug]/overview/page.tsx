@@ -222,9 +222,12 @@ function OverviewInner() {
           </div>
         </div>
 
-        {/* Brand Recall Trend — free-tier ephemeral brands (slug ends with
-            a random -[8 hex] suffix) have training-knowledge-estimated
-            historical points, so dash the line and swap the caption. */}
+        {/* Brand Recall Trend — free-tier ephemeral brands (slug ends in
+            `--<8 hex>`) have training-knowledge-estimated historical
+            points, so dash the line and swap the caption. The double
+            hyphen is deliberate: the Pro slugifier collapses runs of
+            non-alphanumerics to a single dash, so `--` can't collide
+            with a legitimate Pro brand name. */}
         {visData?.visibility?.trend && visData.visibility.trend.length > 0 && (
           <div id="visibility-trend" className="scroll-mt-24">
             <section className="rounded-xl bg-card p-6 shadow-section">
@@ -232,7 +235,7 @@ function OverviewInner() {
                 trend={visData.visibility.trend}
                 brandName={brandName}
                 descriptionOverride={trendDescriptions}
-                historicalEstimated={/-[0-9a-f]{8}$/.test(params.slug)}
+                historicalEstimated={/--[0-9a-f]{8}$/.test(params.slug)}
               />
             </section>
             <DataFooter prompts="industry" date={range} />

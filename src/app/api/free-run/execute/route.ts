@@ -47,7 +47,14 @@ function slugify(input: string): string {
 /** Anonymous free runs get a random suffix so two users running "Apple"
  *  at the same time each get their own brand row, and neither can
  *  overwrite a paid user's existing "apple" brand. 8 hex chars → ~4B
- *  values; collisions are astronomically unlikely at our scale. */
+ *  values; collisions are astronomically unlikely at our scale.
+ *
+ *  Callers join this with the base slug using a DOUBLE hyphen
+ *  (`${base}--${randomSlugSuffix()}`). Slugify collapses every run of
+ *  non-alphanumerics to a single hyphen, so `--` can't be produced by
+ *  user input — a Pro user naming a brand "Foo a1b2c3d4" yields
+ *  "foo-a1b2c3d4" (single dash) and never collides with the free-tier
+ *  pattern. */
 function randomSlugSuffix(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
@@ -318,7 +325,7 @@ export async function POST(req: NextRequest) {
     // Aliases matter here — without them, a response that says just
     // "Harris" or "Kamala" never matches "Kamala Harris" in the
     // mention-detection step and the whole report reads 0%.
-    const slug = `${baseSlug}-${randomSlugSuffix()}`;
+    const slug = `${baseSlug}--${randomSlugSuffix()}`;
     const [category, industry, aliases, brand] = await Promise.all([
       classifyBrandCategory(brandName),
       classifyBrandIndustry(brandName),
