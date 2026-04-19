@@ -7,6 +7,7 @@ import { getGemini } from "@/lib/gemini";
 import { extractAnalysis } from "@/lib/extractAnalysis";
 import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
+import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 import { sha256 } from "@/lib/hash";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
@@ -446,6 +447,25 @@ export async function POST(req: NextRequest) {
                   analysisJson: JSON.parse(JSON.stringify(analysisJson)),
                   narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
                 },
+              });
+
+              // Write EntityResponseMetric rows for the brand + every
+              // competitor mentioned in the response. Without this, the
+              // Competition API has nothing to aggregate and the
+              // Competitive Landscape only ever lists the brand itself.
+              // Awaited (not fire-and-forget) so the rows exist before
+              // the response returns — Vercel serverless doesn't keep
+              // running after the response sends.
+              await persistProminenceForRun({
+                runId: run.id,
+                model,
+                promptId: prompt.id,
+                brandName,
+                brandSlug: brand.slug,
+                responseText: rawResponseText,
+                analysisJson,
+              }).catch((err) => {
+                console.error(`[free-run/execute] persistProminence failed for run=${run.id}:`, err);
               });
 
               // Only today's runs get source persistence. Historical runs
