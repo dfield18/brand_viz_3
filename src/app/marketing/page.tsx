@@ -118,19 +118,20 @@ const PRICING_TIERS = [
 
 async function getSampleVisibilityData(): Promise<{
   brandName: string;
+  industry: string | null;
   trend: VisibilityTrendPoint[];
 } | null> {
   try {
     // Find a brand with data (prefer ACLU, fall back to oldest brand)
     let brand = await prisma.brand.findFirst({
       where: { slug: "aclu", jobs: { some: { finishedAt: { not: null } } } },
-      select: { slug: true, name: true, displayName: true },
+      select: { slug: true, name: true, displayName: true, industry: true },
     });
     if (!brand) {
       brand = await prisma.brand.findFirst({
         where: { jobs: { some: { finishedAt: { not: null } } } },
         orderBy: { createdAt: "asc" },
-        select: { slug: true, name: true, displayName: true },
+        select: { slug: true, name: true, displayName: true, industry: true },
       });
     }
     if (!brand) return null;
@@ -150,6 +151,7 @@ async function getSampleVisibilityData(): Promise<{
 
     return {
       brandName: brand.displayName || brand.name,
+      industry: brand.industry,
       trend,
     };
   } catch {
@@ -230,7 +232,7 @@ export default async function LandingPage() {
         <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
           <div className="p-6 sm:p-8">
             {visData ? (
-              <LandingDashboard brandName={visData.brandName} trend={visData.trend} />
+              <LandingDashboard brandName={visData.brandName} industry={visData.industry} trend={visData.trend} />
             ) : (
               <div className="rounded-lg border border-border/80 bg-background p-5">
                 <p className="text-sm font-medium text-foreground mb-5">Brand Recall Over Time</p>

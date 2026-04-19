@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { GET as getVisibility } from "@/app/api/visibility/route";
 import { FreeDashboard } from "@/components/free/FreeDashboard";
+import { LandingDashboard } from "@/components/landing/LandingDashboard";
 import { FREE_TIER_CONFIG } from "@/config/freeTier";
+import type { VisibilityTrendPoint } from "@/types/api";
 
 export const metadata: Metadata = {
   title: {
@@ -109,10 +114,64 @@ const STRUCTURED_DATA = {
   ],
 };
 
+/**
+ * Fetch a sample visibility trend for the "dashboard preview" embed below
+ * How it works. Prefer Nike in either the free-tier cached form
+ * (`nike--cached`) or the Pro form (`nike`). Fall back to any other brand
+ * with data so the section still renders on fresh deploys. Returns null
+ * if nothing is available — caller hides the section entirely.
+ */
+async function getSampleVisibilityData(): Promise<{
+  brandName: string;
+  industry: string | null;
+  trend: VisibilityTrendPoint[];
+} | null> {
+  try {
+    let brand = await prisma.brand.findFirst({
+      where: {
+        slug: { in: ["nike--cached", "nike"] },
+        jobs: { some: { finishedAt: { not: null } } },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { slug: true, name: true, displayName: true, industry: true },
+    });
+    if (!brand) {
+      brand = await prisma.brand.findFirst({
+        where: { jobs: { some: { finishedAt: { not: null } } } },
+        orderBy: { createdAt: "desc" },
+        select: { slug: true, name: true, displayName: true, industry: true },
+      });
+    }
+    if (!brand) return null;
+
+    const url = new URL(
+      `/api/visibility?brandSlug=${encodeURIComponent(brand.slug)}&model=all&range=90`,
+      "http://localhost:3000",
+    );
+    const req = new NextRequest(url);
+    const res = await getVisibility(req);
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const trend: VisibilityTrendPoint[] = json?.visibility?.trend ?? [];
+    if (trend.length < 2) return null;
+
+    return {
+      brandName: brand.displayName || brand.name,
+      industry: brand.industry,
+      trend,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default async function HomePage() {
   // Signed-in users skip the free dashboard and go straight to their Pro dashboard.
   const { userId } = await auth();
   if (userId) redirect("/dashboard");
+
+  const sampleData = await getSampleVisibilityData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,6 +260,25 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Sample dashboard preview — real trend data for the example brand
+          so visitors see what a live report actually looks like. Hidden
+          if no brand has data yet (fresh deploy). */}
+      {sampleData && (
+        <section className="border-t border-border/40">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-2 sm:pt-4">
+            <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+              <div className="p-6 sm:p-8">
+                <LandingDashboard
+                  brandName={sampleData.brandName}
+                  industry={sampleData.industry}
+                  trend={sampleData.trend}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section id="features" className="border-t border-border/40">
