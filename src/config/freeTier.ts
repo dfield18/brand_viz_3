@@ -60,7 +60,7 @@ export const FREE_TIER_ENABLED = envBool("FREE_TIER_ENABLED", true);
 export const FREE_TIER_EXAMPLE_BRANDS = envList("FREE_TIER_EXAMPLE_BRANDS", [
   "Nike",
   "Tesla",
-  "Kamala Harris",
+  "Donald Trump",
   "ACLU",
 ]);
 
