@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -25,6 +25,6 @@ export async function GET(req: NextRequest) {
     industry: brand.industry,
     category: brand.category,
   }, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug) },
   });
 }

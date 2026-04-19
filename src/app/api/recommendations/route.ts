@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { VALID_MODELS } from "@/lib/constants";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { isRunInBrandScope, filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
@@ -967,6 +967,6 @@ export async function GET(req: NextRequest) {
     topicCoverageGaps,
     decliningMetrics,
   }, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug) },
   });
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { parseAnalysis } from "@/lib/aggregateAnalysis";
 import {
   computeFragmentation,
@@ -1034,7 +1034,7 @@ export async function GET(req: NextRequest) {
       },
       totals: { totalRuns: totalResponses },
     }, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

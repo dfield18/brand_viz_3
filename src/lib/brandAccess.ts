@@ -20,6 +20,26 @@ export function isPubliclyViewableBrand(brandSlug: string): boolean {
   return false;
 }
 
+/** Build a Cache-Control header value for a brand's read-only data API.
+ *  Public brands (preset + ephemeral) can be cached at Vercel's edge
+ *  shared across all viewers — the response contains no user-scoped
+ *  data, and brands like common-cause have dozens of runs whose
+ *  aggregation takes 5-15s to compute on a cold request. Pro-only
+ *  brands stay `private` so browser caches but the edge doesn't, since
+ *  a leaked response across Pro users viewing the same slug would
+ *  surface analysis they shouldn't necessarily see.
+ *
+ *  Usage:
+ *    return NextResponse.json(data, {
+ *      headers: { "Cache-Control": brandCacheControl(brandSlug) },
+ *    });
+ */
+export function brandCacheControl(brandSlug: string): string {
+  return isPubliclyViewableBrand(brandSlug)
+    ? "public, s-maxage=60, stale-while-revalidate=300"
+    : "private, max-age=60, stale-while-revalidate=300";
+}
+
 /**
  * Gate read access to per-brand data APIs (overview, visibility, narrative,
  * competition, sources, topics, recommendations, responses, response-detail,

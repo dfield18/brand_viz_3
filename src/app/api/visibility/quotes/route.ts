@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { brandCacheControl } from "@/lib/brandAccess";
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -87,7 +88,7 @@ Return format:
     }
 
     return NextResponse.json({ quotes }, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

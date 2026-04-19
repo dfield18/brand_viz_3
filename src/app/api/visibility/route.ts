@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
@@ -805,7 +805,7 @@ export async function GET(req: NextRequest) {
       },
       totals: { totalRuns, totalMentions },
     }, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

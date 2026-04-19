@@ -10,7 +10,7 @@ import {
   computeShareOfVoice,
 } from "@/lib/competition/computeCompetition";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import type { RunAnalysis } from "@/lib/analysisSchema";
@@ -313,7 +313,7 @@ export async function GET(req: NextRequest) {
   const cachedOverview = overviewCache.get(overviewCacheKey);
   if (cachedOverview && cachedOverview.runCount === totalRunCount && Date.now() - cachedOverview.ts < OVERVIEW_CACHE_TTL_MS) {
     return NextResponse.json(cachedOverview.response, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   }
 
@@ -807,6 +807,6 @@ Rules:
   overviewCache.set(overviewCacheKey, { response: overviewResponseBody, runCount: totalRunCount, ts: Date.now() });
 
   return NextResponse.json(overviewResponseBody, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug) },
   });
 }

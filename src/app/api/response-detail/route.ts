@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity, type BrandScopeRun, type BrandScopeIdentity } from "@/lib/visibility/brandScope";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 
 type ScopeMode = "content" | "query_universe";
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     if (runAccess) return runAccess;
     const name = run.brand.displayName || run.brand.name;
     const industry = (run.brand as unknown as { industry?: string | null }).industry;
-    return respondWith(name, [run], industry);
+    return respondWith(name, [run], industry, run.brand.slug);
   }
 
   if (!brandSlug) {
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
     const promptScope = scopeModeParam ?? "content";
     const scopedRuns = applyScope(rawRuns, brandIdentity, promptScope);
 
-    return respondWith(brandName, scopedRuns.slice(0, 4), brandIndustry);
+    return respondWith(brandName, scopedRuns.slice(0, 4), brandIndustry, brand.slug);
   }
 
   // Mode 2: By model + position range (for dot chart drill-down)
@@ -151,10 +151,10 @@ export async function GET(req: NextRequest) {
         if (isNotMentioned) return rank === null;
         return rank !== null && rank >= minPos && (maxPos === null || rank <= maxPos);
       });
-      return respondWith(brandName, filtered.slice(0, 4), brandIndustry);
+      return respondWith(brandName, filtered.slice(0, 4), brandIndustry, brand.slug);
     }
 
-    return respondWith(brandName, scopedPosRuns.slice(0, 4), brandIndustry);
+    return respondWith(brandName, scopedPosRuns.slice(0, 4), brandIndustry, brand.slug);
   }
 
   return NextResponse.json({ error: "Provide promptText or model with position range" }, { status: 400 });
@@ -171,6 +171,7 @@ function respondWith(
     prompt: { text: string; cluster: string | null; intent: string | null };
   }[],
   industry?: string | null,
+  brandSlug?: string,
 ) {
   if (runs.length === 0) {
     return NextResponse.json({ brandName, responses: [] });
@@ -211,6 +212,6 @@ function respondWith(
       };
     }),
   }, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug ?? "") },
   });
 }

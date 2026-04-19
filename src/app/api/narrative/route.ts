@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { parseAnalysis, aggregateNarrative } from "@/lib/aggregateAnalysis";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   const cached = narrativeCache.get(cacheKey);
   if (cached && cached.runCount === allScopedRuns.length && Date.now() - cached.ts < CACHE_TTL_MS) {
     return NextResponse.json(cached.response, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   }
 
@@ -735,7 +735,7 @@ Rules:
   narrativeCache.set(cacheKey, { response: responseBody, runCount: runs.length, ts: Date.now() });
 
   return NextResponse.json(responseBody, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug) },
   });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

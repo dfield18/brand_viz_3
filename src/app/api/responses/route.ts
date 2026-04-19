@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatJobMeta } from "@/lib/apiPipeline";
-import { requireBrandAccess } from "@/lib/brandAccess";
+import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { getTopBrandsForRun, RANKED_ENTITY_LIMIT } from "@/lib/visibility/rankedEntities";
 import { filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
         note: "Estimated based on text length (~4 chars/token). Cached runs skip API calls.",
       },
     }, {
-      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": brandCacheControl(brandSlug) },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

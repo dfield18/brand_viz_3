@@ -10,6 +10,7 @@ import {
   type KpiKey,
   type DecompositionResult,
 } from "@/lib/driverDecomposition";
+import { brandCacheControl } from "@/lib/brandAccess";
 
 const VALID_KPIS: KpiKey[] = ["mentionRate", "firstMentionRate", "avgRank", "shareOfVoice"];
 
@@ -142,6 +143,6 @@ export async function GET(req: NextRequest) {
     periodPrevious,
     decompositions,
   }, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": brandCacheControl(brandSlug) },
   });
 }
