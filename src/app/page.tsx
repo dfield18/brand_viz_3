@@ -195,10 +195,7 @@ export default async function HomePage() {
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
             {/* Marketing links eat horizontal room on narrow phones — drop
-                them on mobile; Sign in + Get Started keep the primary CTAs. */}
-            <Link href="/marketing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Why us
-            </Link>
+                them on mobile; Sign in + Sign up keep the primary CTAs. */}
             <Link href="/marketing#pricing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
