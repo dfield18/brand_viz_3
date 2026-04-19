@@ -6,6 +6,7 @@ import { getOpenAI } from "@/lib/openai";
 import { getGemini } from "@/lib/gemini";
 import { extractAnalysis } from "@/lib/extractAnalysis";
 import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
+import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
 import { sha256 } from "@/lib/hash";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
@@ -44,12 +45,53 @@ function randomSlugSuffix(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
 
+interface ModelResult {
+  text: string;
+  citations: ApiCitation[];
+}
+
+/** Resolve a Gemini grounding-redirect URL to its real destination so the
+ *  source shows up as the actual cited domain instead of a vertexai proxy. */
+async function resolveRedirect(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(3000) });
+    return res.url || url;
+  } catch {
+    try {
+      const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(2000) });
+      const resolved = res.url || url;
+      await res.body?.cancel().catch(() => {});
+      return resolved;
+    } catch {
+      return url;
+    }
+  }
+}
+
+/** Resolve all redirect URLs with a global 5s cap — unresolved entries fall
+ *  back to their original (vertexai proxy) URLs, which persistSourcesForRun
+ *  then filters out. Caps latency per Gemini call. */
+async function resolveRedirectsBatch(
+  entries: { uri: string; title: string }[],
+): Promise<{ url: string; title: string }[]> {
+  return Promise.race([
+    Promise.all(
+      entries.map(async (entry) => ({ url: await resolveRedirect(entry.uri), title: entry.title })),
+    ),
+    new Promise<{ url: string; title: string }[]>((resolve) =>
+      setTimeout(() => resolve(entries.map((e) => ({ url: e.uri, title: e.title }))), 5000),
+    ),
+  ]);
+}
+
 /**
- * Minimal ChatGPT call — mirrors the primary job pipeline but skips citation
- * extraction and retries. The free tier trades robustness for simplicity so
- * the whole run fits in a single request.
+ * ChatGPT call — mirrors the primary job pipeline citation extraction so
+ * the free-tier Sources tab has actual data. web_search tool produces
+ * url_citation annotations; we surface them both as structured citations
+ * and as a human-readable "Sources:" block appended to the text (so
+ * downstream text URL extraction picks them up too).
  */
-async function callChatGPT(promptText: string): Promise<string> {
+async function callChatGPT(promptText: string): Promise<ModelResult> {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -65,36 +107,88 @@ async function callChatGPT(promptText: string): Promise<string> {
   });
 
   let text = "";
+  const citations: ApiCitation[] = [];
   if (Array.isArray(response.output)) {
     for (const item of response.output) {
       if (item.type === "message" && Array.isArray(item.content)) {
         for (const part of item.content) {
-          if (part.type === "output_text") text += part.text;
+          if (part.type === "output_text") {
+            text += part.text;
+            if (Array.isArray(part.annotations)) {
+              for (const ann of part.annotations) {
+                if (ann.type === "url_citation") {
+                  citations.push({
+                    url: ann.url,
+                    title: ann.title ?? "",
+                    startIndex: ann.start_index,
+                    endIndex: ann.end_index,
+                  });
+                }
+              }
+            }
+          }
         }
       }
     }
   }
   if (!text && response.output_text) text = response.output_text;
-  return text;
+  return { text, citations };
 }
 
-async function callGemini(promptText: string): Promise<string> {
+/**
+ * Gemini call — grounding chunks come back as vertexai proxy redirects.
+ * Resolve them to real domains (capped at 5s total) so the Sources tab
+ * shows the actual cited sites, and append a "Sources:" block to the
+ * response text so extractUrls can pick them up.
+ */
+async function callGemini(promptText: string): Promise<ModelResult> {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
-  const input = `Today is ${today}. Answer concisely and factually in 5 bullet points using the most recent information available.\n\nQuestion: ${promptText}`;
+  const input = `Today is ${today}. Answer concisely and factually in 5 bullet points using the most recent information available. Include source URLs where possible.\n\nQuestion: ${promptText}`;
 
   const model = getGemini().getGenerativeModel({
     model: "gemini-2.5-flash-lite",
     tools: [{ googleSearch: {} } as never],
   });
   const result = await model.generateContent(input);
-  return result.response.text();
+  const text = result.response.text();
+
+  const citations: ApiCitation[] = [];
+  const groundingMeta = (result.response as unknown as Record<string, unknown>)
+    .candidates as Array<{ groundingMetadata?: { groundingChunks?: Array<{ web?: { uri: string; title?: string } }> } }> | undefined;
+
+  let groundingBlock = "";
+  if (groundingMeta?.[0]?.groundingMetadata?.groundingChunks) {
+    const chunks = groundingMeta[0].groundingMetadata.groundingChunks
+      .filter((c) => c.web?.uri)
+      .map((c) => ({ uri: c.web!.uri, title: c.web?.title ?? "" }));
+    if (chunks.length > 0) {
+      const resolved = await resolveRedirectsBatch(chunks);
+      const realSources = resolved.filter(
+        (u) => !u.url.includes("vertexaisearch.cloud.google.com"),
+      );
+      if (realSources.length > 0) {
+        groundingBlock = "\n\nSources:\n" + realSources.map((u) => `- ${u.url}`).join("\n");
+        const baseOffset = text.length;
+        for (let i = 0; i < realSources.length; i++) {
+          citations.push({
+            url: realSources[i].url,
+            title: realSources[i].title,
+            startIndex: baseOffset + i,
+            endIndex: baseOffset + i,
+          });
+        }
+      }
+    }
+  }
+
+  return { text: text + groundingBlock, citations };
 }
 
-async function runOnModel(model: string, promptText: string): Promise<string> {
+async function runOnModel(model: string, promptText: string): Promise<ModelResult> {
   if (model === "chatgpt") return callChatGPT(promptText);
   if (model === "gemini") return callGemini(promptText);
   throw new Error(`Unsupported free-tier model: ${model}`);
@@ -218,7 +312,7 @@ export async function POST(req: NextRequest) {
 
         const results = await Promise.allSettled(
           createdPrompts.map(async (prompt) => {
-            const rawResponseText = await runOnModel(model, prompt.text);
+            const { text: rawResponseText, citations } = await runOnModel(model, prompt.text);
 
             // Run analysis + narrative extraction in parallel — both read
             // the full response and are independent. Narrative supplies
@@ -229,7 +323,7 @@ export async function POST(req: NextRequest) {
               extractNarrativeForRun(rawResponseText, brandName, brand.slug),
             ]);
 
-            await prisma.run.create({
+            const run = await prisma.run.create({
               data: {
                 jobId: job.id,
                 brandId: brand.id,
@@ -241,6 +335,23 @@ export async function POST(req: NextRequest) {
                 analysisJson: JSON.parse(JSON.stringify(analysisJson)),
                 narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
               },
+            });
+
+            // Persist SourceOccurrence rows so the Sources tab has data.
+            // Awaited (not fire-and-forget) because the free-run request
+            // returns as soon as the Promise.all resolves, and Vercel
+            // functions don't keep running after the response is sent.
+            await persistSourcesForRun({
+              runId: run.id,
+              model,
+              promptId: prompt.id,
+              brandName,
+              brandSlug: brand.slug,
+              responseText: rawResponseText,
+              analysisJson,
+              apiCitations: citations,
+            }).catch((err) => {
+              console.error(`[free-run/execute] persistSources failed for run=${run.id}:`, err);
             });
           }),
         );
