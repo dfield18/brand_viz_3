@@ -292,13 +292,13 @@ async function generateAdvocacyCategories(
 ): Promise<string[]> {
   const defaults = [
     "effectiveness and impact",
-    "trust and credibility",
-    "donation worthiness",
+    "public trust and credibility",
     "political leaning and perception",
-    "comparison to peer organizations",
+    "comparison to peers",
     "controversies or criticism",
-    "how to get involved",
     "policy influence",
+    "public profile and media presence",
+    "coalitions and allies",
   ];
 
   try {
@@ -309,21 +309,19 @@ async function generateAdvocacyCategories(
       messages: [
         {
           role: "system",
-          content: `You help identify what real voters, donors, activists, and journalists would want to know about a political or advocacy organization.
+          content: `You help identify what real voters, donors, activists, and journalists would want to know about a political or advocacy entity — which may be an organization, a political figure, a coalition, or a movement.
 
-Given an organization name and its issue area, return 8 question categories that represent the most important things people would ask AI about this type of organization.
-
-Think about what a marketing or communications person at this org would care about — what are people asking AI about them?
+Given a name and its issue area, return 8 question categories that represent the most important things people would ask AI about this kind of entity.
 
 Rules:
 - Each category should be a short phrase (2-6 words)
-- Categories should be specific to this type of org, not generic
-- Include at least one about perception/reputation, one about effectiveness, one about comparison to peers
+- Categories must work whether the entity is a person (politician, activist, leader) or an organization (nonprofit, PAC, movement) — avoid wording like "donation worthiness" or "peer organizations" that only fits one
+- Include at least one about perception/reputation, one about effectiveness or impact, one about comparison to peers (orgs OR people)
 - Return ONLY a JSON array of 8 strings`,
         },
         {
           role: "user",
-          content: `What would people ask AI about "${brandName}" (a ${industry} organization)? Return 8 question categories.`,
+          content: `What would people ask AI about "${brandName}" (in the ${industry} space)? Return 8 question categories. "${brandName}" may be a person or an organization — pick categories that work either way.`,
         },
       ],
     });
@@ -449,7 +447,7 @@ export async function generateIndustryPrompts(
     }
 
     const context = category === "political_advocacy"
-      ? `"${brandName}" operates in the ${industry} space (political/advocacy).
+      ? `"${brandName}" operates in the ${industry} space. "${brandName}" may be a political figure, a candidate, an activist, an advocacy organization, a PAC, or a movement — the questions should work for whatever type of entity they are.
 
 You have identified these question categories as most relevant:
 ${(categories ?? []).map((c, i) => `${i + 1}. ${c}`).join("\n")}
@@ -458,16 +456,24 @@ Generate one natural-sounding question per category about the ${industry} space 
       : `"${brandName}" is in the ${industry} industry.`;
 
     const systemPrompt = category === "political_advocacy"
-      ? `You generate search queries that real voters, donors, and activists would type into AI assistants when researching an issue area — NOT asking about a specific organization.
+      ? `You generate search queries that real voters, donors, activists, and journalists would type into AI assistants when researching an issue area — NOT asking about a specific entity.
 
 ${context}
+
+The goal is for each question's natural answer to be a list of NAMES — whether those names are people (politicians, candidates, leaders, activists) or organizations (nonprofits, PACs, movements, coalitions). That's how we measure which voices AI surfaces organically in this space.
 
 Rules:
 - Generate exactly 8 questions, one per category
 - Do NOT mention "${brandName}" anywhere in any question
 - Ask about the broader issue area: ${industry}
+- Each question's natural answer should be a list of NAMED ENTITIES — people, orgs, coalitions, or a mix — not abstract concepts, tactics, or policy proposals
+- Include at least a few questions phrased around leaders, voices, or figures (e.g. "Who are the most influential voices on X in ${new Date().getFullYear()}?") so political figures have a real chance to be named
+- Include at least a few phrased around organizations, groups, or movements so advocacy orgs have a real chance to be named
+- AVOID question shapes that elicit abstract answers, e.g.:
+  * "What are the main issues in…"        (elicits topics, not names)
+  * "What policies would help…"            (elicits policy descriptions)
+  * "What should voters consider…"         (elicits criteria, not names)
 - Sound like a real person asking ChatGPT or Perplexity
-- Questions should naturally lead AI to potentially mention organizations like "${brandName}"
 - If you reference a year, use ${new Date().getFullYear()}
 
 Return ONLY a JSON array of objects with "text" and "intent" fields.
