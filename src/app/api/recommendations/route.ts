@@ -383,17 +383,13 @@ export async function GET(req: NextRequest) {
 
   for (const m of VALID_MODELS) {
     const modelRuns = runs.filter((r) => r.model === m);
-    if (modelRuns.length === 0) {
-      platformPlaybooks.push({
-        model: m,
-        avgBrandRank: null,
-        mentionRate: 0,
-        topSourceCategories: [],
-        platformTip: PLATFORM_TIPS[m] ?? "",
-        specificGaps: [],
-      });
-      continue;
-    }
+    // Skip models we never queried instead of emitting a placeholder
+    // "Claude: 0% / not ranked" row. The free tier only hits ChatGPT
+    // and Gemini (per FREE_TIER_MODELS), and a Pro user who hasn't
+    // run Claude yet on this brand would get the same misleading
+    // zero row — neither case should appear in Performance by AI
+    // Platform at all.
+    if (modelRuns.length === 0) continue;
 
     // Avg brand rank on this model — uses isRunInBrandScope + computeBrandRank
     // (same methodology as Overview/Visibility/Competition)
