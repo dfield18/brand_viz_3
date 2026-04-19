@@ -27,6 +27,18 @@ import { openai } from "@/lib/openai";
 const THEME_EXTRACT_MODEL = "gpt-4o-mini";
 const THEME_EXTRACT_TIMEOUT_MS = 8_000;
 
+/** Threshold for classifying a run's sentiment as POS/NEG vs NEU.
+ *
+ *  sentimentScore = (positiveDescriptors - negativeDescriptors) / totalDescriptors
+ *
+ *  Anything inside ±SENTIMENT_THRESHOLD is called Neutral. Previously
+ *  ±0.25, which was strict enough that heavily-hedged topics (politicians,
+ *  polarizing brands where models deliberately balance pros/cons) landed
+ *  as 100% NEU. Dropped to ±0.10 so any ≥10% skew between positive and
+ *  negative descriptors tips into POS or NEG — we surface sentiment where
+ *  the signal exists, even if it's mild. True balance still reads as NEU. */
+const SENTIMENT_THRESHOLD = 0.1;
+
 const THEME_EXTRACT_SYSTEM = `You identify the key narrative themes in text about a specific brand or organization.
 Return themes that are specific and relevant to the type of entity being discussed. Avoid generic business jargon — use themes that capture what is actually being said about this specific entity.
 
@@ -172,7 +184,7 @@ export async function extractNarrativeForRun(
   const totalSignals = Math.max(1, positiveCount + negativeCount);
   const sentimentScore = (positiveCount - negativeCount) / totalSignals;
   const sentimentLabel: "POS" | "NEU" | "NEG" =
-    sentimentScore >= 0.25 ? "POS" : sentimentScore <= -0.25 ? "NEG" : "NEU";
+    sentimentScore >= SENTIMENT_THRESHOLD ? "POS" : sentimentScore <= -SENTIMENT_THRESHOLD ? "NEG" : "NEU";
 
   return {
     sentiment: { label: sentimentLabel, score: Math.round(sentimentScore * 100) / 100 },
@@ -227,7 +239,7 @@ export async function extractCompetitorNarratives(
     const totalSignals = Math.max(1, positiveCount + negativeCount);
     const sentimentScore = (positiveCount - negativeCount) / totalSignals;
     const sentimentLabel: "POS" | "NEU" | "NEG" =
-      sentimentScore >= 0.25 ? "POS" : sentimentScore <= -0.25 ? "NEG" : "NEU";
+      sentimentScore >= SENTIMENT_THRESHOLD ? "POS" : sentimentScore <= -SENTIMENT_THRESHOLD ? "NEG" : "NEU";
 
     results[entityId] = {
       sentiment: { label: sentimentLabel, score: Math.round(sentimentScore * 100) / 100 },
