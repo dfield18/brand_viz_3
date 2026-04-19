@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AnalyzeRunner } from "@/components/AnalyzeRunner";
 import { PromptEditor } from "@/components/PromptEditor";
+import { FreeRunOverlay } from "@/components/FreeRunOverlay";
 import { UserButton, useAuth } from "@clerk/nextjs";
 
 interface ValidationResult {
@@ -53,6 +54,7 @@ function HeaderInner() {
   const [entityType, setEntityType] = useState<"company" | "cause">("cause");
   const [runOpen, setRunOpen] = useState(false);
   const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [runningSuggestion, setRunningSuggestion] = useState<string | null>(null);
 
   // Check pro status
   useEffect(() => {
@@ -216,10 +218,11 @@ function HeaderInner() {
                 canAddBrand={isSignedIn !== false}
                 suggestedBrands={isSignedIn === false ? FREE_TIER_CONFIG.exampleBrands : undefined}
                 onSuggestedSelect={(name) => {
-                  // Bounce to the homepage with the brand pre-filled and
-                  // auto-running so the user sees the normal rotating
-                  // loading state + redirect.
-                  router.push(`/?brand=${encodeURIComponent(name)}&run=1`);
+                  // Keep the user on the current entity page; the
+                  // overlay runs the free-tier pipeline and
+                  // hard-navigates to the new brand's overview on
+                  // success. No bounce to the homepage.
+                  setRunningSuggestion(name);
                 }}
                 onSearchNew={() => router.push("/")}
               />
@@ -441,6 +444,19 @@ function HeaderInner() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* In-place free-run overlay for signed-out users picking a
+          suggested brand from the dropdown. Runs the pipeline without
+          bouncing to the homepage, then hard-navigates to the new
+          entity page on success. */}
+      {runningSuggestion && (
+        <FreeRunOverlay
+          brandName={runningSuggestion}
+          promptCount={FREE_TIER_CONFIG.promptCount}
+          models={FREE_TIER_CONFIG.models}
+          onCancel={() => setRunningSuggestion(null)}
+        />
+      )}
     </>
   );
 }

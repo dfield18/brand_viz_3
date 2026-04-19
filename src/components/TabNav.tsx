@@ -26,7 +26,9 @@ const SECONDARY_TABS = [
 
 // Segments that require a signed-in account (Pro features or account-bound
 // actions). Hidden from the tab nav for anonymous free-tier visitors.
-const AUTH_ONLY_SEGMENTS = new Set(["reports", "site-audit"]);
+// "prompts" = Refine Prompts, which lets users edit the questions a brand
+// gets asked — only meaningful for brands they own (Pro).
+const AUTH_ONLY_SEGMENTS = new Set(["reports", "site-audit", "prompts"]);
 
 function TabNavInner({ slug, category }: { slug: string; category?: string | null }) {
   const pathname = usePathname();
@@ -39,9 +41,10 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
   // Clerk is still hydrating `isSignedIn` is `undefined` — keep the tabs
   // visible in that window so signed-in users don't see them briefly
   // disappear before re-rendering.
-  const tabs = getTabs(category).filter(
-    (t) => !AUTH_ONLY_SEGMENTS.has(t.segment) || isSignedIn !== false,
-  );
+  const authAllowed = (segment: string) =>
+    !AUTH_ONLY_SEGMENTS.has(segment) || isSignedIn !== false;
+  const tabs = getTabs(category).filter((t) => authAllowed(t.segment));
+  const secondaryTabs = SECONDARY_TABS.filter((t) => authAllowed(t.segment));
 
   return (
     <nav className="sticky top-[var(--header-height)] z-40 border-b border-border/60 bg-card">
@@ -63,8 +66,9 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
             </Link>
           );
         })}
+        {secondaryTabs.length > 0 && (
         <div className="ml-auto flex items-end gap-0.5 border-l border-border/40 pl-2 mb-0">
-          {SECONDARY_TABS.map((tab) => {
+          {secondaryTabs.map((tab) => {
             const href = `/entity/${slug}/${tab.segment}${suffix}`;
             const isActive = pathname === `/entity/${slug}/${tab.segment}`;
             return (
@@ -82,6 +86,7 @@ function TabNavInner({ slug, category }: { slug: string; category?: string | nul
             );
           })}
         </div>
+        )}
       </div>
     </nav>
   );
