@@ -152,47 +152,48 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
       {/* Header row: title + toggle + hero stat + dropdowns */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            {!compact && (
-              <h2 className="text-sm text-muted-foreground font-medium">
-                {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}
-              </h2>
-            )}
-            {!fixedMetric && (
-              <div className="flex items-center rounded-full bg-muted p-0.5">
-                <button
-                  onClick={() => setMetric("visibility")}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    metric === "visibility"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Brand Recall
-                </button>
-                <button
-                  onClick={() => setMetric("sov")}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    metric === "sov"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Share of Voice
-                </button>
-                <button
-                  onClick={() => setMetric("topResult")}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    metric === "topResult"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Top Result
-                </button>
-              </div>
-            )}
-          </div>
+          {!compact && (
+            <h2 className="text-sm text-muted-foreground font-medium">
+              {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}
+            </h2>
+          )}
+          {/* Metric toggle lives on its own line so the pill doesn't
+              shift when the title length changes across Recall / SoV /
+              Top Result. `w-fit` keeps the pill hugging its buttons. */}
+          {!fixedMetric && (
+            <div className="mt-2 flex w-fit items-center rounded-full bg-muted p-0.5">
+              <button
+                onClick={() => setMetric("visibility")}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  metric === "visibility"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Brand Recall
+              </button>
+              <button
+                onClick={() => setMetric("sov")}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  metric === "sov"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Share of Voice
+              </button>
+              <button
+                onClick={() => setMetric("topResult")}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  metric === "topResult"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Top Result
+              </button>
+            </div>
+          )}
           {/* Hero value + delta */}
           <div className={`flex items-baseline gap-2.5 ${compact ? "mt-1" : "mt-2"}`}>
             {currentValue !== null && (
