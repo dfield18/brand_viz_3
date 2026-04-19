@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useCallback, useMemo, useEffect, Suspense } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -178,8 +179,16 @@ function HeaderInner() {
       <header className="border-b border-border/60 bg-card sticky top-0 z-50 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04),0_2px_8px_-2px_hsl(0_0%_0%/0.06)]">
         <div className="max-w-[1220px] mx-auto flex items-center justify-between h-[var(--header-height)] px-3 sm:px-6">
           {/* Left: Logo — links to dashboard when signed in, home otherwise
-              so an anonymous free-tier visitor doesn't get bounced to sign-in. */}
-          <a href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0">
+              so an anonymous free-tier visitor doesn't get bounced to sign-in.
+              Uses next/link so navigation is client-side (instant) instead
+              of the plain <a> full-page reload that left the user staring at
+              an unchanged screen for ~500ms after clicking. active:opacity-60
+              gives an immediate tap flash so the click registers visually
+              before the route change lands. */}
+          <Link
+            href={isSignedIn ? "/dashboard" : "/"}
+            className="flex items-center gap-2 sm:gap-3 hover:opacity-80 active:opacity-60 transition-opacity shrink-0"
+          >
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#111827] shadow-sm">
               <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <line x1="7" y1="11" x2="25" y2="11" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
@@ -192,7 +201,7 @@ function HeaderInner() {
             <span className={`text-[15px] font-semibold tracking-tight text-foreground ${isEntityPage ? "hidden sm:inline" : ""}`}>
               aiSaysWhat
             </span>
-          </a>
+          </Link>
 
           {/* Center-left: Brand selector */}
           {isEntityPage && (
