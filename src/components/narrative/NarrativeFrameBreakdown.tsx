@@ -164,6 +164,11 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
   const barChartHeight = Math.max(frames.length * rowHeight + 20, 220);
   const radarHeight = Math.max(barChartHeight, 240);
 
+  // Radar readability degrades fast past 5-6 spokes. Cap at the top 5
+  // themes (they arrive pre-sorted by frequency) so the shape stays
+  // legible even when the bar chart lists every theme.
+  const radarData = data.slice(0, 5);
+
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
@@ -251,7 +256,7 @@ export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Pr
             Bigger shape means AI talks about that theme more often
           </p>
           <ResponsiveContainer width="100%" height={radarHeight}>
-            <RadarChart cx="50%" cy="50%" outerRadius="42%" data={data}>
+            <RadarChart cx="50%" cy="50%" outerRadius="42%" data={radarData}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
                 dataKey="frame"

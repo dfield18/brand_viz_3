@@ -167,9 +167,9 @@ function OverviewInner() {
   const industry = apiData.brandIndustry;
   const industryLabel = industry || "this space";
   const trendDescriptions: Record<string, string> = {
-    visibility: `How often AI platforms mention ${brandName} when users ask about ${industryLabel} — without naming any organization`,
-    topResult: `How often ${brandName} appears as the #1 recommendation when AI answers questions about ${industryLabel}`,
-    sov: `${brandName}'s share of all organization mentions when AI discusses ${industryLabel}`,
+    visibility: `How often AI mentions ${brandName} in ${industryLabel} questions`,
+    topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions`,
+    sov: `${brandName}'s share of mentions in ${industryLabel} responses`,
   };
   // Collect all frames tied at the top percentage (sort to ensure highest first)
   const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);

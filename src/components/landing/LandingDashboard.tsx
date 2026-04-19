@@ -9,9 +9,9 @@ interface Props {
 }
 
 const LANDING_DESCRIPTIONS: Record<string, string> = {
-  visibility: "How often AI platforms mention ACLU when users ask about civil rights, voting rights, and constitutional law — without naming any organization",
-  topResult: "How often ACLU appears as the #1 recommendation when AI answers questions about civil liberties",
-  sov: "ACLU's share of all organization mentions when AI discusses civil rights issues",
+  visibility: "How often AI mentions ACLU in civil rights questions",
+  topResult: "How often ACLU ranks #1 when AI answers civil liberties questions",
+  sov: "ACLU's share of mentions in civil rights responses",
 };
 
 export function LandingDashboard({ brandName, trend }: Props) {
