@@ -198,7 +198,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
         </div>
 
         <p className="mt-10 text-sm text-muted-foreground">
-          Free to use — no credit card, no email, no account needed.
+          Free to use — no credit card, no email or account needed.
         </p>
 
         {exampleBrands.length > 0 && (
