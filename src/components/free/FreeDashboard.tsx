@@ -31,10 +31,25 @@ function joinWithAnd(items: string[]): string {
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
+/** Rotating loading copy that roughly tracks the real server phases
+ *  (classify → generate → LLM calls → analysis/sources → finalize).
+ *  Server doesn't stream progress — this is a clock, but each message
+ *  reflects something that's actually happening around that mark. */
+function buildLoadingMessages(brandName: string, promptCount: number, modelList: string): { atMs: number; text: string }[] {
+  return [
+    { atMs: 0, text: `Running analysis for ${brandName}… this can take 30–60 seconds.` },
+    { atMs: 8_000, text: `Picking the ${promptCount} prompts real people ask AI about ${brandName}…` },
+    { atMs: 18_000, text: `Sending them to ${modelList}…` },
+    { atMs: 35_000, text: "Reading responses and pulling out sources…" },
+    { atMs: 55_000, text: "Building your report…" },
+  ];
+}
+
 export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrands }: Props) {
   const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,6 +58,24 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
 
   const modelList = joinWithAnd(models.map((m) => MODEL_LABELS[m] ?? m));
   const canSubmit = brandName.trim().length > 0 && !loading;
+
+  // Rotate loading copy on a timer while the POST is in flight. Each message
+  // has an `atMs` offset from when loading started; a setTimeout at that
+  // offset advances the index. All timers are cleared when loading flips off.
+  const loadingMessages = buildLoadingMessages(brandName.trim(), promptCount, modelList);
+  useEffect(() => {
+    if (!loading) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+    const timers = loadingMessages.slice(1).map((msg, i) =>
+      setTimeout(() => setLoadingMessageIndex(i + 1), msg.atMs),
+    );
+    return () => timers.forEach(clearTimeout);
+    // Timers key off `loading` only — we don't want to restart the sequence
+    // every render when the brandName prop inside loadingMessages changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   /** Kick off the full free-tier pipeline in a single POST and redirect to
    *  the overview on success. The server runs classify + generate + execute
@@ -170,8 +203,8 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-foreground" />
-          Running analysis for {brandName.trim()}… this can take 30–60 seconds.
+          <Loader2 className="h-6 w-6 animate-spin text-foreground shrink-0" />
+          <span>{loadingMessages[loadingMessageIndex]?.text ?? loadingMessages[0].text}</span>
         </div>
       )}
 
