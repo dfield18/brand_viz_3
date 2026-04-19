@@ -4,15 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 
-interface FreeRunResponse {
-  hasData: boolean;
-  brandName?: string;
-  industry?: string;
-  category?: string;
-  prompts?: { text: string; intent: string }[];
-  error?: string;
-}
-
 interface FreeExecuteResponse {
   hasData?: boolean;
   brandSlug?: string;
@@ -53,48 +44,30 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
   const modelList = joinWithAnd(models.map((m) => MODEL_LABELS[m] ?? m));
   const canSubmit = brandName.trim().length > 0 && !loading;
 
-  /** Run the full free-tier pipeline end-to-end: classify + generate
-   *  questions, then immediately execute the analysis and redirect to
-   *  the overview. No preview step — users trust the auto-generated
-   *  prompts and get the report directly. */
+  /** Kick off the full free-tier pipeline in a single POST and redirect to
+   *  the overview on success. The server runs classify + generate + execute
+   *  end-to-end, so there's no preview step and no client-side chaining. */
   async function runAnalysis(name: string) {
     if (!name || loading) return;
     setLoading(true);
     setError(null);
     try {
-      const classifyRes = await fetch("/api/free-run", {
+      const res = await fetch("/api/free-run/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandName: name }),
       });
-      const classifyJson: FreeRunResponse = await classifyRes.json();
-      if (!classifyRes.ok) {
-        throw new Error(classifyJson.error || `Request failed (${classifyRes.status})`);
+      const json: FreeExecuteResponse = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || `Request failed (${res.status})`);
       }
-      if (!classifyJson.hasData || !classifyJson.prompts?.length) {
-        throw new Error("Couldn't generate questions for this brand. Try a more specific name.");
-      }
-
-      const execRes = await fetch("/api/free-run/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brandName: classifyJson.brandName,
-          industry: classifyJson.industry,
-          prompts: classifyJson.prompts.map((p) => ({ text: p.text })),
-        }),
-      });
-      const execJson: FreeExecuteResponse = await execRes.json();
-      if (!execRes.ok) {
-        throw new Error(execJson.error || `Request failed (${execRes.status})`);
-      }
-      if (!execJson.brandSlug) {
+      if (!json.brandSlug) {
         throw new Error("Analysis finished but no brand URL was returned.");
       }
       // Hard navigate so the overview loads fresh (new auth context, cache,
       // and scroll position) instead of a SPA transition that can get stuck
       // mid-refresh on anonymous-to-entity handoff.
-      window.location.assign(`/entity/${execJson.brandSlug}/overview`);
+      window.location.assign(`/entity/${json.brandSlug}/overview`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setLoading(false);

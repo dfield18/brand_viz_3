@@ -9,6 +9,11 @@ import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
 import { sha256 } from "@/lib/hash";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import {
+  classifyBrandCategory,
+  classifyBrandIndustry,
+  generateIndustryPrompts,
+} from "@/lib/generateFeaturePrompts";
 
 // 5 prompts × 2 models = 10 parallel response calls plus 10 analysis
 // extractions. In practice this completes in ~15–30s. Give it headroom.
@@ -197,12 +202,21 @@ async function runOnModel(model: string, promptText: string): Promise<ModelResul
 /**
  * POST /api/free-run/execute
  *
- * Body: { brandName, industry, prompts: { text }[] }
+ * Body: { brandName }
  *
- * Synchronous free-tier run. Creates (or re-uses) the brand, saves the
- * user-edited prompts, fans them out to the configured models in parallel,
- * extracts structured analysis for each response, and persists the runs.
- * Returns the brand slug so the caller can redirect to the overview tab.
+ * End-to-end free-tier run — classify + generate prompts + execute + persist,
+ * all in one request. Returns `{ brandSlug }` so the caller can redirect to
+ * `/entity/<slug>/overview`.
+ *
+ * Parallelization notes (every Promise.all here is intentional):
+ *   - Phase 1: category + industry classification fire alongside
+ *     findOrCreateBrand, since the slug is derivable from brandName alone.
+ *   - Phase 2: prompt generation runs alongside the Brand.update that
+ *     stamps displayName/industry onto the new row.
+ *   - Phase 3: one Job per model in parallel; each runs its 5 prompts in
+ *     parallel; per-prompt the LLM call is followed by parallel
+ *     analysis + narrative extraction; then SourceOccurrence persist runs
+ *     after the run is saved.
  */
 export async function POST(req: NextRequest) {
   if (!FREE_TIER_CONFIG.enabled) {
@@ -226,11 +240,7 @@ export async function POST(req: NextRequest) {
     return sessionLimit;
   }
 
-  let body: {
-    brandName?: string;
-    industry?: string;
-    prompts?: { text?: string }[];
-  };
+  let body: { brandName?: string };
   try {
     body = await req.json();
   } catch {
@@ -238,46 +248,60 @@ export async function POST(req: NextRequest) {
   }
 
   const brandName = body.brandName?.trim();
-  const industry = body.industry?.trim();
-  const promptTexts = (body.prompts ?? [])
-    .map((p) => p.text?.trim())
-    .filter((t): t is string => !!t);
-
-  if (!brandName || !industry || promptTexts.length === 0) {
-    return NextResponse.json(
-      { error: "brandName, industry, and at least one prompt are required" },
-      { status: 400 },
-    );
+  if (!brandName) {
+    return NextResponse.json({ error: "brandName is required" }, { status: 400 });
   }
-  // Same shape checks as /api/free-run so a client can't skip the preview
-  // step to sneak garbage past validation.
-  if (brandName.length > 100 || industry.length > 100) {
-    return NextResponse.json({ error: "brandName or industry is too long" }, { status: 400 });
+  if (brandName.length > 100) {
+    return NextResponse.json({ error: "brandName is too long" }, { status: 400 });
   }
   if (!/\p{L}|\p{N}/u.test(brandName)) {
     return NextResponse.json({ error: "Enter a brand or organization name." }, { status: 400 });
   }
-  if (promptTexts.length > 20 || promptTexts.some((t) => t.length > 500)) {
-    return NextResponse.json({ error: "Prompts are too long or too many." }, { status: 400 });
+  const baseSlug = slugify(brandName);
+  if (!baseSlug) {
+    return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });
   }
 
   try {
-    // 1. Create a brand row for this specific free run. Always suffix with a
-    // random ID so anonymous users never share a brand record — two people
-    // running "Apple" seconds apart each get their own isolated result, and
-    // neither can overwrite a Pro user's existing `apple` brand.
-    const baseSlug = slugify(brandName);
-    if (!baseSlug) {
-      return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });
-    }
+    // Phase 1: classify brand + prepare the brand row IN PARALLEL.
+    // Category and industry are both independent GPT-4o-mini calls. We also
+    // already know the slug from brandName, so `findOrCreateBrand` can run
+    // alongside those classifications instead of waiting for them.
     const slug = `${baseSlug}-${randomSlugSuffix()}`;
-    const brand = await findOrCreateBrand(slug);
-    await prisma.brand.update({
-      where: { id: brand.id },
-      data: { displayName: brandName, industry },
-    });
+    const [category, industry, brand] = await Promise.all([
+      classifyBrandCategory(brandName),
+      classifyBrandIndustry(brandName),
+      findOrCreateBrand(slug),
+    ]);
 
-    // 2. Save the prompts (one row per question) so they're tied to this brand.
+    // Phase 2: generate the 5 prompts (depends on category + industry) while
+    // we stamp displayName/industry onto the newly-created brand row.
+    const [generatedPrompts] = await Promise.all([
+      generateIndustryPrompts(brandName, industry, category),
+      prisma.brand.update({
+        where: { id: brand.id },
+        data: { displayName: brandName, industry },
+      }),
+    ]);
+
+    const promptTexts = generatedPrompts
+      .slice(0, FREE_TIER_CONFIG.promptCount)
+      .map((p) => p.text.trim())
+      .filter((t) => t.length > 0);
+
+    if (promptTexts.length === 0) {
+      const errorRes = NextResponse.json(
+        {
+          error:
+            "Couldn't generate questions for this brand. Try a more specific name or check spelling.",
+        },
+        { status: 502 },
+      );
+      if (!existingSession) setSessionCookie(errorRes, sessionId);
+      return errorRes;
+    }
+
+    // Save the prompts (one row per question) so they're tied to this brand.
     const createdPrompts = await Promise.all(
       promptTexts.map((text) =>
         prisma.prompt.create({
@@ -286,7 +310,7 @@ export async function POST(req: NextRequest) {
             cluster: "industry",
             intent: "informational",
             brandId: brand.id,
-            source: "custom",
+            source: "generated",
             enabled: true,
           },
         }),
