@@ -12,6 +12,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
   classifyBrandCategory,
   classifyBrandIndustry,
+  generateBrandAliases,
   generateIndustryPrompts,
 } from "@/lib/generateFeaturePrompts";
 
@@ -310,23 +311,27 @@ export async function POST(req: NextRequest) {
 
   try {
     // Phase 1: classify brand + prepare the brand row IN PARALLEL.
-    // Category and industry are both independent GPT-4o-mini calls. We also
-    // already know the slug from brandName, so `findOrCreateBrand` can run
-    // alongside those classifications instead of waiting for them.
+    // Category, industry, and aliases are all independent GPT-4o-mini
+    // calls. We already know the slug from brandName, so
+    // `findOrCreateBrand` runs alongside those classifications.
+    // Aliases matter here — without them, a response that says just
+    // "Harris" or "Kamala" never matches "Kamala Harris" in the
+    // mention-detection step and the whole report reads 0%.
     const slug = `${baseSlug}-${randomSlugSuffix()}`;
-    const [category, industry, brand] = await Promise.all([
+    const [category, industry, aliases, brand] = await Promise.all([
       classifyBrandCategory(brandName),
       classifyBrandIndustry(brandName),
+      generateBrandAliases(brandName),
       findOrCreateBrand(slug),
     ]);
 
     // Phase 2: generate the 5 prompts (depends on category + industry) while
-    // we stamp displayName/industry onto the newly-created brand row.
+    // we stamp displayName/industry/aliases onto the newly-created brand row.
     const [generatedPrompts] = await Promise.all([
       generateIndustryPrompts(brandName, industry, category),
       prisma.brand.update({
         where: { id: brand.id },
-        data: { displayName: brandName, industry },
+        data: { displayName: brandName, industry, aliases },
       }),
     ]);
 
