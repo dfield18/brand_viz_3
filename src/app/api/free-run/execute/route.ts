@@ -44,24 +44,64 @@ function slugify(input: string): string {
     .slice(0, 60);
 }
 
-/** Anonymous free runs get a random suffix so two users running "Apple"
- *  at the same time each get their own brand row, and neither can
- *  overwrite a paid user's existing "apple" brand. 8 hex chars → ~4B
- *  values; collisions are astronomically unlikely at our scale.
- *
- *  Callers join this with the base slug using a DOUBLE hyphen
- *  (`${base}--${randomSlugSuffix()}`). Slugify collapses every run of
- *  non-alphanumerics to a single hyphen, so `--` can't be produced by
- *  user input — a Pro user naming a brand "Foo a1b2c3d4" yields
- *  "foo-a1b2c3d4" (single dash) and never collides with the free-tier
- *  pattern. */
-function randomSlugSuffix(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-}
-
 interface ModelResult {
   text: string;
   citations: ApiCitation[];
+}
+
+/** After a cached brand's pipeline completes, reconcile any duplicate
+ *  Jobs that a concurrent request wrote to the same (model, day)
+ *  bucket: keep the most-recently-finished Job per bucket, delete the
+ *  rest along with their Runs, EntityResponseMetrics, and
+ *  SourceOccurrences. No-op if any Job for this brand still has
+ *  finishedAt=null — a peer pipeline is still writing, and deleting
+ *  its half-written rows would break foreign keys. The still-running
+ *  writer will run this same function at its own completion. */
+async function dedupeBrandJobs(brandId: string): Promise<void> {
+  try {
+    const inFlight = await prisma.job.count({
+      where: { brandId, finishedAt: null },
+    });
+    if (inFlight > 0) return;
+
+    const jobs = await prisma.job.findMany({
+      where: { brandId, finishedAt: { not: null } },
+      select: { id: true, model: true, finishedAt: true },
+      orderBy: { finishedAt: "desc" },
+    });
+
+    const seen = new Set<string>();
+    const dropJobIds: string[] = [];
+    for (const j of jobs) {
+      if (!j.finishedAt) continue;
+      const bucket = `${j.model}|${j.finishedAt.toISOString().slice(0, 10)}`;
+      if (seen.has(bucket)) {
+        dropJobIds.push(j.id);
+      } else {
+        seen.add(bucket);
+      }
+    }
+    if (dropJobIds.length === 0) return;
+
+    const runRows = await prisma.run.findMany({
+      where: { jobId: { in: dropJobIds } },
+      select: { id: true },
+    });
+    const runIds = runRows.map((r) => r.id);
+
+    // No onDelete cascade on these relations — delete children first.
+    await prisma.$transaction([
+      prisma.entityResponseMetric.deleteMany({ where: { runId: { in: runIds } } }),
+      prisma.sourceOccurrence.deleteMany({ where: { runId: { in: runIds } } }),
+      prisma.run.deleteMany({ where: { id: { in: runIds } } }),
+      prisma.job.deleteMany({ where: { id: { in: dropJobIds } } }),
+    ]);
+    console.log(`[free-run/execute] dedupeBrandJobs dropped ${dropJobIds.length} duplicate Job(s) for brand=${brandId}`);
+  } catch (err) {
+    // Dedup is best-effort — a failure here leaves extra rows but
+    // doesn't break the user-facing report. Log and move on.
+    console.error(`[free-run/execute] dedupeBrandJobs failed for brand=${brandId}:`, err);
+  }
 }
 
 /** Resolve a Gemini grounding-redirect URL to its real destination so the
@@ -317,15 +357,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });
   }
 
+  // Deterministic cache slug — every search for "Nike" maps to
+  // `nike--cached`, so a fresh Job in the TTL window can short-circuit
+  // the whole pipeline. Pro slugifier can never produce `--` from user
+  // input, so there's no collision risk with paid brands.
+  const slug = `${baseSlug}--cached`;
+
+  // Cache lookup: if this brand already has a Job that finished within
+  // the configured TTL, skip the pipeline entirely and redirect the
+  // caller to the existing overview. Saves ~$0.08 and ~30-45s per hit.
+  if (FREE_TIER_CONFIG.cacheTtlHours > 0) {
+    const freshAfter = new Date(Date.now() - FREE_TIER_CONFIG.cacheTtlHours * 60 * 60 * 1000);
+    const cachedBrand = await prisma.brand.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        slug: true,
+        jobs: {
+          where: { status: "done", finishedAt: { gte: freshAfter } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    if (cachedBrand && cachedBrand.jobs.length > 0) {
+      const res = NextResponse.json({ hasData: true, brandSlug: cachedBrand.slug, cached: true });
+      if (!existingSession) setSessionCookie(res, sessionId);
+      return res;
+    }
+  }
+
   try {
     // Phase 1: classify brand + prepare the brand row IN PARALLEL.
     // Category, industry, and aliases are all independent GPT-4o-mini
-    // calls. We already know the slug from brandName, so
-    // `findOrCreateBrand` runs alongside those classifications.
-    // Aliases matter here — without them, a response that says just
-    // "Harris" or "Kamala" never matches "Kamala Harris" in the
-    // mention-detection step and the whole report reads 0%.
-    const slug = `${baseSlug}--${randomSlugSuffix()}`;
+    // calls. `findOrCreateBrand` runs alongside those classifications
+    // and handles P2002 race conditions if two concurrent requests for
+    // the same brand name reach this point at once. Aliases matter
+    // here — without them, a response that says just "Harris" or
+    // "Kamala" never matches "Kamala Harris" in the mention-detection
+    // step and the whole report reads 0%.
     const [category, industry, aliases, brand] = await Promise.all([
       classifyBrandCategory(brandName),
       classifyBrandIndustry(brandName),
@@ -516,10 +586,20 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          return { model, monthsAgo: tp.monthsAgo, succeeded, total: results.length };
+          return { jobId: job.id, model, monthsAgo: tp.monthsAgo, finishedAt: tp.finishedAt, succeeded, total: results.length };
         }),
       ),
     );
+
+    // Concurrent-run dedup: if another request hit this same cached
+    // brand at the same time, both pipelines wrote Jobs to the same
+    // (model, day-bucket) slot. Keep only the most-recent Job per
+    // bucket and delete the losers plus their Runs/metrics/sources.
+    // Skipped when any Job for this brand is still in-flight
+    // (finishedAt=null), since deleting a half-written Job would
+    // break the concurrent writer. The still-running writer runs
+    // this same dedup at its own completion.
+    await dedupeBrandJobs(brand.id);
 
     // If every model failed every prompt at every time point, surface a 502
     // instead of redirecting to an empty overview page. Today's point is

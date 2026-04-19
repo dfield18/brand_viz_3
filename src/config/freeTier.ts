@@ -72,6 +72,10 @@ export const FREE_TIER_HISTORICAL_MONTHS = envInt("FREE_TIER_HISTORICAL_MONTHS",
  *  trend-chart mention rates need directional data, not full coverage. */
 export const FREE_TIER_HISTORICAL_PROMPT_COUNT = envInt("FREE_TIER_HISTORICAL_PROMPT_COUNT", 3);
 
+/** How fresh a cached free-tier report must be to be reused. Default 7 days.
+ *  Set to 0 to disable caching entirely. */
+export const FREE_TIER_CACHE_TTL_HOURS = envInt("FREE_TIER_CACHE_TTL_HOURS", 168);
+
 export const FREE_TIER_CONFIG = {
   promptCount: FREE_TIER_PROMPT_COUNT,
   promptCluster: FREE_TIER_PROMPT_CLUSTER,
@@ -85,4 +89,5 @@ export const FREE_TIER_CONFIG = {
   exampleBrands: FREE_TIER_EXAMPLE_BRANDS,
   historicalMonths: FREE_TIER_HISTORICAL_MONTHS,
   historicalPromptCount: FREE_TIER_HISTORICAL_PROMPT_COUNT,
+  cacheTtlHours: FREE_TIER_CACHE_TTL_HOURS,
 } as const;

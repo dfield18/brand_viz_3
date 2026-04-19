@@ -3,14 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 import { isProUser } from "@/lib/brandViewLimitServer";
 
-/** Anonymous free-tier runs get an 8-hex suffix joined with a DOUBLE
- *  hyphen (see src/app/api/free-run/execute/route.ts → randomSlugSuffix).
- *  Slugs matching this pattern are always publicly viewable. The double
- *  hyphen is important: the Pro "Add Brand" slugifier collapses runs of
- *  non-alphanumerics to a single dash, so `--` can never be produced by
- *  user input — eliminating false positives on Pro brand names like
- *  "Tesla a1b2c3d4" that happen to end in 8 hex chars. */
-const EPHEMERAL_FREE_RUN_PATTERN = /--[0-9a-f]{8}$/;
+/** Anonymous free-tier runs use a DOUBLE-hyphen marker that the Pro
+ *  slugifier (src/components/Header.tsx:104) can never produce, since
+ *  it collapses runs of non-alphanumerics to a single dash. Two slug
+ *  shapes are recognized:
+ *    - `<base>--cached` — current deterministic cache slug (new runs)
+ *    - `<base>--<8 hex>` — legacy per-request ephemeral slug (ages out
+ *       within 24h of the change to deterministic caching) */
+const EPHEMERAL_FREE_RUN_PATTERN = /--(cached|[0-9a-f]{8})$/;
 
 /** A brand is publicly viewable (no auth) when it's a preset demo brand or
  *  an ephemeral free-tier run. */
