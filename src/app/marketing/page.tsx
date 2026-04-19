@@ -83,7 +83,7 @@ const PRICING_TIERS = [
       "Visibility, sentiment, competitors, sources",
       "90-day trend — 3 points, historical estimated",
     ],
-    cta: "Try It Free",
+    cta: "Use It Free",
     highlighted: false,
   },
   {
@@ -218,7 +218,7 @@ export default async function LandingPage() {
               href="/sign-up"
               className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              Try it free
+              Use it free
             </Link>
             <p className="text-[10px] text-muted-foreground/40 mt-3">
               By signing up you agree to receive occasional updates from aiSaysWhat.
@@ -348,7 +348,7 @@ export default async function LandingPage() {
               href="/sign-up"
               className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              Try it free
+              Use it free
             </Link>
           </div>
         </div>
