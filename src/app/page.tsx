@@ -150,7 +150,7 @@ export default async function HomePage() {
               href="/sign-up"
               className="text-sm font-medium px-3 sm:px-4 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              Get Started
+              Sign up
             </Link>
           </div>
         </div>
@@ -159,6 +159,12 @@ export default async function HomePage() {
       {/* Hero + free dashboard — one section so spacing stays tight */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10">
         <div className="max-w-2xl">
+          {/* Prominent "free, no signup" pill above the H1 so first-time
+              visitors can't miss the entry bar's no-friction mode. */}
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            Free to try — no sign-up required
+          </div>
           <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             AI is shaping how people discover your brand.
             <br />
