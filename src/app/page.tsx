@@ -222,7 +222,7 @@ export default async function HomePage() {
               visitors can't miss the entry bar's no-friction mode. */}
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            Free to use — no sign-up required
+            Free to use the basic version — no sign-up required
           </div>
           <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
             AI is shaping how people discover your brand.
