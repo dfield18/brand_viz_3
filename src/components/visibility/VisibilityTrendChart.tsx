@@ -25,13 +25,18 @@ interface VisibilityTrendChartProps {
   compact?: boolean;
   /** Override the default metric description text */
   descriptionOverride?: Record<string, string>;
+  /** True when the historical points aren't logged data but rather
+   *  model-training-knowledge estimates (used by the free tier so a
+   *  brand-new brand has a visible trend). Switches the line to dashed
+   *  and swaps in a clearer disclaimer. */
+  historicalEstimated?: boolean;
 }
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact, descriptionOverride }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact, descriptionOverride, historicalEstimated = false }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
@@ -346,6 +351,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 dataKey={mainDataKey}
                 stroke={strokeColor}
                 strokeWidth={2.5}
+                strokeDasharray={historicalEstimated ? "5 4" : undefined}
                 dot={false}
                 activeDot={{ r: 5, fill: strokeColor, stroke: "var(--card)", strokeWidth: 2 }}
                 name={effectiveMetric === "visibility" ? "Brand Recall" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
@@ -359,6 +365,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                   stroke={strokeColor}
                   strokeWidth={1}
                   strokeOpacity={0.25}
+                  strokeDasharray={historicalEstimated ? "5 4" : undefined}
                   dot={false}
                   activeDot={{ r: 3 }}
                   name={`${MODEL_LABELS[m] ?? m}`}
@@ -374,6 +381,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 dataKey={`${focusModel}_${mainDataKey}`}
                 stroke={strokeColor}
                 strokeWidth={2.5}
+                strokeDasharray={historicalEstimated ? "5 4" : undefined}
                 dot={false}
                 activeDot={{ r: 5, fill: strokeColor, stroke: "var(--card)", strokeWidth: 2 }}
                 name={MODEL_LABELS[focusModel] ?? focusModel}
@@ -401,7 +409,9 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
 
       {!compact && (
         <p className="text-[11px] text-muted-foreground/50 italic mt-3">
-          Note: historical data points are estimated from the latest available response per model and question as of each date.
+          {historicalEstimated
+            ? "Dashed line indicates historical points are the AI models' best guess from training knowledge (no live web search). Today's point reflects live web results. Sign up to accumulate real logged history over time."
+            : "Note: historical data points are estimated from the latest available response per model and question as of each date."}
         </p>
       )}
 

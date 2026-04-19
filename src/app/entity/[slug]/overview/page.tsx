@@ -222,11 +222,18 @@ function OverviewInner() {
           </div>
         </div>
 
-        {/* Brand Recall Trend */}
+        {/* Brand Recall Trend — free-tier ephemeral brands (slug ends with
+            a random -[8 hex] suffix) have training-knowledge-estimated
+            historical points, so dash the line and swap the caption. */}
         {visData?.visibility?.trend && visData.visibility.trend.length > 0 && (
           <div id="visibility-trend" className="scroll-mt-24">
             <section className="rounded-xl bg-card p-6 shadow-section">
-              <VisibilityTrendChart trend={visData.visibility.trend} brandName={brandName} descriptionOverride={trendDescriptions} />
+              <VisibilityTrendChart
+                trend={visData.visibility.trend}
+                brandName={brandName}
+                descriptionOverride={trendDescriptions}
+                historicalEstimated={/-[0-9a-f]{8}$/.test(params.slug)}
+              />
             </section>
             <DataFooter prompts="industry" date={range} />
           </div>
