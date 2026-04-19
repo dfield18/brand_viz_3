@@ -231,6 +231,7 @@ function VisibilityV2Inner() {
             kpiDeltas={data.kpiDeltas}
             brandName={brandName}
             industry={apiData.brandIndustry}
+            category={brandCategory}
             onCardClick={handleCardClick}
             activeMetric={activeMetric}
             sparklines={sparklines}
