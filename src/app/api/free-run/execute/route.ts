@@ -357,11 +357,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });
   }
 
-  // Deterministic cache slug — every search for "Nike" maps to
-  // `nike--cached`, so a fresh Job in the TTL window can short-circuit
-  // the whole pipeline. Pro slugifier can never produce `--` from user
-  // input, so there's no collision risk with paid brands.
-  const slug = `${baseSlug}--cached`;
+  // Deterministic cache slug — every search for "Nike" maps to the
+  // same slug (e.g. `nike--a1b2c3d4` where a1b2c3d4 = first 8 hex chars
+  // of sha256("nike")), so a fresh Job in the TTL window can
+  // short-circuit the whole pipeline. Hash-based suffix reads like an
+  // opaque ID rather than an implementation hint ("--cached") that
+  // could surface to users via the URL bar. Pro slugifier can never
+  // produce `--` from user input, so there's no collision risk with
+  // paid brands.
+  const slug = `${baseSlug}--${sha256(baseSlug).slice(0, 8)}`;
 
   // Cache lookup: if this brand already has a Job that finished within
   // the configured TTL, skip the pipeline entirely and redirect the
