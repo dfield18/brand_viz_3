@@ -527,6 +527,13 @@ export async function POST(req: NextRequest) {
                   rawResponseText,
                   analysisJson: JSON.parse(JSON.stringify(analysisJson)),
                   narrativeJson: JSON.parse(JSON.stringify(narrativeJson)),
+                  // Backdate Run.createdAt to this time point's bucket so
+                  // downstream trend charts that group by createdAt week
+                  // (e.g. narrative sentiment trend) see 3 distinct buckets
+                  // instead of collapsing all historical runs into this
+                  // week. Job.finishedAt is already backdated for the
+                  // visibility trend, but narrative trend reads from Run.
+                  createdAt: tp.finishedAt,
                 },
               });
 
