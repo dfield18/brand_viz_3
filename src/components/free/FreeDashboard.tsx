@@ -56,6 +56,24 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
     inputRef.current?.focus();
   }, []);
 
+  // Auto-fire when the URL carries ?brand=<name>&run=1 — used by the
+  // entity-page dropdown's "Try another" items to bounce anon users
+  // back here with the requested brand pre-running. Reads from
+  // window.location in a useEffect so we don't deopt the tree to
+  // client rendering via useSearchParams.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const brand = params.get("brand");
+    if (!brand || params.get("run") !== "1") return;
+    setBrandName(brand);
+    runAnalysis(brand);
+    // Clear the query params so a refresh doesn't re-fire the run.
+    window.history.replaceState(null, "", window.location.pathname);
+    // Intentionally only runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const modelList = joinWithAnd(models.map((m) => MODEL_LABELS[m] ?? m));
   const canSubmit = brandName.trim().length > 0 && !loading;
 

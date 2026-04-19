@@ -10,6 +10,7 @@ import { dataClient } from "@/dataClient";
 import { useBrands, invalidateBrands } from "@/lib/useBrands";
 import { useBrandName } from "@/lib/useBrandName";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
+import { FREE_TIER_CONFIG } from "@/config/freeTier";
 import { BrandSelector } from "./BrandSelector";
 import {
   Dialog,
@@ -213,6 +214,14 @@ function HeaderInner() {
                 onSelect={handleBrandChange}
                 onAddBrand={handleAddBrand}
                 canAddBrand={isSignedIn !== false}
+                suggestedBrands={isSignedIn === false ? FREE_TIER_CONFIG.exampleBrands : undefined}
+                onSuggestedSelect={(name) => {
+                  // Bounce to the homepage with the brand pre-filled and
+                  // auto-running so the user sees the normal rotating
+                  // loading state + redirect.
+                  router.push(`/?brand=${encodeURIComponent(name)}&run=1`);
+                }}
+                onSearchNew={() => router.push("/")}
               />
             </div>
           )}

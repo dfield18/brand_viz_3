@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -22,6 +23,17 @@ interface BrandSelectorProps {
   /** Whether to show the "+ Add Brand" menu item. Hidden for anonymous
    *  visitors since the add-brand flow requires an account. */
   canAddBrand?: boolean;
+  /** Curated brand names shown to anonymous visitors so they can jump
+   *  straight into another free run from the dropdown. Ignored when
+   *  canAddBrand is true (signed-in users see their real brand list
+   *  instead of suggestions). */
+  suggestedBrands?: string[];
+  /** Click handler for a suggested-brand item. Typically navigates to
+   *  the homepage with the brand pre-filled and auto-run. */
+  onSuggestedSelect?: (brandName: string) => void;
+  /** Click handler for the "+ New brand or public figure" item that
+   *  sends anon users back to the hero input. */
+  onSearchNew?: () => void;
 }
 
 export function BrandSelector({
@@ -31,9 +43,13 @@ export function BrandSelector({
   onSelect,
   onAddBrand,
   canAddBrand = true,
+  suggestedBrands,
+  onSuggestedSelect,
+  onSearchNew,
 }: BrandSelectorProps) {
   const current = brands.find((b) => b.slug === currentSlug);
   const label = current?.name ?? currentBrandName ?? "Select Brand";
+  const showSuggestions = !canAddBrand && (suggestedBrands?.length ?? 0) > 0;
 
   return (
     <DropdownMenu>
@@ -43,7 +59,7 @@ export function BrandSelector({
           <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
+      <DropdownMenuContent align="start" className="w-56">
         {canAddBrand && (
           <>
             <DropdownMenuItem onSelect={() => onAddBrand()}>
@@ -52,7 +68,36 @@ export function BrandSelector({
             <DropdownMenuSeparator />
           </>
         )}
-        {brands.length === 0 && (
+
+        {/* Signed-out UX: instead of "Sign up to add brands", offer
+            the same suggested brands from the homepage and a fallback
+            "+ New brand" action. Let them keep exploring without an
+            account. */}
+        {showSuggestions && (
+          <>
+            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Try another
+            </DropdownMenuLabel>
+            {suggestedBrands!.map((name) => (
+              <DropdownMenuItem
+                key={name}
+                onSelect={() => onSuggestedSelect?.(name)}
+              >
+                {name}
+              </DropdownMenuItem>
+            ))}
+            {onSearchNew && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => onSearchNew()}>
+                  + New brand or public figure
+                </DropdownMenuItem>
+              </>
+            )}
+          </>
+        )}
+
+        {!showSuggestions && brands.length === 0 && (
           <DropdownMenuItem disabled className="text-muted-foreground">
             {canAddBrand ? "No brands yet" : "Sign up to add brands"}
           </DropdownMenuItem>
