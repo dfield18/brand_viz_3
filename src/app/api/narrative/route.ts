@@ -480,9 +480,24 @@ export async function GET(req: NextRequest) {
   }
 
   for (const frameName of topFrameNames) {
-    const contributors = findFrameContributors(frameName)
+    let contributors = findFrameContributors(frameName)
       .filter((c) => !usedRunIds.has(c.runId))
       .sort((a, b) => b.strength - a.strength);
+
+    // Padded/synthesized frames (from ensureMinimumFrames) have no
+    // recorded contributors — frameRunIds is built only from strong
+    // signals in run analysisJson. Fall back to any unused brand-scope
+    // run so GPT still gets a chance to extract a frame-relevant
+    // quote. Without this, the second and third frames shown on niche
+    // brands (e.g. Mayors Against Illegal Guns) always rendered the
+    // "No example quotes available" empty state, because their frames
+    // were synthesized and no pendingExample was ever sent to GPT.
+    if (contributors.length === 0) {
+      contributors = runs
+        .filter((r) => !usedRunIds.has(r.id) && isRunInBrandScope(r, brandIdentity))
+        .slice(0, 4)
+        .map((r) => ({ runId: r.id, strength: 0 }));
+    }
 
     // Collect candidates (up to 4 per frame, GPT will pick the best)
     let collected = 0;
