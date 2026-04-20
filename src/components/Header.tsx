@@ -55,6 +55,16 @@ function HeaderInner() {
   const [runOpen, setRunOpen] = useState(false);
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [runningSuggestion, setRunningSuggestion] = useState<string | null>(null);
+  const [refreshToast, setRefreshToast] = useState(false);
+
+  // Auto-dismiss the "Report refreshed" toast after 3s. Cleanup on unmount
+  // cancels the pending timeout so we don't call setState on a dead
+  // component if the route changes mid-toast.
+  useEffect(() => {
+    if (!refreshToast) return;
+    const t = setTimeout(() => setRefreshToast(false), 3000);
+    return () => clearTimeout(t);
+  }, [refreshToast]);
 
   // Check pro status
   useEffect(() => {
@@ -440,7 +450,21 @@ function HeaderInner() {
             <DialogTitle>Run Prompts</DialogTitle>
           </DialogHeader>
           {currentSlug && (
-            <RunPromptsPanel brandSlug={currentSlug} model={model} range={range} />
+            <RunPromptsPanel
+              brandSlug={currentSlug}
+              model={model}
+              range={range}
+              onComplete={() => {
+                // Dismiss the dialog so the user can see the refreshed
+                // entity page, fire a page-level toast for explicit
+                // confirmation, and router.refresh() so any Server
+                // Component data on the page re-fetches along with the
+                // client-side cache that RunPromptsPanel already cleared.
+                setRunOpen(false);
+                setRefreshToast(true);
+                router.refresh();
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -456,6 +480,21 @@ function HeaderInner() {
           models={FREE_TIER_CONFIG.models}
           onCancel={() => setRunningSuggestion(null)}
         />
+      )}
+
+      {/* Rerun success toast — fires when RunPromptsPanel finishes a
+          successful run. Fixed-positioned below the sticky header so
+          it's clearly visible on top of the entity page content while
+          the per-section loading skeletons re-render with fresh data. */}
+      {refreshToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 top-[calc(var(--header-height)+1rem)] z-50 -translate-x-1/2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 shadow-md animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+          Report refreshed — showing latest data
+        </div>
       )}
     </>
   );

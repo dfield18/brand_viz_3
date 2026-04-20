@@ -28,9 +28,14 @@ interface RunPromptsPanelProps {
   brandSlug: string;
   model: string;
   range: number;
+  /** Fired once the run finishes successfully (at least one model landed).
+   *  The parent is expected to close the dialog and show a page-level
+   *  confirmation so users know the underlying report just refreshed —
+   *  the dialog's own progress bar hides the entity page while it's open. */
+  onComplete?: () => void;
 }
 
-export function RunPromptsPanel({ brandSlug, model, range }: RunPromptsPanelProps) {
+export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunPromptsPanelProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [completed, setCompleted] = useState(0);
   const [total, setTotal] = useState(0);
@@ -164,9 +169,10 @@ export function RunPromptsPanel({ brandSlug, model, range }: RunPromptsPanelProp
       // Clear cached tab data so tabs reload with fresh results
       clearFetchCache();
 
+      const anySucceeded = jobIds.some((id) => id);
       if (errors.length > 0) {
         setError(errors.join("; "));
-        setStatus(jobIds.length > 0 ? "done" : "error");
+        setStatus(anySucceeded ? "done" : "error");
       } else {
         setStatus("done");
       }
@@ -175,6 +181,14 @@ export function RunPromptsPanel({ brandSlug, model, range }: RunPromptsPanelProp
       const lastJobId = jobIds.filter(Boolean).pop() ?? null;
       if (!abortRef.current && lastJobId) {
         await fetchRuns(lastJobId);
+      }
+
+      // Tell the parent we're done so it can close the dialog and
+      // surface a page-level toast — the dialog itself is hiding the
+      // entity page behind it, so users need visible confirmation
+      // that their report was actually refreshed.
+      if (!abortRef.current && anySucceeded) {
+        onComplete?.();
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
