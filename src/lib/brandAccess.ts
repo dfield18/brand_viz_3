@@ -2,22 +2,30 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 import { isProUser } from "@/lib/brandViewLimitServer";
+import { sha256 } from "@/lib/hash";
 
-/** Anonymous free-tier runs use a DOUBLE-hyphen marker that the Pro
- *  slugifier (src/components/Header.tsx:104) can never produce, since
- *  it collapses runs of non-alphanumerics to a single dash. Two slug
+/** Free-tier runs use a DOUBLE-hyphen marker that the Pro slugifier
+ *  (src/components/Header.tsx:120) can never produce, since it
+ *  collapses runs of non-alphanumerics to a single dash. Two slug
  *  shapes are recognized:
- *    - `<base>--cached` — current deterministic cache slug (new runs)
- *    - `<base>--<8 hex>` — legacy per-request ephemeral slug (ages out
- *       within 24h of the change to deterministic caching) */
-const EPHEMERAL_FREE_RUN_PATTERN = /--(cached|[0-9a-f]{8})$/;
+ *    - `<base>--<8 hex>` — current deterministic cache slug where the
+ *       8 hex chars are sha256(base).slice(0, 8). Verifying the hash
+ *       (rather than accepting any 8 hex) blocks a Pro user from
+ *       seeding a forged `foo--abcd1234` brand via findOrCreateBrand
+ *       and getting it treated as publicly viewable.
+ *    - `<base>--cached` — legacy marker used before the deterministic
+ *       cache. Kept for back-compat on old rows; no new writes use it. */
+const EPHEMERAL_SUFFIX_PATTERN = /^(.+)--(cached|[0-9a-f]{8})$/;
 
 /** A brand is publicly viewable (no auth) when it's a preset demo brand or
- *  an ephemeral free-tier run. */
+ *  a verifiable free-tier cache slug. */
 export function isPubliclyViewableBrand(brandSlug: string): boolean {
   if (PRESET_BRAND_SLUGS.includes(brandSlug)) return true;
-  if (EPHEMERAL_FREE_RUN_PATTERN.test(brandSlug)) return true;
-  return false;
+  const m = EPHEMERAL_SUFFIX_PATTERN.exec(brandSlug);
+  if (!m) return false;
+  const [, base, suffix] = m;
+  if (suffix === "cached") return true;
+  return suffix === sha256(base).slice(0, 8);
 }
 
 /** Build a Cache-Control header value for a brand's read-only data API.
