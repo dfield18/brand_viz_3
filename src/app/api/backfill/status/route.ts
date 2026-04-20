@@ -66,8 +66,12 @@ export async function GET(req: NextRequest) {
   const newest = monthDate(0);
   newest.setHours(23, 59, 59, 999);
 
-  const [doneCount, latestJob] = await Promise.all([
-    prisma.job.count({
+  // Count DISTINCT month-dates that have a done Job, not rows —
+  // re-runs (and prior concurrent backfills) leave multiple done Jobs
+  // on the same calendar date, so a plain count inflates above the
+  // 4-point total and the progress bar ends up at "29 / 20 · 145%".
+  const [doneJobs, latestJob] = await Promise.all([
+    prisma.job.findMany({
       where: {
         brandId: brand.id,
         model,
@@ -75,6 +79,7 @@ export async function GET(req: NextRequest) {
         status: "done",
         finishedAt: { gte: oldest, lte: newest },
       },
+      select: { finishedAt: true },
     }),
     prisma.job.findFirst({
       where: { brandId: brand.id, model, range: jobRange, status: "done" },
@@ -82,6 +87,14 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     }),
   ]);
+  const doneDates = new Set(
+    doneJobs
+      .map((j: { finishedAt: Date | null }) =>
+        j.finishedAt?.toISOString().slice(0, 10),
+      )
+      .filter(Boolean),
+  );
+  const doneCount = Math.min(doneDates.size, TOTAL_POINTS);
 
   if (!exists) {
     // RunId may be from a previous deployment or was garbage-collected.
