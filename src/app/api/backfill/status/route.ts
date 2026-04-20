@@ -87,14 +87,18 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     }),
   ]);
-  const doneDates = new Set(
+  // Dedup on year+month (YYYY-MM) rather than full date — a brand
+  // backfilled on Apr 19 and again on Apr 20 writes two distinct
+  // finishedAt days, but both correspond to the same "current month"
+  // data point. Counting by day inflates the bar past 4/4.
+  const doneMonths = new Set(
     doneJobs
       .map((j: { finishedAt: Date | null }) =>
-        j.finishedAt?.toISOString().slice(0, 10),
+        j.finishedAt?.toISOString().slice(0, 7),
       )
       .filter(Boolean),
   );
-  const doneCount = Math.min(doneDates.size, TOTAL_POINTS);
+  const doneCount = Math.min(doneMonths.size, TOTAL_POINTS);
 
   if (!exists) {
     // RunId may be from a previous deployment or was garbage-collected.
