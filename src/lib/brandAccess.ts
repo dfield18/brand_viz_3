@@ -31,13 +31,36 @@ export function isPubliclyViewableBrand(brandSlug: string): boolean {
 }
 
 /** Build a Cache-Control header value for a brand's read-only data API.
- *  Public brands (preset + ephemeral) can be cached at Vercel's edge
- *  shared across all viewers — the response contains no user-scoped
- *  data, and brands like common-cause have dozens of runs whose
- *  aggregation takes 5-15s to compute on a cold request. Pro-only
- *  brands stay `private` so browser caches but the edge doesn't, since
- *  a leaked response across Pro users viewing the same slug would
- *  surface analysis they shouldn't necessarily see.
+ *  Public brands (preset + verified free-tier ephemeral) can be cached
+ *  at Vercel's edge shared across all viewers — brands like
+ *  common-cause have dozens of runs whose aggregation takes 5-15s to
+ *  compute on a cold request. Pro-only brands stay `private` so the
+ *  browser caches but the edge doesn't, since there's no per-user
+ *  scoping on the cache key.
+ *
+ *  ╔═══════════════════════════════════════════════════════════════╗
+ *  ║ CONTRACT — read before editing any handler that uses this:    ║
+ *  ║                                                               ║
+ *  ║ A response served with this helper MUST be a pure function of ║
+ *  ║ the brand + query-string arguments. It MUST NOT include any   ║
+ *  ║ user-scoped data, because for public brands the CDN can and   ║
+ *  ║ will serve the cached response to a different viewer.         ║
+ *  ║                                                               ║
+ *  ║ Do NOT include in responses that use this helper:             ║
+ *  ║   - Viewer email / userId / Clerk session fields              ║
+ *  ║   - Pro/free tier flags computed from the requester           ║
+ *  ║   - "Your" quotas, entitlements, or saved preferences         ║
+ *  ║   - Run-ownership fields (once Brand gets ownerId)            ║
+ *  ║   - Anything that would differ between two anonymous viewers  ║
+ *  ║     of the same preset brand                                  ║
+ *  ║                                                               ║
+ *  ║ If a handler needs to return user-scoped data, either split   ║
+ *  ║ it into a separate endpoint with `private, max-age=...` or    ║
+ *  ║ hard-code `private` on the whole response.                    ║
+ *  ║                                                               ║
+ *  ║ No `Vary` is set — public-brand responses are identical       ║
+ *  ║ across sessions by construction.                              ║
+ *  ╚═══════════════════════════════════════════════════════════════╝
  *
  *  Usage:
  *    return NextResponse.json(data, {
