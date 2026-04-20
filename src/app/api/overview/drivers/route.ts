@@ -86,7 +86,6 @@ export async function GET(req: NextRequest) {
   let previousRawRuns: typeof currentRawRuns = [];
   let currentStart = now;
   let previousStart = new Date(now.getTime() - 30 * DAY);
-  let previousEnd = previousStart;
   if (sortedDates.length >= 2) {
     const currentDate = new Date(sortedDates[0] + "T00:00:00Z");
     currentStart = currentDate;
@@ -103,7 +102,6 @@ export async function GET(req: NextRequest) {
     }
     previousRawRuns = byDate.get(closestDate)!;
     previousStart = new Date(closestDate + "T00:00:00Z");
-    previousEnd = new Date(closestDate + "T23:59:59Z");
   }
 
   function toDecomposed(
@@ -135,8 +133,13 @@ export async function GET(req: NextRequest) {
   const currentRuns = toDecomposed(currentRawRuns);
   const previousRuns = toDecomposed(previousRawRuns);
 
-  const periodCurrent = `${currentStart.toISOString().slice(0, 10)} to ${now.toISOString().slice(0, 10)}`;
-  const periodPrevious = `${previousStart.toISOString().slice(0, 10)} to ${previousEnd.toISOString().slice(0, 10)}`;
+  // Single ISO dates — each "period" is a single snapshot date
+  // (currentRawRuns all share one date, previousRawRuns all share one
+  // date). The UI formats these as "Month Day, Year" and frames them
+  // as "latest" vs "~30 days earlier" so users see a meaningful
+  // month-over-month comparison, not a raw date range.
+  const periodCurrent = currentStart.toISOString().slice(0, 10);
+  const periodPrevious = previousStart.toISOString().slice(0, 10);
 
   // If insufficient data for either window, return low-confidence fallback
   if (currentRuns.length < 2 || previousRuns.length < 2) {

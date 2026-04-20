@@ -101,11 +101,25 @@ const SEGMENT_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+/** Render the "Comparing X vs Y" footer line under the breakdown.
+ *  Periods come from the API as ISO dates (e.g. "2026-04-16") — one for
+ *  the latest snapshot, one for the snapshot closest to ~30 days
+ *  earlier. Format them as "Month Day, Year" and label both sides so
+ *  users see it's a month-over-month read, not an arbitrary date diff. */
 function getComparisonLabel(periodCurrent?: string, periodPrevious?: string): string {
-  if (periodCurrent && periodPrevious) {
-    return `${periodPrevious} vs ${periodCurrent}`;
-  }
-  return "vs prior period";
+  if (!periodCurrent || !periodPrevious) return "vs prior period";
+  const formatDate = (iso: string) => {
+    // Parse as UTC to match the ISO string's intent
+    const d = new Date(iso + "T00:00:00Z");
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  };
+  return `latest snapshot (${formatDate(periodCurrent)}) to snapshot from ~30 days earlier (${formatDate(periodPrevious)})`;
 }
 
 const CONFIDENCE_STYLE: Record<string, { bg: string; text: string }> = {
