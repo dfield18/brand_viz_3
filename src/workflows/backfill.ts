@@ -406,11 +406,56 @@ async function processPromptStep(args: ProcessPromptArgs): Promise<void> {
 // ─── Workflow orchestrator ──────────────────────────────────────────
 
 /**
+ * Runs one month end-to-end: create Job, fan out its N prompts in
+ * parallel, then finalize the Job. Wrapped as its own async unit so
+ * the orchestrator can fan all months out in parallel without losing
+ * the per-month create/finalize bracketing.
+ */
+async function processMonth(
+  month: BackfillMonth,
+  params: BackfillParams,
+): Promise<void> {
+  const jobId = await createJobStep({
+    brandId: params.brandId,
+    model: params.model,
+    jobRange: params.jobRange,
+    jobDateISO: month.jobDateISO,
+  });
+
+  const settled = await Promise.allSettled(
+    params.prompts.map((prompt) =>
+      processPromptStep({
+        jobId,
+        jobDateISO: month.jobDateISO,
+        brandId: params.brandId,
+        brandSlug: params.brandSlug,
+        brandName: params.brandName,
+        brandIndustry: params.brandIndustry,
+        brandCategory: params.brandCategory,
+        model: params.model,
+        prompt,
+        monthW: month.w,
+        dateStr: month.dateStr,
+      }),
+    ),
+  );
+
+  const hasError = settled.some((r) => r.status === "rejected");
+  await finalizeJobStep({
+    jobId,
+    jobDateISO: month.jobDateISO,
+    hasError,
+  });
+}
+
+/**
  * Runs a full backfill: up to 4 months × N prompts × 1 model.
- * Months run sequentially so progress is visible in the Job table as
- * each finishes; prompts within a month fan out in parallel via
- * Promise.allSettled to keep total wall time close to the serial
- * version of the pipeline.
+ * All months fan out in parallel — this used to be sequential to cap
+ * peak provider concurrency, but Workflow retries rate-limited steps
+ * with backoff, so it's better to let the runtime absorb the burst
+ * than to serialize on the client. Cuts per-model wall time roughly
+ * 4× on large brands. Prompts within a month are also parallel, so
+ * the total concurrent API calls per model is ~4 × prompts.
  */
 export async function backfillWorkflow(params: BackfillParams): Promise<{
   completedMonths: number;
@@ -418,39 +463,9 @@ export async function backfillWorkflow(params: BackfillParams): Promise<{
 }> {
   "use workflow";
 
-  for (const month of params.months) {
-    const jobId = await createJobStep({
-      brandId: params.brandId,
-      model: params.model,
-      jobRange: params.jobRange,
-      jobDateISO: month.jobDateISO,
-    });
-
-    const settled = await Promise.allSettled(
-      params.prompts.map((prompt) =>
-        processPromptStep({
-          jobId,
-          jobDateISO: month.jobDateISO,
-          brandId: params.brandId,
-          brandSlug: params.brandSlug,
-          brandName: params.brandName,
-          brandIndustry: params.brandIndustry,
-          brandCategory: params.brandCategory,
-          model: params.model,
-          prompt,
-          monthW: month.w,
-          dateStr: month.dateStr,
-        }),
-      ),
-    );
-
-    const hasError = settled.some((r) => r.status === "rejected");
-    await finalizeJobStep({
-      jobId,
-      jobDateISO: month.jobDateISO,
-      hasError,
-    });
-  }
+  await Promise.allSettled(
+    params.months.map((month) => processMonth(month, params)),
+  );
 
   return { completedMonths: params.months.length, totalMonths: params.months.length };
 }
