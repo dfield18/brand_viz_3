@@ -107,6 +107,18 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
       if (data.status === "done") {
         done = true;
         latestJobId = data.latestJobId ?? null;
+      } else if (data.status === "error") {
+        // Treat explicit "error" as terminal. Without this, the loop
+        // kept polling on brands where a model (e.g. Claude, Google
+        // AIO) consistently fails — each poll hit maxDuration=300s
+        // before returning, so users saw "running" for 20+ minutes
+        // with no new data landing in the DB. Surface the reason so
+        // the overall run can at least flag which model died.
+        throw new Error(
+          data.error
+            ? `${MODEL_LABELS[execModel] ?? execModel}: ${data.error}`
+            : `${MODEL_LABELS[execModel] ?? execModel} failed (see server logs)`,
+        );
       }
     }
 
