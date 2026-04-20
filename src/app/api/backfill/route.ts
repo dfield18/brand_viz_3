@@ -12,7 +12,7 @@ import { sha256 } from "@/lib/hash";
 import { getEnabledPrompts } from "@/lib/promptService";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 
-import { persistSourcesForRun } from "@/lib/sources/persistSources";
+import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
 import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -32,29 +32,93 @@ function monthDate(monthsAgo: number): Date {
   return d;
 }
 
-async function callOpenAI(promptText: string): Promise<string> {
+interface ModelResult {
+  text: string;
+  citations: ApiCitation[];
+}
+
+// Each caller now enables its provider's web-search tool (where
+// applicable) and extracts structured citations. Without this, Runs
+// written by backfill had no URL sources, so Pro brands whose data
+// came via Rerun showed an empty Sources tab. Minimal extraction —
+// no Gemini redirect resolution — to keep the added latency modest.
+
+async function callOpenAI(promptText: string): Promise<ModelResult> {
   const input = `Answer concisely and factually in 5 bullet points.\n\nQuestion: ${promptText}`;
   const response = await getOpenAI().responses.create({
     model: OPENAI_MODEL,
+    tools: [{ type: "web_search" as const }],
     input,
     max_output_tokens: 512,
   });
-  return response.output_text ?? JSON.stringify(response);
+  let text = "";
+  const citations: ApiCitation[] = [];
+  if (Array.isArray(response.output)) {
+    for (const item of response.output) {
+      if (item.type === "message" && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          if (part.type === "output_text") {
+            text += part.text;
+            if (Array.isArray(part.annotations)) {
+              for (const ann of part.annotations) {
+                if (ann.type === "url_citation") {
+                  citations.push({
+                    url: ann.url,
+                    title: ann.title ?? "",
+                    startIndex: ann.start_index,
+                    endIndex: ann.end_index,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!text && response.output_text) text = response.output_text;
+  return { text: text || JSON.stringify(response), citations };
 }
 
-async function callGemini(promptText: string): Promise<string> {
-  const input = `Answer concisely and factually in 5 bullet points.\n\nQuestion: ${promptText}`;
-  const model = getGemini().getGenerativeModel({ model: GEMINI_MODEL });
+async function callGemini(promptText: string): Promise<ModelResult> {
+  const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;
+  const model = getGemini().getGenerativeModel({
+    model: GEMINI_MODEL,
+    tools: [{ googleSearch: {} } as never],
+  });
   const result = await Promise.race([
     model.generateContent(input),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Gemini timeout")), 25_000),
     ),
   ]);
-  return result.response.text() || JSON.stringify(result.response);
+  const text = result.response.text() || JSON.stringify(result.response);
+  const citations: ApiCitation[] = [];
+  const groundingMeta = (result.response as unknown as Record<string, unknown>)
+    .candidates as Array<{ groundingMetadata?: { groundingChunks?: Array<{ web?: { uri: string; title?: string } }> } }> | undefined;
+  if (groundingMeta?.[0]?.groundingMetadata?.groundingChunks) {
+    const baseOffset = text.length;
+    let i = 0;
+    for (const chunk of groundingMeta[0].groundingMetadata.groundingChunks) {
+      // Skip the vertexai redirect URLs that persistSourcesForRun already
+      // filters — they're not real sources. Without redirect resolution
+      // (too slow for backfill) most groundingChunks will be these
+      // proxies and get filtered downstream, but we keep any that
+      // happen to be direct URLs.
+      if (!chunk.web?.uri) continue;
+      citations.push({
+        url: chunk.web.uri,
+        title: chunk.web.title ?? "",
+        startIndex: baseOffset + i,
+        endIndex: baseOffset + i,
+      });
+      i++;
+    }
+  }
+  return { text, citations };
 }
 
-async function callClaude(promptText: string): Promise<string> {
+async function callClaude(promptText: string): Promise<ModelResult> {
   const input = `Answer concisely and factually in 5 bullet points.\n\nQuestion: ${promptText}`;
   const response = await Promise.race([
     getClaude().messages.create({
@@ -67,14 +131,31 @@ async function callClaude(promptText: string): Promise<string> {
       setTimeout(() => reject(new Error("Claude timeout")), 25_000),
     ),
   ]);
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => ("text" in block ? block.text : ""))
-    .join("\n");
-  return text || JSON.stringify(response);
+  let text = "";
+  const citations: ApiCitation[] = [];
+  for (const block of response.content) {
+    if (block.type === "text" && "text" in block) {
+      const blockText = block.text as string;
+      const baseOffset = text.length;
+      text += blockText;
+      if ("citations" in block && Array.isArray(block.citations)) {
+        for (const cite of block.citations) {
+          if (cite && typeof cite === "object" && "url" in cite && typeof cite.url === "string") {
+            citations.push({
+              url: cite.url,
+              title: "title" in cite && typeof cite.title === "string" ? cite.title : "",
+              startIndex: baseOffset,
+              endIndex: baseOffset + blockText.length,
+            });
+          }
+        }
+      }
+    }
+  }
+  return { text: text || JSON.stringify(response), citations };
 }
 
-async function callPerplexity(promptText: string): Promise<string> {
+async function callPerplexity(promptText: string): Promise<ModelResult> {
   const input = `Answer concisely and factually in 5 bullet points.\n\nQuestion: ${promptText}`;
   const response = await Promise.race([
     getPerplexity().chat.completions.create({
@@ -86,7 +167,18 @@ async function callPerplexity(promptText: string): Promise<string> {
       setTimeout(() => reject(new Error("Perplexity timeout")), 25_000),
     ),
   ]);
-  return response.choices?.[0]?.message?.content ?? JSON.stringify(response);
+  const text = response.choices?.[0]?.message?.content ?? JSON.stringify(response);
+  const citations: ApiCitation[] = [];
+  const raw = (response as unknown as { citations?: string[] }).citations;
+  if (Array.isArray(raw)) {
+    const baseOffset = text.length;
+    raw.forEach((url, i) => {
+      if (typeof url === "string") {
+        citations.push({ url, title: "", startIndex: baseOffset + i, endIndex: baseOffset + i });
+      }
+    });
+  }
+  return { text, citations };
 }
 
 interface WeekTask {
@@ -138,22 +230,38 @@ async function processWeek(
 
         let responseText: string;
         let analysis: unknown;
+        let citations: ApiCitation[] = [];
 
         if (cached) {
           responseText = cached.rawResponseText;
           analysis = cached.analysisJson;
+          // Cached Runs have no citations to hand back — persistSources
+          // already captured them at original write time (or it didn't,
+          // and there's nothing to re-extract from text alone without
+          // the model's structured annotations).
         } else {
           if (model === "chatgpt") {
-            responseText = await callOpenAI(promptText);
+            const result = await callOpenAI(promptText);
+            responseText = result.text;
+            citations = result.citations;
           } else if (model === "gemini") {
-            responseText = await callGemini(promptText);
+            const result = await callGemini(promptText);
+            responseText = result.text;
+            citations = result.citations;
           } else if (model === "claude") {
-            responseText = await callClaude(promptText);
+            const result = await callClaude(promptText);
+            responseText = result.text;
+            citations = result.citations;
           } else if (model === "perplexity") {
-            responseText = await callPerplexity(promptText);
+            const result = await callPerplexity(promptText);
+            responseText = result.text;
+            citations = result.citations;
           } else if (model === "google") {
             const result = await callGoogleAio(promptText);
             responseText = result.text;
+            // callGoogleAio returns a different shape; treat as no
+            // structured citations (SerpAPI inline URLs will fall out
+            // of text extraction in persistSourcesForRun).
           } else {
             responseText = `[stub:${model}] ${brandName} :: ${promptText}`;
           }
@@ -166,7 +274,7 @@ async function processWeek(
           );
         }
 
-        return { prompt, promptTextHash, responseText, analysis };
+        return { prompt, promptTextHash, responseText, analysis, citations };
       }),
     );
 
@@ -176,7 +284,7 @@ async function processWeek(
         hasError = true;
         continue;
       }
-      const { prompt, promptTextHash, responseText, analysis } = result.value;
+      const { prompt, promptTextHash, responseText, analysis, citations } = result.value;
       const requestHash = prompt.competitor
         ? sha256(`${job.id}|${prompt.id}|${prompt.competitor}|v1`)
         : sha256(`${job.id}|${prompt.id}|v1`);
@@ -234,8 +342,14 @@ async function processWeek(
           where: { runId: run.id },
         });
         if (existingSourceCount === 0) {
-          // Persist source occurrences (non-blocking)
-          persistSourcesForRun({
+          // Persist source occurrences — now passing structured
+          // citations from the model's web_search / grounding
+          // response so URL sources land even when the response text
+          // doesn't inline them. Awaited (not fire-and-forget)
+          // because Vercel kills background work once the response
+          // returns, which was one reason sources were silently
+          // missing on Rerun-produced brands.
+          await persistSourcesForRun({
             runId: run.id,
             model,
             promptId: prompt.id,
@@ -243,7 +357,10 @@ async function processWeek(
             brandSlug: brand.slug,
             responseText,
             analysisJson: analysis,
-          }).catch(() => {});
+            apiCitations: citations,
+          }).catch((err) => {
+            console.error(`[backfill] persistSources failed for run=${run.id}:`, err instanceof Error ? err.message : err);
+          });
         }
       } catch {
         hasError = true;
