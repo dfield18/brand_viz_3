@@ -7,6 +7,7 @@ import { getClaude } from "@/lib/claude";
 import { getPerplexity } from "@/lib/perplexity";
 import { callGoogleAio } from "@/lib/serpapi";
 import { extractAnalysis } from "@/lib/extractAnalysis";
+import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 import { sha256 } from "@/lib/hash";
 import { getEnabledPrompts } from "@/lib/promptService";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
@@ -207,8 +208,25 @@ async function processWeek(
           analysisJson: analysis,
         }).catch(() => {});
 
-        // Skip narrative extraction during backfill to reduce API load —
-        // narrative data is extracted during the main Phase 1 analysis for the current week.
+        // Extract narrative (sentiment label + themes) so the narrative
+        // sentiment trend chart has week-over-week data points.
+        // Previously skipped here "to reduce API load" — but a Pro brand
+        // whose data came entirely through Rerun then had
+        // narrativeJson=null on every run, leaving "How AI Sentiment Is
+        // Changing" empty even though the visibility trend worked.
+        // Awaited because Vercel kills background work after the
+        // response returns; accepts ~1-3s per run as the cost of the
+        // extra GPT-4o-mini call. Errors are swallowed so one failed
+        // extraction doesn't lose the Run itself.
+        try {
+          const narrative = await extractNarrativeForRun(responseText, brandName, brand.slug);
+          await prisma.run.update({
+            where: { id: run.id },
+            data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) },
+          });
+        } catch (e) {
+          console.error(`[backfill] extractNarrativeForRun failed for run=${run.id}:`, e instanceof Error ? e.message : e);
+        }
 
         // SourceOccurrence has no DB-level uniqueness guard today, so avoid
         // re-persisting sources for runs that already have saved citations.
