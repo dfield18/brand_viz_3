@@ -5,28 +5,12 @@ import { gemini } from "@/lib/gemini";
 import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { resolveRedirect } from "@/lib/redirectResolver";
 
 const OPENAI_MODEL = "gpt-4o-mini";
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
 const BATCH_SIZE = 10;
 const TIMEOUT_MS = 30_000;
-
-/** Follow a redirect URL to get the actual destination. */
-async function resolveRedirect(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, { method: "HEAD", redirect: "follow" });
-    return res.url || url;
-  } catch {
-    try {
-      const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(5000) });
-      const resolved = res.url || url;
-      await res.body?.cancel().catch(() => {});
-      return resolved;
-    } catch {
-      return url;
-    }
-  }
-}
 
 async function fetchOpenAICitations(promptText: string): Promise<{ text: string; citations: ApiCitation[] }> {
   const input = `Answer concisely and factually in 5 bullet points. Include source URLs where possible.\n\nQuestion: ${promptText}`;

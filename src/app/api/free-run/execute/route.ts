@@ -7,6 +7,7 @@ import { getGemini } from "@/lib/gemini";
 import { extractAnalysis } from "@/lib/extractAnalysis";
 import { extractNarrativeForRun } from "@/lib/narrative/extractNarrative";
 import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
+import { resolveRedirectsBatch } from "@/lib/redirectResolver";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 import { sha256 } from "@/lib/hash";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
@@ -102,40 +103,6 @@ async function dedupeBrandJobs(brandId: string): Promise<void> {
     // doesn't break the user-facing report. Log and move on.
     console.error(`[free-run/execute] dedupeBrandJobs failed for brand=${brandId}:`, err);
   }
-}
-
-/** Resolve a Gemini grounding-redirect URL to its real destination so the
- *  source shows up as the actual cited domain instead of a vertexai proxy. */
-async function resolveRedirect(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(3000) });
-    return res.url || url;
-  } catch {
-    try {
-      const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(2000) });
-      const resolved = res.url || url;
-      await res.body?.cancel().catch(() => {});
-      return resolved;
-    } catch {
-      return url;
-    }
-  }
-}
-
-/** Resolve all redirect URLs with a global 5s cap — unresolved entries fall
- *  back to their original (vertexai proxy) URLs, which persistSourcesForRun
- *  then filters out. Caps latency per Gemini call. */
-async function resolveRedirectsBatch(
-  entries: { uri: string; title: string }[],
-): Promise<{ url: string; title: string }[]> {
-  return Promise.race([
-    Promise.all(
-      entries.map(async (entry) => ({ url: await resolveRedirect(entry.uri), title: entry.title })),
-    ),
-    new Promise<{ url: string; title: string }[]>((resolve) =>
-      setTimeout(() => resolve(entries.map((e) => ({ url: e.uri, title: e.title }))), 5000),
-    ),
-  ]);
 }
 
 /**

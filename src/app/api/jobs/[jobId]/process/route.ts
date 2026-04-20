@@ -8,6 +8,7 @@ import { getPerplexity } from "@/lib/perplexity";
 import { callGoogleAio } from "@/lib/serpapi";
 import { extractAnalysis } from "@/lib/extractAnalysis";
 import { getEnabledPrompts } from "@/lib/promptService";
+import { resolveRedirectsBatch } from "@/lib/redirectResolver";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 import { extractNarrativeForRun, extractCompetitorNarratives } from "@/lib/narrative/extractNarrative";
 import { persistSourcesForRun } from "@/lib/sources/persistSources";
@@ -122,45 +123,6 @@ async function callOpenAI(promptText: string): Promise<OpenAIResult> {
   }
 
   throw lastError;
-}
-
-/** Follow a redirect URL (e.g. Gemini grounding redirect) to get the actual destination. */
-async function resolveRedirect(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(3000) });
-    return res.url || url;
-  } catch {
-    // If HEAD fails, try GET with short timeout
-    try {
-      const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(2000) });
-      const resolved = res.url || url;
-      await res.body?.cancel().catch(() => {});
-      return resolved;
-    } catch {
-      return url;
-    }
-  }
-}
-
-/** Resolve multiple redirect URLs with a global timeout cap. */
-async function resolveRedirectsBatch(
-  entries: { uri: string; title: string }[],
-): Promise<{ url: string; title: string }[]> {
-  return Promise.race([
-    Promise.all(
-      entries.map(async (entry) => {
-        const url = await resolveRedirect(entry.uri);
-        return { url, title: entry.title };
-      }),
-    ),
-    // Cap total redirect resolution at 5s — return originals for any unresolved
-    new Promise<{ url: string; title: string }[]>((resolve) =>
-      setTimeout(
-        () => resolve(entries.map((e) => ({ url: e.uri, title: e.title }))),
-        5000,
-      ),
-    ),
-  ]);
 }
 
 interface GeminiResult {

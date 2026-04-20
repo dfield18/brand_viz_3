@@ -13,6 +13,7 @@ import { getEnabledPrompts } from "@/lib/promptService";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 
 import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSources";
+import { resolveRedirectsBatch } from "@/lib/redirectResolver";
 import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -96,26 +97,28 @@ async function callGemini(promptText: string): Promise<ModelResult> {
   const citations: ApiCitation[] = [];
   const groundingMeta = (result.response as unknown as Record<string, unknown>)
     .candidates as Array<{ groundingMetadata?: { groundingChunks?: Array<{ web?: { uri: string; title?: string } }> } }> | undefined;
+  let fullText = text;
   if (groundingMeta?.[0]?.groundingMetadata?.groundingChunks) {
-    const baseOffset = text.length;
-    let i = 0;
-    for (const chunk of groundingMeta[0].groundingMetadata.groundingChunks) {
-      // Skip the vertexai redirect URLs that persistSourcesForRun already
-      // filters — they're not real sources. Without redirect resolution
-      // (too slow for backfill) most groundingChunks will be these
-      // proxies and get filtered downstream, but we keep any that
-      // happen to be direct URLs.
-      if (!chunk.web?.uri) continue;
-      citations.push({
-        url: chunk.web.uri,
-        title: chunk.web.title ?? "",
-        startIndex: baseOffset + i,
-        endIndex: baseOffset + i,
-      });
-      i++;
+    const entries = groundingMeta[0].groundingMetadata.groundingChunks
+      .filter((c) => c.web?.uri)
+      .map((c) => ({ uri: c.web!.uri, title: c.web?.title ?? "" }));
+    if (entries.length > 0) {
+      const resolved = await resolveRedirectsBatch(entries);
+      const baseOffset = text.length;
+      for (let i = 0; i < resolved.length; i++) {
+        citations.push({
+          url: resolved[i].url,
+          title: resolved[i].title,
+          startIndex: baseOffset + i,
+          endIndex: baseOffset + i,
+        });
+      }
+      if (citations.length > 0) {
+        fullText += "\n\nSources:\n" + citations.map((c) => `- ${c.url}`).join("\n");
+      }
     }
   }
-  return { text, citations };
+  return { text: fullText, citations };
 }
 
 async function callClaude(promptText: string): Promise<ModelResult> {
