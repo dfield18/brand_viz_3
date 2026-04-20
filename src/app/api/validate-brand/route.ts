@@ -115,14 +115,93 @@ Rules:
     });
 
     // Map entityType from GPT response, with fallback heuristic
-    const entityType: "company" | "cause" =
-      result.entityType === "cause"
+    const mapEntityType = (et: string | undefined, cat: string): "company" | "cause" =>
+      et === "cause"
         ? "cause"
-        : result.entityType === "company"
+        : et === "company"
           ? "company"
-          : ["organization", "topic"].includes(result.category)
+          : ["organization", "topic"].includes(cat)
             ? "cause"
             : "company";
+
+    // Web-search fallback: gpt-4o-mini's training cutoff misses recent
+    // public figures (e.g. Cherelle Parker, Philadelphia mayor since
+    // 2024). Only fires when the cheap path couldn't recognize the
+    // entity, so most typed names stay fast. Silently falls back to
+    // the original result if the web call fails or returns garbage.
+    if (!result.valid && !result.ambiguous) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10_000);
+        const webResponse = await openai.responses.create(
+          {
+            model: "gpt-4o-mini",
+            tools: [{ type: "web_search" as const }],
+            input: `Search the web to determine whether "${trimmed}" is a real, recognizable brand, company, organization, product, public figure (including politicians, mayors, athletes, celebrities), or notable topic/issue.
+
+Respond ONLY with valid JSON (no prose before or after) in this shape:
+{
+  "valid": true or false,
+  "canonicalName": "Properly Formatted Name",
+  "suggestion": "Did you mean X?" or null,
+  "category": "brand" | "company" | "organization" | "product" | "person" | "topic" | "unknown",
+  "entityType": "company" or "cause"
+}
+
+Rules:
+- If the search finds the person/entity, set valid=true with the correctly spelled canonicalName.
+- If the input is a misspelling of a real entity you found via search, set valid=false, suggestion="Did you mean X?", and canonicalName=X.
+- "person" category → entityType "cause" (public figures are tracked like causes, not commercial brands). For "public figure", prefer valid=true with the canonicalName set to their full real name.
+- Only return valid=false + suggestion=null if search confirms the input has no real-world referent.`,
+            max_output_tokens: 400,
+          },
+          { signal: controller.signal },
+        );
+        clearTimeout(timer);
+
+        let webText = "";
+        if (Array.isArray(webResponse.output)) {
+          for (const item of webResponse.output) {
+            if (item.type === "message" && Array.isArray(item.content)) {
+              for (const part of item.content) {
+                if (part.type === "output_text") webText += part.text;
+              }
+            }
+          }
+        }
+        if (!webText && webResponse.output_text) webText = webResponse.output_text;
+
+        const webMatch = webText.match(/\{[\s\S]*\}/);
+        if (webMatch) {
+          const webResult = JSON.parse(webMatch[0]) as {
+            valid: boolean;
+            canonicalName?: string;
+            suggestion?: string | null;
+            category?: string;
+            entityType?: string;
+          };
+          // Override only if web search produced a usable answer —
+          // i.e. it confirmed a real entity or found a misspelling.
+          const hasWebImprovement =
+            webResult.valid ||
+            (webResult.suggestion && webResult.canonicalName &&
+              webResult.canonicalName.toLowerCase() !== trimmed.toLowerCase());
+          if (hasWebImprovement) {
+            return NextResponse.json({
+              valid: webResult.valid,
+              ambiguous: false,
+              canonicalName: webResult.canonicalName ?? trimmed,
+              suggestion: webResult.suggestion ?? null,
+              category: webResult.category ?? "unknown",
+              entityType: mapEntityType(webResult.entityType, webResult.category ?? ""),
+              alternatives: [],
+            });
+          }
+        }
+      } catch (webErr) {
+        console.error("validate-brand web-search fallback failed:", webErr);
+      }
+    }
 
     return NextResponse.json({
       valid: result.valid,
@@ -130,7 +209,7 @@ Rules:
       canonicalName: result.canonicalName,
       suggestion: result.suggestion ?? null,
       category: result.category,
-      entityType,
+      entityType: mapEntityType(result.entityType, result.category),
       alternatives,
     });
   } catch (e) {
