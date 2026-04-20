@@ -20,8 +20,9 @@ export const maxDuration = 60;
  * Auth: Authorization: Bearer $ADMIN_SECRET
  *
  * Body: {
- *   brandSlug?: string;  // scope to one brand (leave out for all)
- *   limit?: number;      // batch size (default 10, max 25)
+ *   brandSlug?: string;      // scope to one brand (leave out for all)
+ *   limit?: number;          // batch size (default 10, max 25)
+ *   afterId?: string;        // cursor from previous response; omit on first call
  *   fillNarrative?: boolean; // default true
  *   fillSources?: boolean;   // default true
  * }
@@ -30,9 +31,16 @@ export const maxDuration = 60;
  *   processed: number;           // runs handled in this batch
  *   narrativeFilled: number;
  *   sourcesFilled: number;
- *   remainingCandidates: number; // approximate — runs still needing work
+ *   nextAfterId: string | null;  // pass to next call; null when done
  *   hasMore: boolean;
  * }
+ *
+ * Cursor semantics: runs are walked in ascending id order. Each call
+ * processes up to `limit` candidates strictly after `afterId`.
+ * Runs where persistSources extracts zero URLs (text had no inline
+ * citations) are advanced past — without the cursor they'd stay in
+ * the `sourceOccurrences: { none: {} }` filter forever and the client
+ * would loop.
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.ADMIN_SECRET;
@@ -49,6 +57,7 @@ export async function POST(req: NextRequest) {
   let body: {
     brandSlug?: string;
     limit?: number;
+    afterId?: string;
     fillNarrative?: boolean;
     fillSources?: boolean;
   } = {};
@@ -71,19 +80,19 @@ export async function POST(req: NextRequest) {
   }
   const whereBrand = brandFilter ? { brandId: brandFilter.id } : {};
 
-  // Find candidates — Runs where either narrative is missing OR no
-  // SourceOccurrences exist. Skip stub runs (no real content). Order by
-  // createdAt asc so older runs get backfilled first; callers looping
-  // through see steady forward progress rather than random churn.
+  // Find candidates via cursor-paginated walk. Each call advances past
+  // `afterId` and returns the last id processed, so runs where
+  // persistSources extracted zero URLs still get advanced past (the
+  // OR clause matches them forever without the cursor).
   const candidates = await prisma.run.findMany({
     where: {
       ...whereBrand,
-      // Not a stub placeholder
       NOT: { rawResponseText: { startsWith: "[stub:" } },
       OR: [
         ...(fillNarrative ? [{ narrativeJson: { equals: null as unknown as object } }] : []),
         ...(fillSources ? [{ sourceOccurrences: { none: {} } }] : []),
       ],
+      ...(body.afterId ? { id: { gt: body.afterId } } : {}),
     },
     select: {
       id: true,
@@ -95,7 +104,7 @@ export async function POST(req: NextRequest) {
       brand: { select: { slug: true, name: true, displayName: true } },
       sourceOccurrences: { select: { id: true }, take: 1 },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { id: "asc" },
     take: limit,
   });
 
@@ -145,25 +154,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Approximate remaining count — re-runs the candidate query with
-  // count(). Cheaper than fetching IDs. `hasMore` drives the caller's
-  // loop.
-  const remainingCandidates = await prisma.run.count({
-    where: {
-      ...whereBrand,
-      NOT: { rawResponseText: { startsWith: "[stub:" } },
-      OR: [
-        ...(fillNarrative ? [{ narrativeJson: { equals: null as unknown as object } }] : []),
-        ...(fillSources ? [{ sourceOccurrences: { none: {} } }] : []),
-      ],
-    },
-  });
+  // Cursor advances to the last processed id; next call picks up
+  // strictly after it. hasMore=false when the batch returned fewer
+  // than `limit` rows (no more candidates past this cursor).
+  const nextAfterId = candidates.length > 0 ? candidates[candidates.length - 1].id : null;
+  const hasMore = candidates.length === limit;
 
   return NextResponse.json({
     processed: candidates.length,
     narrativeFilled,
     sourcesFilled,
-    remainingCandidates,
-    hasMore: remainingCandidates > 0,
+    nextAfterId,
+    hasMore,
   });
 }
