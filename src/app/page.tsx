@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sha256 } from "@/lib/hash";
 import { GET as getVisibility } from "@/app/api/visibility/route";
 import { FreeDashboard } from "@/components/free/FreeDashboard";
 import { LandingDashboard } from "@/components/landing/LandingDashboard";
@@ -116,10 +117,11 @@ const STRUCTURED_DATA = {
 
 /**
  * Fetch a sample visibility trend for the "dashboard preview" embed below
- * How it works. Prefer Nike in either the free-tier cached form
- * (`nike--cached`) or the Pro form (`nike`). Fall back to any other brand
- * with data so the section still renders on fresh deploys. Returns null
- * if nothing is available — caller hides the section entirely.
+ * How it works. Prefer Nike in the free-tier deterministic cache form
+ * (`nike--<sha256("nike").slice(0,8)>`) or the Pro form (`nike`). Fall
+ * back to any other brand with data so the section still renders on
+ * fresh deploys. Returns null if nothing is available — caller hides
+ * the section entirely.
  */
 async function getSampleVisibilityData(): Promise<{
   brandName: string;
@@ -127,9 +129,10 @@ async function getSampleVisibilityData(): Promise<{
   trend: VisibilityTrendPoint[];
 } | null> {
   try {
+    const nikeCacheSlug = `nike--${sha256("nike").slice(0, 8)}`;
     let brand = await prisma.brand.findFirst({
       where: {
-        slug: { in: ["nike--cached", "nike"] },
+        slug: { in: [nikeCacheSlug, "nike"] },
         jobs: { some: { finishedAt: { not: null } } },
       },
       orderBy: { createdAt: "desc" },

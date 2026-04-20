@@ -6,16 +6,19 @@ import { sha256 } from "@/lib/hash";
 
 /** Free-tier runs use a DOUBLE-hyphen marker that the Pro slugifier
  *  (src/components/Header.tsx:120) can never produce, since it
- *  collapses runs of non-alphanumerics to a single dash. Two slug
- *  shapes are recognized:
- *    - `<base>--<8 hex>` — current deterministic cache slug where the
- *       8 hex chars are sha256(base).slice(0, 8). Verifying the hash
- *       (rather than accepting any 8 hex) blocks a Pro user from
- *       seeding a forged `foo--abcd1234` brand via findOrCreateBrand
- *       and getting it treated as publicly viewable.
- *    - `<base>--cached` — legacy marker used before the deterministic
- *       cache. Kept for back-compat on old rows; no new writes use it. */
-const EPHEMERAL_SUFFIX_PATTERN = /^(.+)--(cached|[0-9a-f]{8})$/;
+ *  collapses runs of non-alphanumerics to a single dash.
+ *
+ *  Current shape: `<base>--<8 hex>` where the 8 hex chars are
+ *  sha256(base).slice(0, 8). Verifying the hash (rather than accepting
+ *  any 8 hex) blocks a Pro user from seeding a forged `foo--abcd1234`
+ *  brand via findOrCreateBrand and getting it treated as publicly
+ *  viewable.
+ *
+ *  The prior `<base>--cached` marker is no longer accepted — any
+ *  remaining legacy rows require Pro to view. Dropped because it let
+ *  a Pro user seed `<anything>--cached` (e.g. `facebook--cached`) and
+ *  have it leak to free viewers. */
+const EPHEMERAL_SUFFIX_PATTERN = /^(.+)--([0-9a-f]{8})$/;
 
 /** A brand is publicly viewable (no auth) when it's a preset demo brand or
  *  a verifiable free-tier cache slug. */
@@ -24,7 +27,6 @@ export function isPubliclyViewableBrand(brandSlug: string): boolean {
   const m = EPHEMERAL_SUFFIX_PATTERN.exec(brandSlug);
   if (!m) return false;
   const [, base, suffix] = m;
-  if (suffix === "cached") return true;
   return suffix === sha256(base).slice(0, 8);
 }
 
