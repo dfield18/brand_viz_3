@@ -18,13 +18,27 @@ import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
 
+// Explicit, visible ceiling for this handler. The polling-batch sizing
+// below (CONCURRENT_POINTS) is chosen so that a single POST stays well
+// inside this budget even on a 30-prompt brand across 4 providers.
+// Previously implicit via the Vercel project default, which masked
+// FUNCTION_INVOCATION_TIMEOUT surprises on large brands.
+export const maxDuration = 300;
+
 const OPENAI_MODEL = "gpt-4o-mini";
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const PERPLEXITY_MODEL = "sonar";
 const MONTHS_BACK = 3; // 3 months back + current = 4 data points
 const TOTAL_POINTS = MONTHS_BACK + 1;
-const CONCURRENT_POINTS = 4; // Process all 4 months in parallel
+// Each processWeek fans out up to ~N prompts per provider in parallel,
+// each with a 25 s per-call timeout plus ~3-5 s for narrative extract
+// and Gemini redirect resolution. 2 months per POST caps peak provider
+// concurrency at ~2N and per-batch wall time around 60-120 s on large
+// brands — safely under maxDuration. The client (RunPromptsPanel)
+// already polls until status === "done", so reducing this just adds
+// one extra round-trip per model, not extra end-user wait time.
+const CONCURRENT_POINTS = 2;
 
 function monthDate(monthsAgo: number): Date {
   const d = new Date();
@@ -38,11 +52,12 @@ interface ModelResult {
   citations: ApiCitation[];
 }
 
-// Each caller now enables its provider's web-search tool (where
+// Each caller enables its provider's web-search tool (where
 // applicable) and extracts structured citations. Without this, Runs
 // written by backfill had no URL sources, so Pro brands whose data
-// came via Rerun showed an empty Sources tab. Minimal extraction —
-// no Gemini redirect resolution — to keep the added latency modest.
+// came via Rerun showed an empty Sources tab. Gemini also resolves
+// vertexai grounding-redirect URLs via resolveRedirectsBatch so the
+// real source domains land instead of being filtered downstream.
 
 async function callOpenAI(promptText: string): Promise<ModelResult> {
   const input = `Answer concisely and factually in 5 bullet points.\n\nQuestion: ${promptText}`;
