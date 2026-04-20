@@ -123,25 +123,42 @@ export function AnalyzeRunner({ brandSlug, model, range, onDone }: AnalyzeRunner
     }
   }
 
-  /** Backfill a single model's historical weekly data. Polls until done. */
+  /** Backfill a single model's historical weekly data via the durable
+   *  workflow. POST kicks off one run, then poll status until done. */
   async function runBackfillForModel(
     execModel: string,
     signal: AbortSignal,
     isStale: () => boolean,
   ) {
-    let done = false;
-    while (!done && !isStale()) {
-      const res = await fetch("/api/backfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandSlug, model: execModel, range }),
-        signal,
-      });
-      if (!res.ok) {
-        // Best-effort — don't throw, just stop
-        break;
-      }
-      const data = await res.json();
+    const startRes = await fetch("/api/backfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandSlug, model: execModel, range }),
+      signal,
+    });
+    if (!startRes.ok) return; // Best-effort: swallow and stop
+    const startData = await startRes.json();
+    if (isStale()) return;
+
+    setBackfillProgress((prev) => ({
+      ...prev,
+      [execModel]: { completed: startData.completedWeeks, total: startData.totalWeeks },
+    }));
+
+    if (startData.status === "done") return;
+    const runId: string | undefined = startData.runId;
+    if (!runId) return;
+
+    while (!isStale()) {
+      await sleep(2500);
+      if (isStale()) return;
+
+      const statusRes = await fetch(
+        `/api/backfill/status?runId=${encodeURIComponent(runId)}&brandSlug=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(execModel)}&range=${range}`,
+        { signal },
+      );
+      if (!statusRes.ok) return;
+      const data = await statusRes.json();
       if (isStale()) return;
 
       setBackfillProgress((prev) => ({
@@ -149,9 +166,7 @@ export function AnalyzeRunner({ brandSlug, model, range, onDone }: AnalyzeRunner
         [execModel]: { completed: data.completedWeeks, total: data.totalWeeks },
       }));
 
-      if (data.status === "done") {
-        done = true;
-      }
+      if (data.status === "done" || data.status === "error") return;
     }
   }
 

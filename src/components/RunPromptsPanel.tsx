@@ -80,31 +80,69 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
     } catch {}
   }, []);
 
-  // Poll a single model's backfill until done. Updates the shared progress
-  // tracker so parallel models merge their progress into one bar.
+  // Start a durable backfill and poll its status until done. The POST
+  // kicks off a Workflow run and returns immediately with a runId; the
+  // expensive work happens in the workflow and shows up in the Job
+  // table as each month finishes. The old loop re-POSTed every 2-3 s
+  // and re-kicked the expensive work inside a 300 s serverless
+  // invocation — now POST is cheap, GET /status is cheap, and the
+  // durable work has no per-invocation ceiling.
   async function pollModel(
     execModel: string,
     signal: AbortSignal,
     progress: Map<string, { completed: number; total: number }>,
     onProgress: () => void,
   ): Promise<string | null> {
-    let latestJobId: string | null = null;
-    let done = false;
+    // Kick off the workflow
+    const startRes = await fetch("/api/backfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandSlug, model: execModel, range }),
+      signal,
+    });
 
-    while (!done && !abortRef.current) {
-      const res = await fetch("/api/backfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandSlug, model: execModel, range }),
-        signal,
-      });
+    if (!startRes.ok) {
+      const err = await startRes.json().catch(() => ({}));
+      throw new Error(
+        err.error || `Backfill failed for ${MODEL_LABELS[execModel] ?? execModel} (${startRes.status})`,
+      );
+    }
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Backfill failed for ${MODEL_LABELS[execModel] ?? execModel} (${res.status})`);
+    const startData = await startRes.json();
+    progress.set(execModel, {
+      completed: startData.completedWeeks,
+      total: startData.totalWeeks,
+    });
+    onProgress();
+
+    // Already done from cache / prior run — no workflow spawned.
+    if (startData.status === "done") {
+      return startData.latestJobId ?? null;
+    }
+
+    const runId: string | undefined = startData.runId;
+    if (!runId) {
+      // Backend should always return a runId when status === "running"
+      // — a missing runId means the contract changed.
+      throw new Error(`${MODEL_LABELS[execModel] ?? execModel}: missing runId from backfill start`);
+    }
+
+    while (!abortRef.current) {
+      await new Promise((r) => setTimeout(r, 2500));
+      if (abortRef.current) break;
+
+      const statusRes = await fetch(
+        `/api/backfill/status?runId=${encodeURIComponent(runId)}&brandSlug=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(execModel)}&range=${range}`,
+        { signal },
+      );
+      if (!statusRes.ok) {
+        const err = await statusRes.json().catch(() => ({}));
+        throw new Error(
+          err.error || `Status check failed for ${MODEL_LABELS[execModel] ?? execModel} (${statusRes.status})`,
+        );
       }
 
-      const data = await res.json();
+      const data = await statusRes.json();
       progress.set(execModel, {
         completed: data.completedWeeks,
         total: data.totalWeeks,
@@ -112,15 +150,9 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
       onProgress();
 
       if (data.status === "done") {
-        done = true;
-        latestJobId = data.latestJobId ?? null;
-      } else if (data.status === "error") {
-        // Treat explicit "error" as terminal. Without this, the loop
-        // kept polling on brands where a model (e.g. Claude, Google
-        // AIO) consistently fails — each poll hit maxDuration=300s
-        // before returning, so users saw "running" for 20+ minutes
-        // with no new data landing in the DB. Surface the reason so
-        // the overall run can at least flag which model died.
+        return data.latestJobId ?? null;
+      }
+      if (data.status === "error") {
         throw new Error(
           data.error
             ? `${MODEL_LABELS[execModel] ?? execModel}: ${data.error}`
@@ -129,7 +161,7 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
       }
     }
 
-    return latestJobId;
+    return null;
   }
 
   async function handleRun() {
