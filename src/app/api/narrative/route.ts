@@ -543,15 +543,15 @@ export async function GET(req: NextRequest) {
 For each item you receive a narrative frame and a full AI response. Your job:
 1. Find the 1-3 sentences in the response that BEST illustrate how ${brandName} relates to the given frame
 2. The quote MUST specifically mention or describe ${brandName} (not just competitors)
-3. The quote MUST be relevant to the frame topic
-4. Write a 1-sentence explanation of WHY this quote illustrates the frame
+3. The quote MUST be topically on-point for the frame — it should reference or clearly allude to the frame's specific subject (e.g. if the frame is "Eco-Friendly Electronics Initiatives" the quote must be about sustainability, recycling, renewable energy, etc. — NOT about market share, revenue, or product selection)
+4. Write a 1-sentence explanation of WHY this quote illustrates the frame. The explanation itself must mention the frame's subject.
 
 Return a JSON array of objects: [{"quote": "exact text from response", "reason": "1 sentence"}, ...]
 
 Rules:
 - Copy the quote exactly from the response text (don't paraphrase)
 - Keep quotes under 200 characters — extract only the most relevant part
-- If the response doesn't contain content about ${brandName} that relates to the frame, return {"quote": "", "reason": ""} for that item`,
+- CRITICAL: If the response does not contain text that is specifically about the frame's subject, you MUST return {"quote": "", "reason": ""} for that item. Do not substitute a generic brand-mentioning sentence. An empty quote is the correct answer when the response is off-topic for the frame.`,
           },
           {
             role: "user",
@@ -565,12 +565,38 @@ Rules:
       const cleaned = content.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
       const results = JSON.parse(cleaned) as { quote: string; reason: string }[];
 
-      // Build final examples, skipping any where GPT couldn't find a relevant quote
+      // Build final examples, skipping any where GPT couldn't find a relevant quote.
+      // Post-check: drop quotes that don't share any significant word with the frame
+      // label or the reason. gpt-4o-mini sometimes ignores the "return empty when
+      // off-topic" rule and hands back a generic brand-mentioning sentence — e.g. a
+      // quote about Best Buy's $41.5B revenue attached to the "Eco-Friendly
+      // Electronics Initiatives" frame. The keyword gate catches those mismatches.
+      const STOPWORDS = new Set([
+        "the", "and", "for", "with", "from", "that", "this", "these", "those",
+        "have", "has", "had", "are", "was", "were", "been", "being", "about",
+        "into", "over", "other", "such", "than", "then", "their", "there",
+        "what", "which", "when", "where", "will", "would", "could", "should",
+        "a", "an", "of", "in", "on", "to", "by", "at", "as", "is", "it", "or",
+      ]);
+      const significantWords = (label: string): string[] =>
+        label
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length > 3 && !STOPWORDS.has(w));
+
+      const quoteOnTopic = (frameLabel: string, quote: string, reason: string): boolean => {
+        const keywords = significantWords(frameLabel);
+        if (keywords.length === 0) return true; // label too generic to enforce
+        const haystack = `${quote} ${reason}`.toLowerCase();
+        return keywords.some((kw) => haystack.includes(kw));
+      };
+
       const seenFrames = new Map<string, number>();
       for (let i = 0; i < pendingExamples.length && i < results.length; i++) {
         const r = results[i];
         if (!r.quote) continue;
         const ex = pendingExamples[i];
+        if (!quoteOnTopic(ex.matchedFrame, r.quote, r.reason)) continue;
         const frameCount = seenFrames.get(ex.matchedFrame) ?? 0;
         if (frameCount >= 2) continue; // max 2 per frame
         seenFrames.set(ex.matchedFrame, frameCount + 1);
@@ -594,27 +620,41 @@ Rules:
       // the "primary" frame swallows every usable quote) kept
       // rendering "No example quotes available" in the UI even though
       // brand-relevant text was sitting in other runs.
+      // Scan all brand-scope runs for one whose text mentions a
+      // significant word from the frame label. If none exists, the
+      // frame stays empty — showing a generic brand snippet under a
+      // topical frame label is worse than showing "no quotes."
       for (const frameName of topFrameNames) {
         if ((seenFrames.get(frameName) ?? 0) > 0) continue;
-        // Prefer a never-used run; if none, reuse any brand-scope run
-        // so multiple empty frames can share the snippet pool on
-        // narrow-issue orgs where runs barely outnumber frames.
-        // Previously this used `break` when no unused run was found,
-        // which meant only the FIRST empty frame got filled — frames
-        // after it stayed "No example quotes available."
-        const filler =
-          runs.find(
-            (r) => !usedRunIds.has(r.id) && isRunInBrandScope(r, brandIdentity),
-          ) ??
-          runs.find((r) => isRunInBrandScope(r, brandIdentity));
+        const keywords = significantWords(frameName);
+        if (keywords.length === 0) continue;
+        const filler = runs.find((r) => {
+          if (!isRunInBrandScope(r, brandIdentity)) return false;
+          const textLower = r.rawResponseText.toLowerCase();
+          return keywords.some((kw) => textLower.includes(kw));
+        });
         if (!filler) continue;
+        // Don't claim a run twice across the GPT pass and this
+        // fallback — usedRunIds lets us avoid duplicating an excerpt
+        // we've already rendered under a different frame.
+        if (usedRunIds.has(filler.id)) continue;
         usedRunIds.add(filler.id);
         const sentences = splitSentences(filler.rawResponseText);
-        const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 1);
+        // Prefer a sentence that mentions BOTH the brand and a frame
+        // keyword; fall back to the brand-context window.
+        const keywordSentence = sentences.find((s) => {
+          const l = s.toLowerCase();
+          return keywords.some((kw) => l.includes(kw)) &&
+            (l.includes(brand.name.toLowerCase()) || l.includes(brand.slug.toLowerCase()));
+        });
+        const brandContext = keywordSentence
+          ? [keywordSentence]
+          : getEntityContextWindow(sentences, brand.name, brand.slug, 1);
         const snippet = brandContext.length > 0
           ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 200)
           : "";
         if (!snippet) continue;
+        if (!quoteOnTopic(frameName, snippet, "")) continue;
         const parsed = narrativeByRunId.get(filler.id);
         examples.push({
           runId: filler.id,
