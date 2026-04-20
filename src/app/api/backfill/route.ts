@@ -125,6 +125,15 @@ export async function POST(req: NextRequest) {
   const newestDate = new Date(allWeeks[allWeeks.length - 1].jobDateISO);
   newestDate.setHours(23, 59, 59, 999);
 
+  // Running Jobs older than this threshold are treated as abandoned
+  // (workflow died / deployment rotated / browser closed mid-rerun);
+  // younger ones are assumed to belong to an in-flight workflow and
+  // are left alone. Without this guard, a client re-POST while a
+  // workflow was mid-run deleted the live workflow's Job rows and
+  // its subsequent Run upserts failed with FK errors.
+  const RUNNING_STALE_MS = 30 * 60 * 1000; // 30 minutes
+  const runningStaleCutoff = new Date(Date.now() - RUNNING_STALE_MS);
+
   const [doneJobs, staleJobs] = await Promise.all([
     prisma.job.findMany({
       where: {
@@ -141,17 +150,28 @@ export async function POST(req: NextRequest) {
         brandId: brand.id,
         model,
         range: jobRange,
-        status: { in: ["error", "queued", "running"] },
         createdAt: { gte: oldestDate, lte: newestDate },
+        OR: [
+          { status: { in: ["error", "queued"] } },
+          { status: "running", createdAt: { lt: runningStaleCutoff } },
+        ],
       },
       select: { id: true },
     }),
   ]);
 
-  const doneDates = new Set(
-    doneJobs.map((j: { finishedAt: Date | null }) =>
-      j.finishedAt?.toISOString().slice(0, 10),
-    ),
+  // Dedup done months by YYYY-MM — a backfill on Apr 15 and a
+  // revisit on Apr 20 produce different finishedAt day strings even
+  // though they represent the same monthly data point. Previously we
+  // keyed by YYYY-MM-DD and re-ran the whole month on every revisit
+  // (duplicating Jobs + Runs). The status endpoint already dedups
+  // this way; keeping the two in sync is the real fix.
+  const doneMonths = new Set(
+    doneJobs
+      .map((j: { finishedAt: Date | null }) =>
+        j.finishedAt?.toISOString().slice(0, 7),
+      )
+      .filter(Boolean),
   );
 
   // Stale-job cleanup: blow away runs + metrics + sources from prior
@@ -175,7 +195,7 @@ export async function POST(req: NextRequest) {
     await prisma.job.deleteMany({ where: { id: { in: staleIds } } });
   }
 
-  const pending = allWeeks.filter((t) => !doneDates.has(t.dateStr));
+  const pending = allWeeks.filter((t) => !doneMonths.has(t.dateStr.slice(0, 7)));
 
   if (pending.length === 0) {
     const latestJob = await prisma.job.findFirst({

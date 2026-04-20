@@ -115,7 +115,10 @@ export async function GET(req: NextRequest) {
 
   const wfStatus = await run.status;
 
-  if (wfStatus === "failed") {
+  // "failed" and "cancelled" are both terminal failure states. Without
+  // the "cancelled" branch, a cancelled workflow would fall through to
+  // the default "running" response and the client would poll forever.
+  if (wfStatus === "failed" || wfStatus === "cancelled") {
     const errJob = await prisma.job.findFirst({
       where: {
         brandId: brand.id,
@@ -129,7 +132,9 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json({
       status: "error",
-      error: errJob?.error ?? "Backfill workflow failed",
+      error:
+        errJob?.error ??
+        (wfStatus === "cancelled" ? "Backfill was cancelled" : "Backfill workflow failed"),
       completedWeeks: doneCount,
       totalWeeks: TOTAL_POINTS,
       latestJobId: latestJob?.id ?? null,
@@ -137,9 +142,14 @@ export async function GET(req: NextRequest) {
   }
 
   if (wfStatus === "completed") {
+    // Report the real done-month count. Previously clamped UP via
+    // Math.max(doneCount, TOTAL_POINTS), which meant a workflow whose
+    // months all failed silently still reported completedWeeks = 4.
+    // With the workflow now throwing when 0/N months succeed, a
+    // partial completion lands here with doneCount < TOTAL_POINTS.
     return NextResponse.json({
       status: "done",
-      completedWeeks: Math.max(doneCount, TOTAL_POINTS),
+      completedWeeks: doneCount,
       totalWeeks: TOTAL_POINTS,
       latestJobId: latestJob?.id ?? null,
     });

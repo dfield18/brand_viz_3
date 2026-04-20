@@ -130,9 +130,9 @@ Rules:
     // entity, so most typed names stay fast. Silently falls back to
     // the original result if the web call fails or returns garbage.
     if (!result.valid && !result.ambiguous) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 10_000);
         const webResponse = await openai.responses.create(
           {
             model: "gpt-4o-mini",
@@ -157,7 +157,6 @@ Rules:
           },
           { signal: controller.signal },
         );
-        clearTimeout(timer);
 
         let webText = "";
         if (Array.isArray(webResponse.output)) {
@@ -200,6 +199,11 @@ Rules:
         }
       } catch (webErr) {
         console.error("validate-brand web-search fallback failed:", webErr);
+      } finally {
+        // Must live in finally — if responses.create throws, the
+        // timer otherwise keeps firing for up to 10 s and leaks one
+        // Node timer per failed call.
+        clearTimeout(timer);
       }
     }
 

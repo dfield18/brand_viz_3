@@ -463,9 +463,26 @@ export async function backfillWorkflow(params: BackfillParams): Promise<{
 }> {
   "use workflow";
 
-  await Promise.allSettled(
+  const settled = await Promise.allSettled(
     params.months.map((month) => processMonth(month, params)),
   );
 
-  return { completedMonths: params.months.length, totalMonths: params.months.length };
+  const completedMonths = settled.filter((r) => r.status === "fulfilled").length;
+  const totalMonths = params.months.length;
+
+  // If not a single month finalized, bubble the failure up so the
+  // workflow's run.status becomes "failed" and /api/backfill/status
+  // surfaces an error to the client. Previously we absorbed every
+  // rejection and unconditionally reported { completedMonths: total },
+  // which meant a completely broken backfill still showed up as
+  // "done" in the rerun dialog.
+  if (totalMonths > 0 && completedMonths === 0) {
+    const firstReason = settled.find(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    )?.reason;
+    const message = firstReason instanceof Error ? firstReason.message : String(firstReason);
+    throw new Error(`Backfill failed: all ${totalMonths} months errored (${message})`);
+  }
+
+  return { completedMonths, totalMonths };
 }

@@ -596,10 +596,18 @@ Rules:
       // brand-relevant text was sitting in other runs.
       for (const frameName of topFrameNames) {
         if ((seenFrames.get(frameName) ?? 0) > 0) continue;
-        const filler = runs.find(
-          (r) => !usedRunIds.has(r.id) && isRunInBrandScope(r, brandIdentity),
-        );
-        if (!filler) break;
+        // Prefer a never-used run; if none, reuse any brand-scope run
+        // so multiple empty frames can share the snippet pool on
+        // narrow-issue orgs where runs barely outnumber frames.
+        // Previously this used `break` when no unused run was found,
+        // which meant only the FIRST empty frame got filled — frames
+        // after it stayed "No example quotes available."
+        const filler =
+          runs.find(
+            (r) => !usedRunIds.has(r.id) && isRunInBrandScope(r, brandIdentity),
+          ) ??
+          runs.find((r) => isRunInBrandScope(r, brandIdentity));
+        if (!filler) continue;
         usedRunIds.add(filler.id);
         const sentences = splitSentences(filler.rawResponseText);
         const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 1);
