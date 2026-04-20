@@ -585,6 +585,40 @@ Rules:
         });
         (examples[examples.length - 1] as { reason?: string }).reason = r.reason;
       }
+
+      // Per-frame fill: for any top frame that GPT left empty, reach
+      // for an unused brand-scope run and use a brand-context snippet
+      // as the quote. Without this, frames whose contributors' responses
+      // mention the brand but don't directly illustrate the frame label
+      // (common on narrow-issue orgs like Senate Majority PAC, where
+      // the "primary" frame swallows every usable quote) kept
+      // rendering "No example quotes available" in the UI even though
+      // brand-relevant text was sitting in other runs.
+      for (const frameName of topFrameNames) {
+        if ((seenFrames.get(frameName) ?? 0) > 0) continue;
+        const filler = runs.find(
+          (r) => !usedRunIds.has(r.id) && isRunInBrandScope(r, brandIdentity),
+        );
+        if (!filler) break;
+        usedRunIds.add(filler.id);
+        const sentences = splitSentences(filler.rawResponseText);
+        const brandContext = getEntityContextWindow(sentences, brand.name, brand.slug, 1);
+        const snippet = brandContext.length > 0
+          ? brandContext.join(" ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 200)
+          : "";
+        if (!snippet) continue;
+        const parsed = narrativeByRunId.get(filler.id);
+        examples.push({
+          runId: filler.id,
+          prompt: expandPromptPlaceholders(filler.prompt.text, { brandName, industry: brand.industry }),
+          excerpt: snippet,
+          themes: parsed ? parsed.themes.map((t) => t.label) : [],
+          sentiment: parsed ? parsed.sentiment.label : "NEU",
+          model: filler.model,
+          matchedFrame: frameName,
+        });
+        seenFrames.set(frameName, 1);
+      }
     } catch (err) {
       console.error("[narrative] GPT quote extraction failed, using fallback:", err);
       // Fallback: use first 200 chars of brand context
