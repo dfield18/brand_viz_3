@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { generateBrandPrompts, generateIndustryPrompts, type BrandCategory } from "@/lib/generateFeaturePrompts";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+
+  const accessError = await requireBrandAccess(brandSlug);
+  if (accessError) return accessError;
 
   const brand = await prisma.brand.findUnique({ where: { slug: brandSlug } });
   if (!brand) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function PATCH(
@@ -22,16 +23,21 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const prompt = await prisma.prompt.findUnique({ where: { id: promptId } });
+  const prompt = await prisma.prompt.findUnique({
+    where: { id: promptId },
+    include: { brand: { select: { slug: true } } },
+  });
   if (!prompt) {
     return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
   }
-  if (!prompt.brandId) {
+  if (!prompt.brandId || !prompt.brand) {
     return NextResponse.json(
       { error: "Cannot edit global template prompts directly" },
       { status: 403 },
     );
   }
+  const accessError = await requireBrandAccess(prompt.brand.slug);
+  if (accessError) return accessError;
 
   const data: Record<string, unknown> = {};
 
@@ -91,16 +97,21 @@ export async function DELETE(
 
   const { promptId } = await params;
 
-  const prompt = await prisma.prompt.findUnique({ where: { id: promptId } });
+  const prompt = await prisma.prompt.findUnique({
+    where: { id: promptId },
+    include: { brand: { select: { slug: true } } },
+  });
   if (!prompt) {
     return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
   }
-  if (!prompt.brandId) {
+  if (!prompt.brandId || !prompt.brand) {
     return NextResponse.json(
       { error: "Cannot delete global template prompts" },
       { status: 403 },
     );
   }
+  const accessError = await requireBrandAccess(prompt.brand.slug);
+  if (accessError) return accessError;
   if (prompt.source !== "custom") {
     return NextResponse.json(
       { error: "Cannot delete suggested prompts. Disable them instead." },

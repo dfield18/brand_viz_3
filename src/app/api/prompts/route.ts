@@ -4,6 +4,7 @@ import { getAllBrandPrompts } from "@/lib/promptService";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
 import { findOrCreateBrand } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 const VALID_CLUSTERS = ["brand", "industry"];
@@ -19,6 +20,9 @@ export async function GET(req: NextRequest) {
   if (!brandSlug) {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+
+  const accessError = await requireBrandAccess(brandSlug);
+  if (accessError) return accessError;
 
   const category = req.nextUrl.searchParams.get("category");
 
@@ -83,6 +87,8 @@ export async function POST(req: NextRequest) {
   if (!brandSlug || typeof brandSlug !== "string") {
     return NextResponse.json({ error: "Missing brandSlug" }, { status: 400 });
   }
+  const accessError = await requireBrandAccess(brandSlug);
+  if (accessError) return accessError;
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return NextResponse.json({ error: "Prompt text is required" }, { status: 400 });
   }
