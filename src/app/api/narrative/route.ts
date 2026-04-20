@@ -171,6 +171,56 @@ export async function GET(req: NextRequest) {
     runs.map((r) => ({ rawResponseText: r.rawResponseText, model: r.model })),
   );
 
+  // Drop frames that aren't actually grounded in run text. The padding
+  // path (ensureMinimumFrames' FALLBACK_FRAMES_SYSTEM prompt) asks GPT
+  // to suggest frames AI models "likely" use — which invites prior-
+  // knowledge hallucination when the real responses are thin on that
+  // topic. E.g. Best Buy got a padded "Eco-Friendly Electronics
+  // Initiatives" frame at 40% even though no response discussed
+  // sustainability. A frame is considered grounded when at least one
+  // brand-scope run contains 2+ of its significant words (length > 3,
+  // not stopwords); below that threshold it's almost certainly an
+  // invention. Keep a floor of 3 frames so the UI doesn't collapse if
+  // grounding is brittle — fall back to the pre-grounding list in
+  // that case.
+  {
+    const FRAME_STOPWORDS = new Set([
+      "the", "and", "for", "with", "from", "that", "this", "these", "those",
+      "have", "has", "had", "are", "was", "were", "been", "being", "about",
+      "into", "over", "other", "such", "than", "then", "their", "there",
+      "what", "which", "when", "where", "will", "would", "could", "should",
+      "a", "an", "of", "in", "on", "to", "by", "at", "as", "is", "it", "or",
+    ]);
+    const frameWordsFor = (label: string): string[] =>
+      label
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 3 && !FRAME_STOPWORDS.has(w));
+
+    const lowerRunTexts = runs.map((r) => r.rawResponseText.toLowerCase());
+    const isFrameGrounded = (label: string): boolean => {
+      const words = frameWordsFor(label);
+      if (words.length <= 1) return true; // can't enforce on single-word frames
+      // At least one run must contain 2+ significant words from the label
+      return lowerRunTexts.some((text) => {
+        let hits = 0;
+        for (const w of words) {
+          if (text.includes(w)) hits++;
+          if (hits >= 2) return true;
+        }
+        return false;
+      });
+    };
+
+    const grounded = narrativeBase.frames.filter((f) => isFrameGrounded(f.frame));
+    if (grounded.length >= 3 || grounded.length === narrativeBase.frames.length) {
+      narrativeBase.frames = grounded;
+    }
+    // else: every frame flunked grounding (tiny run pool, atypical
+    // language) → keep the original list rather than render an empty
+    // narrative tab.
+  }
+
   // --- Aggregate narrativeJson data ---
   const narratives = runs
     .map((r) => ({ parsed: parseNarrative(r.narrativeJson), run: r }))
