@@ -240,28 +240,39 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
         </p>
       </div>
 
-      {/* Run + Modify buttons */}
+      {/* Run + Modify buttons — keep button compact; per-model progress
+          renders below it instead of being crammed inside the pill,
+          which stretched the button across the whole row and made it
+          look like a filled progress bar. */}
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           onClick={handleRun}
           disabled={isRunning}
-          className="gap-2"
+          className="gap-2 shrink-0"
         >
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Play className="h-3.5 w-3.5" />
           )}
-          {isRunning ? `Running${modelProgress ? ` — ${modelProgress}` : ""}...` : "Run prompts (90-day trend)"}
+          {isRunning ? "Running..." : "Run prompts (90-day trend)"}
         </Button>
         <a
           href={`/entity/${brandSlug}/prompts`}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 h-8 rounded-md border border-border hover:bg-muted/50 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 h-8 rounded-md border border-border hover:bg-muted/50 transition-colors shrink-0"
         >
           Modify Prompts
         </a>
       </div>
+
+      {/* Per-model progress line — separate row so it can wrap freely
+          without distorting the Run button above. */}
+      {isRunning && modelProgress && (
+        <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+          {modelProgress}
+        </p>
+      )}
 
       {/* Progress */}
       {status && status !== "queued" && isRunning && (
