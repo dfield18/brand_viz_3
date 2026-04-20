@@ -140,10 +140,24 @@ export function prefetchAll(urls: string[]) {
   for (const url of urls) prefetch(url);
 }
 
-/** Clear all cached entries (e.g. after running new prompts). */
+/** Clear all cached entries and immediately refetch every previously
+ *  cached URL (e.g. after running new prompts). Subscribers stay
+ *  mounted on their URLs across a clear — the new fetches repopulate
+ *  the store, which pushes fresh data out via useSyncExternalStore.
+ *
+ *  Without the refetch loop, clearing alone left subscribers with
+ *  `data: null, loading: false` forever because their useEffect only
+ *  fires on [url, alwaysRefetch, staleMs] changes — none of which
+ *  change across a cache clear. In practice: after a Rerun, the
+ *  Visibility tab looked stuck until the user navigated away and
+ *  back, which re-mounted it and re-triggered the initial fetch. */
 export function clearFetchCache() {
+  const urls = [...store.keys()];
   store.clear();
   emit();
+  for (const url of urls) {
+    doFetch(url, false);
+  }
 }
 
 // Expose for debugging — run `clearCache()` in browser DevTools console
