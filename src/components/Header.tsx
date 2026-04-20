@@ -55,14 +55,16 @@ function HeaderInner() {
   const [runOpen, setRunOpen] = useState(false);
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [runningSuggestion, setRunningSuggestion] = useState<string | null>(null);
-  const [refreshToast, setRefreshToast] = useState(false);
+  const [refreshToast, setRefreshToast] = useState<null | { errors: string[] }>(null);
 
-  // Auto-dismiss the "Report refreshed" toast after 3s. Cleanup on unmount
-  // cancels the pending timeout so we don't call setState on a dead
-  // component if the route changes mid-toast.
+  // Auto-dismiss the refresh toast. Full-success toasts dismiss after 3s;
+  // partial-success toasts linger longer (6s) so users actually have time
+  // to read the list of failed models. Cleanup on unmount so we don't
+  // setState on a dead component if the route changes mid-toast.
   useEffect(() => {
     if (!refreshToast) return;
-    const t = setTimeout(() => setRefreshToast(false), 3000);
+    const delay = refreshToast.errors.length > 0 ? 6000 : 3000;
+    const t = setTimeout(() => setRefreshToast(null), delay);
     return () => clearTimeout(t);
   }, [refreshToast]);
 
@@ -454,14 +456,17 @@ function HeaderInner() {
               brandSlug={currentSlug}
               model={model}
               range={range}
-              onComplete={() => {
+              onComplete={({ errors }) => {
                 // Dismiss the dialog so the user can see the refreshed
                 // entity page, fire a page-level toast for explicit
                 // confirmation, and router.refresh() so any Server
                 // Component data on the page re-fetches along with the
                 // client-side cache that RunPromptsPanel already cleared.
+                // `errors` drives the toast variant — partial runs get
+                // an amber pill naming which models failed instead of
+                // a green "all good" confirmation.
                 setRunOpen(false);
-                setRefreshToast(true);
+                setRefreshToast({ errors });
                 router.refresh();
               }}
             />
@@ -482,11 +487,13 @@ function HeaderInner() {
         />
       )}
 
-      {/* Rerun success toast — fires when RunPromptsPanel finishes a
-          successful run. Fixed-positioned below the sticky header so
-          it's clearly visible on top of the entity page content while
-          the per-section loading skeletons re-render with fresh data. */}
-      {refreshToast && (
+      {/* Rerun toast — two variants depending on whether any model
+          failed. Green pill when all models succeeded; amber pill
+          naming the failed models when only some landed. Keeps users
+          from thinking "report refreshed" means every AI platform
+          actually has fresh data when in reality (say) Claude or
+          Google AIO errored out. */}
+      {refreshToast && refreshToast.errors.length === 0 && (
         <div
           role="status"
           aria-live="polite"
@@ -494,6 +501,23 @@ function HeaderInner() {
         >
           <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
           Report refreshed — showing latest data
+        </div>
+      )}
+      {refreshToast && refreshToast.errors.length > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 top-[calc(var(--header-height)+1rem)] z-50 -translate-x-1/2 max-w-[min(90vw,480px)] flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 shadow-md animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex items-center gap-2 font-medium">
+            <span className="size-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+            Report partially refreshed
+          </div>
+          <p className="text-xs text-amber-800 leading-relaxed">
+            {refreshToast.errors.length === 1
+              ? refreshToast.errors[0]
+              : `${refreshToast.errors.length} models failed: ${refreshToast.errors.join("; ")}`}
+          </p>
         </div>
       )}
     </>

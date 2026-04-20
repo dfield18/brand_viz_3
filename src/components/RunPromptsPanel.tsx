@@ -24,15 +24,22 @@ interface RunPreview {
   rawSnippet: string;
 }
 
+interface RunCompleteInfo {
+  /** At least one model produced a Job — safe to refresh the page. */
+  anySucceeded: boolean;
+  /** Per-model failures, formatted as "Claude: reason". Empty on full success. */
+  errors: string[];
+}
+
 interface RunPromptsPanelProps {
   brandSlug: string;
   model: string;
   range: number;
-  /** Fired once the run finishes successfully (at least one model landed).
-   *  The parent is expected to close the dialog and show a page-level
-   *  confirmation so users know the underlying report just refreshed —
-   *  the dialog's own progress bar hides the entity page while it's open. */
-  onComplete?: () => void;
+  /** Fired once the run finishes (when at least one model landed). Receives
+   *  a summary so the parent's toast can distinguish full success from
+   *  partial success — the dialog hides the entity page while it's open,
+   *  so users need honest confirmation of what actually refreshed. */
+  onComplete?: (result: RunCompleteInfo) => void;
 }
 
 export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunPromptsPanelProps) {
@@ -198,9 +205,12 @@ export function RunPromptsPanel({ brandSlug, model, range, onComplete }: RunProm
       // Tell the parent we're done so it can close the dialog and
       // surface a page-level toast — the dialog itself is hiding the
       // entity page behind it, so users need visible confirmation
-      // that their report was actually refreshed.
+      // that their report was actually refreshed. Pass the error
+      // list through so a toast can say "Report refreshed, but
+      // Claude + Google failed" instead of pretending everything
+      // succeeded.
       if (!abortRef.current && anySucceeded) {
-        onComplete?.();
+        onComplete?.({ anySucceeded: true, errors });
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
