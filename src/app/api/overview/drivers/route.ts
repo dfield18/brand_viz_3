@@ -75,15 +75,35 @@ export async function GET(req: NextRequest) {
 
   const sortedDates = [...byDate.keys()].sort().reverse(); // most recent first
   const currentRawRuns = sortedDates.length >= 1 ? byDate.get(sortedDates[0])! : [];
-  const previousRawRuns = sortedDates.length >= 2 ? byDate.get(sortedDates[1])! : [];
 
+  // Find the "previous" bucket as the snapshot closest to ~30 days
+  // before the most recent snapshot (nearest-neighbor, matching the
+  // `vs prior month` delta on VisibilityTrendChart). The earlier code
+  // used sortedDates[1] — the second-most-recent date — which for Pro
+  // brands that snapshot weekly is only ~7 days back, so the diff was
+  // tiny and the UI always read "score held steady" even when the
+  // month-over-month chart delta was real.
+  let previousRawRuns: typeof currentRawRuns = [];
   let currentStart = now;
   let previousStart = new Date(now.getTime() - 30 * DAY);
   let previousEnd = previousStart;
   if (sortedDates.length >= 2) {
-    currentStart = new Date(sortedDates[0] + "T00:00:00Z");
-    previousStart = new Date(sortedDates[1] + "T00:00:00Z");
-    previousEnd = new Date(sortedDates[1] + "T23:59:59Z");
+    const currentDate = new Date(sortedDates[0] + "T00:00:00Z");
+    currentStart = currentDate;
+    const targetMs = currentDate.getTime() - 30 * DAY;
+    let closestDate = sortedDates[1];
+    let closestDist = Math.abs(new Date(sortedDates[1] + "T00:00:00Z").getTime() - targetMs);
+    for (let i = 1; i < sortedDates.length; i++) {
+      const d = sortedDates[i];
+      const dist = Math.abs(new Date(d + "T00:00:00Z").getTime() - targetMs);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestDate = d;
+      }
+    }
+    previousRawRuns = byDate.get(closestDate)!;
+    previousStart = new Date(closestDate + "T00:00:00Z");
+    previousEnd = new Date(closestDate + "T23:59:59Z");
   }
 
   function toDecomposed(
