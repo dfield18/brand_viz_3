@@ -65,12 +65,37 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   }
 
   const rawAlerts = data?.competitorAlerts ?? [];
-  // Filter to only entities shown in the Issue Landscape / Competitive Leaderboard
-  const allAlerts = trackedEntityIds
+  // Filter to only entities shown in the Issue Landscape / Competitive
+  // Leaderboard. If that filter eliminates everything (common on
+  // brands whose movers haven't landed in the leaderboard yet, e.g.
+  // Tesla's industry runs referencing competitors that weren't in
+  // the top competition slice), fall back to the raw alert list so
+  // the section stays useful instead of collapsing to a blank gap.
+  const filteredAlerts = trackedEntityIds
     ? rawAlerts.filter((a) => trackedEntityIds.has(a.entityId))
     : rawAlerts;
+  const allAlerts = filteredAlerts.length > 0 ? filteredAlerts : rawAlerts;
   const periodLabel = data?.comparisonPeriodLabel ?? "prior period";
-  if (allAlerts.length === 0) return null;
+
+  const isOrg = brandCategory === "political_advocacy";
+  const entityWord = isOrg ? "organization" : "competitor";
+
+  // True empty state — no movement data to show at all. Render a
+  // visible placeholder rather than returning null, because the page
+  // nav links to this section and an invisible target scrolls to
+  // nothing, confusing users.
+  if (allAlerts.length === 0) {
+    return (
+      <section className="rounded-xl bg-card px-5 py-4 shadow-section">
+        <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
+        <p className="text-xs text-muted-foreground mt-2">
+          Not enough data yet. We need at least two snapshots of industry-cluster
+          prompts to detect {entityWord} movement. Re-run prompts or wait for the
+          next backfill.
+        </p>
+      </section>
+    );
+  }
 
   const rising = allAlerts.filter((a) => a.direction === "rising").sort((a, b) => b.mentionRateChange - a.mentionRateChange);
   const falling = allAlerts.filter((a) => a.direction === "falling").sort((a, b) => a.mentionRateChange - b.mentionRateChange);
@@ -83,10 +108,16 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
       .sort((a, b) => b.recentMentionRate - a.recentMentionRate)
       .slice(0, 3);
   }
-  if (movers.length === 0) return null;
-
-  const isOrg = brandCategory === "political_advocacy";
-  const entityWord = isOrg ? "organization" : "competitor";
+  if (movers.length === 0) {
+    return (
+      <section className="rounded-xl bg-card px-5 py-4 shadow-section">
+        <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
+        <p className="text-xs text-muted-foreground mt-2">
+          No {entityWord} movement detected in the current window.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-xl bg-card px-5 py-4 shadow-section">
