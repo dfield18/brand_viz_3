@@ -118,7 +118,7 @@ export function CompetitorSentimentMap({ competitors, brandEntityId }: Competito
             tickLine={false}
             tickFormatter={(v) => `${v}%`}
           >
-            <Label value="Brand Recall (% of responses)" position="bottom" offset={16} fontSize={12} fontWeight={600} fill="var(--muted-foreground)" />
+            <Label value="Mention Rate (% of responses)" position="bottom" offset={16} fontSize={12} fontWeight={600} fill="var(--muted-foreground)" />
           </XAxis>
           <YAxis
             type="number"
@@ -146,7 +146,7 @@ export function CompetitorSentimentMap({ competitors, brandEntityId }: Competito
                   <p className="text-muted-foreground">
                     Sentiment: <span className="font-medium" style={{ color: SENTIMENT_COLOR[d.sentiment] }}>{d.sentiment}</span>
                   </p>
-                  <p className="text-muted-foreground">Brand Recall: {d.mentionRate}%</p>
+                  <p className="text-muted-foreground">Mention Rate: {d.mentionRate}%</p>
                   <p className="text-muted-foreground">Share of Voice: {d.mentionShare}%</p>
                 </div>
               );

@@ -13,11 +13,11 @@ interface SummaryCardsDonutProps {
   firstMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
-  /** Industry label used in the Brand Recall description (e.g. "athletic
+  /** Industry label used in the Mention Rate description (e.g. "athletic
    *  apparel"). Falls back to "industry" when null/empty. */
   industry?: string | null;
   /** Category tag from classifyBrandCategory — drives the noun ("brand"
-   *  vs "politician" vs "organization") in the Recall tagline. */
+   *  vs "politician" vs "organization") in the Mention Rate tagline. */
   category?: string | null;
   onCardClick?: (metric: MetricTab) => void;
   activeMetric?: MetricTab;

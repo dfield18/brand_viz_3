@@ -46,7 +46,7 @@ const STRUCTURED_DATA = {
 
 const FEATURES = [
   {
-    title: "Brand Recall",
+    title: "Mention Rate",
     description: "When customers ask AI about your category, how often does your brand come up?",
   },
   {
@@ -235,7 +235,7 @@ export default async function LandingPage() {
               <LandingDashboard brandName={visData.brandName} industry={visData.industry} trend={visData.trend} />
             ) : (
               <div className="rounded-lg border border-border/80 bg-background p-5">
-                <p className="text-sm font-medium text-foreground mb-5">Brand Recall Over Time</p>
+                <p className="text-sm font-medium text-foreground mb-5">Mention Rate Over Time</p>
                 <svg viewBox="0 0 600 100" className="w-full h-auto" preserveAspectRatio="none">
                   <path d="M0,70 C80,68 140,55 200,48 C260,42 320,38 380,30 C440,25 500,22 560,24 L600,20" fill="none" stroke="hsl(160, 60%, 45%)" strokeWidth="2" />
                   <path d="M0,80 C80,76 140,70 200,62 C260,56 320,48 380,44 C440,40 500,38 560,40 L600,36" fill="none" stroke="hsl(199, 89%, 48%)" strokeWidth="2" />

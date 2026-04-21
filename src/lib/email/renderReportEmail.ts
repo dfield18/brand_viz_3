@@ -54,7 +54,7 @@ export function renderReportEmail(report: ReportData, unsubscribeUrl?: string): 
   const subject = `${brandName} aiSaysWhat Report \u2014 ${new Date(meta.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
   const kpiCards = sc ? [
-    { label: "Brand Recall", value: pct(sc.brandRecall), desc: "% of AI responses mentioning you" },
+    { label: "Mention Rate", value: pct(sc.brandRecall), desc: "% of AI responses mentioning you" },
     { label: "Share of Voice", value: pct(sc.shareOfVoice), desc: "Your share of brand mentions" },
     { label: "Top Result Rate", value: pct(sc.topResultRate), desc: "% ranked #1" },
     { label: "Avg Position", value: pos(sc.avgPosition), desc: "Average ranking" },

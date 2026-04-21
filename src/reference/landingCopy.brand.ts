@@ -61,7 +61,7 @@ export const BRAND_HERO = {
 
 export const BRAND_FEATURES = [
   {
-    title: "Brand Recall",
+    title: "Mention Rate",
     description:
       "When customers ask AI about your category, how often does your brand come up?",
   },

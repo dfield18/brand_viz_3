@@ -238,7 +238,7 @@ export function buildTrendPoint(
 }
 
 // ---------------------------------------------------------------------------
-// Latest-snapshot recall (aligns with Overview/Visibility Brand Recall)
+// Latest-snapshot recall (aligns with Overview/Visibility Mention Rate)
 // ---------------------------------------------------------------------------
 
 export interface SnapshotRun {
@@ -260,7 +260,7 @@ export function getLatestSnapshotRuns<T extends { createdAt: Date }>(runs: T[]):
 }
 
 /**
- * Compute latest-snapshot Brand Recall for all entities.
+ * Compute latest-snapshot Mention Rate for all entities.
  * Brand uses a custom mention detector (e.g. isRunInBrandScope);
  * competitors use text-presence on the same snapshot pool.
  *

@@ -40,7 +40,7 @@ export const ADVOCACY_HERO = {
 
 export const ADVOCACY_FEATURES = [
   {
-    title: "Brand Recall",
+    title: "Mention Rate",
     description:
       "When voters ask AI about your policy area, how often does your organization come up?",
   },

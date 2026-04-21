@@ -61,7 +61,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
 
   const metrics: MetricDef[] = [
     {
-      label: "Brand Recall",
+      label: "Mention Rate",
       key: "mentionRate",
       tooltip: "How often this platform mentions the brand in response to broad industry questions where no brand is named.",
       render: (v, isBest) => (

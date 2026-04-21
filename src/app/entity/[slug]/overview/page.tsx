@@ -154,7 +154,7 @@ function OverviewInner() {
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
     { id: "key-insights", label: "Key Insights" },
-    { id: "visibility-trend", label: "Brand Recall Trend" },
+    { id: "visibility-trend", label: "Mention Rate Trend" },
     { id: "cross-model", label: "By AI Platform" },
     { id: "narrative-section", label: `How AI Describes ${brandName}`, heading: "Narrative" },
     { id: "standout-quotes", label: "What AI Is Saying" },
@@ -224,7 +224,7 @@ function OverviewInner() {
           </div>
         </div>
 
-        {/* Brand Recall Trend — free-tier brands (slug ends in
+        {/* Mention Rate Trend — free-tier brands (slug ends in
             `--<8 hex>`) have training-knowledge-estimated historical
             points, so dash the line and swap the caption. The double
             hyphen is deliberate: the Pro slugifier collapses runs of

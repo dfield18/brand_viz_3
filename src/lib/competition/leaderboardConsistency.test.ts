@@ -20,7 +20,7 @@ import {
  *
  * The previous implementation used scope-aware response-level recall for
  * the brand but raw EntityResponseMetric counts for competitors — mixing
- * two different definitions of "Brand Recall" in the same table.
+ * two different definitions of "Mention Rate" in the same table.
  */
 
 // ---------------------------------------------------------------------------
@@ -299,7 +299,7 @@ describe("getLatestSnapshotRuns (production helper)", () => {
 });
 
 describe("computeSnapshotRecall (production helper)", () => {
-  it("brand recall matches Overview/Visibility methodology", () => {
+  it("mention rate matches Overview/Visibility methodology", () => {
     // Simulate: 4 latest-snapshot runs, brand mentioned in 3 (via isRunInBrandScope)
     const snapshotRuns: LeaderboardRun[] = [
       { text: "Acme is great. Globex too.", model: "chatgpt" },

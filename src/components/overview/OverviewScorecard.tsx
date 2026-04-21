@@ -8,12 +8,12 @@ interface OverviewScorecardProps {
   overallMentionRate: number;
   kpiDeltas: KpiDeltas | null;
   brandName?: string;
-  /** Industry label used in the Brand Recall description (e.g. "athletic
+  /** Industry label used in the Mention Rate description (e.g. "athletic
    *  apparel", "electric vehicles"). Falls back to "industry" when null/
    *  empty so the copy still reads naturally. */
   industry?: string | null;
   /** Category tag from classifyBrandCategory ("commercial" or
-   *  "political_advocacy"). Picks the right word in the Recall
+   *  "political_advocacy"). Picks the right word in the Mention Rate
    *  description — "brand" vs "politician" vs "organization" —
    *  instead of calling Donald Trump a brand. */
   category?: string | null;
@@ -22,7 +22,7 @@ interface OverviewScorecardProps {
   topSourceType?: { category: string; count: number; totalSources: number } | null;
 }
 
-/** Pick the right noun for the Brand Recall tagline so a politician
+/** Pick the right noun for the Mention Rate tagline so a politician
  *  doesn't get called a "brand" and ACLU doesn't either. Heuristic only;
  *  the classifier has no "political_figure" bucket, so we check the name
  *  shape inside the political_advocacy bucket. Excludes common org

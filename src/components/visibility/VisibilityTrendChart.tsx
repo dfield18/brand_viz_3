@@ -154,12 +154,13 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
         <div>
           {!compact && (
             <h2 className="text-sm text-muted-foreground font-medium">
-              {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Recall Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}
+              {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Mention Rate Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}
             </h2>
           )}
           {/* Metric toggle lives on its own line so the pill doesn't
-              shift when the title length changes across Recall / SoV /
-              Top Result. `w-fit` keeps the pill hugging its buttons. */}
+              shift when the title length changes across Mention Rate
+              / SoV / Top Result. `w-fit` keeps the pill hugging its
+              buttons. */}
           {!fixedMetric && (
             <div className="mt-2 flex w-fit items-center rounded-full bg-muted p-0.5">
               <button
@@ -170,7 +171,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Brand Recall
+                Mention Rate
               </button>
               <button
                 onClick={() => setMetric("sov")}
@@ -299,7 +300,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
               const date = new Date(String(label) + "T00:00:00");
               const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-              const mainNames = new Set(["Brand Recall", "Top Result Rate", "Share of Voice", "All Models"]);
+              const mainNames = new Set(["Mention Rate", "Top Result Rate", "Share of Voice", "All Models"]);
               const rawKeyNames = new Set(["mentionRate", "firstMentionPct", "sovPct"]);
               const items = payload
                 .filter((entry) => entry.value != null && !rawKeyNames.has(String(entry.name ?? "")))
@@ -319,7 +320,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 <div className="rounded-lg border border-border bg-card px-3 py-2.5 shadow-md text-xs">
                   <p className="font-medium text-foreground mb-1.5">{dateStr}</p>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-                    {effectiveMetric === "visibility" ? "Brand Recall" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
+                    {effectiveMetric === "visibility" ? "Mention Rate" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
                   </p>
                   {items.map((item, i) => (
                     <div key={i} className={`flex items-center justify-between gap-4 ${item.isMain ? "py-1 mb-0.5" : "py-0.5"}`}>
@@ -355,7 +356,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 strokeDasharray={historicalEstimated ? "5 4" : undefined}
                 dot={false}
                 activeDot={{ r: 5, fill: strokeColor, stroke: "var(--card)", strokeWidth: 2 }}
-                name={effectiveMetric === "visibility" ? "Brand Recall" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
+                name={effectiveMetric === "visibility" ? "Mention Rate" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
                 connectNulls
               />
               {availableModels.map((m) => (

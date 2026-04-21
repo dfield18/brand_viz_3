@@ -136,7 +136,7 @@ export function CompetitorEntityDropdown({
 }
 
 export function CompetitorFrameBreakdown({ narratives, competitors, selectedEntity: externalEntity }: CompetitorFrameBreakdownProps) {
-  // Default to competitor with highest brand recall (mentionRate), excluding the brand itself
+  // Default to competitor with highest mention rate (mentionRate), excluding the brand itself
   const defaultEntityId = useDefaultCompetitorEntity(narratives, competitors);
 
   const [internalEntity] = useState(defaultEntityId);

@@ -56,13 +56,13 @@ interface ApiResponse {
 /* -------------------------------------------------------------------------- */
 
 const KPI_OPTIONS = [
-  { value: "mentionRate", label: "Brand Recall" },
+  { value: "mentionRate", label: "Mention Rate" },
   { value: "firstMentionRate", label: "Top Result Rate" },
   { value: "shareOfVoice", label: "Share of Voice" },
 ];
 
 const KPI_TITLE_LABELS: Record<string, string> = {
-  mentionRate: "Brand Recall",
+  mentionRate: "Mention Rate",
   firstMentionRate: "Top Result Rate",
   avgProminence: "AI Prominence",
   avgRank: "Average Position",

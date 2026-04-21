@@ -509,7 +509,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Recompute frames & model comparison from latest 24h snapshot (matches Brand Recall) ---
+  // --- Recompute frames & model comparison from latest 24h snapshot (matches Mention Rate) ---
   if (visResult && visResult.ok) {
     const { isAll } = visResult;
     // Use the latest 24h all-prompt snapshot for narrative frames
@@ -761,7 +761,7 @@ Rules:
 - Focus on the ONE most noteworthy finding — don't try to mention every metric.
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
-- Brand recall measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
+- Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
         },

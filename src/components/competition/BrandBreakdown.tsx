@@ -97,7 +97,7 @@ export function BrandBreakdown({
       if (a.isBrand && !b.isBrand) return -1;
       if (!a.isBrand && b.isBrand) return 1;
 
-      // Brand Recall (desc)
+      // Mention Rate (desc)
       let cmp = b.mentionRate - a.mentionRate;
       if (cmp !== 0) return cmp;
       // Share of Voice (desc)
@@ -192,7 +192,7 @@ export function BrandBreakdown({
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
                 <th className="pb-4 pr-6 text-left font-medium">Brand</th>
                 <th className="pb-4 px-4 text-center font-medium">
-                  <div>Brand Recall</div>
+                  <div>Mention Rate</div>
                   <div className="font-normal text-[10px] mt-0.5">How often brand appears</div>
                 </th>
                 <th className="pb-4 px-4 text-center font-medium">
@@ -295,7 +295,7 @@ function ExpandableRow({
             )}
           </div>
         </td>
-        {/* Brand Recall */}
+        {/* Mention Rate */}
         <td className="py-4 px-4 text-center font-semibold tabular-nums">
           {Math.round(comp.mentionRate)}%
         </td>
@@ -358,7 +358,7 @@ function ExpandableRow({
                       <thead>
                         <tr className="text-muted-foreground border-b border-border/50">
                           <th className="pb-2 pr-3 text-left font-medium">Platform</th>
-                          <th className="pb-2 px-3 text-center font-medium">Brand Recall</th>
+                          <th className="pb-2 px-3 text-center font-medium">Mention Rate</th>
                           <th className="pb-2 px-3 text-center font-medium">SoV</th>
                           <th className="pb-2 px-3 text-center font-medium">Top Result</th>
                           <th className="pb-2 px-3 text-center font-medium">Avg. Pos.</th>

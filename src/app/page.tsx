@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
-    title: "Brand Recall",
+    title: "Mention Rate",
     description: "When customers ask AI about your category, how often does your brand come up?",
   },
   {

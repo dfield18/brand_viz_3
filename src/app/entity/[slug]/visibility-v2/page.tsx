@@ -36,7 +36,7 @@ interface ApiResponse {
 type MetricTab = "visibility" | "sov" | "topResult";
 
 const METRIC_TABS: { key: MetricTab; label: string }[] = [
-  { key: "visibility", label: "Brand Recall" },
+  { key: "visibility", label: "Mention Rate" },
   { key: "sov", label: "Share of Voice" },
   { key: "topResult", label: "Top Result Rate" },
 ];
@@ -49,7 +49,7 @@ const METRIC_KPI_MAP: Record<MetricTab, string> = {
 
 function getMetricTitle(tab: MetricTab, name: string): string {
   switch (tab) {
-    case "visibility": return `${name}\u2019s Brand Recall Over Time`;
+    case "visibility": return `${name}\u2019s Mention Rate Over Time`;
     case "sov": return `${name}\u2019s Share of Voice Over Time`;
     case "topResult": return `Top Result Rate Over Time`;
   }

@@ -45,7 +45,7 @@ const METRIC_CONFIG: Record<MetricMode, {
   visibility: {
     title: "How Often AI Mentions Each Brand",
     subtitle: "% of AI responses that mention each brand (top 10)",
-    yAxisLabel: "Brand Recall",
+    yAxisLabel: "Mention Rate",
     yDomain: [0, 100],
     tickFormatter: (v) => `${v}%`,
     tooltipFormatter: (v) => `${v}%`,
@@ -164,7 +164,7 @@ export function CompetitiveVisibilityTrend({
   const config = METRIC_CONFIG[metric];
   const strokeColor = metric === "visibility" ? "var(--chart-1)" : metric === "topResult" ? "var(--chart-3)" : "var(--chart-2)";
   const gradientId = metric === "visibility" ? "compVisGradient" : metric === "topResult" ? "compTrGradient" : "compSovGradient";
-  const metricLabel = metric === "visibility" ? "Brand Recall" : metric === "topResult" ? "Top Result Rate" : "Share of Voice";
+  const metricLabel = metric === "visibility" ? "Mention Rate" : metric === "topResult" ? "Top Result Rate" : "Share of Voice";
   const COMPETITOR_COLORS = ["var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
   return (
@@ -194,7 +194,7 @@ export function CompetitiveVisibilityTrend({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Brand Recall
+            Mention Rate
           </button>
           <button
             onClick={() => setMetric("mentionShare")}
