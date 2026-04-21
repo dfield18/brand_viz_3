@@ -219,7 +219,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-3 sm:gap-5">
             {/* Marketing links eat horizontal room on narrow phones — drop
                 them on mobile; Sign in + Sign up keep the primary CTAs. */}
-            <Link href="/marketing#pricing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="#pricing" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
             <Link href="/sign-in" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -250,8 +250,8 @@ export default async function HomePage() {
             Free to use the basic version — no sign-up required
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
-            AI is shaping how people discover your brand.{" "}
-            <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
+            AI is shaping how people discover your brand —{" "}
+            <span className="text-muted-foreground">do you know what it&apos;s saying?</span>
           </h1>
           <div className="mt-20 sm:mt-24">
             <FreeDashboard
@@ -298,6 +298,9 @@ export default async function HomePage() {
           instead of reading three paragraphs. */}
       <section className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            The process
+          </p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
             How it works
           </h2>
@@ -366,6 +369,9 @@ export default async function HomePage() {
       {/* Features */}
       <section id="features" className="border-t border-border/40 bg-muted/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Why use it
+          </p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             What you get
           </h2>
@@ -394,6 +400,9 @@ export default async function HomePage() {
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Plans
+          </p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             Pricing
           </h2>
