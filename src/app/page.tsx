@@ -10,6 +10,16 @@ import { FreeDashboard } from "@/components/free/FreeDashboard";
 import { LandingDashboard } from "@/components/landing/LandingDashboard";
 import { FREE_TIER_CONFIG } from "@/config/freeTier";
 import type { VisibilityTrendPoint } from "@/types/api";
+import {
+  ArrowRight,
+  BarChart3,
+  Link2,
+  Mail,
+  MessageCircle,
+  TrendingUp,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: {
@@ -20,30 +30,36 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const FEATURES = [
+const FEATURES: { title: string; description: string; icon: LucideIcon }[] = [
   {
     title: "Mention Rate",
     description: "When customers ask AI about your category, how often does your brand come up?",
+    icon: TrendingUp,
   },
   {
     title: "Sentiment & Narrative",
     description: "Is AI framing your brand positively or negatively? What story is it telling about your products?",
+    icon: MessageCircle,
   },
   {
     title: "Competitive Share",
     description: "When AI discusses your category, which brands does it highlight? Track how your share of the conversation shifts over time.",
+    icon: Users,
   },
   {
     title: "Source Attribution",
     description: "Which websites does AI cite when discussing your industry? Are they your properties — or your competitors'?",
+    icon: Link2,
   },
   {
     title: "Platform Comparison",
     description: "ChatGPT and Gemini can frame your brand very differently. See which platforms help or hurt your positioning.",
+    icon: BarChart3,
   },
   {
     title: "Weekly Reports",
     description: "Automated reports with visibility scores, competitor alerts, and narrative shifts — delivered to your inbox.",
+    icon: Mail,
   },
 ];
 
@@ -245,7 +261,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* How it works — shown first so visitors understand the product before seeing prices */}
+      {/* How it works — numbered steps so the flow is scannable in 2 s
+          instead of reading three paragraphs. */}
       <section className="border-t border-border/40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
@@ -256,9 +273,12 @@ export default async function HomePage() {
               { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
               { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
               { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
-            ].map((item) => (
-              <div key={item.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
+            ].map((item, i) => (
+              <div key={item.title} className="relative">
+                <div className="flex items-center justify-center h-9 w-9 rounded-full bg-foreground text-background text-sm font-semibold tabular-nums mb-4">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
@@ -268,10 +288,23 @@ export default async function HomePage() {
 
       {/* Sample dashboard preview — real trend data for the example brand
           so visitors see what a live report actually looks like. Hidden
-          if no brand has data yet (fresh deploy). */}
+          if no brand has data yet (fresh deploy). Titled so the chart
+          reads as a narrative example, not a floating UI artifact. */}
       {sampleData && (
-        <section className="border-t border-border/40">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-2 sm:pt-4">
+        <section className="border-t border-border/40 bg-muted/30">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-12 sm:pt-16">
+            <div className="mb-6 max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Live example
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-2">
+                Here&apos;s what a report looks like
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {sampleData.brandName}&apos;s mention rate over 90 days — how often AI platforms bring the brand up in{" "}
+                {sampleData.industry || "industry"} questions, and how that share is moving.
+              </p>
+            </div>
             <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
               <div className="p-6 sm:p-8">
                 <LandingDashboard
@@ -294,13 +327,21 @@ export default async function HomePage() {
           <p className="text-muted-foreground mb-8 max-w-md">
             Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
           </p>
-          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-6">
-            {FEATURES.map((feature) => (
-              <div key={feature.title}>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
+          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-8">
+            {FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div key={feature.title} className="flex gap-4">
+                  <div className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-foreground/5 text-foreground">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -314,16 +355,23 @@ export default async function HomePage() {
           <p className="text-muted-foreground mb-8">
             Start free. No credit card required.
           </p>
-          <div className="grid sm:grid-cols-3 gap-6 max-w-3xl">
+          <div className="grid sm:grid-cols-3 gap-6 max-w-3xl sm:items-stretch">
             {PRICING_TIERS.map((tier) => (
               <div
                 key={tier.name}
-                className={`rounded-lg border p-5 flex flex-col ${
+                className={`relative rounded-lg border p-5 flex flex-col ${
                   tier.highlighted
-                    ? "border-foreground/20 bg-card shadow-md"
+                    ? "border-foreground bg-card shadow-xl ring-2 ring-foreground/10 sm:scale-[1.03] sm:z-10"
                     : "border-border/60 bg-card"
                 }`}
               >
+                {tier.highlighted && (
+                  // Badge sits half-outside the card so it reads as a
+                  // ribbon regardless of the surrounding grid gap.
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full bg-foreground px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-background shadow">
+                    Most popular
+                  </span>
+                )}
                 <h3 className="text-sm font-semibold text-foreground">{tier.name}</h3>
                 <div className="mt-3 flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-foreground">{tier.price}</span>
@@ -357,19 +405,27 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground max-w-lg">
-            Your brand is already part of the AI conversation. Find out how AI is framing your story.
+      {/* Bottom CTA — centered + bulked up. This is the last gravity
+          well on the page; the old left-aligned small button read as
+          an afterthought. */}
+      <section className="border-t border-border/40 bg-gradient-to-b from-background to-muted/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+          <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground max-w-2xl mx-auto leading-[1.15]">
+            Your brand is already part of the AI conversation.
+            <br className="hidden sm:block" />
+            <span className="text-muted-foreground">Find out how AI is framing your story.</span>
           </h2>
-          <div className="mt-6">
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/sign-up"
-              className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 text-base font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-md"
             >
               Use it free
+              <ArrowRight className="h-4 w-4" />
             </Link>
+            <span className="text-xs text-muted-foreground">
+              No credit card, no email.
+            </span>
           </div>
         </div>
       </section>
