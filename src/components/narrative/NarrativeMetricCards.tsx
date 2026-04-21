@@ -416,7 +416,7 @@ export function NarrativeMetricCards({
           </div>
 
           {/* Description */}
-          <p className="text-[11px] text-muted-foreground text-center leading-relaxed mt-auto">
+          <p className="text-sm text-muted-foreground text-center leading-relaxed mt-auto">
             {card.description}
           </p>
 
