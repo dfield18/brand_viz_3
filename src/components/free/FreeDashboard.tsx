@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FreeExecuteResponse {
   hasData?: boolean;
@@ -220,10 +221,39 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
       </form>
 
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-foreground shrink-0" />
-          <span>{loadingMessages[loadingMessageIndex]?.text ?? loadingMessages[0].text}</span>
-        </div>
+        // Staged checklist: all phases rendered up front, each tick
+        // flips from pending → active → done as the timers in the
+        // loadingMessageIndex effect fire. Replaces the single-line
+        // spinner that was visually easy to miss on a page that
+        // otherwise doesn't move during the 30-60 s backend run.
+        <ol className="flex flex-col gap-2.5 rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">
+          {loadingMessages.map((msg, i) => {
+            const isDone = i < loadingMessageIndex;
+            const isActive = i === loadingMessageIndex;
+            return (
+              <li
+                key={i}
+                className={cn(
+                  "flex items-start gap-3 transition-colors duration-500",
+                  isDone && "text-emerald-600 dark:text-emerald-400",
+                  isActive && "text-foreground font-medium",
+                  !isDone && !isActive && "text-muted-foreground/45",
+                )}
+              >
+                <span className="flex h-5 w-5 items-center justify-center shrink-0 mt-0.5">
+                  {isDone ? (
+                    <Check className="h-4 w-4" />
+                  ) : isActive ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+                  )}
+                </span>
+                <span className="leading-relaxed">{msg.text}</span>
+              </li>
+            );
+          })}
+        </ol>
       )}
 
       {error && (
