@@ -134,6 +134,70 @@ const DESCRIPTOR_STOPWORDS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
+// LLM-based sentiment classification
+// ---------------------------------------------------------------------------
+
+const SENTIMENT_CLASSIFY_SYSTEM = `Classify the overall sentiment toward the named entity in the given text.
+
+Respond with valid JSON only, nothing else:
+{"label": "POS" | "NEU" | "NEG", "score": number}
+
+Label rules:
+- POS: overall positive framing — praise, endorsement, emphasis on strengths, positive outcomes, or favorable comparisons. Score in [0.1, 1.0].
+- NEG: overall negative framing — criticism, concerns, emphasis on weaknesses, controversies, or unfavorable comparisons. Score in [-1.0, -0.1].
+- NEU: purely factual description, balanced pros/cons, or no evaluative signal. Score = 0.
+
+Be decisive. If the text takes a clear stance (positive OR negative) about the entity, classify it as POS or NEG even when the language is mild or hedged. Only use NEU when the text is genuinely descriptive with no evaluative content.`;
+
+const SENTIMENT_CLASSIFY_TIMEOUT_MS = 6_000;
+
+async function classifyRunSentimentWithLLM(
+  contextSentences: string[],
+  brandName: string,
+): Promise<{ label: "POS" | "NEU" | "NEG"; score: number } | null> {
+  if (contextSentences.length === 0) return null;
+  const text = contextSentences.join(" ").slice(0, 1500);
+  if (text.length < 30) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SENTIMENT_CLASSIFY_TIMEOUT_MS);
+  try {
+    const response = await openai.responses.create(
+      {
+        model: THEME_EXTRACT_MODEL,
+        input: [
+          { role: "system", content: SENTIMENT_CLASSIFY_SYSTEM },
+          { role: "user", content: `Entity: "${brandName}"\n\nText:\n${text}` },
+        ],
+        max_output_tokens: 60,
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    const raw = (response.output_text ?? "")
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]) as { label?: unknown; score?: unknown };
+    if (
+      (parsed.label === "POS" || parsed.label === "NEU" || parsed.label === "NEG") &&
+      typeof parsed.score === "number"
+    ) {
+      return {
+        label: parsed.label,
+        score: Math.max(-1, Math.min(1, parsed.score)),
+      };
+    }
+    return null;
+  } catch {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main extraction function
 // ---------------------------------------------------------------------------
 
@@ -179,15 +243,33 @@ export async function extractNarrativeForRun(
   }
 
   // --- Sentiment ---
+  // Primary signal: LLM classification of the brand-context text. The
+  // keyword-based approach below was built on commercial-brand lexicon
+  // ("leader", "trusted", "expensive", etc.), so for politicians,
+  // advocacy orgs, cultural figures, or any brand where AI uses
+  // different vocabulary, it returned 0 positive + 0 negative signals
+  // → score 0 → NEU. Result: the platform sentiment chart often
+  // showed "100% neutral" even when clear sentiment existed.
+  const llmSentiment = await classifyRunSentimentWithLLM(contextSentences, brandName);
+
+  // Keyword signals are still computed and persisted because the
+  // surrounding pipeline uses authorityCount/trustCount/weaknessCount
+  // for the Authority, Trust, and Weakness rate percentages — those
+  // aren't sentiment, they're independent narrative dimensions.
   const positiveCount = authorityCount + trustCount;
   const negativeCount = weaknessCount;
   const totalSignals = Math.max(1, positiveCount + negativeCount);
-  const sentimentScore = (positiveCount - negativeCount) / totalSignals;
-  const sentimentLabel: "POS" | "NEU" | "NEG" =
-    sentimentScore >= SENTIMENT_THRESHOLD ? "POS" : sentimentScore <= -SENTIMENT_THRESHOLD ? "NEG" : "NEU";
+  const keywordScore = (positiveCount - negativeCount) / totalSignals;
+  const keywordLabel: "POS" | "NEU" | "NEG" =
+    keywordScore >= SENTIMENT_THRESHOLD ? "POS" : keywordScore <= -SENTIMENT_THRESHOLD ? "NEG" : "NEU";
+
+  const sentiment = llmSentiment ?? {
+    label: keywordLabel,
+    score: Math.round(keywordScore * 100) / 100,
+  };
 
   return {
-    sentiment: { label: sentimentLabel, score: Math.round(sentimentScore * 100) / 100 },
+    sentiment,
     authoritySignals: authorityCount,
     trustSignals: trustCount,
     weaknessSignals: weaknessCount,
