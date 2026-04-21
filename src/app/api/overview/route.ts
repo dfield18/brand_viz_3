@@ -762,6 +762,7 @@ Rules:
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
 - Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
+- CALIBRATE qualitative language to the actual number. A mention rate of 0-20% is "low," "rarely appears," or "a small share." 20-40% is "moderate" or "meaningful but not dominant." 40-60% is "notable" or "a significant share." 60-80% is "strong." 80%+ is "dominant" or "near-ubiquitous." NEVER call 10% a "strong presence" — that misrepresents the data and erodes trust in the dashboard.
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
         },
