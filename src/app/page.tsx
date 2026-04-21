@@ -64,6 +64,33 @@ const FEATURES: { title: string; description: string; icon: LucideIcon }[] = [
   },
 ];
 
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: "How is the data actually generated?",
+    a: "We send real questions about your category to the actual AI models — ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews — via their production APIs. No scraping, no proxies. The prompts are phrased the way a real customer or prospect would ask, and the responses are analyzed for brand mentions, sentiment, competitor share, and cited sources.",
+  },
+  {
+    q: "How often is it updated?",
+    a: "Free reports run live against every model each time you search (10 searches per day). Pro accounts snapshot weekly so you get a 90-day trend built from real logged data points — no back-cast estimates. Enterprise can pick a custom cadence.",
+  },
+  {
+    q: "What's the difference between the free and paid tiers?",
+    a: "The free tier runs ChatGPT + Gemini on demand with 10 searches per day and a historical trend estimated from each model's training-data reference. Pro adds all five platforms, weekly snapshots that accumulate as real logged history, five tracked brands, weekly email reports, CSV export, and custom prompts. Enterprise is for multi-brand companies and agencies with unlimited brands, API access, SSO, and dedicated support.",
+  },
+  {
+    q: "Can I trust the historical data on the free tier?",
+    a: "Historical points on the free tier are inferred from each model's training-data reference — not live web queries — so they're useful as a baseline but not a substitute for real logged history. Today's point is always calibrated to live results. Pro accounts log real snapshots weekly so the trend accumulates as genuine longitudinal data from the moment you sign up.",
+  },
+  {
+    q: "Can I track competitors?",
+    a: "Yes. When AI discusses your category, we automatically detect which other brands come up and track their share of the conversation — no configuration needed. Pro accounts also get per-competitor movement alerts when a rival's mention rate shifts meaningfully between snapshots.",
+  },
+  {
+    q: "What if my brand name is ambiguous?",
+    a: "Common ambiguity — \"Apple\" (company vs. Records vs. fruit), \"Delta\" (airline vs. faucet vs. Greek letter) — is handled with a disambiguation step before analysis. You pick the meaning you want to track, and we scope every subsequent query to that entity. Obscure or recent entities that older models haven't seen are looked up via a live web-search fallback so the report still recognizes them.",
+  },
+];
+
 const PRICING_TIERS = [
   {
     name: "Starter",
@@ -451,6 +478,40 @@ export default async function HomePage() {
                   {tier.cta}
                 </Link>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ — placed between Pricing and the final CTA so evaluators
+          who read the tiers can resolve lingering "how does this
+          actually work / can I trust it" questions before the close.
+          Native <details>/<summary> accordion keeps the section a
+          server component and skips any JS state overhead. */}
+      <section id="faq" className="border-t border-border/40 bg-muted/30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Questions
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
+            Common questions
+          </h2>
+          <div className="max-w-3xl divide-y divide-border/60">
+            {FAQS.map((item) => (
+              <details key={item.q} className="group py-4">
+                <summary className="flex cursor-pointer items-center justify-between gap-6 text-sm font-semibold text-foreground list-none [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                  {item.a}
+                </p>
+              </details>
             ))}
           </div>
         </div>
