@@ -758,9 +758,17 @@ Rules:
     if (label === "POS") entry.pos++;
     else if (label === "NEG") entry.neg++;
     else entry.neu++;
-    // Keep raw scores for consistency (std dev) calculation
+    // Keep raw scores for consistency (std dev) calculation.
+    // `parsed.sentiment.score` is ALREADY signed: both the keyword
+    // formula (positive-negative)/total and the LLM classifier emit
+    // scores in [-1, 1] with NEG as negative values. Previously this
+    // line did `label === "NEG" ? -rawScore`, which double-negated a
+    // NEG run's score and pushed a POSITIVE value into the scatter
+    // — flipping the sign of every negative data point and making
+    // prompts with negative sentiment read as positive on the chart.
+    // NEU is forced to 0 so neutral mentions don't drag the magnitude.
     const rawScore = parsed.sentiment.score;
-    const numericScore = label === "POS" ? rawScore : label === "NEG" ? -rawScore : 0;
+    const numericScore = label === "NEU" ? 0 : rawScore;
     entry.scores.push(numericScore);
   }
   const sentimentByQuestion = [...promptSentimentMap.entries()]

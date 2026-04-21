@@ -178,16 +178,40 @@ async function classifyRunSentimentWithLLM(
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    const parsed = JSON.parse(match[0]) as { label?: unknown; score?: unknown };
+    if (!raw) return null;
+
+    // Parse the whole response first (system prompt asks for JSON-only).
+    // Fall back to a greedy brace-match only if direct parse fails — a
+    // prose-wrapped response like "Reasoning: {thought} Answer: {...}"
+    // would make the old regex-first path grab everything between the
+    // first `{` and last `}`, producing invalid JSON and silently
+    // dropping us into the keyword fallback.
+    let parsed: { label?: unknown; score?: unknown };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\{[^{}]*\}/);
+      if (!match) return null;
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch {
+        return null;
+      }
+    }
+
     if (
       (parsed.label === "POS" || parsed.label === "NEU" || parsed.label === "NEG") &&
-      typeof parsed.score === "number"
+      typeof parsed.score === "number" &&
+      Number.isFinite(parsed.score)
     ) {
+      // NEU must be zero per the system prompt's score contract; coerce
+      // a non-compliant nonzero NEU so downstream math stays consistent.
+      const clampedScore = parsed.label === "NEU"
+        ? 0
+        : Math.max(-1, Math.min(1, parsed.score));
       return {
         label: parsed.label,
-        score: Math.max(-1, Math.min(1, parsed.score)),
+        score: Math.round(clampedScore * 100) / 100,
       };
     }
     return null;
