@@ -215,21 +215,26 @@ export default async function HomePage() {
         </div>
       </nav>
 
-      {/* Hero + free dashboard — one section so spacing stays tight */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10">
+      {/* Hero + free dashboard — compressed so the brand-name input
+          sits above the fold on a typical laptop viewport.  Previous
+          layout (pt-8 sm:pt-12, text-3xl sm:text-5xl, mt-8) pushed the
+          input ~100-150 px lower, which meant first-time visitors
+          scrolled past a wall of headline before seeing there was
+          anything to do. */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
         <div className="max-w-2xl">
           {/* Prominent "free, no signup" pill above the H1 so first-time
               visitors can't miss the entry bar's no-friction mode. */}
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
             Free to use the basic version — no sign-up required
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
             AI is shaping how people discover your brand.
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
-          <div className="mt-8">
+          <div className="mt-5">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
