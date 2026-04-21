@@ -13,6 +13,7 @@ import type { VisibilityTrendPoint } from "@/types/api";
 import {
   ArrowRight,
   BarChart3,
+  Check,
   Link2,
   Mail,
   MessageCircle,
@@ -75,7 +76,7 @@ const PRICING_TIERS = [
       "Visibility, sentiment, competitors, sources",
       "90-day trend — 3 points, historical estimated",
     ],
-    cta: "Use It Free",
+    cta: "Use it free",
     highlighted: false,
   },
   {
@@ -90,7 +91,10 @@ const PRICING_TIERS = [
       "Email reports + CSV exports",
       "Custom prompts",
     ],
-    cta: "Start Free Trial",
+    // "Start Free Trial" implied Pro auto-bills after a trial window,
+    // muddying the already-clear "Starter = Free" story next door.
+    // Neutral "Start with Pro" removes the ambiguity.
+    cta: "Start with Pro",
     highlighted: true,
   },
   {
@@ -99,7 +103,7 @@ const PRICING_TIERS = [
     period: "",
     description: "For multi-brand companies and agencies",
     features: ["Unlimited brands", "Custom prompts", "API access", "Dedicated support", "SSO"],
-    cta: "Contact Us",
+    cta: "Contact us",
     highlighted: false,
   },
 ];
@@ -237,7 +241,7 @@ export default async function HomePage() {
           input ~100-150 px lower, which meant first-time visitors
           scrolled past a wall of headline before seeing there was
           anything to do. */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-4">
+      <section id="top" className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-4">
         <div className="max-w-2xl">
           {/* Prominent "free, no signup" pill above the H1 so first-time
               visitors can't miss the entry bar's no-friction mode. */}
@@ -246,8 +250,7 @@ export default async function HomePage() {
             Free to use the basic version — no sign-up required
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
-            AI is shaping how people discover your brand.
-            <br />
+            AI is shaping how people discover your brand.{" "}
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
           <div className="mt-10 sm:mt-12">
@@ -258,11 +261,12 @@ export default async function HomePage() {
               exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
           </div>
-          {/* Scroll affordance — sits just below the examples row
-              inside FreeDashboard, not crowding the input itself. */}
+          {/* Scroll affordance — now honestly points at the NEXT thing
+              on the page (the process + live example) rather than
+              implying the chart is immediately below. */}
           <p className="mt-8 text-xs text-muted-foreground/70 flex items-center gap-1.5">
             <span aria-hidden="true">↓</span>
-            Scroll to see what a real report looks like
+            See how it works
           </p>
         </div>
       </section>
@@ -343,6 +347,18 @@ export default async function HomePage() {
                 />
               </div>
             </div>
+            {/* Capture momentum: someone who just read the chart is
+                peak-convinced — give them a one-click return to the
+                hero input instead of making them scroll back. */}
+            <div className="mt-5 text-center">
+              <a
+                href="#top"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors"
+              >
+                <span aria-hidden="true">↑</span>
+                Try it with your own brand
+              </a>
+            </div>
           </div>
         </section>
       )}
@@ -409,14 +425,14 @@ export default async function HomePage() {
                 <p className="mt-1 text-xs text-muted-foreground">{tier.description}</p>
                 <ul className="mt-5 space-y-2 flex-1">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="text-foreground/30">&middot;</span>
-                      {feature}
+                    <li key={feature} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" aria-hidden="true" />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <Link
-                  href={tier.cta === "Contact Us" ? "mailto:support@aisayswhat.com" : "/sign-up"}
+                  href={tier.cta === "Contact us" ? "mailto:support@aisayswhat.com" : "/sign-up"}
                   className={`mt-6 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     tier.highlighted
                       ? "bg-foreground text-background hover:bg-foreground/90"
