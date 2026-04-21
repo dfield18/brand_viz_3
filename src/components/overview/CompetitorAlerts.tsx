@@ -23,7 +23,12 @@ interface AlertsApiResponse {
 interface CompetitionApiResponse {
   hasData: boolean;
   competition?: {
-    competitors: { entityId: string; name: string; isBrand: boolean }[];
+    competitors: {
+      entityId: string;
+      name: string;
+      isBrand: boolean;
+      mentionRate: number;
+    }[];
   };
 }
 
@@ -80,18 +85,41 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   const isOrg = brandCategory === "political_advocacy";
   const entityWord = isOrg ? "organization" : "competitor";
 
-  // True empty state — no movement data to show at all. Render a
-  // visible placeholder rather than returning null, because the page
-  // nav links to this section and an invisible target scrolls to
-  // nothing, confusing users.
-  if (allAlerts.length === 0) {
+  // Build a leaderboard fallback from /api/competition's already-fetched
+  // data. The competition pipeline uses a more permissive detection path
+  // than /api/competitor-alerts (which restricts to industry-cluster
+  // snapshot deltas) and often has competitor mention rates for brands
+  // where the movement pipeline produces zero rows — e.g. a free-run
+  // brand with one snapshot whose industry runs mention Nike/Adidas but
+  // didn't register as "movement" because there's no prior snapshot to
+  // diff against. Rendered as stable entries so the section stays
+  // populated with the actual competitive landscape.
+  const leaderboardFallback: CompetitorAlert[] =
+    compData?.competition?.competitors
+      ?.filter((c) => !c.isBrand && c.mentionRate > 0)
+      .sort((a, b) => b.mentionRate - a.mentionRate)
+      .slice(0, 3)
+      .map((c) => ({
+        entityId: c.entityId,
+        displayName: c.name,
+        recentMentionRate: Math.round(c.mentionRate),
+        previousMentionRate: 0,
+        mentionRateChange: 0,
+        direction: "stable" as const,
+      })) ?? [];
+
+  // True empty state — no movement data AND no leaderboard fallback.
+  // Render a visible placeholder rather than returning null, because
+  // the page nav links to this section and an invisible target
+  // scrolls to nothing.
+  if (allAlerts.length === 0 && leaderboardFallback.length === 0) {
     return (
       <section className="rounded-xl bg-card px-5 py-4 shadow-section">
         <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
         <p className="text-xs text-muted-foreground mt-2">
-          Not enough data yet. We need at least two snapshots of industry-cluster
-          prompts to detect {entityWord} movement. Re-run prompts or wait for the
-          next backfill.
+          Not enough data yet. Run prompts to populate the competitive
+          landscape, then re-check once a second snapshot lands so movement
+          deltas can be computed.
         </p>
       </section>
     );
@@ -100,7 +128,11 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   const rising = allAlerts.filter((a) => a.direction === "rising").sort((a, b) => b.mentionRateChange - a.mentionRateChange);
   const falling = allAlerts.filter((a) => a.direction === "falling").sort((a, b) => a.mentionRateChange - b.mentionRateChange);
 
-  // Show top 3 movers; fall back to top entities by mention rate if no clear movers
+  // Prefer real movers (rising/falling). If none, fall back in order:
+  // 1. Stable alerts with a non-zero recent mention rate (single-snapshot
+  //    case from the movement pipeline).
+  // 2. Top competitors from the /api/competition leaderboard as stable
+  //    entries (Umbro-style case: no movement rows at all).
   let movers = [...rising.slice(0, 2), ...falling.slice(0, 1)].slice(0, 3);
   if (movers.length === 0) {
     movers = allAlerts
@@ -109,11 +141,14 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
       .slice(0, 3);
   }
   if (movers.length === 0) {
+    movers = leaderboardFallback;
+  }
+  if (movers.length === 0) {
     return (
       <section className="rounded-xl bg-card px-5 py-4 shadow-section">
         <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
         <p className="text-xs text-muted-foreground mt-2">
-          No {entityWord} movement detected in the current window.
+          No {entityWord} activity detected in the current window.
         </p>
       </section>
     );
