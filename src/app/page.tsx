@@ -250,7 +250,7 @@ export default async function HomePage() {
             <br />
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
-          <div className="mt-5">
+          <div className="mt-10 sm:mt-12">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
