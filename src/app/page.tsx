@@ -271,10 +271,13 @@ export default async function HomePage() {
       <section id="top" className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-4">
         <div className="max-w-2xl">
           {/* Prominent "free, no signup" pill above the H1 so first-time
-              visitors can't miss the entry bar's no-friction mode. */}
+              visitors can't miss the entry bar's no-friction mode. Mobile
+              gets a short-form variant so the pill doesn't push past the
+              viewport width on a 375-390 px screen. */}
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            Free to use the basic version — no sign-up required
+            <span className="hidden sm:inline">Free to use the basic version — no sign-up required</span>
+            <span className="sm:hidden">Free — no sign-up required</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
             AI is shaping how people discover your brand —{" "}

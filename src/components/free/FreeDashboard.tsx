@@ -152,9 +152,12 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             field into something that actually reads as an input, and
             the submit button becomes a filled primary CTA with the
             word "Analyze" so it doesn't get missed as a ghost arrow. */}
-        <div className="flex items-baseline gap-3 sm:gap-4 border-b-2 border-foreground/15 pb-3 transition-colors focus-within:border-foreground/60">
+        {/* Stack input + button vertically on mobile so a long typed
+            brand name doesn't push the submit button off-screen. On
+            sm+ (≥640 px) they sit inline again. */}
+        <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-4 border-b-2 border-foreground/15 pb-3 transition-colors focus-within:border-foreground/60">
           <div
-            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-5xl font-semibold tracking-tight leading-tight"
+            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight"
             onClick={() => inputRef.current?.focus()}
           >
             <input
@@ -195,7 +198,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             type="submit"
             disabled={!canSubmit}
             aria-label="Run free analysis"
-            className="shrink-0 self-center inline-flex items-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+            className="shrink-0 w-full sm:w-auto sm:self-center inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           >
             Analyze
             <ArrowRight className="h-4 w-4" />
