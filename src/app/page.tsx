@@ -514,6 +514,15 @@ export default async function HomePage() {
               </details>
             ))}
           </div>
+          <p className="mt-8 text-sm text-muted-foreground">
+            Have a different question?{" "}
+            <a
+              href="mailto:support@aisayswhat.com"
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              Email support →
+            </a>
+          </p>
         </div>
       </section>
 
