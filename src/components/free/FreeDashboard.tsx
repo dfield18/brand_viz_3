@@ -140,16 +140,19 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
   return (
     <div className="space-y-10">
       <form onSubmit={handleSubmit}>
-        {/* Small free-tier badge sits just above the input */}
-        <div className="mb-5 inline-flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-          <span>Free · No sign-up</span>
-        </div>
-
+        {/* The redundant "Free · No sign-up" dot pill that used to
+            live here was removed — the landing hero already carries
+            a prominent free pill and a trust line, so stacking a
+            third reassurance in the same 150 px read as over-selling
+            rather than reinforcing. */}
         <label htmlFor="freeBrandInput" className="sr-only">
           Brand name
         </label>
-        <div className="flex items-baseline gap-3 sm:gap-4">
+        {/* Subtle bottom border + focus ring turns the typed-text
+            field into something that actually reads as an input, and
+            the submit button becomes a filled primary CTA with the
+            word "Analyze" so it doesn't get missed as a ghost arrow. */}
+        <div className="flex items-baseline gap-3 sm:gap-4 border-b-2 border-foreground/15 pb-3 transition-colors focus-within:border-foreground/60">
           <div
             className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-5xl font-semibold tracking-tight leading-tight"
             onClick={() => inputRef.current?.focus()}
@@ -192,13 +195,14 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             type="submit"
             disabled={!canSubmit}
             aria-label="Run free analysis"
-            className="shrink-0 self-center inline-flex items-center justify-center size-11 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="shrink-0 self-center inline-flex items-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           >
-            <ArrowRight className="h-5 w-5" />
+            Analyze
+            <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mt-10 text-sm text-muted-foreground">
+        <p className="mt-5 text-sm text-muted-foreground">
           Free to use — no credit card, no email or account needed.
         </p>
 

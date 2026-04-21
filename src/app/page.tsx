@@ -237,7 +237,7 @@ export default async function HomePage() {
           input ~100-150 px lower, which meant first-time visitors
           scrolled past a wall of headline before seeing there was
           anything to do. */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-4">
         <div className="max-w-2xl">
           {/* Prominent "free, no signup" pill above the H1 so first-time
               visitors can't miss the entry bar's no-friction mode. */}
@@ -258,13 +258,42 @@ export default async function HomePage() {
               exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
           </div>
+          {/* Scroll affordance — sits just below the examples row
+              inside FreeDashboard, not crowding the input itself. */}
+          <p className="mt-8 text-xs text-muted-foreground/70 flex items-center gap-1.5">
+            <span aria-hidden="true">↓</span>
+            Scroll to see what a real report looks like
+          </p>
+        </div>
+      </section>
+
+      {/* Platform strip — promotes the "we cover all 5 major AI
+          surfaces" message from its old orphaned spot at the end of
+          pricing up to the hero region, where it acts as implicit
+          social proof. Text-only for now; swap in real logos later. */}
+      <section className="border-t border-border/40 bg-muted/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Monitors your brand across
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm font-medium text-muted-foreground">
+            <span>ChatGPT</span>
+            <span className="text-muted-foreground/30">·</span>
+            <span>Gemini</span>
+            <span className="text-muted-foreground/30">·</span>
+            <span>Claude</span>
+            <span className="text-muted-foreground/30">·</span>
+            <span>Perplexity</span>
+            <span className="text-muted-foreground/30">·</span>
+            <span>Google AI Overviews</span>
+          </div>
         </div>
       </section>
 
       {/* How it works — numbered steps so the flow is scannable in 2 s
           instead of reading three paragraphs. */}
       <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
             How it works
           </h2>
@@ -319,7 +348,7 @@ export default async function HomePage() {
       )}
 
       {/* Features */}
-      <section id="features" className="border-t border-border/40">
+      <section id="features" className="border-t border-border/40 bg-muted/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
             What you get
@@ -399,9 +428,6 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-          <p className="mt-12 text-lg text-muted-foreground leading-relaxed max-w-lg">
-            aiSaysWhat monitors how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe your brand.
-          </p>
         </div>
       </section>
 

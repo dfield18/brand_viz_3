@@ -20,10 +20,26 @@ export function LandingDashboard({ brandName, industry, trend }: Props) {
   };
 
   return (
-    <VisibilityTrendChart
-      trend={trend}
-      brandName={brandName}
-      descriptionOverride={descriptions}
-    />
+    <div>
+      <VisibilityTrendChart
+        trend={trend}
+        brandName={brandName}
+        descriptionOverride={descriptions}
+      />
+      {/* Line legend — the chart renders overall (solid) + per-platform
+          (lighter) lines with no built-in key, so users couldn't tell
+          which line was which. Placed under the chart so it doesn't
+          compete with the heading inside VisibilityTrendChart. */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-[2px] w-4 bg-[var(--chart-1)] rounded-full" aria-hidden="true" />
+          {brandName} — all AI platforms
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-[2px] w-4 bg-muted-foreground/40 rounded-full" aria-hidden="true" />
+          Individual platform
+        </span>
+      </div>
+    </div>
   );
 }
