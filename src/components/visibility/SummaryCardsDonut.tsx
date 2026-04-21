@@ -24,18 +24,6 @@ interface SummaryCardsDonutProps {
   sparklines?: { visibility: number[]; sov: number[]; topResult: number[] };
 }
 
-/** See OverviewScorecard.subjectNoun — kept in both files because the
- *  two scorecards don't share a common export today and the heuristic
- *  is only 6 lines. Resist the urge to dedupe until a third caller
- *  needs it. */
-function subjectNoun(brandName: string, category?: string | null): string {
-  if (category !== "political_advocacy") return "brand";
-  const name = brandName.trim();
-  const looksLikePerson = /^[A-Z][a-zA-Z'-]+( [A-Z][a-zA-Z'-]+){1,2}$/.test(name);
-  const orgSignal = /\b(Foundation|Society|Union|Coalition|Alliance|Institute|Council|Forum|Network|Cause|Fund|PAC|Action|Matters|Watch|Party|Project|Committee|Center|Parenthood|Rights|Trust|League|Federation|Association)\b/i;
-  if (looksLikePerson && !orgSignal.test(name)) return "politician";
-  return "organization";
-}
 
 interface DonutCardConfig {
   label: string;
@@ -206,7 +194,6 @@ export function SummaryCardsDonut({
   kpiDeltas,
   brandName = "Brand",
   industry,
-  category,
   onCardClick,
   activeMetric,
   sparklines,
@@ -216,7 +203,6 @@ export function SummaryCardsDonut({
   const topResultBadge = getTopResultBadge(firstMentionRate);
   const positionBadge = getPositionBadge(avgRankScore);
   const industryLabel = industry?.trim() || "industry";
-  const subject = subjectNoun(brandName, category);
 
   const cards: DonutCardConfig[] = [
     {
@@ -225,7 +211,7 @@ export function SummaryCardsDonut({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: visibilityBadge,
-      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName} — no ${subject} is named in the prompt`,
+      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
       tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,

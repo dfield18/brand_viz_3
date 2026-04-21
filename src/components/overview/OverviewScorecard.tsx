@@ -22,20 +22,6 @@ interface OverviewScorecardProps {
   topSourceType?: { category: string; count: number; totalSources: number } | null;
 }
 
-/** Pick the right noun for the Mention Rate tagline so a politician
- *  doesn't get called a "brand" and ACLU doesn't either. Heuristic only;
- *  the classifier has no "political_figure" bucket, so we check the name
- *  shape inside the political_advocacy bucket. Excludes common org
- *  suffixes so "Planned Parenthood" / "Common Cause" stay as orgs. */
-function subjectNoun(brandName: string, category?: string | null): string {
-  if (category !== "political_advocacy") return "brand";
-  const name = brandName.trim();
-  const looksLikePerson = /^[A-Z][a-zA-Z'-]+( [A-Z][a-zA-Z'-]+){1,2}$/.test(name);
-  const orgSignal = /\b(Foundation|Society|Union|Coalition|Alliance|Institute|Council|Forum|Network|Cause|Fund|PAC|Action|Matters|Watch|Party|Project|Committee|Center|Parenthood|Rights|Society|Trust|League|Federation|Association)\b/i;
-  if (looksLikePerson && !orgSignal.test(name)) return "politician";
-  return "organization";
-}
-
 function DonutRing({ percentage, color, size = 80, strokeWidth = 8 }: { percentage: number; color: string; size?: number; strokeWidth?: number }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -142,14 +128,12 @@ export function OverviewScorecard({
   kpiDeltas,
   brandName = "Brand",
   industry,
-  category,
   dominantFrames,
   sentimentSplit,
   topSourceType,
 }: OverviewScorecardProps) {
   const topFrame = dominantFrames[0] ?? null;
   const industryLabel = industry?.trim() || "industry";
-  const subject = subjectNoun(brandName, category);
   const cards: CardConfig[] = [
     {
       label: "BRAND RECALL",
@@ -157,7 +141,7 @@ export function OverviewScorecard({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: getVisibilityBadge(overallMentionRate),
-      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName} — no ${subject} is named in the prompt`,
+      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
       tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
