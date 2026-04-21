@@ -154,10 +154,14 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             word "Analyze" so it doesn't get missed as a ghost arrow. */}
         {/* Stack input + button vertically on mobile so a long typed
             brand name doesn't push the submit button off-screen. On
-            sm+ (≥640 px) they sit inline again. */}
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-4 border-b-2 border-foreground/15 pb-3 transition-colors focus-within:border-foreground/60">
+            sm+ (≥640 px) they sit inline again. The bottom-border
+            underline lives on the OUTER container at sm+ (spans the
+            full input-row width) but on mobile it collapses onto the
+            INPUT text only, so there's no orphan line below the
+            full-width button. */}
+        <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-4 sm:border-b-2 sm:border-foreground/15 sm:pb-3 sm:focus-within:border-foreground/60 transition-colors">
           <div
-            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight"
+            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight border-b-2 border-foreground/15 pb-2 sm:border-b-0 sm:pb-0 transition-colors focus-within:border-foreground/60 sm:focus-within:border-transparent"
             onClick={() => inputRef.current?.focus()}
           >
             <input
@@ -198,7 +202,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             type="submit"
             disabled={!canSubmit}
             aria-label="Run free analysis"
-            className="shrink-0 w-full sm:w-auto sm:self-center inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+            className="shrink-0 w-full sm:w-auto sm:self-center inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             Analyze
             <ArrowRight className="h-4 w-4" />
