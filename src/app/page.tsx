@@ -253,7 +253,7 @@ export default async function HomePage() {
             AI is shaping how people discover your brand.{" "}
             <span className="text-muted-foreground">Do you know what it&apos;s saying?</span>
           </h1>
-          <div className="mt-14 sm:mt-16">
+          <div className="mt-20 sm:mt-24">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
