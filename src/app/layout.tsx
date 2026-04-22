@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { ClientHeader } from "@/components/ClientHeader";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 const GA_ID = "G-VSPTQ3C4MN";
+// Skip GA in non-production builds so local dev sessions don't
+// pollute the live analytics data.
+const GA_ENABLED = process.env.NODE_ENV === "production";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aisayswhat.com"),
@@ -65,15 +68,6 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <head>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-          <Script id="gtag-init" strategy="afterInteractive">
-            {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${GA_ID}');`}
-          </Script>
-        </head>
         <body
           className="antialiased"
           style={{
@@ -81,6 +75,7 @@ gtag('config', '${GA_ID}');`}
               'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}
         >
+          {GA_ENABLED && <GoogleAnalytics gaId={GA_ID} />}
           <ClientHeader />
           <main className="min-h-[calc(100vh-3.75rem)]">{children}</main>
         </body>
