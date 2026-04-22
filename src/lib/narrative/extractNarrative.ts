@@ -111,7 +111,14 @@ async function extractThemesWithLLM(
 // ---------------------------------------------------------------------------
 
 export interface NarrativeExtractionResult {
-  sentiment: { label: "POS" | "NEU" | "NEG"; score: number };
+  /** Null when the subject wasn't mentioned in the response — the run
+   *  carries no sentiment signal about the subject at all. Consumers
+   *  that aggregate sentiment should skip these runs instead of
+   *  counting them as NEU (which would bias political-figure
+   *  distributions toward "100% neutral," since many industry-scope
+   *  prompts produce responses that name other figures and not the
+   *  target). */
+  sentiment: { label: "POS" | "NEU" | "NEG"; score: number } | null;
   authoritySignals: number;
   trustSignals: number;
   weaknessSignals: number;
@@ -234,10 +241,11 @@ export async function extractNarrativeForRun(
   const contextSentences = getEntityContextWindow(sentences, brandName, brandSlug);
   const contextText = contextSentences.join(" ");
 
-  // If brand isn't mentioned at all, return minimal result
+  // Subject isn't mentioned — emit null sentiment so aggregators can
+  // skip this run instead of silently counting it as NEU.
   if (contextSentences.length === 0) {
     return {
-      sentiment: { label: "NEU", score: 0 },
+      sentiment: null,
       authoritySignals: 0,
       trustSignals: 0,
       weaknessSignals: 0,

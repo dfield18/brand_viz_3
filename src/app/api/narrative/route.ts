@@ -3,6 +3,7 @@ import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { parseAnalysis, aggregateNarrative } from "@/lib/aggregateAnalysis";
 import type { NarrativeExtractionResult } from "@/lib/narrative/extractNarrative";
+import { getCountableSentiment } from "@/lib/narrative/sentimentCountable";
 import { computeDrift, type DriftBucket } from "@/lib/narrative/drift";
 import { THEME_TAXONOMY } from "@/lib/narrative/themeTaxonomy";
 import { validateFrames } from "@/lib/validateFrames";
@@ -395,15 +396,13 @@ export async function GET(req: NextRequest) {
   const drift = computeDrift(driftBuckets, themeLabels);
 
   // Sentiment trend: group by (week, model) → % of responses that are POS
-  // Matches the scorecard methodology (POS count / total count * 100)
+  // Matches the scorecard methodology (POS count / total count * 100).
+  // getCountableSentiment skips subject-not-mentioned runs so the trend
+  // doesn't dilute with silent-NEU points.
   const sentimentBuckets: Record<string, Record<string, { pos: number; count: number }>> = {};
   for (const dr of allTrendRuns) {
-    const narr = parseNarrative(dr.narrativeJson);
-    // Use POS/NEU/NEG label from narrativeJson only (same as scorecard sentimentSplit).
-    // Do NOT fall back to analysisJson.sentiment.legitimacy — that measures
-    // credibility, not positive/negative sentiment.
-    if (!narr) continue;
-    const label = narr.sentiment.label;
+    const label = getCountableSentiment(dr.narrativeJson);
+    if (!label) continue;
 
     const d = new Date(dr.createdAt);
     const day = d.getDay();
@@ -572,7 +571,7 @@ export async function GET(req: NextRequest) {
         prompt: expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry }),
         fullText: cleanText.slice(0, 1500),
         themes: parsed ? parsed.themes.map((t) => t.label) : [],
-        sentiment: parsed ? parsed.sentiment.label : "NEU",
+        sentiment: parsed?.sentiment?.label ?? "NEU",
         model: run.model,
         matchedFrame: frameName,
       });
@@ -715,7 +714,7 @@ Rules:
           prompt: expandPromptPlaceholders(filler.prompt.text, { brandName, industry: brand.industry }),
           excerpt: snippet,
           themes: parsed ? parsed.themes.map((t) => t.label) : [],
-          sentiment: parsed ? parsed.sentiment.label : "NEU",
+          sentiment: parsed?.sentiment?.label ?? "NEU",
           model: filler.model,
           matchedFrame: frameName,
         });
@@ -747,31 +746,32 @@ Rules:
 
   // Sentiment by Question: uses ALL scoped runs (all clusters) so every prompt
   // type contributes to the scatter chart, matching the all-cluster sentiment split.
+  // getCountableSentiment skips runs where the subject wasn't discussed so
+  // scatter points reflect responses that actually had something to say.
   const allScopedNarratives = allScopedRuns
     .map((r) => ({ parsed: parseNarrative(r.narrativeJson), run: r }))
     .filter((n): n is { parsed: NarrativeExtractionResult; run: typeof allScopedRuns[number] } => n.parsed !== null);
   const promptSentimentMap = new Map<string, { mentions: number; pos: number; neu: number; neg: number; scores: number[] }>();
   for (const { parsed, run } of allScopedNarratives) {
+    const label = getCountableSentiment(run.narrativeJson);
+    if (!label) continue;
     const promptText = expandPromptPlaceholders(run.prompt.text, { brandName, industry: brand.industry });
     if (!promptSentimentMap.has(promptText)) {
       promptSentimentMap.set(promptText, { mentions: 0, pos: 0, neu: 0, neg: 0, scores: [] });
     }
     const entry = promptSentimentMap.get(promptText)!;
     entry.mentions++;
-    const label = parsed.sentiment.label;
     if (label === "POS") entry.pos++;
     else if (label === "NEG") entry.neg++;
     else entry.neu++;
     // Keep raw scores for consistency (std dev) calculation.
     // `parsed.sentiment.score` is ALREADY signed: both the keyword
     // formula (positive-negative)/total and the LLM classifier emit
-    // scores in [-1, 1] with NEG as negative values. Previously this
-    // line did `label === "NEG" ? -rawScore`, which double-negated a
-    // NEG run's score and pushed a POSITIVE value into the scatter
-    // — flipping the sign of every negative data point and making
-    // prompts with negative sentiment read as positive on the chart.
-    // NEU is forced to 0 so neutral mentions don't drag the magnitude.
-    const rawScore = parsed.sentiment.score;
+    // scores in [-1, 1] with NEG as negative values. NEU forced to 0 so
+    // neutral mentions don't drag the magnitude. sentiment is
+    // guaranteed non-null here because getCountableSentiment returned
+    // a label.
+    const rawScore = parsed.sentiment?.score ?? 0;
     const numericScore = label === "NEU" ? 0 : rawScore;
     entry.scores.push(numericScore);
   }

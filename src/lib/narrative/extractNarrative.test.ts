@@ -3,29 +3,29 @@ import assert from "node:assert/strict";
 import { extractNarrativeForRun } from "./extractNarrative";
 
 describe("extractNarrativeForRun", () => {
-  it("returns neutral sentiment for empty text", async () => {
+  it("returns null sentiment for empty text", async () => {
     const result = await extractNarrativeForRun("", "TestBrand", "testbrand");
-    assert.equal(result.sentiment.label, "NEU");
+    assert.equal(result.sentiment, null);
     assert.equal(result.authoritySignals, 0);
     assert.equal(result.themes.length, 0);
     assert.equal(result.descriptors.length, 0);
     assert.equal(result.claims.length, 0);
   });
 
-  it("returns neutral sentiment when brand not mentioned", async () => {
+  it("returns null sentiment when brand not mentioned", async () => {
     const result = await extractNarrativeForRun(
       "This is a response that talks about various things but never mentions the entity.",
       "TestBrand",
       "testbrand",
     );
-    assert.equal(result.sentiment.label, "NEU");
+    assert.equal(result.sentiment, null);
     assert.equal(result.themes.length, 0);
   });
 
   it("detects positive sentiment from authority and trust signals", async () => {
     const text = `TestBrand is a trusted leader in the market. TestBrand is the best and most reliable option. TestBrand is widely recognized as a top brand.`;
     const result = await extractNarrativeForRun(text, "TestBrand", "testbrand");
-    assert.equal(result.sentiment.label, "POS");
+    assert.equal(result.sentiment?.label, "POS");
     assert.ok(result.authoritySignals >= 1, "Should detect authority signals");
     assert.ok(result.trustSignals >= 1, "Should detect trust signals");
   });
@@ -33,7 +33,7 @@ describe("extractNarrativeForRun", () => {
   it("detects negative sentiment from weakness signals", async () => {
     const text = `TestBrand is expensive and lacks features. TestBrand has limited options and is considered outdated. TestBrand is complex and has poor support.`;
     const result = await extractNarrativeForRun(text, "TestBrand", "testbrand");
-    assert.equal(result.sentiment.label, "NEG");
+    assert.equal(result.sentiment?.label, "NEG");
     assert.ok(result.weaknessSignals >= 1, "Should detect weakness signals");
   });
 

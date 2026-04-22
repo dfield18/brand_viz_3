@@ -468,7 +468,8 @@ export async function GET(req: NextRequest) {
         });
       }
     }
-    const sentimentKey = narrative.sentiment.label === "POS" ? "positive" : narrative.sentiment.label === "NEG" ? "negative" : "neutral";
+    const sentLabel = narrative.sentiment?.label;
+    const sentimentKey = sentLabel === "POS" ? "positive" : sentLabel === "NEG" ? "negative" : "neutral";
     for (const theme of narrative.themes) {
       if (!themesBySentiment[theme]) {
         themesBySentiment[theme] = { positive: 0, negative: 0, neutral: 0 };

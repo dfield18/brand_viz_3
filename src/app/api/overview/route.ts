@@ -18,6 +18,7 @@ import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
 import { classifyPublicFigure, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
+import { getCountableSentiment } from "@/lib/narrative/sentimentCountable";
 import { sha256 } from "@/lib/hash";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
@@ -532,17 +533,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Sentiment split (latest 24h, all prompt types) ---
+  // --- Sentiment split (full range, all prompt types) ---
+  // getCountableSentiment filters out subject-not-mentioned runs —
+  // both new nulls and legacy auto-NEU shells — so the distribution
+  // reflects responses that actually discussed the subject.
   let sentimentSplit: { positive: number; neutral: number; negative: number } | null = null;
   if (allSnapshotRuns.length > 0) {
     let pos = 0, neu = 0, neg = 0;
     for (const r of allSnapshotRuns) {
-      const nj = r.narrativeJson as Record<string, unknown> | null;
-      if (!nj) continue;
-      const sent = nj.sentiment as { label?: string } | undefined;
-      if (!sent?.label) continue;
-      if (sent.label === "POS") pos++;
-      else if (sent.label === "NEG") neg++;
+      const label = getCountableSentiment(r.narrativeJson);
+      if (!label) continue;
+      if (label === "POS") pos++;
+      else if (label === "NEG") neg++;
       else neu++;
     }
     const total = pos + neu + neg;
@@ -664,12 +666,10 @@ export async function GET(req: NextRequest) {
       const modelRuns = runsByModel.get(mc.model) ?? [];
       let pos = 0, neu = 0, neg = 0;
       for (const r of modelRuns) {
-        const nj = r.narrativeJson as Record<string, unknown> | null;
-        if (!nj) continue;
-        const sent = nj.sentiment as { label?: string } | undefined;
-        if (!sent?.label) continue;
-        if (sent.label === "POS") pos++;
-        else if (sent.label === "NEG") neg++;
+        const label = getCountableSentiment(r.narrativeJson);
+        if (!label) continue;
+        if (label === "POS") pos++;
+        else if (label === "NEG") neg++;
         else neu++;
       }
       const total = pos + neu + neg;
