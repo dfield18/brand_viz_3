@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface OverviewScorecardProps {
   overallMentionRate: number;
@@ -128,12 +129,17 @@ export function OverviewScorecard({
   kpiDeltas,
   brandName = "Brand",
   industry,
+  category,
   dominantFrames,
   sentimentSplit,
   topSourceType,
 }: OverviewScorecardProps) {
   const topFrame = dominantFrames[0] ?? null;
   const industryLabel = industry?.trim() || "industry";
+  // Use "public figure" for politicians, "organization" for advocacy
+  // orgs, "brand" for everything else — keeps the copy from calling
+  // Bernie Sanders or Donald Trump "a brand".
+  const noun = subjectNoun(brandName, category);
   const cards: CardConfig[] = [
     {
       label: "BRAND RECALL",
@@ -156,8 +162,8 @@ export function OverviewScorecard({
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
       description: dominantFrames.length > 1
         ? `${dominantFrames.length} themes tied at ${topFrame?.percentage}% of responses`
-        : "The most common way AI describes this brand",
-      tooltip: "The most common angle or perspective AI uses when talking about this brand, based on analysis of AI responses.",
+        : `The most common way AI describes this ${noun}`,
+      tooltip: `The most common angle or perspective AI uses when talking about this ${noun}, based on analysis of AI responses.`,
       isNarrative: true,
       narrativeFrames: dominantFrames.length > 0 ? dominantFrames : undefined,
       delta: null,
@@ -181,7 +187,7 @@ export function OverviewScorecard({
         ? getSentimentBadge(sentimentSplit)
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
       description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()} in tone` : "How positive or negative AI is about you",
-      tooltip: "Whether AI describes this brand in a positive, neutral, or negative way across all responses.",
+      tooltip: `Whether AI describes this ${noun} in a positive, neutral, or negative way across all responses.`,
       isSentiment: true,
       sentimentData: sentimentSplit ?? undefined,
       sentimentLabel: dominant?.label,
@@ -202,7 +208,7 @@ export function OverviewScorecard({
           ? { text: sourceLabel, color: "text-blue-700 bg-blue-50 border-blue-200" }
           : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
         description: "The most common type of source AI cites",
-        tooltip: "The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this brand.",
+        tooltip: `The category of sources (e.g., News, Reviews, Reference) most frequently cited by AI when discussing this ${noun}.`,
         delta: null,
         deltaFormat: () => "",
         scrollTarget: "sources-trend",
