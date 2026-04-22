@@ -268,7 +268,7 @@ export default async function HomePage() {
           input ~100-150 px lower, which meant first-time visitors
           scrolled past a wall of headline before seeing there was
           anything to do. */}
-      <section id="top" className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-4">
+      <section id="top" className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-0 sm:pb-0">
         <div className="max-w-2xl">
           {/* Prominent "free, no signup" pill above the H1 so first-time
               visitors can't miss the entry bar's no-friction mode. Mobile
@@ -280,7 +280,7 @@ export default async function HomePage() {
             <span className="sm:hidden">Free — no sign-up required</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
-            AI is shaping how people discover your brand —{" "}
+            AI is shaping how people discover your brand{"\u00A0—"}{" "}
             <span className="text-muted-foreground">do you know what it&apos;s saying?</span>
           </h1>
           <div className="mt-8 sm:mt-24">
@@ -437,7 +437,7 @@ export default async function HomePage() {
             Pricing
           </h2>
           <p className="text-muted-foreground mb-8">
-            Start free. No credit card required.
+            Same data, three ways to get it.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl sm:items-stretch">
             {PRICING_TIERS.map((tier) => (
