@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { ClientHeader } from "@/components/ClientHeader";
-import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { AnalyticsWithConsent } from "@/components/AnalyticsWithConsent";
 
 const GA_ID = "G-VSPTQ3C4MN";
 // Skip GA in non-production builds so local dev sessions don't
@@ -75,7 +75,7 @@ export default function RootLayout({
               'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}
         >
-          {GA_ENABLED && <GoogleAnalytics gaId={GA_ID} />}
+          {GA_ENABLED && <AnalyticsWithConsent gaId={GA_ID} />}
           <ClientHeader />
           <main className="min-h-[calc(100vh-3.75rem)]">{children}</main>
         </body>
