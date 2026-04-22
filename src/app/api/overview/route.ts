@@ -801,17 +801,31 @@ export async function GET(req: NextRequest) {
         : "mixed"
       : null;
 
+    // When scopeFacets are present, the `industry` field is deliberately
+    // omitted from summaryData — otherwise the LLM sees both a specific
+    // facet AND the stored short industry ("us politics") in its user
+    // input and tends to echo the latter. Removing it leaves the
+    // facet list as the only scope anchor available.
     const recallScope = scopeFacets[0] ?? industryScope ?? industry ?? "this space";
-    const summaryData = {
-      brandName,
-      industry: industryScope ?? industry ?? "this space",
-      ...(scopeFacets.length > 0 ? { scopeFacets } : {}),
-      brandRecall: overallMentionRate,
-      brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
-      sentiment: sentLabel,
-      topNarrative: topFrame,
-      ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
-    };
+    const summaryData = scopeFacets.length > 0
+      ? {
+          brandName,
+          scopeFacets,
+          brandRecall: overallMentionRate,
+          brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
+          sentiment: sentLabel,
+          topNarrative: topFrame,
+          ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
+        }
+      : {
+          brandName,
+          industry: industryScope ?? industry ?? "this space",
+          brandRecall: overallMentionRate,
+          brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
+          sentiment: sentLabel,
+          topNarrative: topFrame,
+          ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
+        };
 
     // Cache by hash of the inputs — the AI summary is deterministic-
     // enough at temperature 0.4 that identical inputs produce
@@ -843,8 +857,10 @@ Rules:
 - Focus on the ONE most noteworthy finding — don't try to mention every metric.
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
-- Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
-${scopeFacets.length > 0 ? `- CRITICAL: When referencing what the questions are about, you MUST pick ONE of the scopeFacets values as the specific scope phrase. Do NOT use the generic word "politics" — always anchor on a concrete facet. For example, with scopeFacets ["senators from Alabama", "Republican senators", "immigration reform"], good phrasings: "when users ask about senators from Alabama", "in Republican-senator questions", "on immigration reform topics". BAD phrasing: "about politics" — that's too generic and makes the insight worthless.` : ""}
+${scopeFacets.length > 0
+  ? `- Mention rate measures how often AI mentions ${brandName} in response to broad questions that do NOT name any ${isOrg ? "organization" : "brand"}. The questions are scoped to one of these categories: ${scopeFacets.map((f) => `"${f}"`).join(", ")}.
+- CRITICAL — SCOPE PHRASE: You MUST pick exactly ONE of those scope categories and use it verbatim as the scope phrase in your sentence. Good: "when users ask AI about ${scopeFacets[0]}", "in ${scopeFacets[0]} questions", "on ${scopeFacets[scopeFacets.length - 1]} topics". BAD — FORBIDDEN words in the output: "politics", "political", "this space", "the industry", "the category". Using any of those is a failure — the sentence is worthless without a concrete scope from the provided list.`
+  : `- Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."`}
 - CALIBRATE qualitative language to the actual number. A mention rate of 0-20% is "low," "rarely appears," or "a small share." 20-40% is "moderate" or "meaningful but not dominant." 40-60% is "notable" or "a significant share." 60-80% is "strong." 80%+ is "dominant" or "near-ubiquitous." NEVER call 10% a "strong presence" — that misrepresents the data and erodes trust in the dashboard.
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
