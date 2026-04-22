@@ -107,7 +107,11 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
     let label: string | null = null;
     if (d !== null) {
       const gapDays = Math.round(Math.abs(lastDate - new Date(closest.date + "T00:00:00").getTime()) / 86_400_000);
-      if (gapDays <= 3) label = `vs ${gapDays} day${gapDays === 1 ? "" : "s"} ago`;
+      // gapDays=0 shouldn't happen (priorRow is gated to a different
+      // element than last) but guard anyway — same-day comparison has
+      // no meaningful label.
+      if (gapDays < 1) label = null;
+      else if (gapDays <= 3) label = `vs ${gapDays} day${gapDays === 1 ? "" : "s"} ago`;
       else if (gapDays <= 10) label = "vs prior week";
       else if (gapDays <= 20) label = `vs ${gapDays} days ago`;
       else if (gapDays <= 40) label = "vs prior month";

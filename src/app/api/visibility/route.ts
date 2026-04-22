@@ -4,6 +4,7 @@ import { fetchBrandRuns, formatJobMeta } from "@/lib/apiPipeline";
 import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
+import { getCountableSentiment } from "@/lib/narrative/sentimentCountable";
 import { getSovCountsForRun } from "@/lib/visibility/rankedEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
@@ -658,13 +659,16 @@ export async function GET(req: NextRequest) {
       const rk = computeBrandRank(run.rawResponseText, brand.name, brand.slug, run.analysisJson, brandAliases);
       if (rk !== null) bucket.ranks.push(rk);
 
-      // Count POS/NEU/NEG labels (same methodology as overview/narrative sentiment)
-      const nj = run.narrativeJson as { sentiment?: { label?: string } } | null;
-      if (nj?.sentiment?.label) {
-        if (nj.sentiment.label === "POS") bucket.sentPos++;
-        else if (nj.sentiment.label === "NEG") bucket.sentNeg++;
-        else bucket.sentNeu++;
-      }
+      // Count POS/NEU/NEG labels (same methodology as overview/narrative sentiment).
+      // getCountableSentiment skips subject-not-mentioned runs (new: null
+      // sentiment; legacy: NEU + empty evidence) and re-derives legacy
+      // keyword-era NEU to POS/NEG when descriptors/claims skew. Without
+      // it political-figure sentiment per prompt would be flooded with
+      // uninformative NEU from unmentioned-in-response runs.
+      const label = getCountableSentiment(run.narrativeJson);
+      if (label === "POS") bucket.sentPos++;
+      else if (label === "NEG") bucket.sentNeg++;
+      else if (label === "NEU") bucket.sentNeu++;
 
       if (!industryRunPromptMap.has(key)) industryRunPromptMap.set(key, []);
       industryRunPromptMap.get(key)!.push({ runId: run.id, promptText, model: run.model });

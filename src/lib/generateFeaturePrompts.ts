@@ -7,8 +7,29 @@ export type BrandCategory = "commercial" | "political_advocacy";
  *  recall contexts (the figure's state + role). Returned null when
  *  the subject isn't primarily a political figure — the caller falls
  *  back to the generic industry-prompt path. */
+export type PublicFigureRole =
+  | "US Senator"
+  | "US Rep"
+  | "Governor"
+  | "State Senator"
+  | "State Rep"
+  | "Mayor"
+  | "Activist"
+  | "Candidate";
+
+const PUBLIC_FIGURE_ROLES: PublicFigureRole[] = [
+  "US Senator",
+  "US Rep",
+  "Governor",
+  "State Senator",
+  "State Rep",
+  "Mayor",
+  "Activist",
+  "Candidate",
+];
+
 export type PublicFigureMeta = {
-  role: string;               // "US Senator" | "US Rep" | "Governor" | "State Senator" | "Mayor" | "Activist" | "Candidate" | "Other"
+  role: PublicFigureRole;
   jurisdiction: string;       // e.g. "Pennsylvania", "New York NY-14", "United States"
   party: string | null;       // "Democrat" | "Republican" | "Independent" | "Other" | null
   caucus: string | null;      // "Progressive" | "Freedom Caucus" | null
@@ -48,7 +69,7 @@ export async function classifyPublicFigure(
 
 When the person IS a recognizable political figure (current or recent officeholder, candidate, or prominent activist), return:
 {
-  "role": one of "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate" | "Other",
+  "role": one of "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate" — if none fit cleanly, return null instead of guessing,
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
   "caucus": short sub-grouping if notable ("Progressive", "Freedom Caucus", "Blue Dog") or null,
@@ -66,11 +87,16 @@ No prose, no code fences.`,
     const raw = response.choices?.[0]?.message?.content?.trim();
     if (!raw || raw === "null") return null;
     const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as Partial<PublicFigureMeta> | null;
+    const parsed = JSON.parse(cleaned) as { role?: unknown; jurisdiction?: unknown; party?: unknown; caucus?: unknown; signatureIssue?: unknown } | null;
     if (!parsed || typeof parsed !== "object") return null;
     if (typeof parsed.role !== "string" || typeof parsed.jurisdiction !== "string") return null;
+    // Role allowlist — reject the "Other" sentinel and any garbage
+    // string the LLM might hallucinate. Downstream facet composition
+    // assumes a role noun that pluralizes cleanly ("senators from X"),
+    // so unknown roles are safer to drop than to render literally.
+    if (!PUBLIC_FIGURE_ROLES.includes(parsed.role as PublicFigureRole)) return null;
     return {
-      role: parsed.role,
+      role: parsed.role as PublicFigureRole,
       jurisdiction: parsed.jurisdiction,
       party: typeof parsed.party === "string" ? parsed.party : null,
       caucus: typeof parsed.caucus === "string" ? parsed.caucus : null,
