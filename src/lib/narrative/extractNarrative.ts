@@ -144,17 +144,26 @@ const DESCRIPTOR_STOPWORDS = new Set([
 // LLM-based sentiment classification
 // ---------------------------------------------------------------------------
 
-const SENTIMENT_CLASSIFY_SYSTEM = `Classify the overall sentiment toward the named entity in the given text.
+const SENTIMENT_CLASSIFY_SYSTEM = `Classify the net lean of the text toward the named entity.
 
-Respond with valid JSON only, nothing else:
+Respond with valid JSON only, no prose, no code fences:
 {"label": "POS" | "NEU" | "NEG", "score": number}
 
-Label rules:
-- POS: overall positive framing — praise, endorsement, emphasis on strengths, positive outcomes, or favorable comparisons. Score in [0.1, 1.0].
-- NEG: overall negative framing — criticism, concerns, emphasis on weaknesses, controversies, or unfavorable comparisons. Score in [-1.0, -0.1].
-- NEU: purely factual description, balanced pros/cons, or no evaluative signal. Score = 0.
+IMPORTANT — default to POS or NEG. Your job is detecting net lean, not avoiding a position. Most real-world descriptions carry at least subtle evaluative content; surface it.
 
-Be decisive. If the text takes a clear stance (positive OR negative) about the entity, classify it as POS or NEG even when the language is mild or hedged. Only use NEU when the text is genuinely descriptive with no evaluative content.`;
+Rules:
+- POS: any net-positive evaluative content. Praise, endorsement, achievements, favorable comparisons, OR positives outweighing negatives in a hedged "on balance" framing. Score in [0.1, 1.0].
+- NEG: any net-negative evaluative content. Criticism, controversies, failures, unfavorable comparisons, OR negatives outweighing positives in hedged framing. Score in [-1.0, -0.1].
+- NEU: use SPARINGLY. Only when text is (a) 100% factual — dates, offices, voting records stated without editorial framing — or (b) positives and negatives are deliberately equal with no net lean. Score = 0.
+
+Examples (entity = "Senator X"):
+- "Senator X is a champion of working families" → POS
+- "Senator X has faced criticism for missing votes" → NEG
+- "Senator X represents Pennsylvania and chairs the HELP Committee" → NEU (pure facts)
+- "Senator X, widely respected for bipartisan work, has been criticized on issue Y by party leadership" → POS (one complaint doesn't offset "widely respected for bipartisan work")
+- "Senator X, a polarizing figure, has passionate supporters and equally passionate critics" → NEU (explicitly balanced)
+
+Balanced political coverage often still has a net lean — detect it. When uncertain between NEU and POS/NEG, pick the direction.`;
 
 const SENTIMENT_CLASSIFY_TIMEOUT_MS = 6_000;
 
