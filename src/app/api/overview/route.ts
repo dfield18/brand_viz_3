@@ -17,6 +17,7 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
+import { sha256 } from "@/lib/hash";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
 
@@ -150,6 +151,13 @@ async function getModelOverviewData(
 // Server-side response cache: avoids re-running GPT calls when data hasn't changed
 const overviewCache = new Map<string, { response: unknown; runCount: number; ts: number }>();
 const OVERVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+
+// Cache the 1-sentence "Key Insight" GPT-4o-mini summary by hash of
+// its inputs. Saves ~1-2 s per repeat request on preset demo brands
+// and any Pro brand whose numbers haven't moved. 30-minute TTL;
+// restarts of the serverless instance flush the cache.
+const summaryCache = new Map<string, { text: string; ts: number }>();
+const SUMMARY_CACHE_TTL_MS = 30 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -745,6 +753,21 @@ export async function GET(req: NextRequest) {
       topNarrative: topFrame,
       ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
     };
+
+    // Cache by hash of the inputs — the AI summary is deterministic-
+    // enough at temperature 0.4 that identical inputs produce
+    // near-identical outputs. Saves ~1-2s per repeat view on hot
+    // endpoints like the preset demo brands. 30-minute TTL because
+    // the input (mention rate, top frame, sentiment split) only
+    // moves when new Jobs land, and this cache is invalidated by
+    // the in-process restart anyway.
+    const summaryHash = sha256(
+      JSON.stringify({ isOrg, data: summaryData }),
+    ).slice(0, 16);
+    const cached = summaryCache.get(summaryHash);
+    if (cached && Date.now() - cached.ts < SUMMARY_CACHE_TTL_MS) {
+      aiSummary = cached.text;
+    } else {
     const oai = getOpenAIDefault();
     const completion = await oai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -773,6 +796,10 @@ Rules:
       ],
     });
     aiSummary = completion.choices[0]?.message?.content?.trim() ?? null;
+    if (aiSummary) {
+      summaryCache.set(summaryHash, { text: aiSummary, ts: Date.now() });
+    }
+    } // close the else branch of the cache check
   } catch (e) {
     console.error("AI summary generation failed:", e instanceof Error ? e.message : e);
     // Fallback: aiSummary stays null, client can show nothing or a simple fallback

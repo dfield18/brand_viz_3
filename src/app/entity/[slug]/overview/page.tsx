@@ -82,10 +82,16 @@ function OverviewInner() {
   const { data: visData } = useCachedFetch<{ hasData: boolean; visibility?: { trend: VisibilityTrendPoint[] } }>(visUrl);
 
   // Prefetch other tab data once overview loads
+  // Defer the sibling-tab prefetch to idle time so it doesn't fight
+  // the Overview tab's own render for CPU / network on slower
+  // devices. Seven parallel GPT-backed GETs kicked off immediately
+  // on mount pushed LCP by a few hundred ms on cold loads; waiting
+  // for requestIdleCallback keeps the same snappy tab-switching
+  // behavior without the initial render cost.
   useEffect(() => {
     if (!apiData?.hasData || !validModel) return;
     const base = `brandSlug=${encodeURIComponent(params.slug)}&model=${model}&range=${range}`;
-    prefetchAll([
+    const urls = [
       `/api/visibility?${base}`,
       `/api/narrative?${base}`,
       `/api/competition?${base}`,
@@ -93,7 +99,26 @@ function OverviewInner() {
       `/api/topics?${base}`,
       `/api/responses?${base}`,
       `/api/recommendations?${base}`,
-    ]);
+    ];
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let handle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      handle = idleWindow.requestIdleCallback(() => prefetchAll(urls), { timeout: 4000 });
+    } else {
+      // Safari still doesn't ship requestIdleCallback — 1s timeout
+      // as a fallback preserves the original intent.
+      timeoutHandle = setTimeout(() => prefetchAll(urls), 1000);
+    }
+    return () => {
+      if (handle !== null && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(handle);
+      }
+      if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+    };
   }, [apiData?.hasData, validModel, params.slug, model, range]);
 
   // Loading

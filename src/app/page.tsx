@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sha256 } from "@/lib/hash";
 import { GET as getVisibility } from "@/app/api/visibility/route";
 import { FreeDashboard } from "@/components/free/FreeDashboard";
-import { LandingDashboard } from "@/components/landing/LandingDashboard";
+import { LazyLandingDashboard } from "@/components/landing/LazyLandingDashboard";
 import { FREE_TIER_CONFIG } from "@/config/freeTier";
 import type { VisibilityTrendPoint } from "@/types/api";
 import {
@@ -373,7 +373,7 @@ export default async function HomePage() {
             </div>
             <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
               <div className="p-6 sm:p-8">
-                <LandingDashboard
+                <LazyLandingDashboard
                   brandName={sampleData.brandName}
                   industry={sampleData.industry}
                   trend={sampleData.trend}
