@@ -139,36 +139,63 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build snapshots and compute alerts
-    const snapshots = buildMovementSnapshots(movementRuns, brandName, brand.slug, aliasMap);
-    const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
-
-    // Format response
-    const competitorAlerts = alertResult.alerts
-      .slice(0, 15)
-      .map((a) => ({
-        entityId: a.entityId,
-        displayName: resolveEntityName(a.entityId, entityDisplayNames),
-        mentionRateChange: a.mentionRateChange,
-        recentMentionRate: a.recentMentionRate,
-        previousMentionRate: a.previousMentionRate,
-        direction: a.direction,
-      }));
+    // Build snapshots and compute alerts. Wrapped in its own try so a
+    // downstream bug (e.g. a malformed analysisJson.competitors entry)
+    // doesn't poison the whole endpoint — the caller can still render
+    // the leaderboard fallback from /api/competition.
+    let competitorAlerts: {
+      entityId: string;
+      displayName: string;
+      mentionRateChange: number;
+      recentMentionRate: number;
+      previousMentionRate: number;
+      direction: "rising" | "falling" | "stable";
+    }[] = [];
+    let comparisonPeriodLabel = "prior snapshot";
+    try {
+      const snapshots = buildMovementSnapshots(movementRuns, brandName, brand.slug, aliasMap);
+      const alertResult = computeCompetitorAlerts(snapshots, brand.slug);
+      comparisonPeriodLabel = alertResult.comparisonPeriodLabel;
+      competitorAlerts = alertResult.alerts
+        .slice(0, 15)
+        .map((a) => ({
+          entityId: a.entityId,
+          displayName: resolveEntityName(a.entityId, entityDisplayNames),
+          mentionRateChange: a.mentionRateChange,
+          recentMentionRate: a.recentMentionRate,
+          previousMentionRate: a.previousMentionRate,
+          direction: a.direction,
+        }));
+    } catch (inner) {
+      console.error(
+        "[competitor-alerts] Snapshot/alert compute failed:",
+        inner instanceof Error ? `${inner.message}\n${inner.stack}` : inner,
+      );
+      // Fall through with competitorAlerts = [] so the client still
+      // gets a well-shaped response rather than a 500.
+    }
 
     return NextResponse.json({
       hasData: true,
       competitorAlerts,
-      comparisonPeriodLabel: alertResult.comparisonPeriodLabel,
+      comparisonPeriodLabel,
     }, {
       headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
     });
   } catch (e) {
-    console.error("[competitor-alerts] Error:", e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : "";
+    console.error("[competitor-alerts] Error:", msg, "\n", stack);
+    // Include the real error in the response body so client-side
+    // debugging can see what failed instead of just "Failed to compute
+    // movement data". Still returns 500 so error-aware clients (like
+    // the CompetitorAlerts component's fallback path) treat it as a
+    // failure.
     return NextResponse.json({
       hasData: false,
       competitorAlerts: [],
       comparisonPeriodLabel: "prior snapshot",
-      error: "Failed to compute movement data",
+      error: `Movement data unavailable: ${msg}`,
     }, { status: 500 });
   }
 }

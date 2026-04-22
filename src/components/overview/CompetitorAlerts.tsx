@@ -60,14 +60,12 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
     );
   }
 
-  if (error || data?.error) {
-    return (
-      <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-        <h2 className="text-sm font-semibold">Competitor Movement</h2>
-        <p className="text-xs text-muted-foreground mt-2">Movement data unavailable</p>
-      </section>
-    );
-  }
+  // Movement endpoint errored — but the /api/competition response is
+  // computed independently and usually still works. If it has data,
+  // render the leaderboard fallback below instead of collapsing to
+  // "Movement data unavailable." Only fall through to the error card
+  // if BOTH pipelines have nothing.
+  const movementErrored = Boolean(error || data?.error);
 
   const rawAlerts = data?.competitorAlerts ?? [];
   // Filter to only entities shown in the Issue Landscape / Competitive
@@ -111,16 +109,23 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   // True empty state — no movement data AND no leaderboard fallback.
   // Render a visible placeholder rather than returning null, because
   // the page nav links to this section and an invisible target
-  // scrolls to nothing.
+  // scrolls to nothing. Separate copy when the movement endpoint
+  // actually errored vs. when it simply had nothing to report.
   if (allAlerts.length === 0 && leaderboardFallback.length === 0) {
     return (
       <section className="rounded-xl bg-card px-5 py-4 shadow-section">
         <h2 className="text-sm font-semibold">{isOrg ? "Movement" : "Competitor Movement"}</h2>
-        <p className="text-xs text-muted-foreground mt-2">
-          Not enough data yet. Run prompts to populate the competitive
-          landscape, then re-check once a second snapshot lands so movement
-          deltas can be computed.
-        </p>
+        {movementErrored ? (
+          <p className="text-xs text-muted-foreground mt-2">
+            Movement data unavailable right now. Retry in a minute or re-run prompts to refresh the competitive landscape.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-2">
+            Not enough data yet. Run prompts to populate the competitive
+            landscape, then re-check once a second snapshot lands so movement
+            deltas can be computed.
+          </p>
+        )}
       </section>
     );
   }
