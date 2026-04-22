@@ -4,9 +4,11 @@ import {
   classifyBrandCategory,
   classifyBrandDisplayName,
   classifyBrandIndustry,
+  classifyPublicFigure,
   generateBrandAliases,
   generateBrandPrompts,
   generateIndustryPrompts,
+  looksLikePersonName,
   type BrandCategory,
 } from "@/lib/generateFeaturePrompts";
 
@@ -56,10 +58,19 @@ export async function materializePromptsForBrand(brandId: string) {
     const industry = brand.industry || brandName;
     const category = (brand.category || "commercial") as BrandCategory;
 
+    // When the subject is a political figure, the tiered industry
+    // generator scopes Tier A questions to the roster the figure is
+    // literally in (state + role). Gated so we don't burn the GPT
+    // call on obvious orgs.
+    const figureMeta =
+      category === "political_advocacy" && looksLikePersonName(brandName)
+        ? await classifyPublicFigure(brandName)
+        : null;
+
     // Generate brand + industry prompts in parallel
     const [brandPrompts, industryPrompts] = await Promise.all([
       generateBrandPrompts(brandName, industry, category),
-      generateIndustryPrompts(brandName, industry, category),
+      generateIndustryPrompts(brandName, industry, category, { figureMeta }),
     ]);
 
     const allPrompts = [...brandPrompts, ...industryPrompts];
