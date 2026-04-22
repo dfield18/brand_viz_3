@@ -1,11 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 type ConsentState = "unset" | "granted" | "declined";
 
 const STORAGE_KEY = "analytics-consent";
+
+// useSyncExternalStore is React's canonical hook for reading an
+// external source (localStorage) without tripping the
+// react-hooks/set-state-in-effect lint rule. Subscribe is a no-op
+// because the only writer is our own button click, which updates
+// local state directly.
+const emptySubscribe = () => () => {};
+const readStoredConsent = (): ConsentState => {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "granted" || stored === "declined") return stored;
+  } catch {
+    // localStorage unavailable (Safari private mode, storage blocked)
+    // — treat as unset so the banner shows and the visitor can still
+    // choose.
+  }
+  return "unset";
+};
+// SSR snapshot: returning null tells React "no data during server
+// render" — the component bails out until client hydration supplies
+// the real value. Avoids flashing the banner on initial SSR.
+const serverSnapshot = (): null => null;
 
 /**
  * Client-side consent gate for visitors in GDPR jurisdictions.
@@ -14,37 +36,28 @@ const STORAGE_KEY = "analytics-consent";
  * visitors don't see the banner again.
  */
 export function ConsentGatedAnalytics({ gaId }: { gaId: string }) {
-  // Start as "unset" on SSR/first hydration so nothing leaks to a
-  // visitor whose choice is unknown. Effect below reads storage and
-  // updates once — brief tick before banner appears is acceptable
-  // and avoids any hydration mismatch warning.
-  const [consent, setConsent] = useState<ConsentState>("unset");
-  const [hydrated, setHydrated] = useState(false);
+  const storedConsent = useSyncExternalStore(
+    emptySubscribe,
+    readStoredConsent,
+    serverSnapshot,
+  );
+  // Local override so button clicks update the UI without needing to
+  // wire a real subscribe() around localStorage.
+  const [override, setOverride] = useState<ConsentState | null>(null);
+  const consent = override ?? storedConsent;
 
-  useEffect(() => {
-    setHydrated(true);
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored === "granted" || stored === "declined") {
-        setConsent(stored);
-      }
-    } catch {
-      // localStorage unavailable (Safari private mode etc.) — leave
-      // as "unset" so the banner shows; visitor can still accept.
-    }
-  }, []);
-
-  const decide = (choice: "granted" | "declined") => {
+  const decide = useCallback((choice: "granted" | "declined") => {
     try {
       window.localStorage.setItem(STORAGE_KEY, choice);
     } catch {
       // If storage is blocked, still honor the in-session choice;
       // banner just reappears next visit.
     }
-    setConsent(choice);
-  };
+    setOverride(choice);
+  }, []);
 
-  if (!hydrated) return null;
+  // SSR / pre-hydration — render nothing.
+  if (consent === null) return null;
 
   return (
     <>

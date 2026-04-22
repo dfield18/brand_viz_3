@@ -768,35 +768,6 @@ export async function GET(req: NextRequest) {
         firstMentionRate,
         visibilityRanking,
         positionDistribution,
-        positionDistributionOverTime: (() => {
-          const entries: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
-          for (const [key, bucket] of Object.entries(trendByDateModel)) {
-            const [date, m, prompt] = key.split("||");
-            if (prompt !== "all") continue; // only aggregate buckets
-            if (bucket.ranks.length === 0) continue;
-            // Use ALL runs (including nulls) as denominator so Rank #1 %
-            // matches the Top Result Rate KPI (which uses computeRank1RateAll)
-            const total = bucket.ranks.length;
-            const p1 = bucket.ranks.filter((r) => r === 1).length;
-            const p23 = bucket.ranks.filter((r) => r !== null && r >= 2 && r <= 3).length;
-            const p45 = bucket.ranks.filter((r) => r !== null && r >= 4 && r <= 5).length;
-            const rPos1 = Math.round((p1 / total) * 100);
-            const rPos23 = Math.round((p23 / total) * 100);
-            const rPos45 = Math.round((p45 / total) * 100);
-            // Use remainder for last band to guarantee sum = 100%
-            // This now absorbs both rank 6+ and not-mentioned runs
-            const rPos6 = 100 - rPos1 - rPos23 - rPos45;
-            entries.push({
-              date,
-              model: m,
-              pos1: rPos1,
-              pos2_3: rPos23,
-              pos4_5: rPos45,
-              pos6plus: Math.max(0, rPos6),
-            });
-          }
-          return entries.sort((a, b) => a.date.localeCompare(b.date) || a.model.localeCompare(b.model));
-        })(),
         opportunityPrompts,
         kpiDeltas,
         worstPerformingPrompts,

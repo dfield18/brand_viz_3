@@ -194,38 +194,6 @@ export const PATAGONIA_DUMMY_VISIBILITY: VisibilityResponse = {
     { position: 7, model: "perplexity", count: 2, percentage: 4 },
   ],
 
-  positionDistributionOverTime: (() => {
-    const rows: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
-    const WEEKS = 16;
-    const now = new Date();
-    const base = new Date(now);
-    base.setDate(base.getDate() - (WEEKS - 1) * 7);
-    const models = ["all", "chatgpt", "gemini", "claude", "perplexity"];
-    const modelOffsets: Record<string, number> = { all: 0, chatgpt: 4, gemini: -3, claude: 2, perplexity: -2 };
-    for (let i = 0; i < WEEKS; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() + i * 7);
-      const date = d.toISOString().slice(0, 10);
-      const t = i / (WEEKS - 1); // 0→1 over time
-      for (const m of models) {
-        const off = modelOffsets[m];
-        const noise = Math.sin(i * 0.9 + off) * 2;
-        const p1 = Math.round(30 + t * 22 + off * 0.5 + noise);       // 30→52%
-        const p23 = Math.round(45 - t * 12 + noise * 0.5);            // 45→33%
-        const p45 = Math.round(15 - t * 5 + Math.sin(i) * 1.5);      // 15→10%
-        const raw6 = 100 - p1 - p23 - p45;                            // remainder
-        rows.push({
-          date, model: m,
-          pos1: Math.max(0, Math.min(100, p1)),
-          pos2_3: Math.max(0, Math.min(100, p23)),
-          pos4_5: Math.max(0, Math.min(100, p45)),
-          pos6plus: Math.max(0, Math.min(100, raw6)),
-        });
-      }
-    }
-    return rows;
-  })(),
-
   resultsByQuestion: [
     { promptText: "Best sustainable outdoor clothing brands", model: "chatgpt", aiVisibility: 100, shareOfVoice: 28, firstPosition: 67, avgPosition: 1.5, avgSentiment: "Strong" },
     { promptText: "Best sustainable outdoor clothing brands", model: "gemini", aiVisibility: 100, shareOfVoice: 22, firstPosition: 50, avgPosition: 2.0, avgSentiment: "Positive" },
@@ -497,38 +465,6 @@ export const NUCLEAR_ENERGY_DUMMY_VISIBILITY: VisibilityResponse = {
     { position: 5, model: "perplexity", count: 5, percentage: 8 },
     { position: 6, model: "perplexity", count: 3, percentage: 5 },
   ],
-
-  positionDistributionOverTime: (() => {
-    const rows: { date: string; model: string; pos1: number; pos2_3: number; pos4_5: number; pos6plus: number }[] = [];
-    const WEEKS = 20;
-    const now = new Date();
-    const base = new Date(now);
-    base.setDate(base.getDate() - (WEEKS - 1) * 7);
-    const models = ["all", "chatgpt", "gemini", "claude", "perplexity"];
-    const modelOffsets: Record<string, number> = { all: 0, chatgpt: 5, gemini: -4, claude: 3, perplexity: -2 };
-    for (let i = 0; i < WEEKS; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() + i * 7);
-      const date = d.toISOString().slice(0, 10);
-      const t = i / (WEEKS - 1);
-      for (const m of models) {
-        const off = modelOffsets[m];
-        const noise = Math.sin(i * 0.8 + off) * 2;
-        const p1 = Math.round(35 + t * 17 + off * 0.4 + noise);
-        const p23 = Math.round(44 - t * 9 + noise * 0.4);
-        const p45 = Math.round(13 - t * 4 + Math.sin(i) * 1.2);
-        const raw6 = 100 - p1 - p23 - p45;
-        rows.push({
-          date, model: m,
-          pos1: Math.max(0, Math.min(100, p1)),
-          pos2_3: Math.max(0, Math.min(100, p23)),
-          pos4_5: Math.max(0, Math.min(100, p45)),
-          pos6plus: Math.max(0, Math.min(100, raw6)),
-        });
-      }
-    }
-    return rows;
-  })(),
 
   resultsByQuestion: [
     // What is the most reliable source of clean energy?

@@ -358,15 +358,27 @@ async function processPromptStep(args: ProcessPromptArgs): Promise<void> {
     },
   });
 
-  persistProminenceForRun({
-    runId: run.id,
-    model,
-    promptId: prompt.id,
-    brandName,
-    brandSlug,
-    responseText,
-    analysisJson: analysis,
-  }).catch(() => {});
+  // Await this — fire-and-forget inside a "use step" function lets
+  // the Workflow runtime tear down the sandbox before the promise
+  // resolves, silently skipping the EntityResponseMetric writes that
+  // Competition and Visibility KPIs depend on. A missing prominence
+  // row on one run just looks like a wrong denominator downstream.
+  try {
+    await persistProminenceForRun({
+      runId: run.id,
+      model,
+      promptId: prompt.id,
+      brandName,
+      brandSlug,
+      responseText,
+      analysisJson: analysis,
+    });
+  } catch (err) {
+    console.error(
+      `[backfill-workflow] persistProminenceForRun failed run=${run.id}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 
   try {
     const narrative = await extractNarrativeForRun(responseText, brandName, brandSlug);

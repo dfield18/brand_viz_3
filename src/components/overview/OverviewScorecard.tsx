@@ -142,13 +142,13 @@ export function OverviewScorecard({
   const noun = subjectNoun(brandName, category);
   const cards: CardConfig[] = [
     {
-      label: "BRAND RECALL",
+      label: "MENTION RATE",
       value: `${Math.round(overallMentionRate)}%`,
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: getVisibilityBadge(overallMentionRate),
       description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
-      tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
+      tooltip: `We ask AI generic questions about the industry without naming any ${noun}. This measures how often AI brings up ${brandName} on its own.`,
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
     },

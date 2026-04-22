@@ -500,7 +500,7 @@ function generateVisibility(brandId: string, filters: Filters): VisibilityRespon
     { promptText: `Top alternatives to ${brandId}`, model: "gemini", position: null },
   ];
 
-  return { clusters, clusterBreakdown, modelBreakdown, topPromptWins, trend, rankDistribution, intentSplit, overallMentionRate, shareOfVoice, avgRankScore, firstMentionRate, visibilityRanking, positionDistribution, positionDistributionOverTime: [], opportunityPrompts, kpiDeltas, worstPerformingPrompts, resultsByQuestion, promptPositions };
+  return { clusters, clusterBreakdown, modelBreakdown, topPromptWins, trend, rankDistribution, intentSplit, overallMentionRate, shareOfVoice, avgRankScore, firstMentionRate, visibilityRanking, positionDistribution, opportunityPrompts, kpiDeltas, worstPerformingPrompts, resultsByQuestion, promptPositions };
 }
 
 // --- Competition mock data ---

@@ -234,7 +234,6 @@ export interface VisibilityResponse {
   firstMentionRate: number;    // 0–100
   visibilityRanking: VisibilityRankingEntry[];
   positionDistribution: PositionDistributionEntry[];
-  positionDistributionOverTime: PositionDistributionOverTimeEntry[];
   opportunityPrompts: OpportunityPrompt[];
   kpiDeltas: KpiDeltas | null;
   worstPerformingPrompts: WorstPerformingPrompt[];
@@ -294,15 +293,6 @@ export interface PositionDistributionEntry {
   model: string; // "all" or specific model
   count: number;
   percentage: number; // 0–100
-}
-
-export interface PositionDistributionOverTimeEntry {
-  date: string;        // "YYYY-MM-DD"
-  model: string;       // "all" | "chatgpt" | "gemini" | "claude" | "perplexity"
-  pos1: number;        // percentage 0–100
-  pos2_3: number;
-  pos4_5: number;
-  pos6plus: number;
 }
 
 // --- Competition tab ---

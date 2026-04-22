@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 type MetricTab = "visibility" | "sov" | "topResult";
 
@@ -194,10 +195,12 @@ export function SummaryCardsDonut({
   kpiDeltas,
   brandName = "Brand",
   industry,
+  category,
   onCardClick,
   activeMetric,
   sparklines,
 }: SummaryCardsDonutProps) {
+  const noun = subjectNoun(brandName, category);
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
@@ -206,13 +209,13 @@ export function SummaryCardsDonut({
 
   const cards: DonutCardConfig[] = [
     {
-      label: "BRAND RECALL",
+      label: "MENTION RATE",
       value: `${Math.round(overallMentionRate)}%`,
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: visibilityBadge,
       description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
-      tooltip: "We ask AI generic questions about the industry without naming any brand. This measures how often AI brings up the brand on its own.",
+      tooltip: `We ask AI generic questions about the industry without naming any ${noun}. This measures how often AI brings up ${brandName} on its own.`,
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
       metricKey: "visibility",
