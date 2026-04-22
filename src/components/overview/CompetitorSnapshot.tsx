@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AlertTriangle, Trophy } from "lucide-react";
 import type { CompetitionResponse } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface CompetitionApiResponse {
   hasData: boolean;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, brandName }: Props) {
+  const noun = subjectNoun(brandName ?? "Brand", brandCategory);
   const url = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<CompetitionApiResponse>(url);
 
@@ -79,8 +81,8 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
           <h2 className="text-base font-semibold">{isOrg ? "Issue Landscape" : "Competitive Landscape"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isOrg
-              ? `Other organizations AI mentions alongside ${brandName || "this brand"} in this space`
-              : `How ${brandName || "this brand"} stacks up against top competitors in AI responses`}
+              ? `Other organizations AI mentions alongside ${brandName || `this ${noun}`} in this space`
+              : `How ${brandName || `this ${noun}`} stacks up against top competitors in AI responses`}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
             Bars show how often each name comes up compared to others in AI responses

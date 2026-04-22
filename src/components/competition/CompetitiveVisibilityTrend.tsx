@@ -15,6 +15,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import type { CompetitiveTrendPoint, CompetitionResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 type MetricMode = "visibility" | "mentionShare" | "topResult";
 
@@ -24,6 +25,7 @@ interface CompetitiveVisibilityTrendProps {
   brandEntityId: string;
   brandSlug: string;
   brandName?: string;
+  category?: string | null;
   range: number;
   pageModel: string;
 }
@@ -74,11 +76,13 @@ export function CompetitiveVisibilityTrend({
   brandEntityId,
   brandSlug,
   brandName,
+  category,
   range,
   pageModel,
 }: CompetitiveVisibilityTrendProps) {
   const [model, setModel] = useState(pageModel);
   const [metric, setMetric] = useState<MetricMode>("visibility");
+  const noun = subjectNoun(brandName ?? "Brand", category);
 
   const url =
     model !== pageModel
@@ -232,7 +236,7 @@ export function CompetitiveVisibilityTrend({
       )}
 
       <p className="text-xs text-muted-foreground mt-1">
-        How {brandName ?? "the brand"}&apos;s metrics compare to competitors over time
+        How {brandName ?? `the ${noun}`}&apos;s metrics compare to competitors over time
       </p>
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
         {config.subtitle}

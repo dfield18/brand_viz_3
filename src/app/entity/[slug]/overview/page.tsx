@@ -247,7 +247,7 @@ function OverviewInner() {
         )}
 
         <div id="cross-model" className="scroll-mt-24">
-          <CrossModelTable models={data.modelComparison} brandName={brandName} />
+          <CrossModelTable models={data.modelComparison} brandName={brandName} category={apiData.brandCategory} />
           <DataFooter prompts="mixed" date={range} />
         </div>
 

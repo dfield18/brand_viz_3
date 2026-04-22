@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 import type { SentimentTrendPoint, ModelComparison } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface SentimentByModelProps {
   trend: SentimentTrendPoint[];
   brandName?: string;
+  category?: string | null;
   /** When provided, use these pre-computed per-model sentiment values (% positive) to match the overview tab exactly. */
   modelComparison?: ModelComparison[];
 }
@@ -33,7 +35,8 @@ function scoreLabel(score: number, split?: { positive: number; neutral: number; 
   return "Mixed";
 }
 
-export function SentimentByModel({ trend, brandName = "the Brand", modelComparison }: SentimentByModelProps) {
+export function SentimentByModel({ trend, brandName = "the Brand", category, modelComparison }: SentimentByModelProps) {
+  const noun = subjectNoun(brandName, category);
   const modelScores = useMemo(() => {
     // Prefer modelComparison (from overview API) for consistency with overview tab
     if (modelComparison && modelComparison.length > 0) {
@@ -72,7 +75,7 @@ export function SentimentByModel({ trend, brandName = "the Brand", modelComparis
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">How Each AI Platform Sees {brandName}</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
-        Whether ChatGPT, Gemini, Claude, and Perplexity describe the brand positively or negatively
+        Whether ChatGPT, Gemini, Claude, and Perplexity describe the {noun} positively or negatively
       </p>
 
       <div className="space-y-3">

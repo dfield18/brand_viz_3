@@ -21,7 +21,7 @@ import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
-import { useBrandName } from "@/lib/useBrandName";
+import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
 
 interface ApiResponse {
   hasData: boolean;
@@ -66,6 +66,7 @@ function NarrativeInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
   const brandName = useBrandName(params.slug);
+  const brandCategory = useBrandCategory(params.slug);
   const { openByRunId } = useResponseDetail(params.slug);
 
   const range = Number(searchParams.get("range")) || 90;
@@ -195,6 +196,8 @@ function NarrativeInner() {
             hedgingRate={data.hedgingRate}
             sentimentTrend={data.sentimentTrend}
             narrativeDeltas={apiData.narrativeDeltas}
+            brandName={brandName}
+            category={brandCategory}
           />
         </div>
 
@@ -257,6 +260,8 @@ function NarrativeInner() {
               brandSlug={params.slug}
               range={range}
               pageModel={model}
+              brandName={brandName}
+              category={brandCategory}
             />
           </div>
         )}
@@ -278,6 +283,7 @@ function NarrativeInner() {
               frames={frames}
               examples={data.examples}
               brandName={brandName}
+              category={brandCategory}
               frameTrend={data.frameTrend}
               onFrameClick={() => {
                 const el = document.getElementById("frame-trend");
@@ -304,7 +310,7 @@ function NarrativeInner() {
         {/* Sentiment by Model */}
         {data.sentimentTrend && data.sentimentTrend.length > 0 && (
           <div id="sentiment-by-model" className="scroll-mt-24">
-            <SentimentByModel trend={data.sentimentTrend} brandName={brandName} modelComparison={overviewData?.overview?.modelComparison} />
+            <SentimentByModel trend={data.sentimentTrend} brandName={brandName} category={brandCategory} modelComparison={overviewData?.overview?.modelComparison} />
           </div>
         )}
 

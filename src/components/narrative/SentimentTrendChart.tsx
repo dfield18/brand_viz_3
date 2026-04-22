@@ -13,12 +13,15 @@ import {
 import type { SentimentTrendPoint, NarrativeResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface SentimentTrendChartProps {
   trend: SentimentTrendPoint[];
   brandSlug: string;
   range: number;
   pageModel: string;
+  brandName?: string;
+  category?: string | null;
 }
 
 interface NarrativeApiResponse {
@@ -36,8 +39,9 @@ const MODEL_LINE_COLORS: Record<string, string> = {
   google: "hsl(4, 80%, 56%)",
 };
 
-export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pageModel }: SentimentTrendChartProps) {
+export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pageModel, brandName = "Brand", category }: SentimentTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
+  const noun = subjectNoun(brandName, category);
 
   // Self-fetch when page-level model changes to get fresh trend data
   const fetchUrl = focusModel !== pageModel && focusModel !== "all"
@@ -78,7 +82,7 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
         <div>
           <h2 className="text-base font-semibold">How AI Sentiment Is Changing</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Whether AI is becoming more positive or negative about the brand over time
+            Whether AI is becoming more positive or negative about the {noun} over time
           </p>
           <p className="text-[11px] text-muted-foreground/70 mt-0.5">
             Y-axis shows % of AI responses with positive sentiment

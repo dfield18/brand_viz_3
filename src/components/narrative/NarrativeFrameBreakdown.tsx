@@ -128,7 +128,7 @@ function BarYAxisTick(props: {
   );
 }
 
-export function NarrativeFrameBreakdown({ frames, brandName = "this brand" }: Props) {
+export function NarrativeFrameBreakdown({ frames, brandName = "this entity" }: Props) {
   const [selectedModel, setSelectedModel] = useState<string>("all");
 
   if (frames.length === 0) return null;

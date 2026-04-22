@@ -5,6 +5,7 @@ import { Info, ExternalLink, ChevronUp, ChevronDown, ChevronRight, Trophy, Alert
 import type { ResultByQuestion, TopPromptWin, WorstPerformingPrompt } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
 import { useResponseDetail } from "@/lib/useResponseDetail";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface ResultsByQuestionProps {
   results: ResultByQuestion[];
@@ -12,6 +13,7 @@ interface ResultsByQuestionProps {
   opportunities: WorstPerformingPrompt[];
   brandSlug?: string;
   brandName?: string;
+  category?: string | null;
   /** Render without card wrapper */
   inline?: boolean;
   /** Externally controlled model filter — hides the dropdown when set */
@@ -36,13 +38,16 @@ const STATUS_BADGE: Record<RowStatus, { label: string; className: string }> = {
   missing: { label: "Missing", className: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400" },
 };
 
-const COLUMN_TOOLTIPS = {
-  aiVisibility: "Percentage of responses that mention the brand for this question",
-  shareOfVoice: "Brand's share of all entity mentions for this question",
-  firstPosition: "Percentage of responses where brand is the #1 result",
-  avgPosition: "Average rank position when the brand is mentioned",
-  avgSentiment: "How the brand is presented: Strong, Positive, Neutral, or Negative",
-};
+function buildColumnTooltips(noun: string) {
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
+  return {
+    aiVisibility: `Percentage of responses that mention the ${noun} for this question`,
+    shareOfVoice: `${Noun}'s share of all entity mentions for this question`,
+    firstPosition: `Percentage of responses where ${noun} is the #1 result`,
+    avgPosition: `Average rank position when the ${noun} is mentioned`,
+    avgSentiment: `How the ${noun} is presented: Strong, Positive, Neutral, or Negative`,
+  };
+}
 
 type SortKey = "promptText" | "model" | "aiVisibility" | "shareOfVoice" | "firstPosition" | "avgPosition" | "avgSentiment" | "status";
 type SortDir = "asc" | "desc";
@@ -94,13 +99,15 @@ interface PreviewResponse {
   analysis: unknown;
 }
 
-export function ResultsByQuestion({ results, wins, opportunities, brandSlug, brandName, inline, externalModel, isOrg }: ResultsByQuestionProps) {
+export function ResultsByQuestion({ results, wins, opportunities, brandSlug, brandName, category, inline, externalModel, isOrg }: ResultsByQuestionProps) {
   const [internalModel, setInternalModel] = useState("all");
   const selectedModel = externalModel ?? internalModel;
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [filter, setFilter] = useState<FilterMode>("all");
   const { openResponse } = useResponseDetail(brandSlug ?? "");
+  const noun = subjectNoun(brandName ?? "Brand", category);
+  const columnTooltips = useMemo(() => buildColumnTooltips(noun), [noun]);
 
   // Expandable preview state
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
@@ -312,7 +319,7 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
         <div>
           <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Performance by Question</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            How {brandName || "this brand"} performs across different industry questions — none mention {brandName || "this brand"} by name
+            How {brandName || `this ${noun}`} performs across different industry questions — none mention {brandName || `this ${noun}`} by name
           </p>
         </div>
         {!externalModel && (
@@ -396,11 +403,11 @@ export function ResultsByQuestion({ results, wins, opportunities, brandSlug, bra
                   <SortIcon column="status" sortKey={sortKey} sortDir={sortDir} />
                 </div>
               </th>
-              <ColumnHeader label="AI Visibility" sublabel="% mentioned" tooltip={COLUMN_TOOLTIPS.aiVisibility} column="aiVisibility" onSort={handleSort} />
-              <ColumnHeader label="Share of Voice" sublabel="% of brand mentions" tooltip={COLUMN_TOOLTIPS.shareOfVoice} column="shareOfVoice" onSort={handleSort} />
-              <ColumnHeader label="Top Result Rate" sublabel="% of time brand is listed first" tooltip={COLUMN_TOOLTIPS.firstPosition} column="firstPosition" onSort={handleSort} />
-              <ColumnHeader label="Avg. Position" sublabel="position when shown" tooltip={COLUMN_TOOLTIPS.avgPosition} column="avgPosition" onSort={handleSort} />
-              <ColumnHeader label="Avg. Sentiment" sublabel="" tooltip={COLUMN_TOOLTIPS.avgSentiment} column="avgSentiment" onSort={handleSort} />
+              <ColumnHeader label="AI Visibility" sublabel="% mentioned" tooltip={columnTooltips.aiVisibility} column="aiVisibility" onSort={handleSort} />
+              <ColumnHeader label="Share of Voice" sublabel={`% of ${noun} mentions`} tooltip={columnTooltips.shareOfVoice} column="shareOfVoice" onSort={handleSort} />
+              <ColumnHeader label="Top Result Rate" sublabel={`% of time ${noun} is listed first`} tooltip={columnTooltips.firstPosition} column="firstPosition" onSort={handleSort} />
+              <ColumnHeader label="Avg. Position" sublabel="position when shown" tooltip={columnTooltips.avgPosition} column="avgPosition" onSort={handleSort} />
+              <ColumnHeader label="Avg. Sentiment" sublabel="" tooltip={columnTooltips.avgSentiment} column="avgSentiment" onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

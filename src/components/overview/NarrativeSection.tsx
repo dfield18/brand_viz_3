@@ -88,7 +88,7 @@ function RadarTickLabel(props: {
   );
 }
 
-export function NarrativeSection({ frames, brandName = "this brand" }: NarrativeSectionProps) {
+export function NarrativeSection({ frames, brandName = "this entity" }: NarrativeSectionProps) {
   const [selectedModel, setSelectedModel] = useState<string>("all");
 
   if (frames.length === 0) {

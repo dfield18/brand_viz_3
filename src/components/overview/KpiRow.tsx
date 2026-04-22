@@ -2,9 +2,12 @@
 
 import { KpiCard } from "@/types/api";
 import { Eye, Percent, Award, AlertTriangle, Shield, TrendingUp, TrendingDown, Info } from "lucide-react";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface KpiRowProps {
   kpis: KpiCard[];
+  brandName?: string;
+  category?: string | null;
 }
 
 type Sentiment = "good" | "neutral" | "poor";
@@ -31,53 +34,56 @@ interface CardMeta {
   sentiment: (kpi: KpiCard) => Sentiment | null;
 }
 
-const CARD_META: Record<string, CardMeta> = {
-  "Visibility Score": {
-    Icon: Eye,
-    subtitle: "Brand mention strength",
-    tooltip: "Average brand mention strength (0\u2013100) across all prompts, scored by how prominently the brand is discussed in AI responses.",
-    border: "border-l-chart-1",
-    iconBg: "bg-chart-1/10",
-    iconColor: "text-chart-1",
-    sentiment: (kpi) => rateSentiment(kpi.value, 60, 30),
-  },
-  "Mention Rate": {
-    Icon: Percent,
-    subtitle: "Across relevant prompts",
-    tooltip: "Percentage of prompts where the brand was mentioned at all in the AI response, regardless of prominence.",
-    border: "border-l-chart-3",
-    iconBg: "bg-chart-3/10",
-    iconColor: "text-chart-3",
-    sentiment: (kpi) => rateSentiment(kpi.value, 70, 30),
-  },
-  "Dominant Narrative Frame": {
-    Icon: Award,
-    subtitle: "",
-    tooltip: "The most prominent narrative frame AI models use when discussing this brand. The bar shows its average strength relative to other frames.",
-    border: "border-l-chart-2",
-    iconBg: "bg-chart-2/10",
-    iconColor: "text-chart-2",
-    sentiment: (kpi) => kpi.barPct != null ? rateSentiment(kpi.barPct, 70, 40) : null,
-  },
-  "Controversy Index": {
-    Icon: AlertTriangle,
-    subtitle: "Sentiment polarization",
-    tooltip: "Level of controversy or polarization (0\u2013100) detected in AI responses about the brand. Higher values indicate more divisive or contentious framing.",
-    border: "border-l-chart-4",
-    iconBg: "bg-chart-4/10",
-    iconColor: "text-chart-4",
-    sentiment: (kpi) => invertedSentiment(kpi.value, 30, 60),
-  },
-  "Narrative Stability": {
-    Icon: Shield,
-    subtitle: "Frame consistency",
-    tooltip: "How consistently AI models frame the brand across different prompts. High = stable and predictable narrative; Medium = some variation; Low = shifting or inconsistent framing.",
-    border: "border-l-chart-5",
-    iconBg: "bg-chart-5/10",
-    iconColor: "text-chart-5",
-    sentiment: (kpi) => rateSentiment(kpi.value, 70, 40),
-  },
-};
+function buildCardMeta(noun: string): Record<string, CardMeta> {
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
+  return {
+    "Visibility Score": {
+      Icon: Eye,
+      subtitle: `${Noun} mention strength`,
+      tooltip: `Average ${noun} mention strength (0\u2013100) across all prompts, scored by how prominently the ${noun} is discussed in AI responses.`,
+      border: "border-l-chart-1",
+      iconBg: "bg-chart-1/10",
+      iconColor: "text-chart-1",
+      sentiment: (kpi) => rateSentiment(kpi.value, 60, 30),
+    },
+    "Mention Rate": {
+      Icon: Percent,
+      subtitle: "Across relevant prompts",
+      tooltip: `Percentage of prompts where the ${noun} was mentioned at all in the AI response, regardless of prominence.`,
+      border: "border-l-chart-3",
+      iconBg: "bg-chart-3/10",
+      iconColor: "text-chart-3",
+      sentiment: (kpi) => rateSentiment(kpi.value, 70, 30),
+    },
+    "Dominant Narrative Frame": {
+      Icon: Award,
+      subtitle: "",
+      tooltip: `The most prominent narrative frame AI models use when discussing this ${noun}. The bar shows its average strength relative to other frames.`,
+      border: "border-l-chart-2",
+      iconBg: "bg-chart-2/10",
+      iconColor: "text-chart-2",
+      sentiment: (kpi) => kpi.barPct != null ? rateSentiment(kpi.barPct, 70, 40) : null,
+    },
+    "Controversy Index": {
+      Icon: AlertTriangle,
+      subtitle: "Sentiment polarization",
+      tooltip: `Level of controversy or polarization (0\u2013100) detected in AI responses about the ${noun}. Higher values indicate more divisive or contentious framing.`,
+      border: "border-l-chart-4",
+      iconBg: "bg-chart-4/10",
+      iconColor: "text-chart-4",
+      sentiment: (kpi) => invertedSentiment(kpi.value, 30, 60),
+    },
+    "Narrative Stability": {
+      Icon: Shield,
+      subtitle: "Frame consistency",
+      tooltip: `How consistently AI models frame the ${noun} across different prompts. High = stable and predictable narrative; Medium = some variation; Low = shifting or inconsistent framing.`,
+      border: "border-l-chart-5",
+      iconBg: "bg-chart-5/10",
+      iconColor: "text-chart-5",
+      sentiment: (kpi) => rateSentiment(kpi.value, 70, 40),
+    },
+  };
+}
 
 function stabilityLabel(value: number): string {
   if (value >= 70) return "High";
@@ -94,14 +100,16 @@ function formatValue(value: number, unit: KpiCard["unit"], label: string): strin
 
 const HIDDEN_CARDS = new Set(["Controversy Index"]);
 
-export function KpiRow({ kpis }: KpiRowProps) {
+export function KpiRow({ kpis, brandName = "Brand", category }: KpiRowProps) {
   const filtered = kpis.filter((k) => !HIDDEN_CARDS.has(k.label));
   if (filtered.length === 0) return null;
+  const noun = subjectNoun(brandName, category);
+  const cardMeta = buildCardMeta(noun);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {filtered.map((kpi) => {
-        const meta = CARD_META[kpi.label];
+        const meta = cardMeta[kpi.label];
         const Icon = meta?.Icon;
 
         return (

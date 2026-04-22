@@ -115,7 +115,7 @@ export function BrandPositionByPlatform({ promptPositions, modelBreakdown, brand
     <Wrapper className={inline ? "" : "rounded-xl bg-card p-6 shadow-section mt-6"}>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Where AI Ranks {brandName || "This Brand"}</h2>
+          <h2 className={inline ? "text-sm font-medium text-foreground" : "text-base font-semibold"}>Where AI Ranks {brandName || "This Entity"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             Each dot is one AI response — click to read the full answer
           </p>

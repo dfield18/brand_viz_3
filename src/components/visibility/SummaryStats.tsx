@@ -2,6 +2,7 @@
 
 import { Eye, PieChart, Award, Trophy, Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface SummaryStatsProps {
   overallMentionRate: number;
@@ -11,6 +12,8 @@ interface SummaryStatsProps {
   totalRuns: number;
   totalMentions: number;
   kpiDeltas: KpiDeltas | null;
+  brandName?: string;
+  category?: string | null;
 }
 
 interface CardConfig {
@@ -33,7 +36,10 @@ export function SummaryStats({
   totalRuns,
   totalMentions,
   kpiDeltas,
+  brandName = "Brand",
+  category,
 }: SummaryStatsProps) {
+  const noun = subjectNoun(brandName, category);
 
   const cards: CardConfig[] = [
     {
@@ -41,7 +47,7 @@ export function SummaryStats({
       label: "Mention Rate",
       value: `${overallMentionRate.toFixed(1)}%`,
       subtitle: `${totalMentions} mentions across ${totalRuns} prompts`,
-      tooltip: "Percentage of prompts where the brand was mentioned at all in the AI response, regardless of prominence.",
+      tooltip: `Percentage of prompts where the ${noun} was mentioned at all in the AI response, regardless of prominence.`,
       iconColor: "text-chart-1",
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}pp`,
@@ -50,8 +56,8 @@ export function SummaryStats({
       Icon: PieChart,
       label: "Share of Voice",
       value: `${shareOfVoice}%`,
-      subtitle: "Brand's share of entity mentions",
-      tooltip: "Percentage of all entity mentions across AI responses that belong to this brand. Higher values mean the brand dominates the conversation.",
+      subtitle: `${noun === "brand" ? "Brand's" : `${noun.charAt(0).toUpperCase()}${noun.slice(1)}'s`} share of entity mentions`,
+      tooltip: `Percentage of all entity mentions across AI responses that belong to this ${noun}. Higher values mean the ${noun} dominates the conversation.`,
       iconColor: "text-chart-3",
       delta: kpiDeltas?.shareOfVoice ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v}pp`,
@@ -61,7 +67,7 @@ export function SummaryStats({
       label: "Avg Position",
       value: avgRankScore ? avgRankScore.toFixed(2) : "\u2014",
       subtitle: "1st = mentioned before competitors",
-      tooltip: "Average rank position when the brand is mentioned. Lower is better \u2014 1st means the brand is named before any competitors.",
+      tooltip: `Average rank position when the ${noun} is mentioned. Lower is better \u2014 1st means the ${noun} is named before any competitors.`,
       iconColor: "text-chart-2",
       delta: kpiDeltas?.avgRank ?? null,
       invertDelta: true,
@@ -71,8 +77,8 @@ export function SummaryStats({
       Icon: Trophy,
       label: "Top Result Rate",
       value: `${firstMentionRate}%`,
-      subtitle: "Prompts where brand is the #1 result",
-      tooltip: "Percentage of industry prompts where the brand is the first entity mentioned in the AI response, indicating top-of-mind positioning.",
+      subtitle: `Prompts where ${noun} is the #1 result`,
+      tooltip: `Percentage of industry prompts where the ${noun} is the first entity mentioned in the AI response, indicating top-of-mind positioning.`,
       iconColor: "text-chart-4",
       delta: kpiDeltas?.firstMentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}pp`,

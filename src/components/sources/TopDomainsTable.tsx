@@ -72,7 +72,7 @@ function r1(v: number | null | undefined): string {
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function TopDomainsTable({ topDomains: initialTopDomains, brandSlug, model, range, pageModel, brandName = "this brand" }: Props) {
+export default function TopDomainsTable({ topDomains: initialTopDomains, brandSlug, model, range, pageModel, brandName = "this entity" }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("citations");
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);

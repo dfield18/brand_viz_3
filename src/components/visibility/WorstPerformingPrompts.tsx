@@ -9,7 +9,7 @@ interface WorstPerformingPromptsProps {
   brandName?: string;
 }
 
-export function WorstPerformingPrompts({ prompts, brandName = "This Brand" }: WorstPerformingPromptsProps) {
+export function WorstPerformingPrompts({ prompts, brandName = "This Entity" }: WorstPerformingPromptsProps) {
   const sorted = useMemo(
     () => [...prompts].sort((a, b) => {
       // Absent (null) first, then highest rank number first

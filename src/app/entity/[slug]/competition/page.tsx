@@ -181,6 +181,7 @@ function CompetitionInner() {
               brandEntityId={brandEntityId}
               brandSlug={params.slug}
               brandName={compBrandName}
+              category={brandCategory}
               range={range}
               pageModel={model}
             />
@@ -254,6 +255,7 @@ function CompetitionInner() {
               brandEntityId={brandEntityId}
               brandSlug={params.slug}
               brandName={entityNames[brandEntityId]}
+              category={brandCategory}
               range={range}
               pageModel={model}
             />

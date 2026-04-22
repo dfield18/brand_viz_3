@@ -14,6 +14,7 @@ import {
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { VisibilityTrendPoint } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface VisibilityTrendChartProps {
   trend: VisibilityTrendPoint[];
@@ -21,6 +22,7 @@ interface VisibilityTrendChartProps {
   /** Lock to a single metric — hides the toggle */
   fixedMetric?: MetricMode;
   brandName?: string;
+  category?: string | null;
   /** Hide description text for a cleaner look */
   compact?: boolean;
   /** Override the default metric description text */
@@ -36,11 +38,12 @@ const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as co
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, compact, descriptionOverride, historicalEstimated = false }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, category, compact, descriptionOverride, historicalEstimated = false }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
   const effectiveMetric = fixedMetric ?? metric;
+  const noun = subjectNoun(brandName ?? "Brand", category);
 
   // Derive prompts from trend data when not explicitly passed
   const prompts = useMemo(() => {
@@ -211,10 +214,10 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             <>
               <p className="text-sm text-muted-foreground mt-2 mb-1">
                 {descriptionOverride?.[effectiveMetric] ?? (effectiveMetric === "visibility"
-                  ? "How often AI platforms mention the brand in response to general industry questions — where the brand is not explicitly named in the query"
+                  ? `How often AI platforms mention the ${noun} in response to general industry questions — where the ${noun} is not explicitly named in the query`
                   : effectiveMetric === "topResult"
-                  ? "How often the brand appears as the #1 recommendation in AI responses"
-                  : "The brand's share of all entity mentions across AI responses")}
+                  ? `How often the ${noun} appears as the #1 recommendation in AI responses`
+                  : `The ${noun}'s share of all entity mentions across AI responses`)}
               </p>
             </>
           )}

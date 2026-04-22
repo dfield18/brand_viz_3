@@ -4,12 +4,14 @@ import { useState, useRef } from "react";
 import { Trophy, AlertTriangle, ExternalLink } from "lucide-react";
 import type { TopPromptWin, WorstPerformingPrompt } from "@/types/api";
 import { useResponseDetail } from "@/lib/useResponseDetail";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface PromptWinsAndOpportunitiesProps {
   wins: TopPromptWin[];
   opportunities: WorstPerformingPrompt[];
   brandSlug?: string;
   brandName?: string;
+  category?: string | null;
   isOrg?: boolean;
 }
 
@@ -18,10 +20,12 @@ const CLUSTER_LABELS: Record<string, string> = {
   industry: "Issue Area",
 };
 
-export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, brandName, isOrg }: PromptWinsAndOpportunitiesProps) {
+export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, brandName, category, isOrg }: PromptWinsAndOpportunitiesProps) {
   const [tab, setTab] = useState<"wins" | "opportunities">("wins");
   const { openResponse } = useResponseDetail(brandSlug ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const noun = subjectNoun(brandName ?? "Brand", category);
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
 
   const switchTab = (t: "wins" | "opportunities") => {
     setTab(t);
@@ -73,15 +77,15 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
 
       <p className="text-xs text-muted-foreground mb-4">
         {tab === "wins"
-          ? `Prompts where ${brandName || "this brand"} ranks #1`
-          : `Industry prompts where ${brandName || "this brand"} ranks poorly or is absent`}
+          ? `Prompts where ${brandName || `this ${noun}`} ranks #1`
+          : `Industry prompts where ${brandName || `this ${noun}`} ranks poorly or is absent`}
       </p>
 
       <div ref={scrollRef} className="overflow-x-auto max-h-[340px] overflow-y-auto">
         {tab === "wins" ? (
           wins.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No #1 rankings yet. Run more prompts to find {brandName ? `${brandName}'s` : "the brand's"} wins.
+              No #1 rankings yet. Run more prompts to find {brandName ? `${brandName}'s` : `the ${noun}'s`} wins.
             </p>
           ) : (
             <table className="w-full text-sm table-fixed">
@@ -139,8 +143,8 @@ export function PromptWinsAndOpportunities({ wins, opportunities, brandSlug, bra
               <thead className="sticky top-0 bg-card z-10">
                 <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   <th className="pb-3 pr-4">Prompt</th>
-                  <th className="pb-3 px-4 text-center">{brandName || "Brand"} Rank</th>
-                  <th className="pb-3 pl-4">{isOrg ? "Organizations" : "Competitors"} Mentioned Before {brandName || "This Brand"}</th>
+                  <th className="pb-3 px-4 text-center">{brandName || Noun} Rank</th>
+                  <th className="pb-3 pl-4">{isOrg ? "Organizations" : "Competitors"} Mentioned Before {brandName || `This ${Noun}`}</th>
                 </tr>
               </thead>
               <tbody>

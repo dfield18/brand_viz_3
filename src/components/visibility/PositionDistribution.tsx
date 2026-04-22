@@ -49,7 +49,7 @@ export function buildPositionRows(
   return rows;
 }
 
-export function PositionDistribution({ data, inline, externalModel, brandName = "This Brand" }: PositionDistributionProps) {
+export function PositionDistribution({ data, inline, externalModel, brandName = "This Entity" }: PositionDistributionProps) {
   const [internalModel, setInternalModel] = useState("all");
   const selectedModel = externalModel ?? internalModel;
 

@@ -3,10 +3,12 @@
 import type { ModelComparison } from "@/types/api";
 import { CircleHelp } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface CrossModelTableProps {
   models: ModelComparison[];
   brandName?: string;
+  category?: string | null;
 }
 
 const MODEL_LABELS: Record<string, string> = {
@@ -49,7 +51,8 @@ interface MetricDef {
   lowerIsBetter?: boolean;
 }
 
-export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTableProps) {
+export function CrossModelTable({ models, brandName = "Brand", category }: CrossModelTableProps) {
+  const noun = subjectNoun(brandName, category);
   if (models.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
@@ -63,7 +66,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Mention Rate",
       key: "mentionRate",
-      tooltip: "How often this platform mentions the brand in response to broad industry questions where no brand is named.",
+      tooltip: `How often this platform mentions the ${noun} in response to broad industry questions where no ${noun} is named.`,
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>{v}%</span>
       ),
@@ -71,7 +74,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Share of Voice",
       key: "shareOfVoice",
-      tooltip: "The brand's share of all entity mentions — how much of the conversation this brand owns on each platform.",
+      tooltip: `The ${noun}'s share of all entity mentions — how much of the conversation this ${noun} owns on each platform.`,
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null ? "—" : `${v}%`}
@@ -81,7 +84,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Top Result Rate",
       key: "topResultRate",
-      tooltip: "How often this platform lists the brand as the #1 recommendation in its response.",
+      tooltip: `How often this platform lists the ${noun} as the #1 recommendation in its response.`,
       render: (v, isBest) => (
         <span className={isBest ? "text-primary font-semibold" : ""}>
           {v === null ? "—" : `${v}%`}
@@ -91,7 +94,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "Overall Tone",
       key: "sentiment",
-      tooltip: "Whether this platform describes the brand in a positive, neutral, or negative way.",
+      tooltip: `Whether this platform describes the ${noun} in a positive, neutral, or negative way.`,
       render: (_v, _isBest, model) => {
         const m = models.find((mod) => mod.model === model);
         const { text, className } = getSentimentLabel(m?.sentimentSplit);
@@ -101,7 +104,7 @@ export function CrossModelTable({ models, brandName = "Brand" }: CrossModelTable
     {
       label: "How Consistent",
       key: "narrativeStability",
-      tooltip: "Whether this platform tells the same story about the brand each time, or changes its message.",
+      tooltip: `Whether this platform tells the same story about the ${noun} each time, or changes its message.`,
       render: (v) => {
         const { text, className } = getStabilityLabel(v ?? 0);
         return <span className={`text-sm font-medium ${className}`}>{text}</span>;

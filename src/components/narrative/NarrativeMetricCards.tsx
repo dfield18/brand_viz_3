@@ -3,6 +3,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Info, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
 import type { NarrativeSentimentSplit, NarrativeFrame, SentimentTrendPoint, NarrativeDeltas } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface NarrativeMetricCardsProps {
   sentimentSplit?: NarrativeSentimentSplit;
@@ -11,6 +12,8 @@ interface NarrativeMetricCardsProps {
   hedgingRate?: number;
   sentimentTrend?: SentimentTrendPoint[];
   narrativeDeltas?: NarrativeDeltas | null;
+  brandName?: string;
+  category?: string | null;
 }
 
 /* ── Mini sparkline (matches visibility tab) ──────────────────────── */
@@ -231,7 +234,10 @@ export function NarrativeMetricCards({
   hedgingRate,
   sentimentTrend,
   narrativeDeltas,
+  brandName = "Brand",
+  category,
 }: NarrativeMetricCardsProps) {
+  const noun = subjectNoun(brandName, category);
   // Sparkline: extract "all" model positive sentiment over time
   const sentimentSparkline = useMemo(() => {
     if (!sentimentTrend) return [];
@@ -270,7 +276,7 @@ export function NarrativeMetricCards({
   // 1. Dominant Narrative
   cards.push({
     label: topFrames.length > 1 ? "DOMINANT NARRATIVES" : "DOMINANT NARRATIVE",
-    tooltip: "The most common narrative frame AI models use when discussing this brand.",
+    tooltip: `The most common narrative frame AI models use when discussing this ${noun}.`,
     description: topFrames.length > 1
       ? `${topFrames.length} frames tied at ${topFrames[0].percentage}% of responses`
       : topFrames.length === 1
@@ -297,7 +303,7 @@ export function NarrativeMetricCards({
     : null;
   cards.push({
     label: "SENTIMENT",
-    tooltip: "Breakdown of how AI models frame the brand \u2014 positive, neutral, or negative.",
+    tooltip: `Breakdown of how AI models frame the ${noun} \u2014 positive, neutral, or negative.`,
     description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()}` : "Distribution of positive, neutral, and negative responses",
     badge: [sentimentSplit ? getSentimentBadge(sentimentSplit) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
     donutPct: dominant?.pct ?? 0,
@@ -321,7 +327,7 @@ export function NarrativeMetricCards({
   const consistencyPct = polarization ? CONSISTENCY_PCT[polarization] ?? 0 : 0;
   cards.push({
     label: "PLATFORM CONSISTENCY",
-    tooltip: "Whether AI platforms tell a consistent story about the brand. Low consistency means different platforms describe the brand very differently.",
+    tooltip: `Whether AI platforms tell a consistent story about the ${noun}. Low consistency means different platforms describe the ${noun} very differently.`,
     formula: "Consistency is derived from the polarization of sentiment across AI responses.\n\n1. Compute the % of responses labeled Positive and Negative\n2. Take the minority side: min(positive%, negative%)\n3. Classify:\n   • High consistency (Consensus): minority < 5%\n   • Moderate: minority 5–15%\n   • Low consistency (Divided): minority ≥ 15%\n\nA low minority percentage means platforms largely agree on sentiment, indicating a consistent narrative.",
     description: "AI description consistency across different platforms",
     badge: [polarization ? getPolarizationBadge(polarization) : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" }],
@@ -338,7 +344,7 @@ export function NarrativeMetricCards({
     const confidence = 100 - hedgingRate;
     cards.push({
       label: "MODEL CONFIDENCE",
-      tooltip: "Measures how directly AI recommends the brand. Higher confidence means AI gives clear endorsements rather than cautious language like \"it depends,\" \"some people prefer,\" or \"you might want to consider.\"",
+      tooltip: `Measures how directly AI recommends the ${noun}. Higher confidence means AI gives clear endorsements rather than cautious language like "it depends," "some people prefer," or "you might want to consider."`,
       formula: `Model Confidence = 100 − Hedging Rate\n\nHedging Rate measures caution in AI responses:\n1. For each response, count authority signals (e.g., "leader", "top", "best", "go-to") and trust signals (e.g., "trusted", "reliable", "proven")\n2. A response is "hedged" if it contains zero authority and zero trust signals\n3. Hedging Rate = (hedged responses ÷ total responses) × 100\n\nCurrent: ${confidence}% confidence (${hedgingRate}% hedging rate)\n\nClassification:\n• ≥ 85%: Direct & confident\n• 65–84%: Some hedging\n• < 65%: Heavily hedged`,
       description: "How often AI gives a clear recommendation vs hedging with cautious language",
       badge: [getConfidenceBadge(confidence)],

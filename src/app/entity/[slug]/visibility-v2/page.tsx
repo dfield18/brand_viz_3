@@ -295,6 +295,7 @@ function VisibilityV2Inner() {
             prompts={[...new Set(data.resultsByQuestion.map((r) => r.promptText))]}
             fixedMetric={activeMetric}
             brandName={brandName}
+            category={brandCategory}
             compact
           />
 
@@ -359,7 +360,7 @@ function VisibilityV2Inner() {
           <BrandPositionByPlatform promptPositions={data.promptPositions} modelBreakdown={data.modelBreakdown} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} />
 
           <div id="results-by-prompt" className="scroll-mt-24 border-t border-border/40 mt-10 pt-8">
-            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} inline externalModel={promptModel} isOrg={isOrg} />
+            <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} category={brandCategory} inline externalModel={promptModel} isOrg={isOrg} />
           </div>
         </div>
         <DataFooter prompts="industry" date={range} />

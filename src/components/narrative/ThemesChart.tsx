@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import type { NarrativeTheme, NarrativeFrame, NarrativeResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface ThemesChartProps {
   themes: NarrativeTheme[];
@@ -12,6 +13,8 @@ interface ThemesChartProps {
   brandSlug: string;
   range: number;
   pageModel: string;
+  brandName?: string;
+  category?: string | null;
 }
 
 interface NarrativeApiResponse {
@@ -84,8 +87,10 @@ function ThemeRow({ theme, maxPct }: { theme: NarrativeTheme; maxPct: number }) 
   );
 }
 
-export function ThemesChart({ themes: initialThemes, frames: initialFrames, brandSlug, range, pageModel }: ThemesChartProps) {
+export function ThemesChart({ themes: initialThemes, frames: initialFrames, brandSlug, range, pageModel, brandName = "Brand", category }: ThemesChartProps) {
   const [model, setModel] = useState(pageModel);
+  const noun = subjectNoun(brandName, category);
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
 
   // Fetch own data when model differs from page model
   const url = model !== pageModel
@@ -113,9 +118,9 @@ export function ThemesChart({ themes: initialThemes, frames: initialFrames, bran
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className="text-base font-semibold">How AI Describes This Brand</h2>
+          <h2 className="text-base font-semibold">How AI Describes This {Noun}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Narratives AI models associate with this brand, based on topics identified in AI responses.
+            Narratives AI models associate with this {noun}, based on topics identified in AI responses.
           </p>
           {topFrame && (
             <p className="text-xs text-muted-foreground mt-1">

@@ -5,11 +5,13 @@ import { useMemo } from "react";
 import { MessageSquareQuote, TrendingUp, TrendingDown } from "lucide-react";
 import type { NarrativeFrame, NarrativeExample } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface TopNarrativeQuotesProps {
   frames: NarrativeFrame[];
   examples: NarrativeExample[];
   brandName?: string;
+  category?: string | null;
   frameTrend?: Record<string, string | number>[];
   /** When set, clicking a frame heading calls this with the frame name */
   onFrameClick?: (frame: string) => void;
@@ -222,7 +224,8 @@ function QuoteCard({
   );
 }
 
-export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, onFrameClick, onQuoteClick }: TopNarrativeQuotesProps) {
+export function TopNarrativeQuotes({ frames, examples, brandName, category, frameTrend, onFrameClick, onQuoteClick }: TopNarrativeQuotesProps) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   const topFrames = useMemo(() => {
     return [...frames].sort((a, b) => b.percentage - a.percentage).slice(0, 3);
   }, [frames]);
@@ -272,7 +275,7 @@ export function TopNarrativeQuotes({ frames, examples, brandName, frameTrend, on
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Top Narratives in AI Responses</h2>
       <p className="text-xs text-muted-foreground mb-6">
-        The most common ways AI platforms describe {brandName ?? "this brand"}, with representative quotes
+        The most common ways AI platforms describe {brandName ?? `this ${noun}`}, with representative quotes
       </p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {quotesByFrame.map(({ frame, quotes }, idx) => {

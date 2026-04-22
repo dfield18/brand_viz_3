@@ -1,24 +1,28 @@
 "use client";
 
 import type { NarrativeFrame } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 const TOP_N = 3;
 
 interface TopFramesProps {
   frames: NarrativeFrame[];
+  brandName?: string;
+  category?: string | null;
 }
 
-export function TopFrames({ frames }: TopFramesProps) {
+export function TopFrames({ frames, brandName = "Brand", category }: TopFramesProps) {
   if (!frames || frames.length === 0) return null;
 
   const sorted = [...frames].sort((a, b) => b.percentage - a.percentage);
   const maxPct = sorted[0].percentage || 1;
+  const noun = subjectNoun(brandName, category);
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Narrative Frames</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
-        How AI models frame the brand — top frames highlighted
+        How AI models frame the {noun} — top frames highlighted
       </p>
       <div className="space-y-3">
         {sorted.map((frame, i) => {

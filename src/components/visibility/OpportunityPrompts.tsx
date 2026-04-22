@@ -2,14 +2,18 @@
 
 import { AlertCircle } from "lucide-react";
 import type { OpportunityPrompt } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface OpportunityPromptsProps {
   prompts: OpportunityPrompt[];
   isOrg?: boolean;
+  brandName?: string;
+  category?: string | null;
 }
 
-export function OpportunityPrompts({ prompts, isOrg }: OpportunityPromptsProps) {
+export function OpportunityPrompts({ prompts, isOrg, brandName = "Brand", category }: OpportunityPromptsProps) {
   if (prompts.length === 0) return null;
+  const noun = subjectNoun(brandName, category);
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
@@ -18,7 +22,7 @@ export function OpportunityPrompts({ prompts, isOrg }: OpportunityPromptsProps) 
         <h2 className="text-base font-semibold">Opportunity Prompts</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Top prompts where {isOrg ? "other organizations appear" : "competitors appear"} but {isOrg ? "this organization doesn\u2019t" : "the brand doesn\u2019t"}
+        Top prompts where {isOrg ? "other organizations appear" : "competitors appear"} but {isOrg ? "this organization doesn\u2019t" : `this ${noun} doesn\u2019t`}
       </p>
       <ul className="space-y-3">
         {prompts.map((p) => (

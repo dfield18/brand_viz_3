@@ -16,6 +16,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import type { CompetitiveSentimentTrendPoint, CompetitionResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 const COMPETITOR_COLORS = ["var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
@@ -25,6 +26,7 @@ interface CompetitiveSentimentTrendProps {
   brandEntityId: string;
   brandSlug: string;
   brandName?: string;
+  category?: string | null;
   range: number;
   pageModel: string;
 }
@@ -40,10 +42,12 @@ export function CompetitiveSentimentTrend({
   brandEntityId,
   brandSlug,
   brandName,
+  category,
   range,
   pageModel,
 }: CompetitiveSentimentTrendProps) {
   const [model, setModel] = useState(pageModel);
+  const noun = subjectNoun(brandName ?? "Brand", category);
 
   const url =
     model !== pageModel
@@ -161,7 +165,7 @@ export function CompetitiveSentimentTrend({
       )}
 
       <p className="text-xs text-muted-foreground mt-1">
-        Whether AI platforms are becoming more positive or negative about {brandName ?? "the brand"} vs competitors
+        Whether AI platforms are becoming more positive or negative about {brandName ?? `this ${noun}`} vs competitors
       </p>
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
         Y-axis shows % of AI responses with positive sentiment toward each entity
