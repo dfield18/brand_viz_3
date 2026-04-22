@@ -367,12 +367,15 @@ export async function GET(req: NextRequest) {
   let shareOfVoice = 0;
   let kpiDeltas: import("@/types/api").KpiDeltas | null = null;
   let competitiveRank: { rank: number; totalCompetitors: number } | null = null;
-  // allSnapshotRuns: latest 24h pool, all prompt types, brand-scoped — for Narrative, Sentiment, Sources
+  // allSnapshotRuns: full-range pool (NOT deduped), all prompt types,
+  // brand-scoped — feeds narrative frames, sentiment split, and source
+  // lists so every snapshot in the range contributes instead of only
+  // the latest per prompt.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let allSnapshotRuns: any[] = [];
 
   if (visResult && visResult.ok) {
-    const { brand: visBrand, runs: visRuns } = visResult;
+    const { brand: visBrand, runs: visRuns, allRuns: visAllRuns } = visResult;
     const visBrandIdentity = buildBrandIdentity(visBrand);
     // Industry runs: use the full deduped set from fetchBrandRuns (latest per model+prompt).
     // No additional 24h filter — the dedup already gives the current state, and this ensures
@@ -380,9 +383,12 @@ export async function GET(req: NextRequest) {
     const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
 
-    // All-prompt snapshot: all clusters, brand-scoped — for Narrative, Sentiment, Sources.
-    // Uses the full deduped set (latest per model+prompt) to stay consistent with the trend chart.
-    const scopedRuns = filterRunsToBrandScope(visRuns, visBrandIdentity);
+    // Narrative / Sentiment / Sources — span ALL runs in the range, not
+    // just the latest per prompt. A prompt answered weekly for 90 days
+    // should have all 12 frame/sentiment observations aggregated, not
+    // just the most recent one. KPIs above stay on the deduped pool
+    // because they have to match the trend chart's rightmost point.
+    const scopedRuns = filterRunsToBrandScope(visAllRuns, visBrandIdentity);
     allSnapshotRuns = scopedRuns;
 
     // Mention rate — scope-aware detection, full denominator
@@ -549,13 +555,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // --- Recompute frames & model comparison from latest 24h snapshot (matches Mention Rate) ---
+  // --- Recompute frames & model comparison from full-range run pool ---
   if (visResult && visResult.ok) {
     const { isAll } = visResult;
-    // Use the latest 24h all-prompt snapshot for narrative frames
+    // Use the full-range all-prompt pool for narrative frames so the
+    // top frames reflect what AI has been saying across every snapshot,
+    // not just the latest per prompt.
     const frameRuns = allSnapshotRuns.length > 0
       ? allSnapshotRuns
-      : filterRunsToBrandScope(visResult.runs, buildBrandIdentity(visResult.brand));
+      : filterRunsToBrandScope(visResult.allRuns, buildBrandIdentity(visResult.brand));
 
     // Parse analyses from scoped runs
     const dedupedAnalyses = frameRuns

@@ -68,7 +68,11 @@ export async function GET(req: NextRequest) {
     },
   });
   if (!result.ok) return result.response;
-  const { brand, job, runs: rawRuns, isAll } = result;
+  // Narrative spans all runs in the range (not latest per model+prompt)
+  // so frames / sentiment aggregate across every snapshot rather than
+  // collapsing to the most recent. A prompt answered 12 times over 90
+  // days contributes 12 signals, not 1.
+  const { brand, job, allRuns: rawRuns, isAll } = result;
   const brandName = brand.displayName || brand.name;
   const brandIdentity = buildBrandIdentity(brand);
 

@@ -34,7 +34,15 @@ export interface PipelineSuccess<R> {
   ok: true;
   brand: PipelineBrand;
   job: PipelineJob;
+  /** Deduplicated: latest run per (model, prompt) across the range.
+   *  Matches the "current state" the trend chart's rightmost point shows —
+   *  correct for visibility KPIs, mention rate, share of voice. */
   runs: R[];
+  /** Non-deduplicated: every completed run in the range. Use for
+   *  time-spanning computations (narrative frames, sentiment
+   *  distribution) where we want multiple snapshots per prompt to
+   *  contribute instead of collapsing to the latest. */
+  allRuns: R[];
   isAll: boolean;
   rangeCutoff: Date;
 }
@@ -44,6 +52,7 @@ export interface PipelineNoJob<R> {
   brand: PipelineBrand;
   job: null;
   runs: R[];
+  allRuns: R[];
   isAll: boolean;
   rangeCutoff: Date;
 }
@@ -201,9 +210,9 @@ export async function fetchBrandRuns<R extends { model: string; promptId: string
   });
 
   if (job) {
-    return { ok: true, brand, job, runs, isAll, rangeCutoff };
+    return { ok: true, brand, job, runs, allRuns, isAll, rangeCutoff };
   }
-  return { ok: true, brand, job: null, runs, isAll, rangeCutoff } as PipelineNoJob<R>;
+  return { ok: true, brand, job: null, runs, allRuns, isAll, rangeCutoff } as PipelineNoJob<R>;
 }
 
 // ---------------------------------------------------------------------------
