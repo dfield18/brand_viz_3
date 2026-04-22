@@ -17,6 +17,7 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
+import { classifyPublicFigure, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
 import { sha256 } from "@/lib/hash";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
 import { computeTopSourceType } from "@/lib/sources/topSourceType";
@@ -158,6 +159,37 @@ const OVERVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
 // restarts of the serverless instance flush the cache.
 const summaryCache = new Map<string, { text: string; ts: number }>();
 const SUMMARY_CACHE_TTL_MS = 30 * 60 * 1000;
+
+// Cache the public-figure classifier output so "How often AI mentions
+// Chris Murphy in gun control and Connecticut questions" doesn't pay a
+// GPT roundtrip on every overview load. Keyed by brand name. 30-min
+// TTL — a senator's signature issue doesn't move hour-to-hour.
+const figureMetaCache = new Map<string, { meta: PublicFigureMeta | null; ts: number }>();
+const FIGURE_META_CACHE_TTL_MS = 30 * 60 * 1000;
+
+async function resolveFigureMeta(brandName: string, isOrg: boolean): Promise<PublicFigureMeta | null> {
+  if (!isOrg || !looksLikePersonName(brandName)) return null;
+  const hit = figureMetaCache.get(brandName);
+  if (hit && Date.now() - hit.ts < FIGURE_META_CACHE_TTL_MS) return hit.meta;
+  const meta = await classifyPublicFigure(brandName);
+  figureMetaCache.set(brandName, { meta, ts: Date.now() });
+  return meta;
+}
+
+/** Compose a display-friendly scope phrase for a political figure,
+ *  e.g. "gun control and Connecticut" for Chris Murphy. Falls back to
+ *  the stored short industry when the figure meta is absent. */
+function composeIndustryScope(
+  meta: PublicFigureMeta | null,
+  fallbackIndustry: string | null,
+): string | null {
+  if (!meta) return fallbackIndustry;
+  const parts = [meta.signatureIssue, meta.jurisdiction].filter(
+    (p): p is string => typeof p === "string" && p.length > 0,
+  );
+  if (parts.length === 0) return fallbackIndustry;
+  return parts.join(" and ");
+}
 
 export async function GET(req: NextRequest) {
   const brandSlug = req.nextUrl.searchParams.get("brandSlug");
@@ -731,6 +763,12 @@ export async function GET(req: NextRequest) {
   // ── Generate AI summary using GPT-4o-mini ──
   const isOrg = ((brand as unknown as { category?: string | null }).category ?? null) === "political_advocacy";
   const industry = (brand as unknown as { industry?: string | null }).industry ?? null;
+  // For political figures (person-shape + political_advocacy), replace
+  // the generic "politics" scope with their signature issue +
+  // jurisdiction, e.g. "gun control and Connecticut" for Chris Murphy,
+  // so downstream copy is specific instead of generically "politics."
+  const figureMeta = await resolveFigureMeta(brandName, isOrg);
+  const industryScope = composeIndustryScope(figureMeta, industry);
   let aiSummary: string | null = null;
   try {
     // Pick the single most important story to tell
@@ -746,9 +784,9 @@ export async function GET(req: NextRequest) {
 
     const summaryData = {
       brandName,
-      industry: industry ?? "this space",
+      industry: industryScope ?? industry ?? "this space",
       brandRecall: overallMentionRate,
-      brandRecallDescription: `When users ask AI broad questions about ${industry ?? "this space"} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
+      brandRecallDescription: `When users ask AI broad questions about ${industryScope ?? industry ?? "this space"} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
       sentiment: sentLabel,
       topNarrative: topFrame,
       ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
@@ -810,6 +848,7 @@ Rules:
     aiSummary,
     brandCategory: (brand as unknown as { category?: string | null }).category ?? null,
     brandIndustry: (brand as unknown as { industry?: string | null }).industry ?? null,
+    brandIndustryScope: industryScope,
     job: {
       id: withData[0].data!.latestJob.id,
       model: model === "all" ? "all" : model,

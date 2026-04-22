@@ -26,6 +26,7 @@ interface ApiResponse {
   aiSummary?: string | null;
   brandCategory?: string | null;
   brandIndustry?: string | null;
+  brandIndustryScope?: string | null;
   reason?: string;
   hint?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
@@ -236,7 +237,10 @@ function OverviewInner() {
 
   const kpis = apiData.visibilityKpis;
   const industry = apiData.brandIndustry;
-  const industryLabel = industry || "this space";
+  // Prefer the richer figure-scoped phrase when available ("gun
+  // control and Connecticut" vs "us politics"); fall back to the
+  // classified industry, then a generic placeholder.
+  const industryLabel = apiData.brandIndustryScope || industry || "this space";
   const trendDescriptions: Record<string, string> = {
     visibility: `How often AI mentions ${brandName} in ${industryLabel} questions`,
     topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions`,
@@ -286,7 +290,7 @@ function OverviewInner() {
                 <Lightbulb className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-[13px] text-foreground/70 leading-relaxed">
                   <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
-                  {highlightSummary(apiData.aiSummary, apiData.brandIndustry, brandName)}
+                  {highlightSummary(apiData.aiSummary, apiData.brandIndustryScope || apiData.brandIndustry, brandName)}
                 </p>
               </div>
             )}
