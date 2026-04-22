@@ -777,6 +777,17 @@ export async function GET(req: NextRequest) {
   // so downstream copy is specific instead of generically "politics."
   const figureMeta = await resolveFigureMeta(brandName, isOrg);
   const industryScope = composeIndustryScope(figureMeta, industry);
+  // Candidate scope phrases for the Key Insight sentence and client
+  // highlighting. Each is a noun phrase usable after "when users ask
+  // AI about …" so "politics" stays out of the output entirely.
+  const scopeFacets: string[] = [];
+  if (figureMeta) {
+    const roleLower = figureMeta.role.replace(/^US\s+/i, "").toLowerCase();
+    if (figureMeta.jurisdiction) scopeFacets.push(`${roleLower}s from ${figureMeta.jurisdiction}`);
+    if (figureMeta.party) scopeFacets.push(`${figureMeta.party} ${roleLower}s`);
+    if (figureMeta.caucus) scopeFacets.push(`${figureMeta.caucus.toLowerCase()} ${roleLower}s`);
+    if (figureMeta.signatureIssue) scopeFacets.push(figureMeta.signatureIssue);
+  }
   let aiSummary: string | null = null;
   try {
     // Pick the single most important story to tell
@@ -790,11 +801,13 @@ export async function GET(req: NextRequest) {
         : "mixed"
       : null;
 
+    const recallScope = scopeFacets[0] ?? industryScope ?? industry ?? "this space";
     const summaryData = {
       brandName,
       industry: industryScope ?? industry ?? "this space",
+      ...(scopeFacets.length > 0 ? { scopeFacets } : {}),
       brandRecall: overallMentionRate,
-      brandRecallDescription: `When users ask AI broad questions about ${industryScope ?? industry ?? "this space"} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
+      brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
       sentiment: sentLabel,
       topNarrative: topFrame,
       ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
@@ -831,6 +844,7 @@ Rules:
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
 - Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."
+${scopeFacets.length > 0 ? `- CRITICAL: When referencing what the questions are about, you MUST pick ONE of the scopeFacets values as the specific scope phrase. Do NOT use the generic word "politics" — always anchor on a concrete facet. For example, with scopeFacets ["senators from Alabama", "Republican senators", "immigration reform"], good phrasings: "when users ask about senators from Alabama", "in Republican-senator questions", "on immigration reform topics". BAD phrasing: "about politics" — that's too generic and makes the insight worthless.` : ""}
 - CALIBRATE qualitative language to the actual number. A mention rate of 0-20% is "low," "rarely appears," or "a small share." 20-40% is "moderate" or "meaningful but not dominant." 40-60% is "notable" or "a significant share." 60-80% is "strong." 80%+ is "dominant" or "near-ubiquitous." NEVER call 10% a "strong presence" — that misrepresents the data and erodes trust in the dashboard.
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
 - No markdown, no bullet points, no jargon.`,
@@ -857,6 +871,7 @@ Rules:
     brandCategory: (brand as unknown as { category?: string | null }).category ?? null,
     brandIndustry: (brand as unknown as { industry?: string | null }).industry ?? null,
     brandIndustryScope: industryScope,
+    brandScopeFacets: scopeFacets.length > 0 ? scopeFacets : null,
     job: {
       id: withData[0].data!.latestJob.id,
       model: model === "all" ? "all" : model,

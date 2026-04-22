@@ -27,6 +27,7 @@ interface ApiResponse {
   brandCategory?: string | null;
   brandIndustry?: string | null;
   brandIndustryScope?: string | null;
+  brandScopeFacets?: string[] | null;
   reason?: string;
   hint?: string;
   job?: { id: string; model: string; range: number; finishedAt: string | null };
@@ -51,15 +52,27 @@ interface QuotesResponse {
 
 function highlightSummary(
   text: string,
-  industry: string | null | undefined,
+  industryCandidates: string | string[] | null | undefined,
   brandName: string,
 ): React.ReactNode {
   type Range = { start: number; end: number };
   const ranges: Range[] = [];
 
-  if (industry) {
-    const idx = text.toLowerCase().indexOf(industry.toLowerCase());
-    if (idx !== -1) ranges.push({ start: idx, end: idx + industry.length });
+  // Accept a single string or an ordered list of candidate scope
+  // phrases — e.g. ["senators from Alabama", "Republican senators",
+  // "immigration reform"] for a political figure. Bold every candidate
+  // that actually appears in the summary text (LLM may use more than
+  // one), falling back to no highlight if none match.
+  const candidates = Array.isArray(industryCandidates)
+    ? industryCandidates
+    : industryCandidates
+      ? [industryCandidates]
+      : [];
+  const lowerText = text.toLowerCase();
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const idx = lowerText.indexOf(candidate.toLowerCase());
+    if (idx !== -1) ranges.push({ start: idx, end: idx + candidate.length });
   }
 
   const escBrand = brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -290,7 +303,13 @@ function OverviewInner() {
                 <Lightbulb className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-[13px] text-foreground/70 leading-relaxed">
                   <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
-                  {highlightSummary(apiData.aiSummary, apiData.brandIndustryScope || apiData.brandIndustry, brandName)}
+                  {highlightSummary(
+                    apiData.aiSummary,
+                    apiData.brandScopeFacets && apiData.brandScopeFacets.length > 0
+                      ? apiData.brandScopeFacets
+                      : apiData.brandIndustryScope || apiData.brandIndustry,
+                    brandName,
+                  )}
                 </p>
               </div>
             )}
