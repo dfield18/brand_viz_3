@@ -1,5 +1,6 @@
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { titleCase } from "@/lib/utils";
+import { stripEphemeralSuffix } from "@/lib/brandSlug";
 
 interface BrandInfo {
   name: string;
@@ -18,13 +19,12 @@ export function useBrandName(slug: string | null): string {
   const url = slug ? `/api/brand-info?brandSlug=${encodeURIComponent(slug)}` : null;
   const { data } = useCachedFetch<BrandInfo>(url);
   if (!slug) return "";
-  // Free-tier runs suffix with `--<8 hex>` (deterministic cache).
-  // Strip it so the dropdown shows "Apple" while brand-info loads,
-  // not "Apple A1b2c3d4". Also strip the legacy `--cached` marker for
-  // the dwindling set of old rows. Double hyphen matters — a Pro brand
-  // slugged from "Foo a1b2c3d4" becomes "foo-a1b2c3d4" (single dash)
-  // and must NOT be stripped.
-  return data?.displayName ?? titleCase(slug.replace(/--(cached|[0-9a-f]{8})$/, ""));
+  // Free-tier runs suffix with `--<8 hex>` (deterministic cache) or
+  // the legacy `--cached` marker. Strip either so the dropdown shows
+  // "Apple" while brand-info loads, not "Apple A1b2c3d4". The
+  // double-hyphen is deliberate — a Pro brand like "foo-a1b2c3d4"
+  // (single dash) must NOT be stripped.
+  return data?.displayName ?? titleCase(stripEphemeralSuffix(slug));
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sha256 } from "@/lib/hash";
+import { isEphemeralSlugShape } from "@/lib/brandSlug";
 
 /**
  * POST /api/free-run/invalidate
@@ -31,8 +32,6 @@ function slugify(input: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
 }
-
-const EPHEMERAL_PATTERN = /--(cached|[0-9a-f]{8})$/;
 
 export async function POST(req: NextRequest) {
   const secret = process.env.ADMIN_SECRET;
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
     slug = `${baseSlug}--${sha256(baseSlug).slice(0, 8)}`;
   }
 
-  if (!EPHEMERAL_PATTERN.test(slug)) {
+  if (!isEphemeralSlugShape(slug)) {
     return NextResponse.json(
       { error: "Refusing to invalidate — slug is not a free-tier cached brand.", slug },
       { status: 400 },

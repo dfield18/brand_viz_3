@@ -10,6 +10,7 @@ import { dataClient } from "@/dataClient";
 import { useBrands, invalidateBrands } from "@/lib/useBrands";
 import { useBrandName } from "@/lib/useBrandName";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
+import { isEphemeralSlugShape } from "@/lib/brandSlug";
 import { FREE_TIER_CONFIG } from "@/config/freeTier";
 import { BrandSelector } from "./BrandSelector";
 import {
@@ -242,13 +243,14 @@ function HeaderInner() {
           )}
 
           {/* Right: Run button + User avatar. Rerun is hidden on
-              free-tier brand pages (slugs ending in --<8 hex>) — those
-              are one-shot ephemeral reports, not ongoing tracking. The
-              signed-up Pro flow stamps different slugs (e.g. `nike`,
-              `mayors-against-illegal-guns`) so Pro brand pages still
-              show the button. */}
+              free-tier brand pages (shape check via
+              isEphemeralSlugShape — covers both `<base>--<8 hex>` and
+              the legacy `<base>--cached` marker). Those slugs are
+              one-shot ephemeral reports, not ongoing tracking. Pro
+              slugs (`nike`, `mayors-against-illegal-guns`) can never
+              produce `--` so Pro brand pages still show the button. */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {isEntityPage && currentSlug && !/--[0-9a-f]{8}$/.test(currentSlug) && (
+            {isEntityPage && currentSlug && !isEphemeralSlugShape(currentSlug) && (
               <button
                 onClick={() => setRunOpen(true)}
                 aria-label="Rerun analysis"

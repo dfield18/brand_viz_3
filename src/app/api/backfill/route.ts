@@ -102,14 +102,20 @@ export async function POST(req: NextRequest) {
   }
 
   for (const prompt of rawPrompts) {
-    if (
-      prompt.cluster === "comparative" &&
-      prompt.text.includes("{competitor}") &&
-      competitors.length > 0
-    ) {
+    const needsCompetitor =
+      prompt.cluster === "comparative" && prompt.text.includes("{competitor}");
+    if (needsCompetitor && competitors.length > 0) {
       for (const comp of competitors) {
         prompts.push({ id: prompt.id, text: prompt.text, competitor: comp });
       }
+    } else if (needsCompetitor) {
+      // No competitor to substitute — skip the prompt rather than
+      // sending it with a literal "{competitor}" placeholder, which
+      // produces unintelligible AI responses that then poison the
+      // analysis extraction. The prompt silently drops for this run
+      // and re-eligibilizes once any entity-response metric lands
+      // that seeds the competitor list on the next run.
+      continue;
     } else {
       prompts.push({ id: prompt.id, text: prompt.text });
     }

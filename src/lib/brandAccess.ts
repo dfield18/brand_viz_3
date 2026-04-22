@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { PRESET_BRAND_SLUGS } from "@/lib/brandViewLimit";
 import { isProUser } from "@/lib/brandViewLimitServer";
 import { sha256 } from "@/lib/hash";
+export { isEphemeralSlugShape } from "@/lib/brandSlug";
 
 /** Free-tier runs use a DOUBLE-hyphen marker that the Pro slugifier
  *  (src/components/Header.tsx:120) can never produce, since it
