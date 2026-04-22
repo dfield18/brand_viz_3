@@ -254,10 +254,11 @@ function OverviewInner() {
   // control and Connecticut" vs "us politics"); fall back to the
   // classified industry, then a generic placeholder.
   const industryLabel = apiData.brandIndustryScope || industry || "this space";
+  const rangeSuffix = ` — last ${range} days`;
   const trendDescriptions: Record<string, string> = {
-    visibility: `How often AI mentions ${brandName} in ${industryLabel} questions`,
-    topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions`,
-    sov: `${brandName}'s share of mentions in ${industryLabel} responses`,
+    visibility: `How often AI mentions ${brandName} in ${industryLabel} questions${rangeSuffix}`,
+    topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions${rangeSuffix}`,
+    sov: `${brandName}'s share of mentions in ${industryLabel} responses${rangeSuffix}`,
   };
   // Collect all frames tied at the top percentage (sort to ensure highest first)
   const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);

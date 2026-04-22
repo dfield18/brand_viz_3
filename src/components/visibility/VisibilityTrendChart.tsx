@@ -82,14 +82,15 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
     return MODEL_KEYS.filter((m) => set.has(m));
   }, [filteredTrend]);
 
-  // Current value + delta vs ~30 days prior
-  const { currentValue, delta } = useMemo(() => {
-    if (chartData.length === 0) return { currentValue: null, delta: null };
+  // Current value + delta vs closest prior data point to ~30 days back.
+  // deltaLabel is derived from the actual gap found so a 7-day-range
+  // chart doesn't mislabel its ~6-day delta as "vs prior month".
+  const { currentValue, delta, deltaLabel } = useMemo(() => {
+    if (chartData.length === 0) return { currentValue: null, delta: null, deltaLabel: null };
     const mainKey = effectiveMetric === "visibility" ? "mentionRate" : effectiveMetric === "topResult" ? "firstMentionPct" : "sovPct";
     const activeKey = focusModel === "all" ? mainKey : `${focusModel}_${mainKey}`;
     const last = chartData[chartData.length - 1] as Record<string, unknown>;
     const cur = typeof last[activeKey] === "number" ? (last[activeKey] as number) : null;
-    // Find the data point closest to 30 days before the most recent
     const lastDate = new Date(chartData[chartData.length - 1].date + "T00:00:00").getTime();
     const targetDate = lastDate - 30 * 86_400_000;
     let closest = chartData[0];
@@ -99,12 +100,21 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
       const dist = Math.abs(rowDate - targetDate);
       if (dist < closestDist) { closestDist = dist; closest = row; }
     }
-    // Only compare if the closest point is a different data point than the last
     const priorRow = closest as Record<string, unknown>;
     const prev = closest !== chartData[chartData.length - 1] && typeof priorRow[activeKey] === "number"
       ? (priorRow[activeKey] as number) : null;
     const d = cur !== null && prev !== null ? +(cur - prev).toFixed(1) : null;
-    return { currentValue: cur, delta: d };
+    let label: string | null = null;
+    if (d !== null) {
+      const gapDays = Math.round(Math.abs(lastDate - new Date(closest.date + "T00:00:00").getTime()) / 86_400_000);
+      if (gapDays <= 3) label = `vs ${gapDays} day${gapDays === 1 ? "" : "s"} ago`;
+      else if (gapDays <= 10) label = "vs prior week";
+      else if (gapDays <= 20) label = `vs ${gapDays} days ago`;
+      else if (gapDays <= 40) label = "vs prior month";
+      else if (gapDays <= 100) label = "vs prior quarter";
+      else label = `vs ${gapDays} days ago`;
+    }
+    return { currentValue: cur, delta: d, deltaLabel: label };
   }, [chartData, effectiveMetric, focusModel]);
 
   // Auto-scale Y-axis: pad 10% below min and above max, clamped to 0–100
@@ -206,7 +216,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             {delta !== null && delta !== 0 && (
               <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
                 {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {delta > 0 ? "+" : ""}{delta}% vs prior month
+                {delta > 0 ? "+" : ""}{delta}% {deltaLabel ?? "vs prior period"}
               </span>
             )}
           </div>
