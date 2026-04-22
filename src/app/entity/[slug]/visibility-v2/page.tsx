@@ -9,7 +9,6 @@ import { ResultsByQuestion } from "@/components/visibility/ResultsByQuestion";
 import { VisibilityTrendChart } from "@/components/visibility/VisibilityTrendChart";
 
 import { PositionDistribution } from "@/components/visibility/PositionDistribution";
-import { PositionDistributionOverTime } from "@/components/visibility/PositionDistributionOverTime";
 import { BrandPositionByPlatform } from "@/components/visibility/BrandPositionByPlatform";
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { DriverDecomposition } from "@/components/overview/DriverDecomposition";
@@ -206,8 +205,7 @@ function VisibilityV2Inner() {
   const sections: PageSection[] = [
     { id: "kpi-summary", label: "Scorecard" },
     { id: "metric-deep-dive", label: "Trend Over Time" },
-    { id: "ranking-breakdown", label: "Position Over Time", heading: "Ranking" },
-    { id: "ranking-distribution", label: "Position Distribution" },
+    { id: "ranking-distribution", label: "Position Distribution", heading: "Ranking" },
     { id: "brand-position", label: `Where AI Ranks ${brandName}`, heading: "Performance" },
     { id: "results-by-prompt", label: "Performance by Question" },
   ];
@@ -329,20 +327,12 @@ function VisibilityV2Inner() {
         {/* ── Ranking ──────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Ranking</h2>
 
-        {/* Ranking: Position Distribution Over Time + Breakdown */}
-        {data.positionDistributionOverTime && data.positionDistributionOverTime.length > 0 && (
-          <PositionDistributionOverTime
-            id="ranking-breakdown"
-            data={data.positionDistributionOverTime.filter((d) => d.date >= rangeCutoff)}
-            brandName={brandName}
-          >
-            {(selectedModel: string) => (
-              <div id="ranking-distribution" className="scroll-mt-24">
-                <PositionDistribution data={data.positionDistribution} inline externalModel={selectedModel} brandName={brandName} />
-              </div>
-            )}
-          </PositionDistributionOverTime>
-        )}
+        {/* Ranking: Position Distribution (the "Over Time" variant
+            was removed — its time-series layered on top of the same
+            data PositionDistribution already shows). */}
+        <div id="ranking-distribution" className="scroll-mt-24">
+          <PositionDistribution data={data.positionDistribution} inline brandName={brandName} />
+        </div>
         <DataFooter prompts="industry" date={range} />
 
         {/* ── Performance ──────────────────────── */}
