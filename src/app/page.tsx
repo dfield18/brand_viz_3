@@ -295,12 +295,9 @@ export default async function HomePage() {
               exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
           </div>
-          {/* Scroll affordance — now honestly points at the NEXT thing
-              on the page (the process + live example) rather than
-              implying the chart is immediately below. */}
           <p className="mt-8 text-xs text-muted-foreground/70 flex items-center gap-1.5">
             <span aria-hidden="true">↓</span>
-            See how it works
+            See a live example
           </p>
         </div>
       </section>
@@ -324,34 +321,6 @@ export default async function HomePage() {
             <span>Perplexity</span>
             <span className="text-muted-foreground/30">·</span>
             <span>Google AI Overviews</span>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works — numbered steps so the flow is scannable in 2 s
-          instead of reading three paragraphs. */}
-      <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            The process
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
-            How it works
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-10">
-            {[
-              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
-              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
-            ].map((item, i) => (
-              <div key={item.title} className="relative">
-                <div className="flex items-center justify-center h-9 w-9 rounded-full bg-foreground text-background text-sm font-semibold tabular-nums mb-4">
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -399,37 +368,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      {/* Features */}
-      <section id="features" className="border-t border-border/40 bg-muted/30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            Why use it
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
-            What you get
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md">
-            Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-8">
-            {FEATURES.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <div key={feature.title} className="flex gap-4">
-                  <div className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-foreground/5 text-foreground">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-border/40">
@@ -484,6 +422,65 @@ export default async function HomePage() {
                 >
                   {tier.cta}
                 </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="border-t border-border/40 bg-muted/30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Why use it
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+            What you get
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-8">
+            {FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div key={feature.title} className="flex gap-4">
+                  <div className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-foreground/5 text-foreground">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works — numbered steps so the flow is scannable in 2 s
+          instead of reading three paragraphs. */}
+      <section className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            The process
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
+            How it works
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-10">
+            {[
+              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
+              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
+              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
+            ].map((item, i) => (
+              <div key={item.title} className="relative">
+                <div className="flex items-center justify-center h-9 w-9 rounded-full bg-foreground text-background text-sm font-semibold tabular-nums mb-4">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
