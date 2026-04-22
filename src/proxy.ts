@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -35,6 +36,17 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
+  // Signed-in users landing on `/` get bounced to /dashboard here
+  // (instead of via `auth()` + `redirect()` in page.tsx) so the
+  // homepage itself stays statically renderable. Removes the
+  // ~800 ms per-request server work that pushed PageSpeed's mobile
+  // "Document request latency" into the red.
+  if (request.nextUrl.pathname === "/") {
+    const { userId } = await auth();
+    if (userId) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
   if (!isPublicRoute(request)) {
     await auth.protect();
   }

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sha256 } from "@/lib/hash";
@@ -216,11 +214,17 @@ async function getSampleVisibilityData(): Promise<{
   }
 }
 
-export default async function HomePage() {
-  // Signed-in users skip the free dashboard and go straight to their Pro dashboard.
-  const { userId } = await auth();
-  if (userId) redirect("/dashboard");
+// Force-static + ISR. Without force-static, Next detects the
+// auth/Clerk imports in the module graph (reached via
+// fetchBrandRuns → requireBrandAccess, which short-circuits for
+// preset brands but Next can't prove that at build time) and
+// falls back to dynamic rendering — defeating the point. Signed-
+// in users are redirected to /dashboard by proxy.ts before they
+// ever hit this handler, so runtime auth() is never called.
+export const dynamic = "force-static";
+export const revalidate = 600;
 
+export default async function HomePage() {
   const sampleData = await getSampleVisibilityData();
 
   return (
