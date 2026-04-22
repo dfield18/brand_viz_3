@@ -48,6 +48,52 @@ interface QuotesResponse {
   quotes: { quote: string; model: string; context: string }[];
 }
 
+function highlightSummary(
+  text: string,
+  industry: string | null | undefined,
+  brandName: string,
+): React.ReactNode {
+  type Range = { start: number; end: number };
+  const ranges: Range[] = [];
+
+  if (industry) {
+    const idx = text.toLowerCase().indexOf(industry.toLowerCase());
+    if (idx !== -1) ranges.push({ start: idx, end: idx + industry.length });
+  }
+
+  const escBrand = brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const mentionRe = new RegExp(
+    `${escBrand}\\s+is mentioned in \\d+(?:\\.\\d+)?% of responses`,
+    "i",
+  );
+  const m = mentionRe.exec(text);
+  if (m) ranges.push({ start: m.index, end: m.index + m[0].length });
+
+  if (ranges.length === 0) return text;
+
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: Range[] = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r.start < last.end) last.end = Math.max(last.end, r.end);
+    else merged.push({ ...r });
+  }
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  merged.forEach(({ start, end }, i) => {
+    if (cursor < start) parts.push(text.slice(cursor, start));
+    parts.push(
+      <strong key={i} className="font-semibold text-foreground">
+        {text.slice(start, end)}
+      </strong>,
+    );
+    cursor = end;
+  });
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts;
+}
+
 function OverviewInner() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -240,7 +286,7 @@ function OverviewInner() {
                 <Lightbulb className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-[13px] text-foreground/70 leading-relaxed">
                   <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
-                  {apiData.aiSummary}
+                  {highlightSummary(apiData.aiSummary, apiData.brandIndustry, brandName)}
                 </p>
               </div>
             )}
