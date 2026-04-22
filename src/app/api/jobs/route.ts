@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { sha256 } from "@/lib/hash";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
 import { extractAnalysis } from "@/lib/extractAnalysis";
-import { findOrCreateBrand } from "@/lib/brand";
+import { findOrCreateBrand, isValidBrandSlug } from "@/lib/brand";
 import { getEnabledPrompts } from "@/lib/promptService";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,11 @@ export async function POST(req: NextRequest) {
   if (!brandSlug || typeof brandSlug !== "string") {
     return NextResponse.json({ error: "Missing or invalid brandSlug" }, { status: 400 });
   }
+  if (!isValidBrandSlug(brandSlug)) {
+    return NextResponse.json({ error: "Invalid brand slug format" }, { status: 400 });
+  }
+  const accessError = await requireBrandAccess(brandSlug);
+  if (accessError) return accessError;
   if (!model || !VALID_MODELS.includes(model)) {
     return NextResponse.json(
       { error: `Invalid model. Must be one of: ${VALID_MODELS.join(", ")}` },

@@ -3,8 +3,9 @@ import { start } from "workflow/api";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS } from "@/lib/constants";
 import { getEnabledPrompts } from "@/lib/promptService";
-import { findOrCreateBrand } from "@/lib/brand";
+import { findOrCreateBrand, isValidBrandSlug } from "@/lib/brand";
 import { requireAuth } from "@/lib/auth";
+import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { backfillWorkflow, type BackfillMonth, type BackfillPrompt } from "@/workflows/backfill";
 
@@ -58,6 +59,11 @@ export async function POST(req: NextRequest) {
   if (!brandSlug || !model || !VALID_MODELS.includes(model)) {
     return NextResponse.json({ error: "Invalid params" }, { status: 400 });
   }
+  if (!isValidBrandSlug(brandSlug)) {
+    return NextResponse.json({ error: "Invalid brand slug format" }, { status: 400 });
+  }
+  const accessError = await requireBrandAccess(brandSlug);
+  if (accessError) return accessError;
 
   const jobRange = range ?? 90;
 
