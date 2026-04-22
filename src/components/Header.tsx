@@ -241,9 +241,14 @@ function HeaderInner() {
             </div>
           )}
 
-          {/* Right: Run button + User avatar */}
+          {/* Right: Run button + User avatar. Rerun is hidden on
+              free-tier brand pages (slugs ending in --<8 hex>) — those
+              are one-shot ephemeral reports, not ongoing tracking. The
+              signed-up Pro flow stamps different slugs (e.g. `nike`,
+              `mayors-against-illegal-guns`) so Pro brand pages still
+              show the button. */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {isEntityPage && currentSlug && (
+            {isEntityPage && currentSlug && !/--[0-9a-f]{8}$/.test(currentSlug) && (
               <button
                 onClick={() => setRunOpen(true)}
                 aria-label="Rerun analysis"
