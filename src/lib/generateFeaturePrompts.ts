@@ -2,6 +2,85 @@ import { openai } from "@/lib/openai";
 
 export type BrandCategory = "commercial" | "political_advocacy";
 
+/** Structured facts about a political public figure that let the
+ *  industry-prompt generator scope its questions to near-certain
+ *  recall contexts (the figure's state + role). Returned null when
+ *  the subject isn't primarily a political figure — the caller falls
+ *  back to the generic industry-prompt path. */
+export type PublicFigureMeta = {
+  role: string;               // "US Senator" | "US Rep" | "Governor" | "State Senator" | "Mayor" | "Activist" | "Candidate" | "Other"
+  jurisdiction: string;       // e.g. "Pennsylvania", "New York NY-14", "United States"
+  party: string | null;       // "Democrat" | "Republican" | "Independent" | "Other" | null
+  caucus: string | null;      // "Progressive" | "Freedom Caucus" | null
+  signatureIssue: string | null; // "worker rights" | "climate" | null
+};
+
+/** Cheap heuristic — two or three capitalized tokens, no org signal
+ *  words. Used to gate the public-figure classifier call so we don't
+ *  burn an LLM roundtrip on obvious organizations. */
+const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
+const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
+
+export function looksLikePersonName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!PERSON_NAME_SHAPE.test(trimmed)) return false;
+  if (ORG_SIGNAL_WORDS.test(trimmed)) return false;
+  return true;
+}
+
+/** GPT-4o-mini classifier. Returns meta when the subject is a
+ *  recognizable US political figure; returns null otherwise. The
+ *  caller is expected to have already filtered `category ===
+ *  "political_advocacy"` and `looksLikePersonName()` so we don't
+ *  waste the call on e.g. ACLU. */
+export async function classifyPublicFigure(
+  brandName: string,
+): Promise<PublicFigureMeta | null> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 150,
+      messages: [
+        {
+          role: "system",
+          content: `You classify a public person by their political role. Return ONLY a JSON object or the literal string null.
+
+When the person IS a recognizable political figure (current or recent officeholder, candidate, or prominent activist), return:
+{
+  "role": one of "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate" | "Other",
+  "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
+  "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
+  "caucus": short sub-grouping if notable ("Progressive", "Freedom Caucus", "Blue Dog") or null,
+  "signatureIssue": short issue area they're most associated with ("worker rights", "immigration", "climate") or null
+}
+
+When the person is NOT primarily a political figure, return null.
+
+No prose, no code fences.`,
+        },
+        { role: "user", content: brandName },
+      ],
+    });
+
+    const raw = response.choices?.[0]?.message?.content?.trim();
+    if (!raw || raw === "null") return null;
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleaned) as Partial<PublicFigureMeta> | null;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.role !== "string" || typeof parsed.jurisdiction !== "string") return null;
+    return {
+      role: parsed.role,
+      jurisdiction: parsed.jurisdiction,
+      party: typeof parsed.party === "string" ? parsed.party : null,
+      caucus: typeof parsed.caucus === "string" ? parsed.caucus : null,
+      signatureIssue: typeof parsed.signatureIssue === "string" ? parsed.signatureIssue : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Default features for commercial brands (no political orientation).
  */
@@ -435,11 +514,99 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
  * generic issue-area questions.
  * For commercial brands: uses standard category-level questions.
  */
+/** Build the tiered system prompt used for political figures. Produces
+ *  `count` questions split across three concentric scopes so the
+ *  figure has a near-certain chance of surfacing in Tier A while
+ *  Tier C still provides a true organic-recall signal. */
+function buildTieredFigurePrompt(
+  brandName: string,
+  figureMeta: PublicFigureMeta,
+  count: number,
+): string {
+  const aCount = Math.max(1, Math.round(count * 0.4));
+  const bCount = Math.max(1, Math.round(count * 0.4));
+  const cCount = Math.max(1, count - aCount - bCount);
+  const year = new Date().getFullYear();
+  const partyPhrase = figureMeta.party ? `${figureMeta.party}s` : "members";
+  const caucusPhrase = figureMeta.caucus ? `${figureMeta.caucus.toLowerCase()} ` : "";
+  const issuePhrase = figureMeta.signatureIssue ?? null;
+
+  return `You generate search queries that voters, donors, activists, and journalists would type into AI assistants when researching a political scene — NOT asking about a specific person.
+
+The target figure is "${brandName}" — a ${figureMeta.role} representing ${figureMeta.jurisdiction}${figureMeta.party ? ` (${figureMeta.party})` : ""}${figureMeta.caucus ? `, ${figureMeta.caucus} caucus` : ""}${issuePhrase ? `, associated with ${issuePhrase}` : ""}.
+
+Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer must be a list of NAMED PEOPLE.
+
+TIER A — roster questions (${aCount} questions). The answer is essentially the roster of officeholders that INCLUDES "${brandName}". Examples of the shape:
+- "Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"
+- "Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"
+${figureMeta.role === "US Senator" ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"` : ""}
+
+TIER B — role + stance questions (${bCount} questions). Narrow enough that "${brandName}" usually makes the list, but doesn't guarantee it. Anchor on role + ${figureMeta.party ?? "party"}${figureMeta.caucus ? ` + ${figureMeta.caucus.toLowerCase()} caucus` : ""}${issuePhrase ? ` + ${issuePhrase}` : ""}. Examples:
+- "Which ${caucusPhrase}${figureMeta.role.toLowerCase()}s are most outspoken on ${issuePhrase ?? "current policy debates"}?"
+- "Who are the most prominent ${caucusPhrase}${partyPhrase} in the ${figureMeta.role.includes("Senator") ? "US Senate" : figureMeta.role.includes("Rep") ? "US House" : "country"} right now?"
+
+TIER C — broad issue area (${cCount} question${cCount === 1 ? "" : "s"}). The current style — broad enough that surfacing is genuinely organic.
+- "Who are the most influential voices on ${issuePhrase ?? "progressive politics"} in ${year}?"
+
+Rules:
+- Do NOT mention "${brandName}" anywhere in any question
+- Sound natural — how a real person types into ChatGPT or Perplexity
+- Vary phrasing; don't copy the examples verbatim
+- If you reference a year, use ${year}
+
+Return ONLY a JSON array of objects, each with "text" (string), "intent" ("informational" | "high-intent"), and "tier" ("A" | "B" | "C"). No code fences.`;
+}
+
 export async function generateIndustryPrompts(
   brandName: string,
   industry: string,
   category: BrandCategory,
+  opts?: { figureMeta?: PublicFigureMeta | null; count?: number },
 ): Promise<GeneratedPrompt[]> {
+  const figureMeta = opts?.figureMeta ?? null;
+  const targetCount = opts?.count ?? 8;
+
+  // Tiered path for political figures with known role + jurisdiction —
+  // the extra context lets us scope Tier A questions to the roster
+  // the figure is literally in, which raises organic-mention rate from
+  // "lucky if we get one hit" to "reliable baseline in every run."
+  if (category === "political_advocacy" && figureMeta) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.4,
+        max_tokens: 600,
+        messages: [
+          { role: "system", content: buildTieredFigurePrompt(brandName, figureMeta, targetCount) },
+          { role: "user", content: `Generate ${targetCount} questions about the political scene around ${figureMeta.jurisdiction} — the target is "${brandName}" but do NOT mention them.` },
+        ],
+      });
+      const content = response.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        const parsed = JSON.parse(
+          content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+        ) as { text: string; intent: string; tier?: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const brandLower = brandName.toLowerCase();
+          const filtered = parsed
+            .filter((p) => typeof p?.text === "string" && !p.text.toLowerCase().includes(brandLower))
+            .slice(0, targetCount)
+            .map((p) => ({
+              text: p.text,
+              cluster: "industry" as const,
+              intent: (p.intent === "high-intent" ? "high-intent" : "informational") as "informational" | "high-intent",
+              source: "generated" as const,
+            }));
+          if (filtered.length > 0) return filtered;
+        }
+      }
+      // fall through to generic generator on empty/malformed output
+    } catch (err) {
+      console.error("[generateIndustryPrompts tiered] Failed, falling back to generic:", err);
+    }
+  }
+
   try {
     let categories: string[] | null = null;
     if (category === "political_advocacy") {

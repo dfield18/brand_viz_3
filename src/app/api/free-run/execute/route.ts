@@ -14,8 +14,10 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
   classifyBrandCategory,
   classifyBrandIndustry,
+  classifyPublicFigure,
   generateBrandAliases,
   generateIndustryPrompts,
+  looksLikePersonName,
 } from "@/lib/generateFeaturePrompts";
 
 // 5 prompts × 2 models = 10 parallel response calls plus 10 analysis
@@ -367,17 +369,32 @@ export async function POST(req: NextRequest) {
     // here — without them, a response that says just "Harris" or
     // "Kamala" never matches "Kamala Harris" in the mention-detection
     // step and the whole report reads 0%.
-    const [category, industry, aliases, brand] = await Promise.all([
+    // classifyPublicFigure runs in parallel with the other classifiers
+    // but only when the name shape suggests a person, so we don't burn
+    // a GPT call classifying obvious orgs ("ACLU", "Common Cause").
+    // If the category comes back as commercial we drop the meta below —
+    // the classifier output is only used when category is political_advocacy.
+    const mayBePerson = looksLikePersonName(brandName);
+    const [category, industry, aliases, brand, rawFigureMeta] = await Promise.all([
       classifyBrandCategory(brandName),
       classifyBrandIndustry(brandName),
       generateBrandAliases(brandName),
       findOrCreateBrand(slug),
+      mayBePerson ? classifyPublicFigure(brandName) : Promise.resolve(null),
     ]);
+    const figureMeta = category === "political_advocacy" ? rawFigureMeta : null;
 
     // Phase 2: generate the 5 prompts (depends on category + industry) while
     // we stamp displayName/industry/aliases onto the newly-created brand row.
+    // figureMeta (when present) unlocks tiered roster-scoped questions so a
+    // specific senator / rep has a near-certain chance of surfacing in the
+    // state-level roster prompts instead of only maybe appearing in a broad
+    // issue-area prompt.
     const [generatedPrompts] = await Promise.all([
-      generateIndustryPrompts(brandName, industry, category),
+      generateIndustryPrompts(brandName, industry, category, {
+        figureMeta,
+        count: FREE_TIER_CONFIG.promptCount,
+      }),
       prisma.brand.update({
         where: { id: brand.id },
         data: { displayName: brandName, industry, aliases },
