@@ -325,6 +325,7 @@ function OverviewInner() {
             {/* Top Recommendation — inline separator */}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
           </div>
+          <DataFooter prompts="mixed" date={range} />
         </div>
 
         {/* Mention Rate Trend — free-tier brands (slug ends in
@@ -372,6 +373,7 @@ function OverviewInner() {
             }))}
             brandName={brandName}
           />
+          <DataFooter prompts="all" date={range} />
         </div>
 
         {/* Standout Quotes */}
