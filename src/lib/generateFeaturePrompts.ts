@@ -72,6 +72,15 @@ export function looksLikePersonName(name: string): boolean {
   return true;
 }
 
+/** Detect jurisdictions that would produce ungrammatical phrases like
+ *  "senators from United States" when composed into scope facets or
+ *  roster questions. For these the caller should swap in a
+ *  jurisdiction-less phrasing ("US senators" vs "senators from X"). */
+export function isNationalJurisdiction(jurisdiction: string): boolean {
+  const k = jurisdiction.trim().toLowerCase().replace(/\./g, "");
+  return k === "united states" || k === "us" || k === "usa" || k === "national" || k === "federal";
+}
+
 /** GPT-4o-mini classifier. Returns meta when the subject is a
  *  recognizable US political figure; returns null otherwise. The
  *  caller is expected to have already filtered `category ===
@@ -617,17 +626,28 @@ function buildFallbackIndustryPrompts(
       ? "US House"
       : "office";
   const partyPlural = figureMeta.party ? `${figureMeta.party}s` : "members";
+  // National-jurisdiction figures shouldn't produce "senators from
+  // United States"-shaped phrases. Use jurisdiction-less roster
+  // questions ("Who are the current US senators?") instead.
+  const national = isNationalJurisdiction(figureMeta.jurisdiction);
 
   const candidates: string[] = [];
   // Tier A — near-certain roster hits
-  candidates.push(`Who are the current ${roleLower}s from ${figureMeta.jurisdiction}?`);
-  if (figureMeta.party) {
-    candidates.push(`Which ${partyPlural} represent ${figureMeta.jurisdiction} in ${chamber === "office" ? "office" : "Congress"} in ${year}?`);
-  }
-  if (figureMeta.role.includes("Senator")) {
-    candidates.push(`Who won recent US Senate races in ${figureMeta.jurisdiction}?`);
-  } else if (figureMeta.role.includes("Rep")) {
-    candidates.push(`Who represents ${figureMeta.jurisdiction} in the US House?`);
+  if (national) {
+    candidates.push(`Who are the current US ${roleLower}s?`);
+    if (figureMeta.party) {
+      candidates.push(`Who are the most prominent ${figureMeta.party} ${roleLower}s in ${year}?`);
+    }
+  } else {
+    candidates.push(`Who are the current ${roleLower}s from ${figureMeta.jurisdiction}?`);
+    if (figureMeta.party) {
+      candidates.push(`Which ${partyPlural} represent ${figureMeta.jurisdiction} in ${chamber === "office" ? "office" : "Congress"} in ${year}?`);
+    }
+    if (figureMeta.role.includes("Senator")) {
+      candidates.push(`Who won recent US Senate races in ${figureMeta.jurisdiction}?`);
+    } else if (figureMeta.role.includes("Rep")) {
+      candidates.push(`Who represents ${figureMeta.jurisdiction} in the US House?`);
+    }
   }
   // Tier B — role + stance
   if (figureMeta.signatureIssue) {
@@ -669,17 +689,29 @@ function buildTieredFigurePrompt(
   const partyPhrase = figureMeta.party ? `${figureMeta.party}s` : "members";
   const caucusPhrase = figureMeta.caucus ? `${figureMeta.caucus.toLowerCase()} ` : "";
   const issuePhrase = figureMeta.signatureIssue ?? null;
+  const national = isNationalJurisdiction(figureMeta.jurisdiction);
+  // National figures get jurisdiction-less roster shapes so the LLM
+  // doesn't produce awkward "senators from United States" questions.
+  const rosterExample1 = national
+    ? `"Who are the current US ${figureMeta.role}s?"`
+    : `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
+  const rosterExample2 = national
+    ? `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`
+    : `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
+  const rosterExample3 = figureMeta.role === "US Senator" && !national
+    ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`
+    : "";
 
   return `You generate search queries that voters, donors, activists, and journalists would type into AI assistants when researching a political scene — NOT asking about a specific person.
 
-The target figure is "${brandName}" — a ${figureMeta.role} representing ${figureMeta.jurisdiction}${figureMeta.party ? ` (${figureMeta.party})` : ""}${figureMeta.caucus ? `, ${figureMeta.caucus} caucus` : ""}${issuePhrase ? `, associated with ${issuePhrase}` : ""}.
+The target figure is "${brandName}" — a ${figureMeta.role}${national ? "" : ` representing ${figureMeta.jurisdiction}`}${figureMeta.party ? ` (${figureMeta.party})` : ""}${figureMeta.caucus ? `, ${figureMeta.caucus} caucus` : ""}${issuePhrase ? `, associated with ${issuePhrase}` : ""}.
 
 Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer must be a list of NAMED PEOPLE.
 
 TIER A — roster questions (${aCount} questions). The answer is essentially the roster of officeholders that INCLUDES "${brandName}". Examples of the shape:
-- "Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"
-- "Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"
-${figureMeta.role === "US Senator" ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"` : ""}
+- ${rosterExample1}
+- ${rosterExample2}
+${rosterExample3}
 
 TIER B — role + stance questions (${bCount} questions). Narrow enough that "${brandName}" usually makes the list, but doesn't guarantee it. Anchor on role + ${figureMeta.party ?? "party"}${figureMeta.caucus ? ` + ${figureMeta.caucus.toLowerCase()} caucus` : ""}${issuePhrase ? ` + ${issuePhrase}` : ""}. Examples:
 - "Which ${caucusPhrase}${figureMeta.role.toLowerCase()}s are most outspoken on ${issuePhrase ?? "current policy debates"}?"

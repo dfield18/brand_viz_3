@@ -17,7 +17,7 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
-import { classifyBrandCategory, classifyPublicFigure, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
+import { classifyBrandCategory, classifyPublicFigure, isNationalJurisdiction, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
 import { getCountableSentiment } from "@/lib/narrative/sentimentCountable";
 import { sha256 } from "@/lib/hash";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
@@ -192,7 +192,11 @@ function composeIndustryScope(
   fallbackIndustry: string | null,
 ): string | null {
   if (!meta) return fallbackIndustry;
-  const parts = [meta.signatureIssue, meta.jurisdiction].filter(
+  // Drop jurisdiction when it's national ("United States") so we don't
+  // end up with scopes like "gun control and United States" that
+  // contribute no extra signal and read awkwardly.
+  const includeJurisdiction = meta.jurisdiction && !isNationalJurisdiction(meta.jurisdiction);
+  const parts = [meta.signatureIssue, includeJurisdiction ? meta.jurisdiction : null].filter(
     (p): p is string => typeof p === "string" && p.length > 0,
   );
   if (parts.length === 0) return fallbackIndustry;
@@ -817,7 +821,12 @@ export async function GET(req: NextRequest) {
   const scopeFacets: string[] = [];
   if (figureMeta) {
     const roleLower = figureMeta.role.replace(/^US\s+/i, "").toLowerCase();
-    if (figureMeta.jurisdiction) scopeFacets.push(`${roleLower}s from ${figureMeta.jurisdiction}`);
+    const national = isNationalJurisdiction(figureMeta.jurisdiction);
+    // National figures skip the "X from United States" facet (reads
+    // awkwardly) and use "US X" instead.
+    if (figureMeta.jurisdiction) {
+      scopeFacets.push(national ? `US ${roleLower}s` : `${roleLower}s from ${figureMeta.jurisdiction}`);
+    }
     if (figureMeta.party) scopeFacets.push(`${figureMeta.party} ${roleLower}s`);
     if (figureMeta.caucus) scopeFacets.push(`${figureMeta.caucus.toLowerCase()} ${roleLower}s`);
     if (figureMeta.signatureIssue) scopeFacets.push(figureMeta.signatureIssue);
@@ -846,7 +855,16 @@ export async function GET(req: NextRequest) {
     // derive a specific scope phrase ("climate change legislation",
     // "immigration reform advocates") instead of classifier-derived
     // labels which are often too generic (just "politics").
-    const samplePrompts = industryPromptTexts.slice(0, 5);
+    //
+    // Defensive: strip any prompt that contains the brand name. The
+    // generators already reject these, but a malformed template or
+    // legacy row could leak the brand name into the LLM's user
+    // message, which would make the Key Insight quote the subject
+    // itself instead of the topical theme.
+    const brandNameLower = brandName.toLowerCase();
+    const samplePrompts = industryPromptTexts
+      .filter((t) => !t.toLowerCase().includes(brandNameLower))
+      .slice(0, 5);
     const baseSummaryData = {
       brandName,
       brandRecall: overallMentionRate,
