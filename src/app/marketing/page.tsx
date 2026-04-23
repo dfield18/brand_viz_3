@@ -94,7 +94,6 @@ const PRICING_TIERS = [
       "5 brands tracked automatically — set once, monitored every week",
       "ChatGPT, Gemini, Claude, Perplexity & Google AI Overviews",
       "Real weekly snapshots build a genuine 90-day trend — not training-data estimates",
-      "Competitor movement alerts when rivals gain or lose share",
       "Custom prompts for the exact questions your customers ask",
       "Weekly email digests + CSV exports",
     ],
