@@ -3,9 +3,16 @@ interface DataFooterProps {
   prompts: "industry" | "all" | "mixed";
   /** "latest" = most recent snapshot, or a number for the range in days */
   date: "latest" | number;
+  /** How the data in the section was computed across the date window:
+   *  - "aggregated" (default) — metric aggregates every run in the range.
+   *    Label reads "Last N days".
+   *  - "snapshot" — metric uses the latest snapshot per (model, prompt)
+   *    within the range. Label reads "Current · N-day window" so users
+   *    don't assume it's a time-series average. */
+  mode?: "aggregated" | "snapshot";
 }
 
-export function DataFooter({ prompts, date }: DataFooterProps) {
+export function DataFooter({ prompts, date, mode = "aggregated" }: DataFooterProps) {
   const promptLabel =
     prompts === "industry"
       ? "Generic industry questions (no brands mentioned)"
@@ -15,7 +22,9 @@ export function DataFooter({ prompts, date }: DataFooterProps) {
   const dateLabel =
     date === "latest"
       ? "Latest snapshot"
-      : `Last ${date} days`;
+      : mode === "snapshot"
+        ? `Current · ${date}-day window`
+        : `Last ${date} days`;
 
   return (
     <p className="text-[10px] text-muted-foreground/50 text-right mt-3">
