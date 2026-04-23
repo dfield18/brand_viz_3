@@ -17,7 +17,7 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { getOpenAIDefault } from "@/lib/openai";
-import { classifyPublicFigure, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
+import { classifyBrandCategory, classifyPublicFigure, looksLikePersonName, type PublicFigureMeta } from "@/lib/generateFeaturePrompts";
 import { getCountableSentiment } from "@/lib/narrative/sentimentCountable";
 import { sha256 } from "@/lib/hash";
 import { normalizeEntityIds } from "@/lib/competition/normalizeEntities";
@@ -776,7 +776,26 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Generate AI summary using GPT-4o-mini ──
-  const isOrg = ((brand as unknown as { category?: string | null }).category ?? null) === "political_advocacy";
+  // Early free-run brands were created before the category column was
+  // persisted — brand.category is null for them, so isOrg=false, the
+  // figure-meta resolver short-circuits, and the Key Insight falls
+  // back to the generic "politics" scope. Classify lazily here for
+  // any person-shape name missing category + fire-and-forget the
+  // backfill so future loads skip this branch.
+  let storedCategory = (brand as unknown as { category?: string | null }).category ?? null;
+  if (!storedCategory && looksLikePersonName(brandName)) {
+    try {
+      storedCategory = await classifyBrandCategory(brandName);
+      if (storedCategory) {
+        prisma.brand
+          .update({ where: { id: (brand as unknown as { id: string }).id }, data: { category: storedCategory } })
+          .catch((err: unknown) => console.warn("[overview] category backfill failed:", err));
+      }
+    } catch (err) {
+      console.warn("[overview] lazy classifyBrandCategory failed:", err);
+    }
+  }
+  const isOrg = storedCategory === "political_advocacy";
   const industry = (brand as unknown as { industry?: string | null }).industry ?? null;
   // For political figures (person-shape + political_advocacy), replace
   // the generic "politics" scope with their signature issue +

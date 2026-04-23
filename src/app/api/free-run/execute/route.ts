@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
       }),
       prisma.brand.update({
         where: { id: brand.id },
-        data: { displayName: brandName, industry, aliases },
+        data: { displayName: brandName, industry, aliases, category },
       }),
     ]);
 
