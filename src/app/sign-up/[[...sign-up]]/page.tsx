@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
+
+// Auth gateway — no indexable content. Explicit noindex so Search
+// Console doesn't flag the page as "Excluded by noindex" warning
+// (the page was silently inheriting the layout's index,follow).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  alternates: { canonical: "/sign-up" },
+};
 
 export default function SignUpPage() {
   return (

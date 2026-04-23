@@ -10,7 +10,7 @@ const GA_ID = "G-VSPTQ3C4MN";
 const GA_ENABLED = process.env.NODE_ENV === "production";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://aisayswhat.com"),
+  metadataBase: new URL("https://www.aisayswhat.com"),
   title: {
     default: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     template: "%s | aiSaysWhat",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://aisayswhat.com",
+    url: "https://www.aisayswhat.com",
     siteName: "aiSaysWhat",
     title: "aiSaysWhat — AI brand visibility for companies and marketing teams",
     description:

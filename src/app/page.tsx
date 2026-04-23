@@ -139,7 +139,7 @@ const STRUCTURED_DATA = {
     {
       "@type": "SoftwareApplication",
       name: "aiSaysWhat",
-      url: "https://aisayswhat.com",
+      url: "https://www.aisayswhat.com",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       description:
@@ -153,7 +153,7 @@ const STRUCTURED_DATA = {
     {
       "@type": "Organization",
       name: "aiSaysWhat",
-      url: "https://aisayswhat.com",
+      url: "https://www.aisayswhat.com",
       email: "support@aisayswhat.com",
       description: "AI brand visibility for companies and marketing teams.",
     },
