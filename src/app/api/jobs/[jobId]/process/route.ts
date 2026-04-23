@@ -675,7 +675,9 @@ export async function POST(
           brandSlug: job.brand.slug,
           responseText,
           analysisJson: analysis,
-        }).catch(() => {});
+        }).catch((err) => {
+          console.error("[process] persistProminenceForRun failed (non-fatal):", { runId: run.id, err });
+        });
 
         // SourceOccurrence has no DB-level uniqueness guard today, so avoid
         // re-persisting sources for runs that already have saved citations.
@@ -692,7 +694,9 @@ export async function POST(
             responseText,
             analysisJson: analysis,
             apiCitations: citations,
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error("[process] persistSourcesForRun failed (non-fatal):", { runId: run.id, err });
+          });
         }
 
         processedThisCall++;
@@ -773,7 +777,9 @@ export async function POST(
   } finally {
     // Always release the advisory lock if we acquired it
     if (lockAcquired) {
-      await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockKey})`.catch(() => {});
+      await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockKey})`.catch((err) => {
+        console.error("[process] pg_advisory_unlock failed (non-fatal, lock auto-releases on session end):", { lockKey, err });
+      });
     }
   }
 }

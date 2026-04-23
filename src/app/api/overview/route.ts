@@ -356,8 +356,18 @@ export async function GET(req: NextRequest) {
     runQuery: { include: { prompt: true } },
   });
 
-  // Await fetchBrandRuns first — we need deduped run IDs for source type query
-  const visResult = await visResultPromise.catch((e) => { console.error("Overview KPI error:", e); return null; });
+  // Await fetchBrandRuns first — we need deduped run IDs for source type query.
+  // fetchBrandRuns returns an early-return PipelineEarlyReturn for handled
+  // errors (invalid model, brand not found). A throw reaches this catch
+  // only on genuine system failures (DB connection lost, etc.). Return a
+  // 500 with a meaningful message instead of silently serving a blank
+  // scorecard — the old behavior made DB outages look like "no data" in
+  // the UI.
+  const visResult = await visResultPromise.catch((e) => {
+    console.error("[overview] fetchBrandRuns threw — returning 500:", e);
+    return { ok: false as const, response: NextResponse.json({ error: "Failed to load overview data. Please try again." }, { status: 500 }) };
+  });
+  if (!visResult.ok) return visResult.response;
 
   // Check server-side cache
   const overviewCacheKey = `${brandSlug}|${model}|${range}`;
