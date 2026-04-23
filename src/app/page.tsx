@@ -98,7 +98,7 @@ const PRICING_TIERS = [
     features: [
       "ChatGPT + Gemini",
       "Visibility, sentiment, competitors, sources",
-      "90-day trend — 3 points, historical estimated",
+      "90-day trend — 3 points, 2 derived from model training data",
     ],
     cta: "Use it free",
     highlighted: false,
