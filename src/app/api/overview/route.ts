@@ -381,6 +381,11 @@ export async function GET(req: NextRequest) {
   // the latest per prompt.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let allSnapshotRuns: any[] = [];
+  // Unique industry-cluster prompt texts, hoisted out of the
+  // visResult block so the Key Insight summary generation below can
+  // ground its scope phrase in what was actually asked instead of
+  // leaning on a classifier-derived label.
+  let industryPromptTexts: string[] = [];
 
   if (visResult && visResult.ok) {
     const { brand: visBrand, runs: visRuns, allRuns: visAllRuns } = visResult;
@@ -390,6 +395,9 @@ export async function GET(req: NextRequest) {
     // the scorecard matches the latest trend chart data point exactly.
     const industryRuns = visRuns.filter((r) => r.prompt.cluster === "industry");
     const industryRunIds = industryRuns.map((r) => r.id);
+    industryPromptTexts = Array.from(
+      new Set(industryRuns.map((r) => r.prompt.text.trim()).filter((t) => t.length > 0)),
+    );
 
     // Narrative / Sentiment / Sources — span ALL runs in the range, not
     // just the latest per prompt. A prompt answered weekly for 90 days
@@ -833,25 +841,24 @@ export async function GET(req: NextRequest) {
     // input and tends to echo the latter. Removing it leaves the
     // facet list as the only scope anchor available.
     const recallScope = scopeFacets[0] ?? industryScope ?? industry ?? "this space";
+    // Up to 5 sample prompt texts — these are ground truth for "what
+    // was AI actually asked about." The Key Insight LLM uses them to
+    // derive a specific scope phrase ("climate change legislation",
+    // "immigration reform advocates") instead of classifier-derived
+    // labels which are often too generic (just "politics").
+    const samplePrompts = industryPromptTexts.slice(0, 5);
+    const baseSummaryData = {
+      brandName,
+      brandRecall: overallMentionRate,
+      brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
+      sentiment: sentLabel,
+      topNarrative: topFrame,
+      ...(samplePrompts.length > 0 ? { samplePrompts } : {}),
+      ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
+    };
     const summaryData = scopeFacets.length > 0
-      ? {
-          brandName,
-          scopeFacets,
-          brandRecall: overallMentionRate,
-          brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
-          sentiment: sentLabel,
-          topNarrative: topFrame,
-          ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
-        }
-      : {
-          brandName,
-          industry: industryScope ?? industry ?? "this space",
-          brandRecall: overallMentionRate,
-          brandRecallDescription: `When users ask AI broad questions about ${recallScope} — without mentioning any brand by name — ${overallMentionRate}% of responses still bring up ${brandName}`,
-          sentiment: sentLabel,
-          topNarrative: topFrame,
-          ...(competitiveRank ? { rank: competitiveRank.rank, totalCompetitors: competitiveRank.totalCompetitors } : {}),
-        };
+      ? { ...baseSummaryData, scopeFacets }
+      : { ...baseSummaryData, industry: industryScope ?? industry ?? "this space" };
 
     // Cache by hash of the inputs — the AI summary is deterministic-
     // enough at temperature 0.4 that identical inputs produce
@@ -883,9 +890,16 @@ Rules:
 - Focus on the ONE most noteworthy finding — don't try to mention every metric.
 - Pick the most interesting angle: a visibility gap, a sentiment problem, a strong narrative, or a competitive position.
 - Reference at most 1-2 specific numbers. Do NOT list multiple stats.
-${scopeFacets.length > 0
-  ? `- Mention rate measures how often AI mentions ${brandName} in response to broad questions that do NOT name any ${isOrg ? "organization" : "brand"}. The questions are scoped to one of these categories: ${scopeFacets.map((f) => `"${f}"`).join(", ")}.
-- CRITICAL — SCOPE PHRASE: You MUST pick exactly ONE of those scope categories and use it verbatim as the scope phrase in your sentence. Good: "when users ask AI about ${scopeFacets[0]}", "in ${scopeFacets[0]} questions", "on ${scopeFacets[scopeFacets.length - 1]} topics". BAD — FORBIDDEN words in the output: "politics", "political", "this space", "the industry", "the category". Using any of those is a failure — the sentence is worthless without a concrete scope from the provided list.`
+${samplePrompts.length > 0
+  ? `- Mention rate measures how often AI mentions ${brandName} in response to these actual prompts (none name any ${isOrg ? "organization" : "brand"}):
+${samplePrompts.map((p) => `  • ${p}`).join("\n")}
+- CRITICAL — SCOPE PHRASE: Derive a SPECIFIC scope phrase (4-10 words) from the common thread of those prompts and use it in your sentence. Examples of good scope phrases that reflect ACTUAL question topics:
+  • "Democratic senators advocating for immigration reform"
+  • "US senators active on climate change legislation"
+  • "leading progressive voices on healthcare reform"
+  • "Illinois political representation in Congress"
+  ${scopeFacets.length > 0 ? `- For additional scope hints, the target is associated with: ${scopeFacets.map((f) => `"${f}"`).join(", ")}. You may blend these with the prompt themes.` : ""}
+- FORBIDDEN in output: "politics", "political", "this space", "the industry", "the category", "the sector". Using any of those is a failure — the scope must describe the actual topical thread of the prompts listed above.`
   : `- Mention rate measures how often AI mentions ${brandName} in response to broad industry questions that do NOT name any brand. These are generic questions about ${industry ?? "the space"} — no brand is mentioned in the prompt. Convey this clearly, e.g. "when users ask AI about ${industry ?? "the industry"} without naming any brand" or "in response to generic industry questions where no brand is mentioned."`}
 - CALIBRATE qualitative language to the actual number. A mention rate of 0-20% is "low," "rarely appears," or "a small share." 20-40% is "moderate" or "meaningful but not dominant." 40-60% is "notable" or "a significant share." 60-80% is "strong." 80%+ is "dominant" or "near-ubiquitous." NEVER call 10% a "strong presence" — that misrepresents the data and erodes trust in the dashboard.
 - ${isOrg ? 'Say "organizations" instead of "competitors" and "organization" instead of "brand."' : ""}
