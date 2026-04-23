@@ -69,11 +69,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How often is it updated?",
-    a: "Free reports run live against every model each time you search (10 searches per day). Pro accounts snapshot weekly so you get a 90-day trend built from real logged data points — no back-cast estimates. Enterprise can pick a custom cadence.",
+    a: "Free reports run live against every model each time you search. Pro accounts snapshot weekly so you get a 90-day trend built from real logged data points — no back-cast estimates. Enterprise can pick a custom cadence.",
   },
   {
     q: "What's the difference between the free and paid tiers?",
-    a: "The free tier runs ChatGPT + Gemini on demand with 10 searches per day and a historical trend estimated from each model's training-data reference. Pro adds all five platforms, weekly snapshots that accumulate as real logged history, five tracked brands, weekly email reports, CSV export, and custom prompts. Enterprise is for multi-brand companies and agencies with unlimited brands, API access, SSO, and dedicated support.",
+    a: "The free tier runs ChatGPT + Gemini on demand and a historical trend estimated from each model's training-data reference. Pro adds all five platforms, weekly snapshots that accumulate as real logged history, five tracked brands, weekly email reports, CSV export, and custom prompts. Enterprise is for multi-brand companies and agencies with unlimited brands, API access, SSO, and dedicated support.",
   },
   {
     q: "Can I trust the historical data on the free tier?",
@@ -96,7 +96,6 @@ const PRICING_TIERS = [
     period: "",
     description: "Run a report — no sign-up required",
     features: [
-      "10 searches per day",
       "ChatGPT + Gemini",
       "Visibility, sentiment, competitors, sources",
       "90-day trend — 3 points, historical estimated",
@@ -111,7 +110,7 @@ const PRICING_TIERS = [
     description: "For marketing teams tracking brands over time",
     features: [
       "5 brands tracked automatically",
-      "All 5 AI platforms",
+      "ChatGPT, Gemini, Claude, Perplexity & Google AI Overviews",
       "90-day trend — weekly snapshots, all real",
       "Email reports + CSV exports",
       "Custom prompts",

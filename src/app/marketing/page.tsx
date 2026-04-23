@@ -78,7 +78,6 @@ const PRICING_TIERS = [
     period: "",
     description: "Run a report — no sign-up required",
     features: [
-      "10 searches per day",
       "ChatGPT + Gemini",
       "Visibility, sentiment, competitors, sources",
       "90-day trend — 3 points, historical estimated",
@@ -93,7 +92,7 @@ const PRICING_TIERS = [
     description: "For marketing teams tracking brands over time",
     features: [
       "5 brands tracked automatically",
-      "All 5 AI platforms",
+      "ChatGPT, Gemini, Claude, Perplexity & Google AI Overviews",
       "90-day trend — weekly snapshots, all real",
       "Email reports + CSV exports",
       "Custom prompts",
