@@ -173,9 +173,11 @@ export async function classifyBrandCategory(
       messages: [
         {
           role: "system",
-          content: `Classify the given organization into one of two categories:
-- "commercial" — businesses, consumer brands, tech companies, SaaS, retailers, etc.
-- "political_advocacy" — political parties, PACs, advocacy organizations, nonprofits focused on policy/social causes, think tanks, labor unions, activist groups, NGOs, charities, foundations
+          content: `Classify the given name into one of two categories:
+- "commercial" — businesses, consumer brands, tech companies, SaaS, retailers, consumer products, restaurant chains, etc.
+- "political_advocacy" — individual politicians (senators, representatives, governors, mayors, candidates), judges, government officials, political commentators, activists, political parties, PACs, advocacy organizations, nonprofits focused on policy/social causes, think tanks, labor unions, activist groups, NGOs, charities, foundations
+
+A person who holds or has held elected office, is running for office, or is primarily known for political activism belongs in "political_advocacy" — even though they are an individual, not an organization.
 
 Return ONLY the category string, no other text.`,
         },
@@ -565,6 +567,36 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
  * generic issue-area questions.
  * For commercial brands: uses standard category-level questions.
  */
+/** Politics-flavored deterministic fallback used when we know the
+ *  subject is political_advocacy but couldn't resolve figureMeta (e.g.
+ *  classifyPublicFigure timed out, the LLM couldn't map the person to
+ *  an allowed role). Keeps the free-run from surfacing "Couldn't
+ *  generate questions" for names that are clearly politicians even
+ *  when the role classifier fails. */
+function buildGenericPoliticsFallback(
+  industry: string,
+  count: number,
+): GeneratedPrompt[] {
+  const year = new Date().getFullYear();
+  const scope = industry || "US politics";
+  const candidates: string[] = [
+    `Who are the most influential politicians in ${scope} in ${year}?`,
+    `Who are the leading voices on ${scope} right now?`,
+    `Which public figures are most outspoken on ${scope}?`,
+    `Who are the most visible elected officials shaping ${scope} this year?`,
+    `Which politicians have gained the most attention in ${scope} recently?`,
+    `Who are the rising political figures in ${scope} in ${year}?`,
+    `Which officials are most cited in coverage of ${scope}?`,
+    `Who are the most prominent advocates in ${scope}?`,
+  ];
+  return candidates.slice(0, Math.max(1, count)).map((text) => ({
+    text,
+    cluster: "industry" as const,
+    intent: "informational" as const,
+    source: "generated" as const,
+  }));
+}
+
 /** Deterministic roster/role/issue questions derived directly from the
  *  classifier output — no LLM call. Used as a last-resort fallback for
  *  political figures when the tiered LLM generator and the generic
@@ -811,16 +843,20 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
     console.error("[generateIndustryPrompts] Failed:", err);
   }
 
-  // Last-resort: deterministic roster prompts derived directly from
-  // figureMeta. Reached only when both LLM generators came back empty
-  // (rate limit, content policy, every prompt tripped the brand-name
-  // filter, etc.). For clearly-identified politicians this guarantees
-  // the free-run never surfaces "Couldn't generate questions" to the
-  // user just because the LLM had a bad call. For non-political
-  // subjects (no figureMeta), we still return [] and the caller
-  // handles the empty case.
+  // Last-resort deterministic fallbacks. Layered:
+  //   1. figureMeta present → use roster/role/issue templates built
+  //      from the classifier output (most specific, highest recall).
+  //   2. political_advocacy subject without figureMeta → generic
+  //      politics templates. Covers classifier hiccups where we know
+  //      it's a political subject but couldn't resolve role/state.
+  //   3. Commercial subject with no LLM success → return empty and
+  //      let the caller surface the error (rare — the generic LLM
+  //      path handles commercial brands reliably).
   if (figureMeta) {
     return buildFallbackIndustryPrompts(figureMeta, targetCount);
+  }
+  if (category === "political_advocacy") {
+    return buildGenericPoliticsFallback(industry, targetCount);
   }
   return [];
 }
