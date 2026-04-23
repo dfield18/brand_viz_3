@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
+import { smartTitleCaseName } from "@/lib/utils";
 import {
   classifyBrandCategory,
   classifyBrandDisplayName,
@@ -54,7 +55,11 @@ export async function materializePromptsForBrand(brandId: string) {
   });
 
   if (existing.length === 0) {
-    const brandName = brand.displayName || brand.name;
+    // Normalize casing so LLM prompts built from brandName don't
+    // echo user-input lowercase ("what are kathy hochul's policies?").
+    // smartTitleCaseName is a no-op when the stored name already has
+    // any uppercase letter, so presets pass through untouched.
+    const brandName = smartTitleCaseName(brand.displayName || brand.name);
     const industry = brand.industry || brandName;
     const category = (brand.category || "commercial") as BrandCategory;
 

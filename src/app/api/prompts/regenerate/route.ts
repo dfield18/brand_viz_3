@@ -5,6 +5,7 @@ import { requireBrandAccess } from "@/lib/brandAccess";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { generateBrandPrompts, generateIndustryPrompts, type BrandCategory } from "@/lib/generateFeaturePrompts";
 import { classifyPromptTopicDynamic } from "@/lib/topics/extractTopic";
+import { smartTitleCaseName } from "@/lib/utils";
 
 /**
  * POST /api/prompts/regenerate
@@ -53,7 +54,10 @@ export async function POST(req: NextRequest) {
       data: { enabled: false },
     });
 
-    const brandName = brand.displayName || brand.name;
+    // Normalize casing so generated prompts don't bake in lowercase
+    // user input ("what are kathy hochul's policies?"). No-op when
+    // the stored name already has any uppercase letter.
+    const brandName = smartTitleCaseName(brand.displayName || brand.name);
     const industry = brand.industry || brandName;
     const category = (brand.category || "commercial") as BrandCategory;
 
