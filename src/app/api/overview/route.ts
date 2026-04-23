@@ -171,9 +171,16 @@ const FIGURE_META_CACHE_TTL_MS = 30 * 60 * 1000;
 async function resolveFigureMeta(brandName: string, isOrg: boolean): Promise<PublicFigureMeta | null> {
   if (!isOrg || !looksLikePersonName(brandName)) return null;
   const hit = figureMetaCache.get(brandName);
-  if (hit && Date.now() - hit.ts < FIGURE_META_CACHE_TTL_MS) return hit.meta;
+  if (hit && hit.meta && Date.now() - hit.ts < FIGURE_META_CACHE_TTL_MS) return hit.meta;
   const meta = await classifyPublicFigure(brandName);
-  figureMetaCache.set(brandName, { meta, ts: Date.now() });
+  // Only cache successful classifications. Caching null would lock in
+  // "no figureMeta" for 30 min — a single OpenAI hiccup (rate limit,
+  // timeout, transient 5xx) would then keep serving the generic
+  // "politics" label on the overview tab long after OpenAI recovered.
+  // Retrying each request until success costs at most one GPT-4o-mini
+  // call per overview load and produces correct scope phrasing as soon
+  // as the classifier comes back online.
+  if (meta) figureMetaCache.set(brandName, { meta, ts: Date.now() });
   return meta;
 }
 

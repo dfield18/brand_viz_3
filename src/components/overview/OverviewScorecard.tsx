@@ -13,6 +13,11 @@ interface OverviewScorecardProps {
    *  apparel", "electric vehicles"). Falls back to "industry" when null/
    *  empty so the copy still reads naturally. */
   industry?: string | null;
+  /** Resolved scope label from page.tsx — prefers a scope facet like
+   *  "senators from Illinois" over the raw short industry. Used in the
+   *  Mention Rate description so it says "in questions about senators
+   *  from Illinois" instead of the generic "politics questions". */
+  industryLabel?: string | null;
   /** Category tag from classifyBrandCategory ("commercial" or
    *  "political_advocacy"). Picks the right word in the Mention Rate
    *  description — "brand" vs "politician" vs "organization" —
@@ -129,13 +134,14 @@ export function OverviewScorecard({
   kpiDeltas,
   brandName = "Brand",
   industry,
+  industryLabel: industryLabelProp,
   category,
   dominantFrames,
   sentimentSplit,
   topSourceType,
 }: OverviewScorecardProps) {
   const topFrame = dominantFrames[0] ?? null;
-  const industryLabel = industry?.trim() || "industry";
+  const industryLabel = industryLabelProp?.trim() || industry?.trim() || "industry";
   // Use "public figure" for politicians, "organization" for advocacy
   // orgs, "brand" for everything else — keeps the copy from calling
   // Bernie Sanders or Donald Trump "a brand".
@@ -147,7 +153,7 @@ export function OverviewScorecard({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: getVisibilityBadge(overallMentionRate),
-      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
+      description: `% of broad prompts about ${industryLabel} where AI mentions ${brandName}`,
       tooltip: `We ask AI generic questions about the industry without naming any ${noun}. This measures how often AI brings up ${brandName} on its own.`,
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,

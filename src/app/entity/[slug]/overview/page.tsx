@@ -250,15 +250,22 @@ function OverviewInner() {
 
   const kpis = apiData.visibilityKpis;
   const industry = apiData.brandIndustry;
-  // Prefer the richer figure-scoped phrase when available ("gun
-  // control and Connecticut" vs "us politics"); fall back to the
-  // classified industry, then a generic placeholder.
-  const industryLabel = apiData.brandIndustryScope || industry || "this space";
+  // Prefer the most specific scope phrase available. Facets read best
+  // grammatically ("senators from Illinois", "Republican senators"),
+  // then composed scope ("gun control and Connecticut"), then raw
+  // industry, then a generic placeholder. "Questions about X" is used
+  // instead of "X questions" so noun phrases (e.g. "senators from
+  // Illinois") fit without awkward "senators from Illinois questions."
+  const industryLabel =
+    (apiData.brandScopeFacets && apiData.brandScopeFacets[0]) ||
+    apiData.brandIndustryScope ||
+    industry ||
+    "this space";
   const rangeSuffix = ` — last ${range} days`;
   const trendDescriptions: Record<string, string> = {
-    visibility: `How often AI mentions ${brandName} in ${industryLabel} questions${rangeSuffix}`,
-    topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions${rangeSuffix}`,
-    sov: `${brandName}'s share of mentions in ${industryLabel} responses${rangeSuffix}`,
+    visibility: `How often AI mentions ${brandName} in questions about ${industryLabel}${rangeSuffix}`,
+    topResult: `How often ${brandName} ranks #1 when AI answers questions about ${industryLabel}${rangeSuffix}`,
+    sov: `${brandName}'s share of mentions when AI discusses ${industryLabel}${rangeSuffix}`,
   };
   // Collect all frames tied at the top percentage (sort to ensure highest first)
   const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);
@@ -285,6 +292,7 @@ function OverviewInner() {
                 kpiDeltas={apiData.kpiDeltas ?? null}
                 brandName={brandName}
                 industry={industry}
+                industryLabel={industryLabel}
                 category={apiData.brandCategory}
                 dominantFrames={dominantFrames}
                 sentimentSplit={apiData.sentimentSplit ?? null}
