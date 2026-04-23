@@ -10,6 +10,7 @@ import { persistSourcesForRun, type ApiCitation } from "@/lib/sources/persistSou
 import { resolveRedirectsBatch } from "@/lib/redirectResolver";
 import { persistProminenceForRun } from "@/lib/prominence/persistProminence";
 import { sha256 } from "@/lib/hash";
+import { smartTitleCaseName } from "@/lib/utils";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
   classifyBrandCategory,
@@ -311,16 +312,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const brandName = body.brandName?.trim();
-  if (!brandName) {
+  const rawInput = body.brandName?.trim();
+  if (!rawInput) {
     return NextResponse.json({ error: "brandName is required" }, { status: 400 });
   }
-  if (brandName.length > 100) {
+  if (rawInput.length > 100) {
     return NextResponse.json({ error: "brandName is too long" }, { status: 400 });
   }
-  if (!/\p{L}|\p{N}/u.test(brandName)) {
+  if (!/\p{L}|\p{N}/u.test(rawInput)) {
     return NextResponse.json({ error: "Enter a brand or organization name." }, { status: 400 });
   }
+  // Normalize casing so "kathy hochul" typed lowercase renders as
+  // "Kathy Hochul" everywhere — displayName, Key Insight, prompt
+  // opportunities, trend chart captions. Preserves intentional
+  // acronym casing ("MIT", "ACLU") by only title-casing strings with
+  // zero uppercase letters.
+  const brandName = smartTitleCaseName(rawInput);
   const baseSlug = slugify(brandName);
   if (!baseSlug) {
     return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });

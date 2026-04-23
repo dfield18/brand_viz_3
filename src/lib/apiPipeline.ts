@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
-import { computeRangeCutoff } from "@/lib/utils";
+import { computeRangeCutoff, smartTitleCaseName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -159,9 +159,18 @@ export async function fetchBrandRuns<R extends { model: string; promptId: string
   // Resolve brand.name to displayName when available so downstream
   // brand detection (isBrandMentioned, computeBrandRank) uses the
   // correct name. E.g. displayName="Future Forward" vs name="Future Forward Usa".
+  //
+  // Also smart-title-case both fields so legacy free-run brands that
+  // were persisted with lowercase user input ("kathy hochul") render
+  // correctly in copy like "Prompt Opportunity: … kathy hochul doesn't
+  // appear …". smartTitleCaseName is a no-op for strings that already
+  // contain any uppercase letter, so presets (ACLU, PwC, etc.) pass
+  // through unchanged.
+  const resolvedName = rawBrand.displayName || rawBrand.name;
   const brand: typeof rawBrand = {
     ...rawBrand,
-    name: rawBrand.displayName || rawBrand.name,
+    name: smartTitleCaseName(resolvedName),
+    displayName: rawBrand.displayName ? smartTitleCaseName(rawBrand.displayName) : rawBrand.displayName,
   };
 
   // Find latest completed job (optional)

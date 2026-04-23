@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { titleCase, computeRangeCutoff } from "./utils";
+import { titleCase, smartTitleCaseName, computeRangeCutoff } from "./utils";
 
 describe("titleCase", () => {
   it("converts kebab-case", () => {
@@ -29,6 +29,33 @@ describe("titleCase", () => {
 
   it("handles consecutive separators", () => {
     assert.equal(titleCase("foo--bar"), "Foo Bar");
+  });
+});
+
+describe("smartTitleCaseName", () => {
+  it("title-cases all-lowercase input", () => {
+    assert.equal(smartTitleCaseName("kathy hochul"), "Kathy Hochul");
+  });
+
+  it("title-cases single-word lowercase input", () => {
+    assert.equal(smartTitleCaseName("durbin"), "Durbin");
+  });
+
+  it("preserves input that already has uppercase letters", () => {
+    assert.equal(smartTitleCaseName("Kathy Hochul"), "Kathy Hochul");
+  });
+
+  it("preserves acronyms typed uppercase", () => {
+    assert.equal(smartTitleCaseName("MIT"), "MIT");
+    assert.equal(smartTitleCaseName("PwC"), "PwC");
+  });
+
+  it("trims surrounding whitespace", () => {
+    assert.equal(smartTitleCaseName("  kathy hochul  "), "Kathy Hochul");
+  });
+
+  it("returns empty string unchanged", () => {
+    assert.equal(smartTitleCaseName(""), "");
   });
 });
 

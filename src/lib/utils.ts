@@ -75,6 +75,23 @@ const KNOWN_NAMES: Record<string, string> = {
 };
 
 /**
+ * Smart title-casing for user-typed brand names. Preserves any input
+ * that already contains uppercase letters (acronyms like "MIT",
+ * correctly-cased names like "Kathy Hochul"), and title-cases input
+ * that's entirely lowercase ("kathy hochul" → "Kathy Hochul").
+ *
+ * Stops the homepage input "kathy hochul" from being persisted as
+ * "kathy hochul" and then echoed back lowercase across the overview,
+ * recommendations, and Key Insight copy.
+ */
+export function smartTitleCaseName(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return trimmed;
+  if (/[A-Z]/.test(trimmed)) return trimmed;
+  return titleCase(trimmed);
+}
+
+/**
  * Convert a slug or kebab-case/snake_case string to proper display name.
  * Uses a known-names map for acronyms and special casing, then falls
  * back to standard Title Case.
