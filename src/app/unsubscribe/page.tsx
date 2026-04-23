@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+// Unsubscribe URLs are one-time-use token pages. Must NEVER be
+// indexed — an indexed URL would leak the token to anyone finding
+// the page via search and let them unsubscribe arbitrary users.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function UnsubscribePage({
   searchParams,
