@@ -17,16 +17,39 @@ export type PublicFigureRole =
   | "Activist"
   | "Candidate";
 
-const PUBLIC_FIGURE_ROLES: PublicFigureRole[] = [
-  "US Senator",
-  "US Rep",
-  "Governor",
-  "State Senator",
-  "State Rep",
-  "Mayor",
-  "Activist",
-  "Candidate",
-];
+/** Map common LLM output variants to the canonical role label. Keeps
+ *  the allowlist strict while tolerating minor phrasing differences —
+ *  e.g. "Senator" vs "US Senator", "Congressman" vs "US Rep". Returning
+ *  null here lets the caller fall through to the generic industry-
+ *  prompt path instead of rejecting an otherwise-usable classification. */
+function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
+  const key = raw.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  const variantMap: Record<string, PublicFigureRole> = {
+    "us senator": "US Senator",
+    "senator": "US Senator",
+    "senior senator": "US Senator",
+    "junior senator": "US Senator",
+    "us rep": "US Rep",
+    "us representative": "US Rep",
+    "representative": "US Rep",
+    "rep": "US Rep",
+    "congressman": "US Rep",
+    "congresswoman": "US Rep",
+    "congressperson": "US Rep",
+    "member of congress": "US Rep",
+    "state senator": "State Senator",
+    "state rep": "State Rep",
+    "state representative": "State Rep",
+    "assemblymember": "State Rep",
+    "assemblyman": "State Rep",
+    "assemblywoman": "State Rep",
+    "governor": "Governor",
+    "mayor": "Mayor",
+    "activist": "Activist",
+    "candidate": "Candidate",
+  };
+  return variantMap[key] ?? null;
+}
 
 export type PublicFigureMeta = {
   role: PublicFigureRole;
@@ -90,13 +113,15 @@ No prose, no code fences.`,
     const parsed = JSON.parse(cleaned) as { role?: unknown; jurisdiction?: unknown; party?: unknown; caucus?: unknown; signatureIssue?: unknown } | null;
     if (!parsed || typeof parsed !== "object") return null;
     if (typeof parsed.role !== "string" || typeof parsed.jurisdiction !== "string") return null;
-    // Role allowlist — reject the "Other" sentinel and any garbage
-    // string the LLM might hallucinate. Downstream facet composition
-    // assumes a role noun that pluralizes cleanly ("senators from X"),
-    // so unknown roles are safer to drop than to render literally.
-    if (!PUBLIC_FIGURE_ROLES.includes(parsed.role as PublicFigureRole)) return null;
+    // Normalize common variants ("Senator" → "US Senator", "Congressman"
+    // → "US Rep") then enforce the allowlist. Downstream facet
+    // composition pluralizes the role noun ("senators from X") so
+    // unknown shapes would render awkwardly — falling through to the
+    // generic generator is safer than forcing a bad role.
+    const normalizedRole = normalizePublicFigureRole(parsed.role);
+    if (!normalizedRole) return null;
     return {
-      role: parsed.role as PublicFigureRole,
+      role: normalizedRole,
       jurisdiction: parsed.jurisdiction,
       party: typeof parsed.party === "string" ? parsed.party : null,
       caucus: typeof parsed.caucus === "string" ? parsed.caucus : null,
@@ -540,6 +565,62 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
  * generic issue-area questions.
  * For commercial brands: uses standard category-level questions.
  */
+/** Deterministic roster/role/issue questions derived directly from the
+ *  classifier output — no LLM call. Used as a last-resort fallback for
+ *  political figures when the tiered LLM generator and the generic
+ *  generator both return empty (OpenAI rate limit, content-policy
+ *  rejection, or LLM ignoring the "don't mention the subject" rule and
+ *  all outputs getting filtered). Guarantees the free-run always has
+ *  at least something usable for a clearly-identified politician
+ *  instead of surfacing "Couldn't generate questions" to the user. */
+function buildFallbackIndustryPrompts(
+  figureMeta: PublicFigureMeta,
+  count: number,
+): GeneratedPrompt[] {
+  const year = new Date().getFullYear();
+  const roleLower = figureMeta.role.replace(/^US\s+/i, "").toLowerCase();
+  const chamber = figureMeta.role.includes("Senator")
+    ? "US Senate"
+    : figureMeta.role.includes("Rep")
+      ? "US House"
+      : "office";
+  const partyPlural = figureMeta.party ? `${figureMeta.party}s` : "members";
+
+  const candidates: string[] = [];
+  // Tier A — near-certain roster hits
+  candidates.push(`Who are the current ${roleLower}s from ${figureMeta.jurisdiction}?`);
+  if (figureMeta.party) {
+    candidates.push(`Which ${partyPlural} represent ${figureMeta.jurisdiction} in ${chamber === "office" ? "office" : "Congress"} in ${year}?`);
+  }
+  if (figureMeta.role.includes("Senator")) {
+    candidates.push(`Who won recent US Senate races in ${figureMeta.jurisdiction}?`);
+  } else if (figureMeta.role.includes("Rep")) {
+    candidates.push(`Who represents ${figureMeta.jurisdiction} in the US House?`);
+  }
+  // Tier B — role + stance
+  if (figureMeta.signatureIssue) {
+    candidates.push(`Which ${roleLower}s are most active on ${figureMeta.signatureIssue}?`);
+  }
+  if (figureMeta.caucus) {
+    candidates.push(`Who are the leading members of the ${figureMeta.caucus} caucus in the ${chamber}?`);
+  } else if (figureMeta.party) {
+    candidates.push(`Who are the most prominent ${figureMeta.party} ${roleLower}s in ${year}?`);
+  }
+  // Tier C — broad issue
+  if (figureMeta.signatureIssue) {
+    candidates.push(`Who are the most influential voices on ${figureMeta.signatureIssue} in ${year}?`);
+  } else {
+    candidates.push(`Who are the most influential ${roleLower}s shaping policy in ${year}?`);
+  }
+
+  return candidates.slice(0, Math.max(1, count)).map((text) => ({
+    text,
+    cluster: "industry" as const,
+    intent: "informational" as const,
+    source: "generated" as const,
+  }));
+}
+
 /** Build the tiered system prompt used for political figures. Produces
  *  `count` questions split across three concentric scopes so the
  *  figure has a near-certain chance of surfacing in Tier A while
@@ -714,17 +795,32 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
     if (!Array.isArray(parsed)) return [];
 
     const brandLower = brandName.toLowerCase();
-    return parsed
+    const genericFiltered = parsed
       .filter((p) => !p.text.toLowerCase().includes(brandLower))
-      .slice(0, 8)
+      .slice(0, targetCount)
       .map((p) => ({
         text: p.text,
         cluster: "industry" as const,
         intent: (p.intent === "high-intent" ? "high-intent" : "informational") as "informational" | "high-intent",
         source: "generated" as const,
       }));
+    if (genericFiltered.length > 0) return genericFiltered;
+    // Generic LLM output was unusable (empty after brand-name filter or
+    // malformed) — fall through to the deterministic fallback below.
   } catch (err) {
     console.error("[generateIndustryPrompts] Failed:", err);
-    return [];
   }
+
+  // Last-resort: deterministic roster prompts derived directly from
+  // figureMeta. Reached only when both LLM generators came back empty
+  // (rate limit, content policy, every prompt tripped the brand-name
+  // filter, etc.). For clearly-identified politicians this guarantees
+  // the free-run never surfaces "Couldn't generate questions" to the
+  // user just because the LLM had a bad call. For non-political
+  // subjects (no figureMeta), we still return [] and the caller
+  // handles the empty case.
+  if (figureMeta) {
+    return buildFallbackIndustryPrompts(figureMeta, targetCount);
+  }
+  return [];
 }
