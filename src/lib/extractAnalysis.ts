@@ -26,6 +26,9 @@ Frames should be specific to what the response actually says, NOT generic labels
 - For a tech company: "AI Innovation Leader", "Privacy Concerns", "Developer Platform", "Enterprise Reliability"
 - For a restaurant: "Menu Quality", "Franchise Growth", "Health Controversies", "Value Pricing"
 - For a university: "Research Excellence", "Affordability Crisis", "Campus Culture"
+- For a politician: "Progressive Advocacy", "Working-Class Champion", "Civil Rights Focus", "Urban Policy Leader", "Immigration Reform Advocate", "Bipartisan Dealmaker"
+
+DO NOT use role identity, title, or party label as a frame — those describe WHO someone is, not WHAT STORY the response tells about them. Forbidden examples: "Current Senator", "US Senator", "Senator", "Representative", "Governor", "Mayor", "Democratic Politician", "Republican Politician", "Political Figure", "Elected Official", "Public Servant". Frames should capture the narrative angle (their advocacy focus, controversy, policy stance, achievements) — not their job title.
 
 Each frame should be 2-4 words and have a strength score (0-100) reflecting how prominently that frame appears in the response. Only include frames with strength ≥ 20.
 
