@@ -261,7 +261,10 @@ function OverviewInner() {
     apiData.brandIndustryScope ||
     industry ||
     "this space";
-  const rangeSuffix = ` — last ${range} days`;
+  // Non-breaking spaces inside "last 90 days" so the phrase wraps as
+  // a unit (before "last") instead of orphaning "days" onto its own
+  // line when the caption is near the available width.
+  const rangeSuffix = ` — last\u00A0${range}\u00A0days`;
   const trendDescriptions: Record<string, string> = {
     visibility: `How often AI mentions ${brandName} in questions about ${industryLabel}${rangeSuffix}`,
     topResult: `How often ${brandName} ranks #1 when AI answers questions about ${industryLabel}${rangeSuffix}`,
