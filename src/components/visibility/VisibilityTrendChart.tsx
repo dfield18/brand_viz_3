@@ -243,12 +243,16 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             </>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-4">
+        {/* On mobile the dropdowns wrap and stretch to full-width so
+            "All AI Platforms" doesn't truncate to "All AI P..." in a
+            tight side-by-side layout. On sm+ they sit inline to the
+            right of the title row. */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:shrink-0 sm:ml-4">
           {prompts.length > 0 && (
             <select
               value={focusPrompt}
               onChange={(e) => setFocusPrompt(e.target.value)}
-              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card max-w-[220px] truncate"
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card flex-1 sm:flex-initial sm:max-w-[220px] truncate"
             >
               <option value="all">All Questions</option>
               {prompts.map((p) => (
@@ -260,7 +264,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             <select
               value={focusModel}
               onChange={(e) => setFocusModel(e.target.value)}
-              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card"
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card flex-1 sm:flex-initial"
             >
               <option value="all">All AI Platforms</option>
               {availableModels.map((m) => (
