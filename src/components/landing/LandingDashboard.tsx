@@ -25,6 +25,7 @@ export function LandingDashboard({ brandName, industry, trend }: Props) {
         trend={trend}
         brandName={brandName}
         descriptionOverride={descriptions}
+        hideDelta
       />
       {/* Line legend — the chart renders overall (solid) + per-platform
           (lighter) lines with no built-in key, so users couldn't tell

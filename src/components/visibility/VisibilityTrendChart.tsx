@@ -32,13 +32,18 @@ interface VisibilityTrendChartProps {
    *  brand-new brand has a visible trend). Switches the line to dashed
    *  and swaps in a clearer disclaimer. */
   historicalEstimated?: boolean;
+  /** Hide the "+/-X% vs prior period" indicator next to the hero
+   *  percentage. Used on the landing-page sample preview so a demo
+   *  brand with a declining trend doesn't anchor the first impression
+   *  on a negative delta. */
+  hideDelta?: boolean;
 }
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, category, compact, descriptionOverride, historicalEstimated = false }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, category, compact, descriptionOverride, historicalEstimated = false, hideDelta = false }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
@@ -217,7 +222,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             {currentValue !== null && (
               <span className={`font-bold tabular-nums ${compact ? "text-xl" : "text-3xl"}`}>{Math.round(currentValue)}%</span>
             )}
-            {delta !== null && delta !== 0 && (
+            {!hideDelta && delta !== null && delta !== 0 && (
               <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
                 {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                 {delta > 0 ? "+" : ""}{delta}% {deltaLabel ?? "vs prior period"}
