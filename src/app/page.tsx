@@ -300,7 +300,7 @@ export default async function HomePage() {
             AI is shaping how people discover your brand{"\u00A0—"}{" "}
             <span className="text-muted-foreground">do you know what it&apos;s saying?</span>
           </h1>
-          <div className="mt-8 sm:mt-24">
+          <div className="mt-5 sm:mt-24">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
@@ -314,7 +314,7 @@ export default async function HomePage() {
               demo chart below. */}
           <a
             href="#live-example"
-            className="mt-8 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-8 inline-flex items-center gap-1.5 text-sm sm:text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <span aria-hidden="true">↓</span>
             See a live example
@@ -377,9 +377,13 @@ export default async function HomePage() {
                 peak-convinced — give them a one-click return to the
                 hero input instead of making them scroll back. */}
             <div className="mt-5 text-center">
+              {/* Button-style treatment on mobile (easy thumb target)
+                  degrades to the plain text link at sm+ where the
+                  surrounding whitespace already makes the link
+                  obvious. */}
               <a
                 href="#top"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors px-4 py-2 rounded-full bg-card border border-border sm:px-0 sm:py-0 sm:rounded-none sm:bg-transparent sm:border-0"
               >
                 <span aria-hidden="true">↑</span>
                 Try it with your own brand

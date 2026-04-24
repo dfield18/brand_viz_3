@@ -186,7 +186,11 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
               / SoV / Top Result. `w-fit` keeps the pill hugging its
               buttons. */}
           {!fixedMetric && (
-            <div className="mt-2 flex w-fit items-center rounded-full bg-muted p-0.5">
+            /* Metric toggle hidden on narrow mobile viewports — the
+               preview takes huge vertical space on phones and the
+               primary metric (Mention Rate) is the default story
+               anyway. Users on desktop keep the full toggle. */
+            <div className="mt-2 hidden sm:flex w-fit items-center rounded-full bg-muted p-0.5">
               <button
                 onClick={() => setMetric("visibility")}
                 className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
@@ -438,7 +442,10 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
       )}
 
       {!compact && (
-        <p className="text-[11px] text-muted-foreground/50 italic mt-3">
+        /* Disclaimer hidden on mobile (unreadable at muted/50 italic
+           11 px) and shown at text-xs with higher contrast on sm+
+           so the information is still available on larger screens. */
+        <p className="hidden sm:block text-xs text-muted-foreground/70 italic mt-3">
           {historicalEstimated
             ? "Dashed historical points are derived from each model\u2019s training data (no live web access). The solid point for today reflects calibration to live web results."
             : "Note: historical data points are estimated from the latest available response per model and question as of each date."}
