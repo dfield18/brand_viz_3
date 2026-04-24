@@ -294,10 +294,17 @@ export default async function HomePage() {
               exampleBrands={FREE_TIER_CONFIG.exampleBrands}
             />
           </div>
-          <p className="mt-8 text-xs text-muted-foreground/70 flex items-center gap-1.5">
+          {/* Scroll affordance — now a link (was a paragraph) and
+              higher contrast (muted-foreground vs /70) so visitors
+              actually notice it and realize they can jump to the
+              demo chart below. */}
+          <a
+            href="#live-example"
+            className="mt-8 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
             <span aria-hidden="true">↓</span>
             See a live example
-          </p>
+          </a>
         </div>
       </section>
 
@@ -329,7 +336,7 @@ export default async function HomePage() {
           if no brand has data yet (fresh deploy). Titled so the chart
           reads as a narrative example, not a floating UI artifact. */}
       {sampleData && (
-        <section className="border-t border-border/40 bg-muted/30">
+        <section id="live-example" className="border-t border-border/40 bg-muted/30 scroll-mt-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-12 sm:pt-16">
             <div className="mb-6 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -504,9 +511,17 @@ export default async function HomePage() {
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
             Common questions
           </h2>
-          <div className="max-w-3xl divide-y divide-border/60">
+          {/* Card-framed FAQ items instead of a flat divide-y list —
+              gives each question a clear hit target, hover signal,
+              and enough visual separation to be scannable at a
+              glance. Still native <details>/<summary> so the section
+              stays a pure server component. */}
+          <div className="max-w-3xl space-y-2">
             {FAQS.map((item) => (
-              <details key={item.q} className="group py-4">
+              <details
+                key={item.q}
+                className="group rounded-lg border border-border/60 bg-card px-5 py-4 transition-colors hover:border-border open:border-border"
+              >
                 <summary className="flex cursor-pointer items-center justify-between gap-6 text-sm font-semibold text-foreground list-none [&::-webkit-details-marker]:hidden">
                   <span>{item.q}</span>
                   <span
@@ -559,7 +574,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer — adds Privacy + Terms links for compliance (GDPR
+          and app-store-equivalents expect them accessible from
+          every page). */}
       <footer className="border-t border-border/60">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -567,6 +584,8 @@ export default async function HomePage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted-foreground/50">
             <Link href="/marketing" className="hover:text-muted-foreground transition-colors">About</Link>
+            <Link href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
             <a href="mailto:support@aisayswhat.com" className="hover:text-muted-foreground transition-colors">Support</a>
             <span>&copy; {new Date().getFullYear()} BrooklyEcho LLC</span>
           </div>
