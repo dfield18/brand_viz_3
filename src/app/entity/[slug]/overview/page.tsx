@@ -265,10 +265,21 @@ function OverviewInner() {
   // a unit (before "last") instead of orphaning "days" onto its own
   // line when the caption is near the available width.
   const rangeSuffix = ` — last\u00A0${range}\u00A0days`;
-  const trendDescriptions: Record<string, string> = {
-    visibility: `How often AI mentions ${brandName} in questions about ${industryLabel}${rangeSuffix}`,
-    topResult: `How often ${brandName} ranks #1 when AI answers questions about ${industryLabel}${rangeSuffix}`,
-    sov: `${brandName}'s share of mentions when AI discusses ${industryLabel}${rangeSuffix}`,
+  // Bold the brand name and the scope phrase so the caption's two
+  // most load-bearing phrases pop visually instead of blurring into
+  // the surrounding gray muted-foreground text.
+  const BrandBold = <strong className="font-semibold text-foreground">{brandName}</strong>;
+  const ScopeBold = <strong className="font-semibold text-foreground">{industryLabel}</strong>;
+  const trendDescriptions: Record<string, React.ReactNode> = {
+    visibility: (
+      <>How often AI mentions {BrandBold} in questions about {ScopeBold}{rangeSuffix}</>
+    ),
+    topResult: (
+      <>How often {BrandBold} ranks #1 when AI answers questions about {ScopeBold}{rangeSuffix}</>
+    ),
+    sov: (
+      <>{BrandBold}&apos;s share of mentions when AI discusses {ScopeBold}{rangeSuffix}</>
+    ),
   };
   // Collect all frames tied at the top percentage (sort to ensure highest first)
   const sortedFrames = [...data.topFrames].sort((a, b) => b.percentage - a.percentage);

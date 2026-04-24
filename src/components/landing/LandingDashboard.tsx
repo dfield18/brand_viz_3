@@ -13,10 +13,20 @@ interface Props {
 
 export function LandingDashboard({ brandName, industry, trend }: Props) {
   const industryLabel = industry?.trim() || "their industry";
-  const descriptions: Record<string, string> = {
-    visibility: `How often AI mentions ${brandName} in ${industryLabel} questions`,
-    topResult: `How often ${brandName} ranks #1 when AI answers ${industryLabel} questions`,
-    sov: `${brandName}'s share of mentions in ${industryLabel} responses`,
+  // Bold the brand name and the scope phrase so the caption's key
+  // words stand out instead of dissolving into muted-foreground gray.
+  const BrandBold = <strong className="font-semibold text-foreground">{brandName}</strong>;
+  const ScopeBold = <strong className="font-semibold text-foreground">questions about {industryLabel}</strong>;
+  const descriptions: Record<string, React.ReactNode> = {
+    visibility: (
+      <>How often AI mentions {BrandBold} in {ScopeBold}</>
+    ),
+    topResult: (
+      <>How often {BrandBold} ranks #1 when AI answers {ScopeBold}</>
+    ),
+    sov: (
+      <>{BrandBold}&apos;s share of mentions in {industryLabel} responses</>
+    ),
   };
 
   return (

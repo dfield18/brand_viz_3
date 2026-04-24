@@ -25,8 +25,10 @@ interface VisibilityTrendChartProps {
   category?: string | null;
   /** Hide description text for a cleaner look */
   compact?: boolean;
-  /** Override the default metric description text */
-  descriptionOverride?: Record<string, string>;
+  /** Override the default metric description text. Accepts ReactNode
+   *  so callers can bold specific substrings (brand name, scope
+   *  phrase) without the chart needing to parse strings. */
+  descriptionOverride?: Record<string, React.ReactNode>;
   /** True when the historical points aren't logged data but rather
    *  model-training-knowledge estimates (used by the free tier so a
    *  brand-new brand has a visible trend). Switches the line to dashed
