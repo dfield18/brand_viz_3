@@ -161,27 +161,39 @@ const STRUCTURED_DATA = {
 
 /**
  * Fetch a sample visibility trend for the "dashboard preview" embed below
- * How it works. Prefer Nike in the free-tier deterministic cache form
- * (`nike--<sha256("nike").slice(0,8)>`) or the Pro form (`nike`). Fall
- * back to any other brand with data so the section still renders on
- * fresh deploys. Returns null if nothing is available — caller hides
- * the section entirely.
+ * How it works. Walks a preferred candidate list (Costco first — it
+ * has broad AI coverage and a consistently positive mention story)
+ * and picks the first that has completed jobs. Falls back to any
+ * brand with data so the section still renders on fresh deploys.
+ * Returns null if nothing is available — caller hides the section
+ * entirely.
  */
+const SAMPLE_BRAND_SLUGS = ["costco", "duolingo", "lululemon", "patagonia", "nike"];
+
 async function getSampleVisibilityData(): Promise<{
   brandName: string;
   industry: string | null;
   trend: VisibilityTrendPoint[];
 } | null> {
   try {
-    const nikeCacheSlug = `nike--${sha256("nike").slice(0, 8)}`;
-    let brand = await prisma.brand.findFirst({
-      where: {
-        slug: { in: [nikeCacheSlug, "nike"] },
-        jobs: { some: { finishedAt: { not: null } } },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { slug: true, name: true, displayName: true, industry: true },
-    });
+    // Build the full slug list: each candidate in both its free-tier
+    // deterministic cache form (`<slug>--<sha256(slug).slice(0,8)>`)
+    // and its Pro form (bare `<slug>`). findFirst picks whichever
+    // exists with completed jobs, preferring candidates earlier in
+    // SAMPLE_BRAND_SLUGS by re-querying one at a time.
+    let brand: { slug: string; name: string; displayName: string | null; industry: string | null } | null = null;
+    for (const slug of SAMPLE_BRAND_SLUGS) {
+      const cacheSlug = `${slug}--${sha256(slug).slice(0, 8)}`;
+      brand = await prisma.brand.findFirst({
+        where: {
+          slug: { in: [cacheSlug, slug] },
+          jobs: { some: { finishedAt: { not: null } } },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { slug: true, name: true, displayName: true, industry: true },
+      });
+      if (brand) break;
+    }
     if (!brand) {
       brand = await prisma.brand.findFirst({
         where: { jobs: { some: { finishedAt: { not: null } } } },
