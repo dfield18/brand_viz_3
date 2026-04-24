@@ -57,10 +57,17 @@ export const FREE_TIER_SESSION_COOKIE = envString("FREE_TIER_SESSION_COOKIE", "a
 export const FREE_TIER_ENABLED = envBool("FREE_TIER_ENABLED", true);
 
 /** Example brand chips shown under the free-dashboard input — one click fills and runs. */
+// Example chips mix commercial brands (Nike, Tesla) + an advocacy
+// org (ACLU) + a recognized but less-polarizing US politician so
+// first-time visitors can see the product works across entity
+// types without the entry-point chips becoming a political flashpoint.
+// Donald Trump was previously in this list but split visitor
+// reactions so hard that it risked alienating ~half the audience
+// before they even tried the product.
 export const FREE_TIER_EXAMPLE_BRANDS = envList("FREE_TIER_EXAMPLE_BRANDS", [
   "Nike",
   "Tesla",
-  "Donald Trump",
+  "Mitt Romney",
   "ACLU",
 ]);
 

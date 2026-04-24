@@ -439,18 +439,23 @@ export default async function HomePage() {
           <p className="text-muted-foreground mb-8 max-w-md">
             Built for marketing, comms, and brand teams that need to know how AI is shaping how customers find and perceive their brand.
           </p>
-          <div className="grid sm:grid-cols-2 gap-x-14 gap-y-8">
+          {/* Feature tiles — framed in subtle cards with colored icon
+              chips instead of the thin side-by-side layout that was
+              blending into the page background. The card treatment
+              makes each benefit scan as a distinct, hoverable unit. */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
-                <div key={feature.title} className="flex gap-4">
-                  <div className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-foreground/5 text-foreground">
-                    <Icon className="h-4 w-4" />
+                <div
+                  key={feature.title}
+                  className="rounded-xl border border-border/60 bg-card p-5 transition-colors hover:border-border"
+                >
+                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600 mb-3">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-1.5">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </div>
+                  <h3 className="text-base font-semibold text-foreground mb-1.5">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
               );
             })}
