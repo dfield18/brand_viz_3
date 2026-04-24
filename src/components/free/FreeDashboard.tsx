@@ -202,7 +202,7 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             type="submit"
             disabled={!canSubmit}
             aria-label="Run free analysis"
-            className="shrink-0 w-full sm:w-auto sm:self-center inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-80 disabled:cursor-not-allowed shadow-sm"
+            className="shrink-0 w-full sm:w-auto sm:self-center inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
           >
             Analyze
             <ArrowRight className="h-4 w-4" />
