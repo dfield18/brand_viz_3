@@ -132,6 +132,18 @@ const PRICING_TIERS = [
   },
 ];
 
+// Schema.org JSON-LD — Software/Org for entity resolution, FAQ for
+// citable Q&A pairs (lets ChatGPT/Perplexity quote individual
+// answers), HowTo for the methodology (lets AI tools cite the 3-step
+// process verbatim). FAQ + HowTo bodies are derived from the FAQS
+// and how-it-works arrays already on the page so the structured data
+// stays in sync with the visible copy automatically.
+const HOW_IT_WORKS_STEPS = [
+  { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
+  { title: "We ask the AI", description: "Real questions sent to real models — the same way customers and prospects use them." },
+  { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
+] as const;
+
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
   "@graph": [
@@ -155,6 +167,25 @@ const STRUCTURED_DATA = {
       url: "https://www.aisayswhat.com",
       email: "support@aisayswhat.com",
       description: "AI brand visibility for companies and marketing teams.",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+    {
+      "@type": "HowTo",
+      name: "How aiSaysWhat measures AI brand visibility",
+      description: "Three-step process for analyzing how ChatGPT, Gemini, Claude, Perplexity, and Google AI Overviews describe a brand.",
+      step: HOW_IT_WORKS_STEPS.map((s, i) => ({
+        "@type": "HowToStep",
+        position: i + 1,
+        name: s.title,
+        text: s.description,
+      })),
     },
   ],
 };
@@ -499,11 +530,7 @@ export default async function HomePage() {
             How it works
           </h2>
           <div className="grid sm:grid-cols-3 gap-10">
-            {[
-              { title: "Add your brand", description: "Enter your brand name. We generate targeted questions about your category for each AI platform." },
-              { title: "We ask the AI", description: "Real questions sent to real models \u2014 the same way customers and prospects use them." },
-              { title: "See what comes back", description: "Visibility scores, sentiment analysis, competitor tracking, and source citations. Updated on your schedule." },
-            ].map((item, i) => (
+            {HOW_IT_WORKS_STEPS.map((item, i) => (
               <div key={item.title} className="relative">
                 <div className="flex items-center justify-center h-9 w-9 rounded-full bg-foreground text-background text-sm font-semibold tabular-nums mb-4">
                   {String(i + 1).padStart(2, "0")}
