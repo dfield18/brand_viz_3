@@ -509,7 +509,7 @@ export async function POST(req: NextRequest) {
                 // competitors array stays empty for politicians and
                 // Share of Voice collapses to 100%.
                 extractAnalysis(rawResponseText, brandName, prompt.text, category),
-                extractNarrativeForRun(rawResponseText, brandName, brand.slug),
+                extractNarrativeForRun(rawResponseText, brandName, brand.slug, aliases),
               ]);
 
               const run = await prisma.run.create({

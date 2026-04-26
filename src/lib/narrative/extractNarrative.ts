@@ -245,9 +245,17 @@ export async function extractNarrativeForRun(
   responseText: string,
   brandName: string,
   brandSlug: string,
+  aliases: string[] = [],
 ): Promise<NarrativeExtractionResult> {
   const sentences = splitSentences(responseText);
-  const contextSentences = getEntityContextWindow(sentences, brandName, brandSlug);
+  // Aliases threaded through so a brand stored as "Donald Trump"
+  // still finds context in responses that say "Trump", and "ACLU"
+  // captures "American Civil Liberties Union". Without aliases,
+  // last-name-only mentions returned empty context → sentiment was
+  // stamped null → countable-sentiment gate filtered the run out →
+  // sentiment distribution collapsed toward 100% NEU on whatever
+  // factual full-name runs remained.
+  const contextSentences = getEntityContextWindow(sentences, brandName, brandSlug, 1, aliases);
   const contextText = contextSentences.join(" ");
 
   // Subject isn't mentioned — emit null sentiment so aggregators can

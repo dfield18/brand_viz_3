@@ -402,7 +402,7 @@ export async function POST(
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    include: { brand: { select: { id: true, slug: true, name: true, displayName: true, industry: true, category: true } } },
+    include: { brand: { select: { id: true, slug: true, name: true, displayName: true, industry: true, category: true, aliases: true } } },
   });
 
   if (!job) {
@@ -722,7 +722,7 @@ export async function POST(
       savedRuns.map(async ({ runId, responseText, analysis }) => {
         // Narrative extraction
         try {
-          const narrative = await extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug);
+          const narrative = await extractNarrativeForRun(responseText, brandDisplayName, job.brand.slug, job.brand.aliases ?? []);
           await prisma.run.update({ where: { id: runId }, data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) } });
         } catch (e) {
           console.error(`[process] extractNarrativeForRun failed for run ${runId}:`, e instanceof Error ? e.message : e);

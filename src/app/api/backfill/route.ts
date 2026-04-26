@@ -228,6 +228,7 @@ export async function POST(req: NextRequest) {
       brandId: brand.id,
       brandSlug: brand.slug,
       brandName,
+      brandAliases: brand.aliases ?? [],
       brandIndustry: brand.industry,
       brandCategory: brand.category,
       model,

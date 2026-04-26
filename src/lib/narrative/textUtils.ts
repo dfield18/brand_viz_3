@@ -22,19 +22,31 @@ export function splitSentences(text: string): string[] {
 /**
  * Get deduplicated context window of sentences around entity mentions.
  * For each sentence mentioning the entity, include prev/next sentences (windowSize).
+ *
+ * Accepts optional aliases so a brand stored as "Donald Trump" still
+ * captures responses that only say "Trump", and so a brand stored as
+ * "American Civil Liberties Union" captures responses that say "ACLU".
+ * Without aliases the matcher would miss most of the response and
+ * fall back to sentiment: null, which then propagates through the
+ * countable-sentiment gate and erases real signal.
  */
 export function getEntityContextWindow(
   sentences: string[],
   brandName: string,
   brandSlug: string,
   windowSize = 1,
+  aliases: string[] = [],
 ): string[] {
   const nameRe = wordBoundaryRegex(brandName);
   const slugRe = wordBoundaryRegex(brandSlug);
+  const aliasRes = aliases
+    .filter((a) => typeof a === "string" && a.trim().length > 0)
+    .map((a) => wordBoundaryRegex(a.trim()));
 
   const mentionIndices = new Set<number>();
   for (let i = 0; i < sentences.length; i++) {
-    if (nameRe.test(sentences[i]) || slugRe.test(sentences[i])) {
+    const s = sentences[i];
+    if (nameRe.test(s) || slugRe.test(s) || aliasRes.some((re) => re.test(s))) {
       mentionIndices.add(i);
     }
   }

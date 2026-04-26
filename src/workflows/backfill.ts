@@ -49,6 +49,10 @@ export interface BackfillParams {
   brandId: string;
   brandSlug: string;
   brandName: string;
+  /** Brand aliases — passed to narrative extraction so e.g. a brand
+   *  stored as "Donald Trump" still finds context in responses that
+   *  only say "Trump". */
+  brandAliases: string[];
   brandIndustry: string | null;
   brandCategory: string | null;
   model: string;
@@ -264,6 +268,7 @@ interface ProcessPromptArgs {
   brandId: string;
   brandSlug: string;
   brandName: string;
+  brandAliases: string[];
   brandIndustry: string | null;
   brandCategory: string | null;
   model: string;
@@ -381,7 +386,7 @@ async function processPromptStep(args: ProcessPromptArgs): Promise<void> {
   }
 
   try {
-    const narrative = await extractNarrativeForRun(responseText, brandName, brandSlug);
+    const narrative = await extractNarrativeForRun(responseText, brandName, brandSlug, args.brandAliases ?? []);
     await prisma.run.update({
       where: { id: run.id },
       data: { narrativeJson: JSON.parse(JSON.stringify(narrative)) },
@@ -442,6 +447,7 @@ async function processMonth(
         brandId: params.brandId,
         brandSlug: params.brandSlug,
         brandName: params.brandName,
+        brandAliases: params.brandAliases,
         brandIndustry: params.brandIndustry,
         brandCategory: params.brandCategory,
         model: params.model,
