@@ -6,6 +6,13 @@ import { sha256 } from "@/lib/hash";
 import { GET as getVisibility } from "@/app/api/visibility/route";
 import { FreeDashboard } from "@/components/free/FreeDashboard";
 import { LazyLandingDashboard } from "@/components/landing/LazyLandingDashboard";
+import {
+  AnthropicIcon,
+  GeminiIcon,
+  GoogleIcon,
+  OpenAIIcon,
+  PerplexityIcon,
+} from "@/components/landing/PlatformIcons";
 import { FREE_TIER_CONFIG } from "@/config/freeTier";
 import type { VisibilityTrendPoint } from "@/types/api";
 import {
@@ -330,7 +337,7 @@ export default async function HomePage() {
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
             See what AI is saying about your brand.
           </h1>
-          <div className="mt-5 sm:mt-24">
+          <div className="mt-5 sm:mt-10">
             <FreeDashboard
               showSignupCta={FREE_TIER_CONFIG.showSignupCta}
               promptCount={FREE_TIER_CONFIG.promptCount}
@@ -352,25 +359,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Platform strip — promotes the "we cover all 5 major AI
-          surfaces" message from its old orphaned spot at the end of
-          pricing up to the hero region, where it acts as implicit
-          social proof. Text-only for now; swap in real logos later. */}
+      {/* Platform strip — branded SVG marks (vs. text + middle-dots)
+          read as recognized integrations, not placeholder copy.
+          Eyebrow label dropped: the logos are self-explanatory. */}
       <section className="border-t border-border/40 bg-muted/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-          <p className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Monitors your brand across
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm font-medium text-muted-foreground">
-            <span>ChatGPT</span>
-            <span className="text-muted-foreground/30">·</span>
-            <span>Gemini</span>
-            <span className="text-muted-foreground/30">·</span>
-            <span>Claude</span>
-            <span className="text-muted-foreground/30">·</span>
-            <span>Perplexity</span>
-            <span className="text-muted-foreground/30">·</span>
-            <span>Google AI Overviews</span>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <OpenAIIcon className="h-4 w-4" />
+              ChatGPT
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <GeminiIcon className="h-4 w-4" />
+              Gemini
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <AnthropicIcon className="h-4 w-4" />
+              Claude
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <PerplexityIcon className="h-4 w-4" />
+              Perplexity
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <GoogleIcon className="h-4 w-4" />
+              Google AI Overviews
+            </span>
           </div>
         </div>
       </section>
