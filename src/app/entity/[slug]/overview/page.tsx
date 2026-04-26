@@ -329,7 +329,7 @@ function OverviewInner() {
                 sentimentSplit={apiData.sentimentSplit ?? null}
                 topSourceType={apiData.topSourceType ?? null}
               />
-              <DataFooter prompts="mixed" date={range} mode="snapshot" />
+              <DataFooter prompts="mixed" date={range} />
             </>
           )}
         </div>
@@ -356,7 +356,7 @@ function OverviewInner() {
             {/* Top Recommendation — inline separator */}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
           </div>
-          <DataFooter prompts="mixed" date={range} mode="snapshot" />
+          <DataFooter prompts="mixed" date={range} />
         </div>
 
         {/* Mention Rate Trend — free-tier brands (slug ends in
@@ -383,7 +383,7 @@ function OverviewInner() {
 
         <div id="cross-model" className="scroll-mt-24">
           <CrossModelTable models={data.modelComparison} brandName={brandName} category={apiData.brandCategory} />
-          <DataFooter prompts="mixed" date={range} mode="snapshot" />
+          <DataFooter prompts="mixed" date={range} />
         </div>
 
         {/* ── Narrative ──────────────────────────── */}
@@ -414,7 +414,7 @@ function OverviewInner() {
               <h2 className="text-sm font-semibold mb-2">What AI Is Saying About {brandName}</h2>
               <StandoutQuotes quotes={quotesData.quotes} />
             </section>
-            <DataFooter prompts="all" date={range} mode="snapshot" />
+            <DataFooter prompts="all" date={range} />
           </div>
         )}
 
@@ -423,12 +423,12 @@ function OverviewInner() {
 
         <div id="competitor-snapshot" className="scroll-mt-24">
           <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
-          <DataFooter prompts="all" date={range} mode="snapshot" />
+          <DataFooter prompts="all" date={range} />
         </div>
 
         <div id="competitor-alerts" className="scroll-mt-24">
           <CompetitorAlerts brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} />
-          <DataFooter prompts="industry" date={range} mode="snapshot" />
+          <DataFooter prompts="industry" date={range} />
         </div>
 
         {/* ── Sources ────────────────────────────── */}
