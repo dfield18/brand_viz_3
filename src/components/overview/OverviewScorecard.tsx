@@ -192,8 +192,18 @@ export function OverviewScorecard({
       badge: sentimentSplit
         ? getSentimentBadge(sentimentSplit)
         : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: dominant ? `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()} in tone` : "How positive or negative AI is about you",
-      tooltip: `Whether AI describes this ${noun} in a positive, neutral, or negative way across all responses.`,
+      // When sentiment is overwhelmingly neutral (>=80% neutral), it
+      // usually means AI is describing the subject in factual roster
+      // / biographical context rather than evaluatively. Explain that
+      // explicitly so users don't read 100% NEU as "the platform is
+      // broken" — for less-prominent figures, factual coverage is
+      // genuinely the truth of how AI talks about them.
+      description: dominant
+        ? (dominant.label === "Neutral" && dominant.pct >= 80
+            ? `${dominant.pct}% of AI responses are factual or descriptive — AI mentions ${brandName} without taking a positive or negative stance`
+            : `${dominant.pct}% of AI responses are ${dominant.label.toLowerCase()} in tone`)
+        : "How positive or negative AI is about you",
+      tooltip: `Whether AI describes this ${noun} in a positive, neutral, or negative way across all responses. High "neutral" usually means AI is providing factual descriptions (e.g. job title, geographic facts) rather than evaluative commentary — common for less-prominent ${noun}s.`,
       isSentiment: true,
       sentimentData: sentimentSplit ?? undefined,
       sentimentLabel: dominant?.label,
