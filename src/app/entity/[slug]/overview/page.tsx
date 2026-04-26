@@ -76,12 +76,29 @@ function highlightSummary(
   }
 
   const escBrand = brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // The full "<brand> is mentioned in N% of responses" phrasing —
+  // when present, bold the whole phrase as a single unit.
   const mentionRe = new RegExp(
     `${escBrand}\\s+is mentioned in \\d+(?:\\.\\d+)?% of responses`,
     "i",
   );
-  const m = mentionRe.exec(text);
-  if (m) ranges.push({ start: m.index, end: m.index + m[0].length });
+  const mentionMatch = mentionRe.exec(text);
+  if (mentionMatch) {
+    ranges.push({ start: mentionMatch.index, end: mentionMatch.index + mentionMatch[0].length });
+  } else {
+    // LLM didn't use the exact "is mentioned in X%" phrasing (it
+    // varies — "has a low mention rate of 10%", "shows up in 10% of
+    // responses", etc.). Still bold the brand name on its own so the
+    // subject pops in any sentence shape. First occurrence only —
+    // multiple bolds of the same name across one sentence reads as
+    // overemphasis. Word-boundary anchors so "Bernie" doesn't catch
+    // a substring inside "Bernie Sanders Foundation."
+    const brandNameRe = new RegExp(`\\b${escBrand}\\b`, "i");
+    const nameMatch = brandNameRe.exec(text);
+    if (nameMatch) {
+      ranges.push({ start: nameMatch.index, end: nameMatch.index + nameMatch[0].length });
+    }
+  }
 
   if (ranges.length === 0) return text;
 
