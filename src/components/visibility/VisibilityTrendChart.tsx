@@ -173,8 +173,13 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
 
   return (
     <div>
-      {/* Header row: title + toggle + hero stat + dropdowns */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+      {/* Header row: title block stacked above the dropdown filters
+          so the description gets the full container width. Side-by-
+          side layout was squeezing the description down to ~590 px,
+          which forced longer captions like
+          "How often AI mentions Patty Murray in questions about
+          Democratic senators — last 90 days" onto two lines. */}
+      <div className="flex flex-col items-stretch gap-3 mb-4">
         <div>
           {!compact && (
             <h2 className="text-sm text-muted-foreground font-medium">
@@ -247,11 +252,12 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             </>
           )}
         </div>
-        {/* On mobile the dropdowns wrap and stretch to full-width so
-            "All AI Platforms" doesn't truncate to "All AI P..." in a
-            tight side-by-side layout. On sm+ they sit inline to the
-            right of the title row. */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:shrink-0 sm:ml-4">
+        {/* Dropdowns now sit on their own row below the title block
+            (parent stacks via flex-col always). On mobile they stretch
+            full-width via flex-1; on sm+ each select hugs its own
+            content so the row reads as compact filter chips rather
+            than form fields. */}
+        <div className="flex flex-wrap items-center gap-2">
           {prompts.length > 0 && (
             <select
               value={focusPrompt}
