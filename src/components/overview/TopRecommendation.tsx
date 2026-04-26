@@ -115,10 +115,10 @@ export function TopRecommendation({ brandSlug, brandName, model, range }: Props)
   if (!recommendation) return null;
 
   return (
-    <div className="flex items-start gap-3 px-5 py-3.5 border-t border-border bg-amber-50/20">
-      <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 px-5 py-4 border-t border-border bg-amber-50/20">
+      <Lightbulb className="h-4 w-4 text-amber-500 mt-1 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[13px] text-foreground/70 leading-relaxed">
+        <p className="text-base text-foreground/70 leading-relaxed">
           <span className="font-medium text-amber-700 mr-1.5">{source}:</span>
           {stripMarkdown(recommendation)}
         </p>
