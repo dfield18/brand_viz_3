@@ -832,12 +832,25 @@ export async function GET(req: NextRequest) {
   if (figureMeta) {
     const roleLower = figureMeta.role.replace(/^US\s+/i, "").toLowerCase();
     const national = isNationalJurisdiction(figureMeta.jurisdiction);
-    // National figures skip the "X from United States" facet (reads
-    // awkwardly) and use "US X" instead.
+    // Normalize party to adjective form so phrasing reads as natural
+    // English: "Democrat reps" → "Democratic reps", "Republican" stays
+    // unchanged.
+    const partyAdj = figureMeta.party === "Democrat" ? "Democratic" : figureMeta.party;
+    // Order matters: scopeFacets[0] becomes the default scope phrase
+    // for trend captions and the Mention Rate description. The
+    // jurisdiction-specific facet ("reps from California CA-30") was
+    // previously first, but for tiered prompt mixes that span Tier A
+    // (district roster), Tier B (party + stance), and Tier C (broad
+    // issue), it misrepresented the question scope as district-only.
+    // Party + role ("Democratic representatives") is a truthful
+    // umbrella across all three tiers — it's the common thread of
+    // every prompt the figure was analyzed against. Jurisdiction stays
+    // in the list so the Key Insight LLM can still pick it when the
+    // sentence reads naturally that way.
+    if (partyAdj) scopeFacets.push(`${partyAdj} ${roleLower}s`);
     if (figureMeta.jurisdiction) {
       scopeFacets.push(national ? `US ${roleLower}s` : `${roleLower}s from ${figureMeta.jurisdiction}`);
     }
-    if (figureMeta.party) scopeFacets.push(`${figureMeta.party} ${roleLower}s`);
     if (figureMeta.caucus) scopeFacets.push(`${figureMeta.caucus.toLowerCase()} ${roleLower}s`);
     if (figureMeta.signatureIssue) scopeFacets.push(figureMeta.signatureIssue);
   }
