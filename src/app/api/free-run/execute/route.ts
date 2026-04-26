@@ -503,7 +503,12 @@ export async function POST(req: NextRequest) {
               // sentiment/themes that the overview tab reads from
               // narrativeJson.sentiment.label.
               const [analysisJson, narrativeJson] = await Promise.all([
-                extractAnalysis(rawResponseText, brandName, prompt.text),
+                // Pass category so the LLM extractor knows to treat
+                // other senators/politicians as "competitors" for a
+                // political_advocacy subject. Without this the
+                // competitors array stays empty for politicians and
+                // Share of Voice collapses to 100%.
+                extractAnalysis(rawResponseText, brandName, prompt.text, category),
                 extractNarrativeForRun(rawResponseText, brandName, brand.slug),
               ]);
 

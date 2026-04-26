@@ -22,15 +22,22 @@ export async function validateCompetitors(
 ): Promise<Set<string>> {
   if (entityIds.length === 0) return new Set();
 
-  const systemPrompt = `You determine whether organizations are in the same general category or industry as a given brand.
+  const systemPrompt = `You determine whether entities are in the same general category, industry, or political peer group as a given brand or person.
 
-Two organizations are "related" if they operate in the same general space — they don't need to directly compete for resources, but should be clearly in the same type of work or industry. For example:
+Two entities are "related" if they operate in the same general space — they don't need to directly compete for resources, but should be clearly in the same type of work or peer group. For example:
 - Anti-Defamation League and NAACP: RELATED (both civil rights / fighting hate organizations)
 - Anti-Defamation League and Nike: NOT RELATED (civil rights org vs sportswear company)
 - Tesla and Ford: RELATED (both automotive manufacturers)
 - Tesla and Greenpeace: NOT RELATED (car maker vs environmental activism)
 - Ben & Jerry's and Häagen-Dazs: RELATED (both ice cream brands)
 - Ben & Jerry's and Anti-Defamation League: NOT RELATED (ice cream vs civil rights)
+- Mitt Romney and Bernie Sanders: RELATED (both US Senators)
+- Mitt Romney and Tim Scott: RELATED (both US Senators)
+- Mitt Romney and Nike: NOT RELATED (politician vs sportswear)
+- Kamala Harris and Joe Biden: RELATED (both senior US political figures)
+- Alexandria Ocasio-Cortez and Bernie Sanders: RELATED (both progressive Democrats in Congress)
+
+When the brand is a political figure (senator, representative, governor, mayor, candidate, activist), other politicians and political organizations in the same country/system count as RELATED — they share the political peer space even when in different parties.
 
 For each entity in the list, determine if it is related to the given brand.
 

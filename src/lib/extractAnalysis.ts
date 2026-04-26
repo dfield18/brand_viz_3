@@ -4,14 +4,27 @@ import type { RunAnalysis } from "@/lib/analysisSchema";
 const EXTRACT_MODEL = "gpt-4o-mini";
 const EXTRACT_TIMEOUT_MS = 15_000;
 
-function buildSystemPrompt(): string {
+function buildSystemPrompt(category?: string): string {
+  const isPoliticalFigure = category === "political_advocacy";
+
+  // For political figures, "competitors" is a misnomer — what we
+  // actually want is OTHER NAMED PEOPLE in the same political peer
+  // group (other senators, representatives, governors, candidates,
+  // activists). Without this instruction the LLM defaults to a
+  // commercial-only reading of "competitor" and returns competitors:
+  // [] for any politician, which collapses Share of Voice to
+  // 100% (just the subject in the denominator).
+  const competitorsInstruction = isPoliticalFigure
+    ? `"competitors": [{"name": string, "mentionStrength": 0-100}],  // For political/advocacy subjects: include any OTHER NAMED PEOPLE OR ORGANIZATIONS that appear alongside the subject — other senators, representatives, governors, mayors, candidates, activists, advocacy orgs, PACs, or political figures. These don't need to be in opposition; co-mention is sufficient. (1) merge full names with abbreviations and common short forms (e.g. "ACLU" and "American Civil Liberties Union" → "ACLU") — never list the same person/org twice under different variations. (2) Do NOT include the subject themselves.`
+    : `"competitors": [{"name": string, "mentionStrength": 0-100}],  // IMPORTANT: (1) merge subsidiaries/parent companies into one entry (e.g. "Instagram" and "Meta" → "Meta") (2) merge abbreviations with full names into one entry using the most common form (e.g. "ACLU" and "American Civil Liberties Union" → "ACLU"; "NFL" and "National Football League" → "NFL") — never list the same organization twice under different name variations`;
+
   return `You are a structured data extractor for brand visibility analysis.
 Given an AI response about a brand or organization, extract the following as JSON:
 
 {
   "brandMentioned": boolean,
   "brandMentionStrength": 0-100 (how prominently the brand is discussed),
-  "competitors": [{"name": string, "mentionStrength": 0-100}],  // IMPORTANT: (1) merge subsidiaries/parent companies into one entry (e.g. "Instagram" and "Meta" → "Meta") (2) merge abbreviations with full names into one entry using the most common form (e.g. "ACLU" and "American Civil Liberties Union" → "ACLU"; "NFL" and "National Football League" → "NFL") — never list the same organization twice under different name variations
+  ${competitorsInstruction}
   "topics": [{"name": string, "relevance": 0-100}] (up to 5 most relevant topics),
   "frames": [{"name": string, "strength": 0-100}] (the main narrative frames — see below),
   "sentiment": {"legitimacy": 0-100, "controversy": 0-100},
@@ -39,7 +52,7 @@ export async function extractAnalysis(
   rawResponseText: string,
   brandName: string,
   promptText: string,
-  _category?: string,
+  category?: string,
 ): Promise<RunAnalysis> {
   const userPrompt = `Brand: "${brandName}"
 Original question: "${promptText}"
@@ -55,7 +68,7 @@ ${rawResponseText}`;
       {
         model: EXTRACT_MODEL,
         input: [
-          { role: "system", content: buildSystemPrompt() },
+          { role: "system", content: buildSystemPrompt(category) },
           { role: "user", content: userPrompt },
         ],
         max_output_tokens: 512,
