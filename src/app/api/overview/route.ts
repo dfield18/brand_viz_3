@@ -833,9 +833,14 @@ export async function GET(req: NextRequest) {
     const roleLower = figureMeta.role.replace(/^US\s+/i, "").toLowerCase();
     const national = isNationalJurisdiction(figureMeta.jurisdiction);
     // Normalize party to adjective form so phrasing reads as natural
-    // English: "Democrat reps" → "Democratic reps", "Republican" stays
-    // unchanged.
-    const partyAdj = figureMeta.party === "Democrat" ? "Democratic" : figureMeta.party;
+    // English: "Democrat" → "Democratic", "Republican" stays the same.
+    // Treat "Other" as null — it's a valid classifier output but
+    // produces awkward facets ("Other reps") that don't carry useful
+    // signal, so we skip the party facet for those subjects.
+    const partyAdj =
+      figureMeta.party === "Democrat" ? "Democratic"
+        : figureMeta.party === "Other" ? null
+        : figureMeta.party;
     // Order matters: scopeFacets[0] becomes the default scope phrase
     // for trend captions and the Mention Rate description. The
     // jurisdiction-specific facet ("reps from California CA-30") was
