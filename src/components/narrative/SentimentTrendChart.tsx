@@ -85,7 +85,7 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
             Whether AI is becoming more positive or negative about the {noun} over time
           </p>
           <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            Y-axis shows % of AI responses with positive sentiment
+            Y-axis shows % of AI responses with positive sentiment. Flat at 0% means responses were measured but all neutral — common when AI gives factual coverage.
           </p>
         </div>
         <select
@@ -155,8 +155,8 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
                 dataKey="positive"
                 stroke="hsl(160, 60%, 45%)"
                 strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 4 }}
+                dot={{ r: 3, fill: "hsl(160, 60%, 45%)", strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
                 name="Avg. Positive Sentiment"
                 connectNulls
               />
@@ -170,8 +170,8 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
                   stroke={MODEL_LINE_COLORS[m] ?? "hsl(160, 60%, 45%)"}
                   strokeWidth={1}
                   strokeOpacity={0.35}
-                  dot={false}
-                  activeDot={{ r: 3 }}
+                  dot={{ r: 2, fill: MODEL_LINE_COLORS[m] ?? "hsl(160, 60%, 45%)", strokeWidth: 0, fillOpacity: 0.5 }}
+                  activeDot={{ r: 4 }}
                   name={`${MODEL_LABELS[m] ?? m}`}
                   connectNulls
                   legendType="none"
@@ -186,8 +186,8 @@ export function SentimentTrendChart({ trend: initialTrend, brandSlug, range, pag
                 dataKey={`${focusModel}_positive`}
                 stroke="hsl(160, 60%, 45%)"
                 strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 4 }}
+                dot={{ r: 3, fill: "hsl(160, 60%, 45%)", strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
                 name={`${MODEL_LABELS[focusModel] ?? focusModel} Sentiment`}
                 connectNulls
               />

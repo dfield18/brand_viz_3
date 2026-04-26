@@ -209,15 +209,12 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
           </button>
         </div>
 
-        <p className="mt-5 text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">
-            Free to use — no credit card, no email or account needed.
-          </span>{" "}
-          <span className="text-muted-foreground/70">Report ready in 30-60 seconds.</span>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Report ready in 30–60 seconds.
         </p>
 
         {exampleBrands.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-center">
             <span className="text-xs text-muted-foreground">Try:</span>
             {exampleBrands.map((brand) => (
               <button
