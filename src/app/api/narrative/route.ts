@@ -234,16 +234,19 @@ export async function GET(req: NextRequest) {
   const narrativeCount = narratives.length;
 
   // Sentiment split — uses ALL scoped runs (all clusters), matching overview tab.
-  // This avoids parseNarrative() filtering out runs that have sentiment but no themes array.
-  // All clusters are included so sentiment is consistent across Overview and Narrative tabs.
+  // Routes through getCountableSentiment so subject-not-mentioned runs and
+  // legacy auto-NEU runs without directional evidence are skipped, matching
+  // the gate every other sentiment surface uses (overview sentimentSplit,
+  // sentimentTrend, sentimentByQuestion, visibility per-prompt). Without
+  // this gate, political figures' sentiment split on the Narrative tab
+  // could still inflate toward 100% NEU from legacy keyword-era runs that
+  // have empty evidence arrays.
   let posCount = 0, neuCount = 0, negCount = 0;
   for (const r of allScopedRuns) {
-    const nj = r.narrativeJson as Record<string, unknown> | null;
-    if (!nj) continue;
-    const sent = nj.sentiment as { label?: string } | undefined;
-    if (!sent?.label) continue;
-    if (sent.label === "POS") posCount++;
-    else if (sent.label === "NEG") negCount++;
+    const label = getCountableSentiment(r.narrativeJson);
+    if (!label) continue;
+    if (label === "POS") posCount++;
+    else if (label === "NEG") negCount++;
     else neuCount++;
   }
   const sentimentTotal = posCount + neuCount + negCount;
