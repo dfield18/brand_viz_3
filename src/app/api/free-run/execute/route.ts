@@ -15,6 +15,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
   classifyBrandCategory,
   classifyBrandIndustry,
+  classifyCanonicalBrandName,
   classifyPublicFigure,
   generateBrandAliases,
   generateIndustryPrompts,
@@ -322,12 +323,21 @@ export async function POST(req: NextRequest) {
   if (!/\p{L}|\p{N}/u.test(rawInput)) {
     return NextResponse.json({ error: "Enter a brand or organization name." }, { status: 400 });
   }
+  // Canonical-name correction: detect obvious typos of well-known
+  // brands or public figures and silently swap to the corrected
+  // spelling BEFORE deriving the slug, displayName, prompts, and
+  // mention-detection regexes. e.g. "Adam Schif" → "Adam Schiff"
+  // so AI responses (which use the correct spelling) match.
+  // Only applies when confidence is "high"; ambiguous or obscure
+  // inputs pass through unchanged.
+  const { canonical, confidence } = await classifyCanonicalBrandName(rawInput);
+  const correctedInput = confidence === "high" && canonical !== rawInput ? canonical : rawInput;
   // Normalize casing so "kathy hochul" typed lowercase renders as
   // "Kathy Hochul" everywhere — displayName, Key Insight, prompt
   // opportunities, trend chart captions. Preserves intentional
   // acronym casing ("MIT", "ACLU") by only title-casing strings with
   // zero uppercase letters.
-  const brandName = smartTitleCaseName(rawInput);
+  const brandName = smartTitleCaseName(correctedInput);
   const baseSlug = slugify(brandName);
   if (!baseSlug) {
     return NextResponse.json({ error: "Couldn't derive a URL slug from the brand name." }, { status: 400 });

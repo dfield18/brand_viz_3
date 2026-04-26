@@ -141,6 +141,76 @@ No prose, no code fences.`,
   }
 }
 
+/** Canonical-name correction for free-run input. Detects obvious
+ *  typos of well-known brands / public figures and returns the
+ *  corrected spelling. Only applies the correction when confidence
+ *  is "high" so we don't over-correct obscure-but-real names.
+ *
+ *  e.g.:
+ *    "Adam Schif"     → { canonical: "Adam Schiff",   confidence: "high" }
+ *    "Bernie Sandars" → { canonical: "Bernie Sanders", confidence: "high" }
+ *    "Niki"           → { canonical: "Nike",          confidence: "high" }
+ *    "Joe's Pizza"    → { canonical: "Joe's Pizza",   confidence: "low"  } (preserve)
+ *    "ACLU"           → { canonical: "ACLU",          confidence: "high" } (already correct)
+ */
+export async function classifyCanonicalBrandName(
+  rawInput: string,
+): Promise<{ canonical: string; confidence: "high" | "medium" | "low" }> {
+  const trimmed = rawInput.trim();
+  if (!trimmed) return { canonical: rawInput, confidence: "low" };
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 80,
+      messages: [
+        {
+          role: "system",
+          content: `You receive a brand or public-figure name typed into a search box. The user may have made a typo. Return the canonical correctly-spelled form ONLY when the input is clearly a misspelling of a well-known brand, organization, or public figure AND there's high confidence about the intended subject. Otherwise return the input unchanged.
+
+Respond with valid JSON only:
+{"canonical": "<corrected or unchanged name>", "confidence": "high" | "medium" | "low"}
+
+Confidence levels:
+- "high"   — ≥90% confidence the user intended a specific well-known subject (correct typos, expand obvious last-name-only references like "Pelosi" → "Nancy Pelosi" only when the surname is unambiguous in current US public life).
+- "medium" — likely correction but multiple candidates plausible (e.g., "Smith" could be many people).
+- "low"    — input is novel, ambiguous, obscure, OR already correctly spelled.
+
+DO NOT correct:
+- Obscure-but-plausibly-real names (small businesses, local figures, niche orgs you don't have strong knowledge of)
+- Names that are correctly spelled (return them unchanged with "high" or "low" confidence)
+- Inputs where you're not confident which person/brand was meant
+
+Examples:
+- "Adam Schif"          → {"canonical": "Adam Schiff",   "confidence": "high"}
+- "Bernie Sandars"      → {"canonical": "Bernie Sanders","confidence": "high"}
+- "Niki"                → {"canonical": "Nike",          "confidence": "high"}
+- "Joe's Pizza Brooklyn"→ {"canonical": "Joe's Pizza Brooklyn", "confidence": "low"}
+- "ACLU"                → {"canonical": "ACLU",          "confidence": "high"}
+- "Common Cause"        → {"canonical": "Common Cause",  "confidence": "high"}
+- "xyzfoobar"           → {"canonical": "xyzfoobar",     "confidence": "low"}
+
+No prose, no code fences.`,
+        },
+        { role: "user", content: trimmed },
+      ],
+    });
+    const raw = response.choices?.[0]?.message?.content?.trim();
+    if (!raw) return { canonical: rawInput, confidence: "low" };
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleaned) as { canonical?: unknown; confidence?: unknown };
+    if (typeof parsed.canonical !== "string" || !parsed.canonical.trim()) {
+      return { canonical: rawInput, confidence: "low" };
+    }
+    const c = parsed.confidence;
+    const confidence: "high" | "medium" | "low" = c === "high" || c === "medium" ? c : "low";
+    return { canonical: parsed.canonical.trim(), confidence };
+  } catch (err) {
+    console.warn("[classifyCanonicalBrandName] failed, using raw input:", err);
+    return { canonical: rawInput, confidence: "low" };
+  }
+}
+
 /**
  * Default features for commercial brands (no political orientation).
  */
