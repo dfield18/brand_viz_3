@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       rawResponseText: true,
-      brand: { select: { name: true, displayName: true, slug: true } },
+      brand: { select: { name: true, displayName: true, slug: true, aliases: true } },
     },
     orderBy: { createdAt: "desc" },
     skip: offset,
@@ -59,10 +59,12 @@ export async function POST(req: NextRequest) {
     }
     try {
       const brandName = (run.brand as unknown as { displayName?: string | null }).displayName || run.brand.name;
+      const aliases = (run.brand as unknown as { aliases?: string[] }).aliases ?? [];
       const narrative = await extractNarrativeForRun(
         run.rawResponseText,
         brandName,
         run.brand.slug,
+        aliases,
       );
       await prisma.run.update({
         where: { id: run.id },
