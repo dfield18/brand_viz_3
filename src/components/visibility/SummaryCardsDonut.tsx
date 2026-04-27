@@ -240,7 +240,7 @@ export function SummaryCardsDonut({
       percentage: avgRankScore > 0 ? Math.max(0, 100 - (avgRankScore - 1) * 10) : 0,
       color: "var(--chart-4)",
       badge: avgRankScore > 0 ? positionBadge : { text: "No data", color: "text-muted-foreground bg-muted/50 border-border" },
-      description: `Where ${brandName} typically appears in AI recommendation lists (#1 = mentioned first)`,
+      description: `${brandName}'s average rank in AI lists (#1 = first)`,
       tooltip: `The average position where this ${noun} appears in AI recommendation lists. #1 means the ${noun} is typically mentioned first. Based on general industry questions only.`,
       delta: kpiDeltas?.avgRank ?? null,
       invertDelta: true,
