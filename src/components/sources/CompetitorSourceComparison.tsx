@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import type { CompetitorCrossCitation, SourcesResponse, SourcePromptMatrixRow, SourceMatrixPrompt, SourceModelSplitRow } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS, CLUSTER_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun, subjectNounPlural } from "@/lib/subjectNoun";
 
 interface ApiResponse {
   hasData: boolean;
@@ -25,6 +26,7 @@ interface Props {
   prompts?: SourceMatrixPrompt[];
   modelSplit?: SourceModelSplitRow[];
   entityNames?: Record<string, string>;
+  category?: string | null;
 }
 
 type ViewMode = "brands" | "questions" | "platforms";
@@ -42,11 +44,16 @@ function resolveEntity(id: string, names?: Record<string, string>): string {
   return names?.[id] ?? names?.[id.toLowerCase()] ?? titleCase(id);
 }
 
-const VIEW_DESCRIPTIONS: Record<ViewMode, string> = {
-  brands: "Which websites AI cites when mentioning each brand — shows where competitors are getting their credibility from",
-  questions: "Which websites AI cites when answering specific questions. Darker cells = more citations.",
-  platforms: "How often each AI platform cites each source — see which platforms rely on which websites",
-};
+function buildViewDescriptions(noun: string, peerNoun: string): Record<ViewMode, string> {
+  return {
+    brands: `Which websites AI cites when mentioning each ${peerNoun} — shows where peers are getting their credibility from`,
+    questions: "Which websites AI cites when answering specific questions. Darker cells = more citations.",
+    platforms: "How often each AI platform cites each source — see which platforms rely on which websites",
+  };
+  // noun is unused for now but kept in the signature so future copy can
+  // also distinguish the subject from peer noun.
+  void noun;
+}
 
 export default function CompetitorSourceComparison({
   crossCitation: initialCrossCitation,
@@ -58,8 +65,15 @@ export default function CompetitorSourceComparison({
   prompts: initialPrompts,
   modelSplit: initialModelSplit,
   entityNames,
+  category,
 }: Props) {
   const brandName = resolveEntity(brandSlug, entityNames);
+  const subjectNounLabel = subjectNoun(brandName, category);
+  const peerNounSingular = subjectNounLabel; // peers share the subject's noun
+  const peerNounPlural = subjectNounPlural(brandName, category);
+  const PeerNounCap = peerNounSingular.charAt(0).toUpperCase() + peerNounSingular.slice(1);
+  const VIEW_DESCRIPTIONS = buildViewDescriptions(subjectNounLabel, peerNounSingular);
+  void peerNounPlural;
 
   // Build a function that expands {brand} and {competitor} placeholders in prompt text
   const expandPromptText = useMemo(() => {
@@ -327,7 +341,7 @@ export default function CompetitorSourceComparison({
             onClick={() => setView("brands")}
             className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === "brands" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
           >
-            By Brand
+            By {PeerNounCap}
           </button>
           <button
             type="button"

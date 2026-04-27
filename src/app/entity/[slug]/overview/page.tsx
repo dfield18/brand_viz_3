@@ -339,7 +339,7 @@ function OverviewInner() {
             )}
             <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
           </div>
-          <DataFooter prompts="mixed" date={range} />
+          <DataFooter prompts="mixed" date={range} brandName={brandName} category={apiData.brandCategory} />
         </div>
 
         {/* Scorecard — supporting evidence for the Key Insight above */}
@@ -357,7 +357,7 @@ function OverviewInner() {
                 sentimentSplit={apiData.sentimentSplit ?? null}
                 topSourceType={apiData.topSourceType ?? null}
               />
-              <DataFooter prompts="mixed" date={range} />
+              <DataFooter prompts="mixed" date={range} brandName={brandName} category={apiData.brandCategory} />
             </>
           )}
         </div>
@@ -380,13 +380,13 @@ function OverviewInner() {
                 historicalEstimated={/--[0-9a-f]{8}$/.test(params.slug)}
               />
             </section>
-            <DataFooter prompts="industry" date={range} />
+            <DataFooter prompts="industry" date={range} brandName={brandName} category={apiData.brandCategory} />
           </div>
         )}
 
         <div id="cross-model" className="scroll-mt-24">
           <CrossModelTable models={data.modelComparison} brandName={brandName} category={apiData.brandCategory} />
-          <DataFooter prompts="mixed" date={range} />
+          <DataFooter prompts="mixed" date={range} brandName={brandName} category={apiData.brandCategory} />
         </div>
 
         {/* ── Narrative section group ─────────────────────────────
@@ -445,7 +445,7 @@ function OverviewInner() {
 
           <div id="competitor-alerts" className="scroll-mt-24">
             <CompetitorAlerts brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
-            <DataFooter prompts="industry" date={range} />
+            <DataFooter prompts="industry" date={range} brandName={brandName} category={apiData.brandCategory} />
           </div>
         </section>
 

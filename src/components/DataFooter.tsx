@@ -1,3 +1,5 @@
+import { subjectNounPlural } from "@/lib/subjectNoun";
+
 interface DataFooterProps {
   /** "industry" = broad industry questions only, "all" = all prompt types, "mixed" = varies by metric */
   prompts: "industry" | "all" | "mixed";
@@ -10,14 +12,20 @@ interface DataFooterProps {
    *    within the range. Label reads "Current · N-day window" so users
    *    don't assume it's a time-series average. */
   mode?: "aggregated" | "snapshot";
+  /** Subject name + category for noun substitution ("no brands mentioned"
+   *  vs "no public figures mentioned" vs "no organizations mentioned").
+   *  Optional — defaults to "brand" so commercial usages remain unchanged. */
+  brandName?: string;
+  category?: string | null;
 }
 
-export function DataFooter({ prompts, date, mode = "aggregated" }: DataFooterProps) {
+export function DataFooter({ prompts, date, mode = "aggregated", brandName, category }: DataFooterProps) {
+  const peerNounPlural = subjectNounPlural(brandName ?? "Brand", category);
   const promptLabel =
     prompts === "industry"
-      ? "Generic industry questions (no brands mentioned)"
+      ? `Generic industry questions (no ${peerNounPlural} mentioned)`
       : prompts === "mixed"
-        ? "Mention Rate uses generic industry questions (no brands mentioned); other metrics use all prompt types"
+        ? `Mention Rate uses generic industry questions (no ${peerNounPlural} mentioned); other metrics use all prompt types`
         : "All prompt types";
   const dateLabel =
     date === "latest"

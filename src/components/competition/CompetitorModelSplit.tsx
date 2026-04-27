@@ -3,13 +3,17 @@
 import { useState } from "react";
 import type { ModelSplitRow } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface CompetitorModelSplitProps {
   modelSplit: ModelSplitRow[];
   brandEntityId: string;
+  brandName?: string;
+  category?: string | null;
 }
 
-export function CompetitorModelSplit({ modelSplit, brandEntityId }: CompetitorModelSplitProps) {
+export function CompetitorModelSplit({ modelSplit, brandEntityId, brandName, category }: CompetitorModelSplitProps) {
+  const peerNoun = subjectNoun(brandName ?? "Brand", category);
   const [view, setView] = useState<"chart" | "table">("chart");
 
   if (modelSplit.length <= 1) {
@@ -51,7 +55,7 @@ export function CompetitorModelSplit({ modelSplit, brandEntityId }: CompetitorMo
       </div>
 
       {view === "chart" ? (
-        <ChartView modelSplit={modelSplit} brandEntityId={brandEntityId} />
+        <ChartView modelSplit={modelSplit} brandEntityId={brandEntityId} peerNoun={peerNoun} />
       ) : (
         <TableView modelSplit={modelSplit} entityIds={entityIds} entityNameMap={entityNameMap} brandEntityId={brandEntityId} />
       )}
@@ -59,11 +63,11 @@ export function CompetitorModelSplit({ modelSplit, brandEntityId }: CompetitorMo
   );
 }
 
-function ChartView({ modelSplit, brandEntityId }: { modelSplit: ModelSplitRow[]; brandEntityId: string }) {
+function ChartView({ modelSplit, brandEntityId, peerNoun }: { modelSplit: ModelSplitRow[]; brandEntityId: string; peerNoun: string }) {
   return (
     <div className="space-y-6">
       <p className="text-xs text-muted-foreground -mt-2">
-        Bars show each brand&apos;s share of voice — the percentage of responses where the AI platform mentions that brand. Longer bars mean more visibility.
+        Bars show each {peerNoun}&apos;s share of voice — the percentage of responses where the AI platform mentions that {peerNoun}. Longer bars mean more visibility.
       </p>
       {modelSplit.map((row) => {
         const sorted = [...row.competitors]

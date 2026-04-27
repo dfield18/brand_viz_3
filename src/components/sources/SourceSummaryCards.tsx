@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Info, TrendingUp } from "lucide-react";
 import type { SourceSummary, SourcesScope, EmergingSource, TopDomainRow } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface Props {
   scope: SourcesScope;
@@ -11,6 +12,8 @@ interface Props {
   topDomains: TopDomainRow[];
   categoryBreakdown?: { category: string; count: number; pct: number }[];
   range?: number;
+  brandName?: string;
+  category?: string | null;
 }
 
 /* ── Donut ring (same as visibility/narrative tabs) ─────────────────── */
@@ -112,7 +115,8 @@ interface CardConfig {
   scrollTarget?: string;
 }
 
-export default function SourceSummaryCards({ summary, emerging, topDomains, categoryBreakdown, range = 90 }: Props) {
+export default function SourceSummaryCards({ summary, emerging, topDomains, categoryBreakdown, range = 90, brandName, category }: Props) {
+  const peerNoun = subjectNoun(brandName ?? "Brand", category);
   // Use all-domain category breakdown if available, fall back to top-domains-only
   const typeBreakdown = useMemo(() => {
     if (categoryBreakdown && categoryBreakdown.length > 0) {
@@ -177,7 +181,7 @@ export default function SourceSummaryCards({ summary, emerging, topDomains, cate
   if (topType) {
     cards.push({
       label: "MOST CITED SOURCE TYPE",
-      tooltip: "The kind of website AI platforms reference most often (e.g., news sites, review sites, official brand pages). This shows what type of content AI trusts most in this space.",
+      tooltip: `The kind of website AI platforms reference most often (e.g., news sites, review sites, official ${peerNoun} pages). This shows what type of content AI trusts most in this space.`,
       description: `The category of website AI references most`,
       badge: { text: topType.label, color: "text-blue-700 bg-blue-50 border-blue-200" },
       donutPct: topType.pct,

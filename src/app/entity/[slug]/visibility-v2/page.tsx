@@ -178,7 +178,7 @@ function VisibilityV2Inner() {
             No completed runs yet
           </p>
           <p className="text-sm text-muted-foreground">
-            Run prompts from Overview to generate visibility data for this brand.
+            Run prompts from Overview to generate visibility data for this {subjectNoun(brandName, brandCategory)}.
           </p>
           <Link
             href={`/entity/${params.slug}/overview?${qs}`}
@@ -235,7 +235,7 @@ function VisibilityV2Inner() {
             activeMetric={activeMetric}
             sparklines={sparklines}
           />
-          <DataFooter prompts="industry" date={range} />
+          <DataFooter prompts="industry" date={range} brandName={brandName} category={brandCategory} />
         </div>
 
         <div className="px-5 py-4 mt-2">
@@ -324,7 +324,7 @@ function VisibilityV2Inner() {
             )}
           </div>
         </div>
-        <DataFooter prompts="industry" date={range} />
+        <DataFooter prompts="industry" date={range} brandName={brandName} category={brandCategory} />
 
         {/* ── Ranking ──────────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Ranking</h2>
@@ -335,7 +335,7 @@ function VisibilityV2Inner() {
         <div id="ranking-distribution" className="scroll-mt-24">
           <PositionDistribution data={data.positionDistribution} inline brandName={brandName} />
         </div>
-        <DataFooter prompts="industry" date={range} />
+        <DataFooter prompts="industry" date={range} brandName={brandName} category={brandCategory} />
 
         {/* ── Performance ──────────────────────── */}
         <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Performance</h2>
@@ -364,7 +364,7 @@ function VisibilityV2Inner() {
             <ResultsByQuestion results={data.resultsByQuestion} wins={data.topPromptWins} opportunities={data.worstPerformingPrompts} brandSlug={params.slug} brandName={brandName} category={brandCategory} inline externalModel={promptModel} isOrg={isOrg} />
           </div>
         </div>
-        <DataFooter prompts="industry" date={range} />
+        <DataFooter prompts="industry" date={range} brandName={brandName} category={brandCategory} />
       </div>
     </div>
   );

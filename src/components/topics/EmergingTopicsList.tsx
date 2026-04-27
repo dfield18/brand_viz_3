@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import type { EmergingTopic } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface Props {
   emerging: EmergingTopic[];
+  brandName?: string;
+  category?: string | null;
 }
 
 const CONFIDENCE_STYLE: Record<string, { color: string; bg: string }> = {
@@ -14,7 +17,8 @@ const CONFIDENCE_STYLE: Record<string, { color: string; bg: string }> = {
   Low: { color: "text-red-700 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" },
 };
 
-export default function EmergingTopicsList({ emerging }: Props) {
+export default function EmergingTopicsList({ emerging, brandName, category }: Props) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (emerging.length === 0) {
@@ -41,7 +45,7 @@ export default function EmergingTopicsList({ emerging }: Props) {
     <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Emerging Topics</h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Topics with growing brand mentions (≥25% growth, comparing first vs second half of range)
+        Topics with growing {noun} mentions (≥25% growth, comparing first vs second half of range)
       </p>
       <div className="space-y-3">
         {emerging.map((e) => {

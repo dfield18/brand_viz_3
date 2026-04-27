@@ -2,12 +2,16 @@
 
 import type { TopicRow } from "@/types/api";
 
+import { subjectNoun } from "@/lib/subjectNoun";
+
 interface Props {
   topics: TopicRow[];
   brandName?: string;
+  category?: string | null;
 }
 
-export default function TopicMentionRateChart({ topics, brandName = "This Brand" }: Props) {
+export default function TopicMentionRateChart({ topics, brandName = "This Brand", category }: Props) {
+  const noun = subjectNoun(brandName, category);
   if (topics.length === 0) {
     return (
       <div className="rounded-xl bg-card p-6 shadow-section">
@@ -93,7 +97,7 @@ export default function TopicMentionRateChart({ topics, brandName = "This Brand"
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground mt-3">
-        Topic mention rate = % of responses in that topic where the brand is mentioned.
+        Topic mention rate = % of responses in that topic where the {noun} is mentioned.
       </p>
     </div>
   );

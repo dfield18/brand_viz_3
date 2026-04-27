@@ -5,6 +5,7 @@ import type { OfficialSiteCitation, SourcesResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS, CLUSTER_LABELS } from "@/lib/constants";
 import { ChevronRight, Crown, ExternalLink } from "lucide-react";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 const MODEL_SHORT: Record<string, string> = {
   chatgpt: "GPT",
@@ -48,11 +49,14 @@ interface Props {
   range: number;
   pageModel: string;
   entityNames?: Record<string, string>;
+  brandName?: string;
+  category?: string | null;
 }
 
 const selectClass = "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card shrink-0";
 
-export default function OfficialSiteCitations({ officialSites: initialSites, brandSlug, range, pageModel, entityNames }: Props) {
+export default function OfficialSiteCitations({ officialSites: initialSites, brandSlug, range, pageModel, entityNames, brandName, category }: Props) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [model, setModel] = useState(pageModel);
   const [cluster, setCluster] = useState("all");
@@ -84,7 +88,7 @@ export default function OfficialSiteCitations({ officialSites: initialSites, bra
         <div>
           <h2 className="text-base font-semibold mb-1">Official Website Citations</h2>
           <p className="text-xs text-muted-foreground">
-            When AI links directly to a brand&apos;s own website as a source
+            When AI links directly to a {noun}&apos;s own website as a source
           </p>
         </div>
         <div className="flex items-center gap-2">

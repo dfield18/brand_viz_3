@@ -3,7 +3,8 @@
 import { useParams } from "next/navigation";
 import { Suspense, useState, useCallback } from "react";
 import { Loader2, Globe, RefreshCw } from "lucide-react";
-import { useBrandName } from "@/lib/useBrandName";
+import { useBrandName, useBrandCategory } from "@/lib/useBrandName";
+import { subjectNoun } from "@/lib/subjectNoun";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -334,7 +335,8 @@ function buildTechnicalChecks(audit: SiteAuditResult): CheckItem[] {
 
 /* ─── Summary ──────────────────────────────────────────────────────── */
 
-function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName: string }) {
+function AuditSummary({ audit, brandName, category }: { audit: SiteAuditResult; brandName: string; category?: string | null }) {
+  const noun = subjectNoun(brandName, category);
   const s = audit.scores;
   const r = audit.robotsTxt;
   const sd = audit.structuredData;
@@ -460,7 +462,7 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
   }
 
   if (c.hasFAQSection) {
-    contentBody += " The page includes FAQ content, which is especially valuable. AI assistants love FAQs because they provide ready-made answers to common questions — this is one of the easiest ways to influence what AI says about the brand.";
+    contentBody += ` The page includes FAQ content, which is especially valuable. AI assistants love FAQs because they provide ready-made answers to common questions — this is one of the easiest ways to influence what AI says about the ${noun}.`;
   }
 
   sections.push({ heading: "How Well Is Content Organized?", body: contentBody });
@@ -472,7 +474,7 @@ function AuditSummary({ audit, brandName }: { audit: SiteAuditResult; brandName:
   if (audit.security.isHttps) {
     techPoints.push("the site uses HTTPS (secure connection), which AI platforms treat as a trust signal");
   } else {
-    techPoints.push("the site doesn't use HTTPS, which AI platforms may view as less trustworthy — this can lower the brand's priority as a source");
+    techPoints.push(`the site doesn't use HTTPS, which AI platforms may view as less trustworthy — this can lower the ${noun}'s priority as a source`);
   }
 
   if (audit.performance.loadTimeMs !== null) {
@@ -537,6 +539,7 @@ const PAGE_SECTIONS: PageSection[] = [
 function SiteAuditInner() {
   const params = useParams<{ slug: string }>();
   const brandName = useBrandName(params.slug);
+  const brandCategory = useBrandCategory(params.slug);
 
   const [customUrl, setCustomUrl] = useState("");
   const [submittedUrl, setSubmittedUrl] = useState<string | null>(null);
@@ -655,7 +658,7 @@ function SiteAuditInner() {
         {/* ── Scorecard & Summary ─────────────────────────────────── */}
         <div id="scorecard" className="scroll-mt-24 space-y-6">
           <SiteAuditScorecard {...audit.scores} brandName={brandName} />
-          <AuditSummary audit={audit} brandName={brandName} />
+          <AuditSummary audit={audit} brandName={brandName} category={brandCategory} />
         </div>
 
         {/* ── Technical Details ─────────────────────────────────── */}

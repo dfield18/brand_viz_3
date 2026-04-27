@@ -124,7 +124,7 @@ function SourcesInner() {
       <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
         {/* KPI Summary */}
         <div id="kpi-summary" className="scroll-mt-24">
-          <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} categoryBreakdown={data.allDomainCategoryBreakdown} range={range} />
+          <SourceSummaryCards scope={data.scope} summary={data.summary} emerging={data.emerging} topDomains={data.topDomains} categoryBreakdown={data.allDomainCategoryBreakdown} range={range} brandName={brandName} category={brandCategory} />
         </div>
 
         <div className="px-5 py-4 mt-2">
@@ -151,7 +151,7 @@ function SourcesInner() {
         {/* Official Sites */}
         {data.officialSites && data.officialSites.length > 0 && (
           <div id="official-sites" className="scroll-mt-24">
-            <OfficialSiteCitations officialSites={data.officialSites} brandSlug={params.slug} range={range} pageModel={model} entityNames={apiData.entityNames} />
+            <OfficialSiteCitations officialSites={data.officialSites} brandSlug={params.slug} range={range} pageModel={model} entityNames={apiData.entityNames} brandName={brandName} category={brandCategory} />
           </div>
         )}
 
@@ -168,7 +168,7 @@ function SourcesInner() {
         {/* Competitor Source Comparison */}
         {data.crossCitation && data.crossCitation.length > 0 && (
           <div id="competitor-sources" className="scroll-mt-24">
-            <CompetitorSourceComparison crossCitation={data.crossCitation} topDomains={data.topDomains} brandSlug={params.slug} range={range} pageModel={model} matrix={data.sourcePromptMatrix} prompts={data.matrixPrompts} modelSplit={data.modelSplit} entityNames={apiData.entityNames} />
+            <CompetitorSourceComparison crossCitation={data.crossCitation} topDomains={data.topDomains} brandSlug={params.slug} range={range} pageModel={model} matrix={data.sourcePromptMatrix} prompts={data.matrixPrompts} modelSplit={data.modelSplit} entityNames={apiData.entityNames} category={brandCategory} />
           </div>
         )}
 

@@ -1,9 +1,12 @@
 "use client";
 
 import type { TopicFragmentationRow } from "@/types/api";
+import { subjectNounPlural } from "@/lib/subjectNoun";
 
 interface Props {
   fragmentation: TopicFragmentationRow[];
+  brandName?: string;
+  category?: string | null;
 }
 
 const LABEL_COLOR: Record<string, string> = {
@@ -12,7 +15,8 @@ const LABEL_COLOR: Record<string, string> = {
   Concentrated: "text-red-500",
 };
 
-export default function TopicFragmentation({ fragmentation }: Props) {
+export default function TopicFragmentation({ fragmentation, brandName, category }: Props) {
+  const peerNounPlural = subjectNounPlural(brandName ?? "Brand", category);
   if (fragmentation.length === 0) {
     return (
       <section className="rounded-xl bg-card p-6 shadow-section">
@@ -26,7 +30,7 @@ export default function TopicFragmentation({ fragmentation }: Props) {
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold mb-1">Topic Fragmentation</h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Whether topics are contested by many brands or dominated by one
+        Whether topics are contested by many {peerNounPlural} or dominated by one
       </p>
 
       <div className="overflow-x-auto">
