@@ -178,13 +178,13 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
               aria-label="Brand name"
               className="absolute inset-0 w-full h-full opacity-0 cursor-text disabled:cursor-not-allowed"
             />
-            <span className="inline-flex items-baseline">
+            <span className="flex justify-center items-baseline">
               {brandName ? (
                 <>
-                  <span className="text-foreground whitespace-pre">{brandName}</span>
+                  <span className="text-blue-600 whitespace-pre">{brandName}</span>
                   <span
                     aria-hidden="true"
-                    className="ml-1 inline-block w-[3px] h-[0.9em] bg-foreground align-[-0.1em] cursor-blink"
+                    className="ml-1 inline-block w-[3px] h-[0.9em] bg-blue-600 align-[-0.1em] cursor-blink"
                   />
                 </>
               ) : (
