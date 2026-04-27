@@ -209,7 +209,20 @@ export async function GET(req: NextRequest) {
   const brandName = brand.displayName || brand.name;
   const brandIdentity = buildBrandIdentity(brand);
   const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
-  const competitorWord = isOrg ? "other organizations" : "competitors";
+  // Detect person-shape names (two or three capitalized tokens with no
+  // organization signal words) so politicians get "other public figures"
+  // instead of "other organizations". Mirrors the regex pair used by
+  // looksLikePersonName / subjectNoun in src/lib/subjectNoun.ts.
+  const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
+  const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
+  const isPerson = isOrg
+    && PERSON_NAME_SHAPE.test(brandName.trim())
+    && !ORG_SIGNAL_WORDS.test(brandName.trim());
+  const competitorWord = isPerson
+    ? "other public figures"
+    : isOrg
+      ? "other organizations"
+      : "competitors";
 
   // Two scoped run pools:
   // queryUniverseRuns: for prompt opportunities, competitor gaps, rank-based recommendations
@@ -308,8 +321,13 @@ export async function GET(req: NextRequest) {
   if (promptOpportunities.length > 0) {
     const lines = promptOpportunities.map((po) => {
       const rankStr = po.brandRank === null ? "not mentioned" : `ranked #${po.brandRank}`;
+      const aheadLabel = isPerson
+        ? "Other public figures"
+        : isOrg
+          ? "Other organizations"
+          : "Competitors";
       const compStr = po.topCompetitors.length > 0
-        ? `${isOrg ? "Organizations" : "Competitors"} ahead: ${po.topCompetitors.map((c) => `${c.displayName} (#${c.rank})`).join(", ")}`
+        ? `${aheadLabel} ahead: ${po.topCompetitors.map((c) => `${c.displayName} (#${c.rank})`).join(", ")}`
         : `No ${competitorWord} ranked`;
       return `- Prompt: "${po.promptText}" — ${brandName} is ${rankStr}. ${compStr}`;
     });
@@ -322,7 +340,7 @@ export async function GET(req: NextRequest) {
       `\nWrite a concise, actionable summary (3-5 bullet points) that a marketing executive can quickly scan. Each bullet should:`,
       `- Reference the actual AI prompts/questions from the data (not generic terms like "industry queries")`,
       `- Explain what content ${brandName} should create or improve`,
-      `- Reference specific competitors from the data when relevant`,
+      `- Reference specific ${competitorWord} from the data when relevant`,
       `Use the brand name "${brandName}" (not "you" or "your brand"). Do not use markdown formatting (no **, no #, no []()). Do not use headers or titles. Format each bullet as a line starting with "- " (a hyphen). Keep each bullet to 1-2 sentences.`,
     ].join("\n");
 
