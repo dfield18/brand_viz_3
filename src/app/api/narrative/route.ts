@@ -10,7 +10,8 @@ import { validateFrames } from "@/lib/validateFrames";
 import { synthesizeFramesFromResponses, ensureMinimumFrames } from "@/lib/narrative/synthesizeFrames";
 import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
-import { splitSentences, getEntityContextWindow, isSourceOrJunkClaim } from "@/lib/narrative/textUtils";
+import { splitSentences, getEntityContextWindow, isSourceOrJunkClaim, countSignalHits } from "@/lib/narrative/textUtils";
+import { HEDGING_SIGNALS } from "@/lib/narrative/signalLexicons";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
@@ -854,10 +855,25 @@ Rules:
     }
   }
 
-  // Compute hedgingRate from narrativeJson signals (matches delta and tooltip formula)
-  // A response is "hedged" if it has zero authority AND zero trust signals
+  // Compute hedgingRate from actual linguistic hedging cues ("may",
+  // "appears to", "reportedly", etc.). A response is "hedged" when it
+  // reaches for ≥2 distinct cues; one stray modal verb isn't enough.
+  // Prefer the persisted parsed.hedgingSignals (written by extractNarrative);
+  // fall back to recomputing from rawResponseText for legacy runs whose
+  // narrativeJson predates the field. Last-ditch fallback is the old
+  // authority/trust absence heuristic so the metric is never null.
+  const HEDGING_THRESHOLD = 2;
   const signalBasedHedgingRate = narrativeCount > 0
-    ? Math.round((narratives.filter((n) => n.parsed.trustSignals === 0 && n.parsed.authoritySignals === 0).length / narrativeCount) * 100)
+    ? Math.round(
+        (narratives.filter(({ parsed, run }) => {
+          const stored = parsed.hedgingSignals;
+          if (typeof stored === "number") return stored >= HEDGING_THRESHOLD;
+          // Legacy: re-derive from raw text (full response, not brand-context
+          // window — close enough for backward-compat without a backfill).
+          const recomputed = countSignalHits(run.rawResponseText, HEDGING_SIGNALS);
+          return recomputed >= HEDGING_THRESHOLD;
+        }).length / narrativeCount) * 100,
+      )
     : narrativeBase.hedgingRate; // fallback to analysisJson-based rate if no narrativeJson
 
   // Merge enhanced data into narrative response

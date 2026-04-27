@@ -9,6 +9,7 @@ import {
   AUTHORITY_SIGNALS,
   TRUST_SIGNALS,
   WEAKNESS_SIGNALS,
+  HEDGING_SIGNALS,
   POSITIVE_DESCRIPTORS,
   NEGATIVE_DESCRIPTORS,
 } from "./signalLexicons";
@@ -122,6 +123,13 @@ export interface NarrativeExtractionResult {
   authoritySignals: number;
   trustSignals: number;
   weaknessSignals: number;
+  /** Count of distinct linguistic hedging cues ("may", "appears to",
+   *  "reportedly", etc.) found in the brand-context window. Drives the
+   *  Model Confidence metric: a response with ≥2 distinct cues is
+   *  classified hedged. May be missing on legacy narrative records
+   *  written before this field existed; consumers should fall back
+   *  to recomputing from the raw response text. */
+  hedgingSignals?: number;
   themes: { key: string; label: string; score: number; evidence: string[] }[];
   descriptors: { word: string; polarity: "positive" | "negative" | "neutral"; count: number }[];
   claims: { type: "strength" | "weakness" | "neutral"; text: string }[];
@@ -266,6 +274,7 @@ export async function extractNarrativeForRun(
       authoritySignals: 0,
       trustSignals: 0,
       weaknessSignals: 0,
+      hedgingSignals: 0,
       themes: [],
       descriptors: [],
       claims: [],
@@ -276,6 +285,7 @@ export async function extractNarrativeForRun(
   const authorityCount = countSignalHits(contextText, AUTHORITY_SIGNALS);
   const trustCount = countSignalHits(contextText, TRUST_SIGNALS);
   const weaknessCount = countSignalHits(contextText, WEAKNESS_SIGNALS);
+  const hedgingCount = countSignalHits(contextText, HEDGING_SIGNALS);
 
   // --- Themes (dynamic, context-aware) ---
   const themes = await extractThemesDynamic(contextSentences, brandName);
@@ -322,6 +332,7 @@ export async function extractNarrativeForRun(
     authoritySignals: authorityCount,
     trustSignals: trustCount,
     weaknessSignals: weaknessCount,
+    hedgingSignals: hedgingCount,
     themes,
     descriptors,
     claims,
