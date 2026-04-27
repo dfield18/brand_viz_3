@@ -83,7 +83,31 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
 
   const visibleFrames = frameNames.slice(0, MAX_VISIBLE_FRAMES);
 
-  // Compute spaced-out label Y positions so overlapping labels get pushed apart
+  // Anchor each label at its line's PEAK index instead of stacking
+  // them all at index 0. With everything at index 0, three lines that
+  // happen to start near 0% have their labels overlap into one
+  // illegible cluster. Peak anchoring spreads them across the X axis
+  // — Women's Rights Champion gets a label near its early peak,
+  // Criminal Justice Reform near its mid-chart peak, Social Justice
+  // Advocacy near its right-edge peak, etc. Pixel-space overlap
+  // avoidance still runs as a fallback when two peaks coincide.
+  const peakIndexByFrame = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const name of visibleFrames) {
+      let bestIdx = 0;
+      let bestVal = -Infinity;
+      filteredData.forEach((row, i) => {
+        const v = Number(row[name]) || 0;
+        if (v > bestVal) {
+          bestVal = v;
+          bestIdx = i;
+        }
+      });
+      map[name] = bestIdx;
+    }
+    return map;
+  }, [filteredData, visibleFrames]);
+
   // Track pixel-space label positions to avoid overlap (populated during render)
   const labelPixelPositions = useRef<Record<string, number>>({});
 
@@ -185,10 +209,17 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
                   name={name}
                   connectNulls
                   label={(props: { x?: string | number; y?: string | number; index?: number }) => {
-                    if (props.index !== 0) return <g key={`label-skip-${name}-${props.index}`} />;
-                    const x = Number(props.x ?? 0) + 4;
+                    const peakIdx = peakIndexByFrame[name] ?? 0;
+                    if (props.index !== peakIdx) return <g key={`label-skip-${name}-${props.index}`} />;
+                    const lastIdx = filteredData.length - 1;
+                    // Right-align labels in the rightmost ~25% of the
+                    // chart so the text doesn't overflow past the
+                    // plotting area; left-align everything else.
+                    const isNearRight = lastIdx > 0 && peakIdx / lastIdx >= 0.75;
+                    const x = isNearRight ? Number(props.x ?? 0) - 4 : Number(props.x ?? 0) + 4;
                     let y = Number(props.y ?? 0) - 8;
                     // Push labels apart in pixel space to avoid overlap
+                    // when two peaks coincide.
                     const MIN_PX_GAP = 16;
                     const usedPositions = Object.entries(labelPixelPositions.current)
                       .filter(([n]) => n !== name)
@@ -211,6 +242,7 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
                         fontWeight={500}
                         fill={colorMap[name]}
                         opacity={isActive ? 1 : 0.25}
+                        textAnchor={isNearRight ? "end" : "start"}
                         dominantBaseline="auto"
                       >
                         {name}
