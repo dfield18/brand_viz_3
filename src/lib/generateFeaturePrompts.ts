@@ -182,7 +182,7 @@ When the person IS a recognizable political figure (current or recent officehold
 {
   "role": one of:
     Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate"
-    Former / legacy roles (use these for officeholders who left office years ago and aren't currently running): "Former President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
+    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
     If none fit cleanly, return null instead of guessing.
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
@@ -190,7 +190,23 @@ When the person IS a recognizable political figure (current or recent officehold
   "signatureIssue": short issue area they're most associated with ("worker rights", "immigration", "climate", "healthcare reform") or null
 }
 
-Rule of thumb for "Former" vs current: if the person held a federal office and has been out of that office for ≥3 years and isn't actively running, return the Former variant. Barack Obama → "Former President". Joe Biden (in 2026, after his term ended) → "Former President". Patty Murray (still serving in 2026) → "US Senator".
+CRITICAL — Choosing the role for someone who has held multiple offices:
+
+Always return the MOST RECENT and MOST SENIOR office they held. Never an earlier role. If their most recent senior role has ended ≥3 years ago and they aren't actively running for office, return the "Former" variant of THAT role.
+
+Worked examples (today is in 2026):
+- Joe Biden → "Former President" (served as President 2021–2025; do NOT return "US Senator" or "Former Senator" — those refer to his pre-2009 role and are stale by 16+ years)
+- Barack Obama → "Former President" (served 2009–2017; do NOT return "US Senator")
+- Hillary Clinton → "Former Officeholder" (most senior recent role was Secretary of State; "Former Senator" would be downgrading)
+- Bill Clinton → "Former President"
+- George W. Bush → "Former President"
+- Kamala Harris → "Former Officeholder" (Vice President 2021–2025; not currently in office and "Former VP" isn't in the allowlist, so map to "Former Officeholder")
+- Bernie Sanders → "US Senator" (still serving in 2026)
+- Patty Murray → "US Senator" (still serving in 2026)
+- Mitt Romney → return based on his current 2026 status (if no longer Senator, "Former Senator")
+- Adam Schiff → "US Senator" (took office Jan 2025)
+
+Rule of thumb: pick the office they're best known for as their PEAK / MOST RECENT role. Former Presidents stay "Former President" forever — never downgrade them to an earlier Senate or House seat.
 
 When the person is NOT primarily a political figure, return null.
 
