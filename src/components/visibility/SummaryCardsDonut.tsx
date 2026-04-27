@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
-import { subjectNoun, subjectNounPlural } from "@/lib/subjectNoun";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 type MetricTab = "visibility" | "sov" | "topResult";
 
@@ -201,7 +201,6 @@ export function SummaryCardsDonut({
   sparklines,
 }: SummaryCardsDonutProps) {
   const noun = subjectNoun(brandName, category);
-  const nounPlural = subjectNounPlural(brandName, category);
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
