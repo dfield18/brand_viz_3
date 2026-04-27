@@ -161,7 +161,13 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             full-width button. */}
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-4 sm:border-b-2 sm:border-foreground/15 sm:pb-3 sm:focus-within:border-foreground/60 transition-colors">
           <div
-            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight border-b-2 border-foreground/15 pb-2 sm:border-b-0 sm:pb-0 transition-colors focus-within:border-foreground/60 sm:focus-within:border-transparent"
+            // sm:pl-[140px] balances the Analyze button + gap on the
+            // right of the row (the button is ~122px + 16px gap), so
+            // the typed text visually centers within the underline span
+            // — including the area under the button — instead of just
+            // within the input flex-1 box. Mobile keeps no padding
+            // since the button stacks below the input there.
+            className="relative flex-1 min-w-0 cursor-text text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight border-b-2 border-foreground/15 pb-2 sm:border-b-0 sm:pb-0 sm:pl-[140px] transition-colors focus-within:border-foreground/60 sm:focus-within:border-transparent"
             onClick={() => inputRef.current?.focus()}
           >
             <input
