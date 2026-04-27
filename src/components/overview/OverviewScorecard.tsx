@@ -97,6 +97,12 @@ function SentimentBar({ split }: { split: { positive: number; neutral: number; n
 
 interface CardConfig {
   label: string;
+  /** Tiny scope hint shown directly under the label so users know which
+   *  prompt set the metric draws from without having to read the bottom
+   *  footer ("broad politics prompts only", "all prompts"). Keeps the
+   *  "why is mention rate 0% when sentiment shows data?" question
+   *  self-answering. */
+  scope?: string;
   value: string;
   percentage: number;
   color: string;
@@ -146,9 +152,16 @@ export function OverviewScorecard({
   // orgs, "brand" for everything else — keeps the copy from calling
   // Bernie Sanders or Donald Trump "a brand".
   const noun = subjectNoun(brandName, category);
+  // Subject-aware label for the Mention Rate scope hint. Politics for
+  // political_advocacy subjects, otherwise "industry" — matches the
+  // existing description copy so the two read consistently.
+  const mentionScopeLabel = category === "political_advocacy"
+    ? "broad politics prompts only"
+    : "broad industry prompts only";
   const cards: CardConfig[] = [
     {
       label: "MENTION RATE",
+      scope: mentionScopeLabel,
       value: `${Math.round(overallMentionRate)}%`,
       percentage: overallMentionRate,
       color: "var(--chart-1)",
@@ -160,6 +173,7 @@ export function OverviewScorecard({
     },
     {
       label: dominantFrames.length > 1 ? "TOP MESSAGES" : "TOP MESSAGE",
+      scope: "all prompts",
       value: topFrame ? `${topFrame.percentage}%` : "\u2014",
       percentage: topFrame?.percentage ?? 0,
       color: "hsl(263, 70%, 55%)",
@@ -186,6 +200,7 @@ export function OverviewScorecard({
         : null;
       return {
       label: "SENTIMENT",
+      scope: "all prompts",
       value: dominant ? `${dominant.pct}%` : "\u2014",
       percentage: dominant?.pct ?? 0,
       color: "hsl(160, 60%, 45%)",
@@ -225,6 +240,7 @@ export function OverviewScorecard({
       const sourceLabel = topSourceType ? (sourceTypeLabels[topSourceType.category] ?? topSourceType.category) : null;
       return {
         label: "MOST CITED SOURCE TYPE",
+        scope: "all prompts",
         value: topSourceType ? `${sourcePct}%` : "\u2014",
         percentage: sourcePct,
         color: "var(--chart-4)",
@@ -250,10 +266,17 @@ export function OverviewScorecard({
           onClick={() => card.scrollTarget && document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" })}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
-              {card.label}
-            </span>
+          <div className="flex items-start justify-between mb-4 gap-2">
+            <div className="min-w-0">
+              <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground">
+                {card.label}
+              </span>
+              {card.scope && (
+                <span className="block text-[10px] text-muted-foreground/60 leading-tight mt-0.5">
+                  ({card.scope})
+                </span>
+              )}
+            </div>
             <div className="relative group shrink-0">
               <Info className="h-3 w-3 text-muted-foreground/40 cursor-default" />
               <div className="absolute right-0 top-full mt-1.5 z-50 hidden group-hover:block w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md">
