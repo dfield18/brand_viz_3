@@ -14,6 +14,7 @@ export type PublicFigureRole =
   | "State Senator"
   | "State Rep"
   | "Mayor"
+  | "Vice President"
   | "Activist"
   | "Candidate"
   // Former officeholders — historical/legacy figures who haven't held
@@ -23,6 +24,7 @@ export type PublicFigureRole =
   // recent presidents", "former senators turned senior statespeople")
   // that gives organic recall a real chance.
   | "Former President"
+  | "Former Vice President"
   | "Former Senator"
   | "Former Rep"
   | "Former Governor"
@@ -57,11 +59,18 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "assemblywoman": "State Rep",
     "governor": "Governor",
     "mayor": "Mayor",
+    "vice president": "Vice President",
+    "us vice president": "Vice President",
+    "vp": "Vice President",
     "activist": "Activist",
     "candidate": "Candidate",
     // Former-officeholder variants
     "former president": "Former President",
     "ex-president": "Former President",
+    "former vice president": "Former Vice President",
+    "former vp": "Former Vice President",
+    "ex-vice president": "Former Vice President",
+    "ex-vp": "Former Vice President",
     "former us senator": "Former Senator",
     "former senator": "Former Senator",
     "ex-senator": "Former Senator",
@@ -103,9 +112,13 @@ export function buildDirectAnchorPrompt(
   if (figureMeta) {
     if (figureMeta.role === "Former President") {
       text = `What is ${brandName}'s legacy as a US president?`;
+    } else if (figureMeta.role === "Former Vice President") {
+      text = `What is ${brandName}'s legacy as US vice president?`;
     } else if (figureMeta.role.startsWith("Former")) {
       const roleNoun = figureMeta.role.replace(/^Former /, "").toLowerCase();
       text = `What is ${brandName} best known for from their time as ${roleNoun}?`;
+    } else if (figureMeta.role === "Vice President") {
+      text = `What is ${brandName} known for as US vice president?`;
     } else if (figureMeta.role === "US Senator" || figureMeta.role === "US Rep") {
       text = `What is ${brandName} known for in the US Congress?`;
     } else if (figureMeta.role === "Governor") {
@@ -181,8 +194,8 @@ export async function classifyPublicFigure(
 When the person IS a recognizable political figure (current or recent officeholder, former officeholder, candidate, or prominent activist), return:
 {
   "role": one of:
-    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate"
-    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
+    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Activist" | "Candidate"
+    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
     If none fit cleanly, return null instead of guessing.
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
@@ -197,10 +210,14 @@ Always return the MOST RECENT and MOST SENIOR office they held. Never an earlier
 Worked examples (today is in 2026):
 - Joe Biden → "Former President" (served as President 2021–2025; do NOT return "US Senator" or "Former Senator" — those refer to his pre-2009 role and are stale by 16+ years)
 - Barack Obama → "Former President" (served 2009–2017; do NOT return "US Senator")
-- Hillary Clinton → "Former Officeholder" (most senior recent role was Secretary of State; "Former Senator" would be downgrading)
+- Hillary Clinton → "Former Officeholder" (most senior recent role was Secretary of State)
 - Bill Clinton → "Former President"
 - George W. Bush → "Former President"
-- Kamala Harris → "Former Officeholder" (Vice President 2021–2025; not currently in office and "Former VP" isn't in the allowlist, so map to "Former Officeholder")
+- JD Vance → "Vice President" (current US Vice President since Jan 2025; do NOT return "US Senator" — that refers to his pre-2025 role)
+- Kamala Harris → "Former Vice President" (served as VP 2021–2025; do NOT return "Former Senator")
+- Mike Pence → "Former Vice President" (served 2017–2021)
+- Al Gore → "Former Vice President"
+- Dick Cheney → "Former Vice President"
 - Bernie Sanders → "US Senator" (still serving in 2026)
 - Patty Murray → "US Senator" (still serving in 2026)
 - Mitt Romney → return based on his current 2026 status (if no longer Senator, "Former Senator")
@@ -803,6 +820,25 @@ function buildFallbackIndustryPrompts(
 
   const candidates: string[] = [];
   // Tier A — near-certain roster hits
+  if (figureMeta.role === "Vice President") {
+    // Single-person office — no roster. Use the office + administration
+    // anchors to surface the current holder by name.
+    candidates.push(`Who is the current US Vice President?`);
+    candidates.push(`Who is the running mate of the current US president?`);
+    candidates.push(`Who is second in line to the US presidency in ${year}?`);
+    if (figureMeta.signatureIssue) {
+      candidates.push(`Which US officeholders shape ${figureMeta.signatureIssue} from the executive branch?`);
+    }
+    if (figureMeta.party) {
+      candidates.push(`Who are the most prominent ${figureMeta.party} figures in the executive branch in ${year}?`);
+    }
+    return candidates.slice(0, Math.max(1, count)).map((text) => ({
+      text,
+      cluster: "industry" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    }));
+  }
   if (national) {
     candidates.push(`Who are the current US ${roleLower}s?`);
     if (figureMeta.party) {
@@ -869,6 +905,12 @@ function buildLegacyFigureFallbackPrompts(
     if (party) candidates.push(`Who are the most respected former ${party} ${role === "Former Senator" ? "senators" : "representatives"} of the past 20 years?`);
     if (issue) candidates.push(`Who shaped ${issue} from the ${chamber} in recent decades?`);
     candidates.push("Which retired members of Congress are still active in public life?");
+  } else if (role === "Former Vice President") {
+    candidates.push("Who are the most consequential US vice presidents of the 21st century?");
+    if (party) candidates.push(`Who are the most influential former ${party} vice presidents in modern US history?`);
+    if (issue) candidates.push(`Which recent US vice presidents shaped ${issue}?`);
+    candidates.push("Which former US vice presidents have remained influential after leaving office?");
+    candidates.push("Who are the most consequential second-in-command figures in modern US politics?");
   } else if (role === "Former Governor") {
     candidates.push("Which former US governors went on to national political careers?");
     if (party) candidates.push(`Who are the most influential former ${party} governors in modern US politics?`);
@@ -929,6 +971,12 @@ function buildLegacyFigurePrompt(
       `"Which former US House members have transitioned to influential post-Congress roles?"`,
       party ? `"Who are the most respected former ${party} representatives of the past 20 years?"` : `"Who are the most respected former US representatives of the past 20 years?"`,
     ];
+  } else if (role === "Former Vice President") {
+    cohortExamples = [
+      `"Who are the most consequential US vice presidents of the 21st century?"`,
+      party ? `"Who are the most influential former ${party} vice presidents in modern US history?"` : `"Who are the most influential former US vice presidents in modern history?"`,
+      `"Which former US vice presidents have remained influential after leaving office?"`,
+    ];
   } else if (role === "Former Governor") {
     cohortExamples = [
       `"Which former US governors went on to national political careers?"`,
@@ -988,17 +1036,28 @@ function buildTieredFigurePrompt(
   const caucusPhrase = figureMeta.caucus ? `${figureMeta.caucus.toLowerCase()} ` : "";
   const issuePhrase = figureMeta.signatureIssue ?? null;
   const national = isNationalJurisdiction(figureMeta.jurisdiction);
+  const isSittingVP = figureMeta.role === "Vice President";
   // National figures get jurisdiction-less roster shapes so the LLM
   // doesn't produce awkward "senators from United States" questions.
-  const rosterExample1 = national
-    ? `"Who are the current US ${figureMeta.role}s?"`
-    : `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
-  const rosterExample2 = national
-    ? `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`
-    : `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
-  const rosterExample3 = figureMeta.role === "US Senator" && !national
-    ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`
-    : "";
+  // Vice President is a single-person role — there's no "roster" of
+  // sitting VPs, so the questions point to the office and its
+  // running-mate / administration context to surface the current
+  // holder by name.
+  const rosterExample1 = isSittingVP
+    ? `"Who is the current US Vice President?"`
+    : national
+      ? `"Who are the current US ${figureMeta.role}s?"`
+      : `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
+  const rosterExample2 = isSittingVP
+    ? `"Who is the running mate of the current US president?"`
+    : national
+      ? `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`
+      : `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
+  const rosterExample3 = isSittingVP
+    ? `- "Who is second in line to the US presidency in ${year}?"`
+    : figureMeta.role === "US Senator" && !national
+      ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`
+      : "";
 
   return `You generate search queries that voters, donors, activists, and journalists would type into AI assistants when researching a political scene — NOT asking about a specific person.
 
