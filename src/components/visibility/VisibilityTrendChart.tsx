@@ -192,6 +192,29 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
   const strokeColor = effectiveMetric === "visibility" ? "var(--chart-1)" : effectiveMetric === "topResult" ? "var(--chart-2)" : "var(--chart-3)";
   const gradientId = effectiveMetric === "visibility" ? "visGradient" : effectiveMetric === "topResult" ? "trGradient" : "sovGradient";
 
+  // When historicalEstimated is on, the line is dashed end-to-end and
+  // the disclaimer promises a "solid point for today" calibrated to live
+  // results. Without rendering that dot the promise was hollow. This
+  // factory returns a Recharts dot renderer that emits a filled circle
+  // ONLY at the last index, leaving every other point dot-less.
+  const lastIndex = chartData.length - 1;
+  const renderTodayDot = (props: { cx?: number; cy?: number; index?: number }) => {
+    if (!historicalEstimated || props.index !== lastIndex || props.cx == null || props.cy == null) {
+      return <g key={`dot-empty-${props.index ?? "x"}`} />;
+    }
+    return (
+      <circle
+        key={`today-dot-${props.index}`}
+        cx={props.cx}
+        cy={props.cy}
+        r={5}
+        fill={strokeColor}
+        stroke="var(--card)"
+        strokeWidth={2}
+      />
+    );
+  };
+
   return (
     <div>
       {/* Header row: title block stacked above the dropdown filters
@@ -413,7 +436,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 stroke={strokeColor}
                 strokeWidth={2.5}
                 strokeDasharray={historicalEstimated ? "5 4" : undefined}
-                dot={false}
+                dot={historicalEstimated ? renderTodayDot : false}
                 activeDot={{ r: 5, fill: strokeColor, stroke: "var(--card)", strokeWidth: 2 }}
                 name={effectiveMetric === "visibility" ? "Mention Rate" : effectiveMetric === "topResult" ? "Top Result Rate" : "Share of Voice"}
                 connectNulls
@@ -443,7 +466,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
                 stroke={strokeColor}
                 strokeWidth={2.5}
                 strokeDasharray={historicalEstimated ? "5 4" : undefined}
-                dot={false}
+                dot={historicalEstimated ? renderTodayDot : false}
                 activeDot={{ r: 5, fill: strokeColor, stroke: "var(--card)", strokeWidth: 2 }}
                 name={MODEL_LABELS[focusModel] ?? focusModel}
                 connectNulls
