@@ -15,6 +15,12 @@ export type PublicFigureRole =
   | "State Rep"
   | "Mayor"
   | "Vice President"
+  // Catches Cabinet members (Secretary of State, AG, Defense, Treasury,
+  // etc.). Single role keeps the allowlist compact — the role name plus
+  // figureMeta.signatureIssue gives the prompt template enough
+  // specificity to construct cohort-style questions.
+  | "Cabinet Secretary"
+  | "Speaker"
   | "Activist"
   | "Candidate"
   // Former officeholders — historical/legacy figures who haven't held
@@ -29,6 +35,8 @@ export type PublicFigureRole =
   | "Former Rep"
   | "Former Governor"
   | "Former Mayor"
+  | "Former Cabinet Secretary"
+  | "Former Speaker"
   | "Former Officeholder";
 
 /** Map common LLM output variants to the canonical role label. Keeps
@@ -62,6 +70,25 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "vice president": "Vice President",
     "us vice president": "Vice President",
     "vp": "Vice President",
+    // Cabinet roles — collapse all Secretary-of-X / AG / cabinet-level
+    // titles into one bucket since the prompt templates work the same
+    // way for all of them.
+    "cabinet secretary": "Cabinet Secretary",
+    "secretary": "Cabinet Secretary",
+    "secretary of state": "Cabinet Secretary",
+    "secretary of defense": "Cabinet Secretary",
+    "secretary of the treasury": "Cabinet Secretary",
+    "treasury secretary": "Cabinet Secretary",
+    "defense secretary": "Cabinet Secretary",
+    "attorney general": "Cabinet Secretary",
+    "us attorney general": "Cabinet Secretary",
+    "ag": "Cabinet Secretary",
+    "cabinet member": "Cabinet Secretary",
+    // Speaker of the House — separate from Cabinet because the cohort
+    // is "House leadership", not "executive cabinet".
+    "speaker": "Speaker",
+    "speaker of the house": "Speaker",
+    "house speaker": "Speaker",
     "activist": "Activist",
     "candidate": "Candidate",
     // Former-officeholder variants
@@ -71,6 +98,19 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "former vp": "Former Vice President",
     "ex-vice president": "Former Vice President",
     "ex-vp": "Former Vice President",
+    "former cabinet secretary": "Former Cabinet Secretary",
+    "former secretary": "Former Cabinet Secretary",
+    "former secretary of state": "Former Cabinet Secretary",
+    "former secretary of defense": "Former Cabinet Secretary",
+    "former treasury secretary": "Former Cabinet Secretary",
+    "former defense secretary": "Former Cabinet Secretary",
+    "former attorney general": "Former Cabinet Secretary",
+    "former us attorney general": "Former Cabinet Secretary",
+    "former cabinet member": "Former Cabinet Secretary",
+    "ex-secretary": "Former Cabinet Secretary",
+    "former speaker": "Former Speaker",
+    "former speaker of the house": "Former Speaker",
+    "former house speaker": "Former Speaker",
     "former us senator": "Former Senator",
     "former senator": "Former Senator",
     "ex-senator": "Former Senator",
@@ -114,11 +154,19 @@ export function buildDirectAnchorPrompt(
       text = `What is ${brandName}'s legacy as a US president?`;
     } else if (figureMeta.role === "Former Vice President") {
       text = `What is ${brandName}'s legacy as US vice president?`;
+    } else if (figureMeta.role === "Former Cabinet Secretary") {
+      text = `What is ${brandName}'s legacy in the US Cabinet?`;
+    } else if (figureMeta.role === "Former Speaker") {
+      text = `What is ${brandName}'s legacy as US House Speaker?`;
     } else if (figureMeta.role.startsWith("Former")) {
       const roleNoun = figureMeta.role.replace(/^Former /, "").toLowerCase();
       text = `What is ${brandName} best known for from their time as ${roleNoun}?`;
     } else if (figureMeta.role === "Vice President") {
       text = `What is ${brandName} known for as US vice president?`;
+    } else if (figureMeta.role === "Cabinet Secretary") {
+      text = `What is ${brandName} known for as a US Cabinet official?`;
+    } else if (figureMeta.role === "Speaker") {
+      text = `What is ${brandName} known for as US House Speaker?`;
     } else if (figureMeta.role === "US Senator" || figureMeta.role === "US Rep") {
       text = `What is ${brandName} known for in the US Congress?`;
     } else if (figureMeta.role === "Governor") {
@@ -151,18 +199,10 @@ export type PublicFigureMeta = {
   signatureIssue: string | null; // "worker rights" | "climate" | null
 };
 
-/** Cheap heuristic — two or three capitalized tokens, no org signal
- *  words. Used to gate the public-figure classifier call so we don't
- *  burn an LLM roundtrip on obvious organizations. */
-const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
-const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
-
-export function looksLikePersonName(name: string): boolean {
-  const trimmed = name.trim();
-  if (!PERSON_NAME_SHAPE.test(trimmed)) return false;
-  if (ORG_SIGNAL_WORDS.test(trimmed)) return false;
-  return true;
-}
+// Re-exported from the shared no-deps module so client code can import
+// the heuristic without pulling this openai-dependent file into its
+// bundle.
+export { looksLikePersonName } from "@/lib/personNameHeuristic";
 
 /** Detect jurisdictions that would produce ungrammatical phrases like
  *  "senators from United States" when composed into scope facets or
@@ -194,8 +234,10 @@ export async function classifyPublicFigure(
 When the person IS a recognizable political figure (current or recent officeholder, former officeholder, candidate, or prominent activist), return:
 {
   "role": one of:
-    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Activist" | "Candidate"
-    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
+    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Cabinet Secretary" | "Speaker" | "Activist" | "Candidate"
+    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Cabinet Secretary" | "Former Speaker" | "Former Officeholder"
+    Use "Cabinet Secretary" for ANY cabinet-level role (Secretary of State / Defense / Treasury, Attorney General, etc.) — the single bucket keeps the allowlist compact.
+    Use "Speaker" only for the Speaker of the US House. Use "Former Speaker" for past Speakers.
     If none fit cleanly, return null instead of guessing.
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
@@ -218,6 +260,14 @@ Worked examples (today is in 2026):
 - Mike Pence → "Former Vice President" (served 2017–2021)
 - Al Gore → "Former Vice President"
 - Dick Cheney → "Former Vice President"
+- Marco Rubio → "Cabinet Secretary" (current US Secretary of State; do NOT return "Former Senator" — that refers to his pre-2025 role)
+- Pam Bondi → "Cabinet Secretary" (current US Attorney General)
+- Hillary Clinton → "Former Cabinet Secretary" (most senior recent role was Secretary of State 2009–2013; do NOT downgrade to "Former Senator")
+- Antony Blinken → "Former Cabinet Secretary" (Secretary of State 2021–2025)
+- Mike Johnson → "Speaker" (current Speaker of the US House)
+- Nancy Pelosi → "Former Speaker"
+- Kevin McCarthy → "Former Speaker"
+- Paul Ryan → "Former Speaker"
 - Bernie Sanders → "US Senator" (still serving in 2026)
 - Patty Murray → "US Senator" (still serving in 2026)
 - Mitt Romney → return based on his current 2026 status (if no longer Senator, "Former Senator")
@@ -839,6 +889,40 @@ function buildFallbackIndustryPrompts(
       source: "generated" as const,
     }));
   }
+  if (figureMeta.role === "Cabinet Secretary") {
+    // Cabinet positions are roster-able ("current US Cabinet members")
+    // and also stand alone ("current Secretary of State"). Use both
+    // shapes so the figure has multiple recall paths.
+    candidates.push(`Who are the current members of the US Cabinet?`);
+    candidates.push(`Who serves in the current US presidential administration's cabinet?`);
+    if (figureMeta.signatureIssue) {
+      candidates.push(`Which Cabinet officials shape US ${figureMeta.signatureIssue} policy in ${year}?`);
+    }
+    if (figureMeta.party) {
+      candidates.push(`Who are the most prominent ${figureMeta.party} figures in the executive branch in ${year}?`);
+    }
+    candidates.push(`Who are the most influential US Cabinet officials right now?`);
+    return candidates.slice(0, Math.max(1, count)).map((text) => ({
+      text,
+      cluster: "industry" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    }));
+  }
+  if (figureMeta.role === "Speaker") {
+    candidates.push(`Who is the current Speaker of the US House of Representatives?`);
+    candidates.push(`Who leads the US House majority caucus in ${year}?`);
+    if (figureMeta.party) {
+      candidates.push(`Who are the most prominent ${figureMeta.party} leaders in the US House right now?`);
+    }
+    candidates.push(`Who are the top members of US House leadership in ${year}?`);
+    return candidates.slice(0, Math.max(1, count)).map((text) => ({
+      text,
+      cluster: "industry" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    }));
+  }
   if (national) {
     candidates.push(`Who are the current US ${roleLower}s?`);
     if (figureMeta.party) {
@@ -920,6 +1004,15 @@ function buildLegacyFigureFallbackPrompts(
     candidates.push("Which former US mayors went on to national prominence?");
     if (party) candidates.push(`Who are the most influential former ${party} mayors in recent decades?`);
     candidates.push("Which former big-city mayors have shaped national policy debates?");
+  } else if (role === "Former Cabinet Secretary") {
+    candidates.push("Who are the most consequential former US Cabinet officials of the 21st century?");
+    if (party) candidates.push(`Who are the most respected former ${party} Cabinet members of recent decades?`);
+    if (issue) candidates.push(`Which former US Cabinet officials shaped ${issue}?`);
+    candidates.push("Which former US Secretaries of State, Defense, or Treasury remain influential today?");
+  } else if (role === "Former Speaker") {
+    candidates.push("Who are the most consequential former Speakers of the US House?");
+    if (party) candidates.push(`Who are the most influential former ${party} House Speakers in modern US history?`);
+    candidates.push("Which former House Speakers have remained influential after leaving office?");
   } else {
     candidates.push("Who are the most influential former US officeholders still active in public life?");
     if (issue) candidates.push(`Which former US officeholders shaped ${issue}?`);
@@ -987,6 +1080,17 @@ function buildLegacyFigurePrompt(
       `"Which former US mayors went on to national prominence?"`,
       party ? `"Who are the most influential former ${party} mayors in recent decades?"` : `"Who are the most influential former US mayors in recent decades?"`,
     ];
+  } else if (role === "Former Cabinet Secretary") {
+    cohortExamples = [
+      `"Who are the most consequential former US Cabinet officials of the 21st century?"`,
+      party ? `"Who are the most respected former ${party} Cabinet members of recent decades?"` : `"Who are the most respected former US Cabinet members of recent decades?"`,
+      `"Which former US Secretaries of State, Defense, or Treasury remain influential today?"`,
+    ];
+  } else if (role === "Former Speaker") {
+    cohortExamples = [
+      `"Who are the most consequential former Speakers of the US House?"`,
+      party ? `"Who are the most influential former ${party} House Speakers in modern US history?"` : `"Who are the most influential former US House Speakers in modern history?"`,
+    ];
   } else {
     cohortExamples = [
       `"Who are the most influential former US officeholders still active in public life?"`,
@@ -1037,27 +1141,38 @@ function buildTieredFigurePrompt(
   const issuePhrase = figureMeta.signatureIssue ?? null;
   const national = isNationalJurisdiction(figureMeta.jurisdiction);
   const isSittingVP = figureMeta.role === "Vice President";
+  const isSittingCabinet = figureMeta.role === "Cabinet Secretary";
+  const isSittingSpeaker = figureMeta.role === "Speaker";
   // National figures get jurisdiction-less roster shapes so the LLM
   // doesn't produce awkward "senators from United States" questions.
-  // Vice President is a single-person role — there's no "roster" of
-  // sitting VPs, so the questions point to the office and its
-  // running-mate / administration context to surface the current
-  // holder by name.
-  const rosterExample1 = isSittingVP
-    ? `"Who is the current US Vice President?"`
-    : national
-      ? `"Who are the current US ${figureMeta.role}s?"`
-      : `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
-  const rosterExample2 = isSittingVP
-    ? `"Who is the running mate of the current US president?"`
-    : national
-      ? `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`
-      : `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
-  const rosterExample3 = isSittingVP
-    ? `- "Who is second in line to the US presidency in ${year}?"`
-    : figureMeta.role === "US Senator" && !national
-      ? `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`
-      : "";
+  // Single-person offices (VP, Speaker) and tight-roster offices
+  // (Cabinet) anchor on the office instead of the figure's location
+  // so the natural answers list the current holder by name.
+  let rosterExample1: string;
+  let rosterExample2: string;
+  let rosterExample3 = "";
+  if (isSittingVP) {
+    rosterExample1 = `"Who is the current US Vice President?"`;
+    rosterExample2 = `"Who is the running mate of the current US president?"`;
+    rosterExample3 = `- "Who is second in line to the US presidency in ${year}?"`;
+  } else if (isSittingCabinet) {
+    rosterExample1 = `"Who are the current members of the US Cabinet?"`;
+    rosterExample2 = `"Who serves in the current US presidential administration's cabinet?"`;
+    rosterExample3 = `- "Who are the most influential US Cabinet officials right now?"`;
+  } else if (isSittingSpeaker) {
+    rosterExample1 = `"Who is the current Speaker of the US House of Representatives?"`;
+    rosterExample2 = `"Who leads the US House majority caucus in ${year}?"`;
+    rosterExample3 = `- "Who are the top members of US House leadership in ${year}?"`;
+  } else if (national) {
+    rosterExample1 = `"Who are the current US ${figureMeta.role}s?"`;
+    rosterExample2 = `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`;
+  } else {
+    rosterExample1 = `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
+    rosterExample2 = `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
+    if (figureMeta.role === "US Senator") {
+      rosterExample3 = `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`;
+    }
+  }
 
   return `You generate search queries that voters, donors, activists, and journalists would type into AI assistants when researching a political scene — NOT asking about a specific person.
 
