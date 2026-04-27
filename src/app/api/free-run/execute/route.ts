@@ -393,7 +393,7 @@ export async function POST(req: NextRequest) {
     // If the category comes back as commercial we drop the meta below —
     // the classifier output is only used when category is political_advocacy.
     const mayBePerson = looksLikePersonName(brandName);
-    const [category, industry, aliases, brand, rawFigureMeta] = await Promise.all([
+    const [category, rawIndustry, aliases, brand, rawFigureMeta] = await Promise.all([
       classifyBrandCategory(brandName),
       classifyBrandIndustry(brandName),
       generateBrandAliases(brandName),
@@ -401,6 +401,15 @@ export async function POST(req: NextRequest) {
       mayBePerson ? classifyPublicFigure(brandName) : Promise.resolve(null),
     ]);
     const figureMeta = category === "political_advocacy" ? rawFigureMeta : null;
+    // When the figure's current role is a US political office, force
+    // industry to "politics" regardless of what the industry classifier
+    // said. The industry LLM doesn't know about Cabinet appointments
+    // post-dating its training cutoff (Pete Hegseth → "media" because
+    // it remembers his Fox News career, not his current Defense
+    // Secretary role). The figureMeta classifier (with its static
+    // override map) is the more reliable signal for active office.
+    const isCurrentPoliticalRole = figureMeta && !figureMeta.role.startsWith("Former");
+    const industry = isCurrentPoliticalRole ? "politics" : rawIndustry;
 
     // Phase 2: generate the 5 prompts (depends on category + industry) while
     // we stamp displayName/industry/aliases onto the newly-created brand row.

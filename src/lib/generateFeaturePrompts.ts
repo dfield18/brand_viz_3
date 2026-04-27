@@ -287,6 +287,59 @@ export function isNationalJurisdiction(jurisdiction: string): boolean {
   return k === "united states" || k === "us" || k === "usa" || k === "national" || k === "federal";
 }
 
+/** Static override map for figures whose current role is recent enough
+ *  that GPT-4o-mini's training data (cutoff ~Apr 2024) doesn't know
+ *  their up-to-date position. Keyed by lowercased canonical name.
+ *  Checked BEFORE the LLM call so these always classify correctly
+ *  regardless of model knowledge.
+ *
+ *  Maintain as the US administration changes — entries here are the
+ *  source of truth for the current officeholder.
+ */
+const STATIC_FIGURE_OVERRIDES: Record<string, PublicFigureMeta> = {
+  // Current Trump Cabinet (Jan 2025–): GPT-4o-mini's training pre-dates
+  // most of these confirmations and frequently classifies these figures
+  // by their pre-Cabinet roles (senator / Fox News personality / etc).
+  "pete hegseth": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "defense policy" },
+  "marco rubio": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "foreign policy" },
+  "pam bondi": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "law enforcement" },
+  "robert f kennedy jr": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "health policy" },
+  "rfk jr": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "health policy" },
+  "doug burgum": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "energy and natural resources" },
+  "linda mcmahon": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "education" },
+  "scott bessent": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "economic policy" },
+  "lee zeldin": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "environmental policy" },
+  "kristi noem": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "homeland security" },
+  "doug collins": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "veterans affairs" },
+  "sean duffy": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "transportation" },
+  "chris wright": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "energy policy" },
+  "brooke rollins": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "agriculture" },
+  "scott turner": { role: "Cabinet Secretary", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "housing" },
+  // Senior White House staff / non-Cabinet executive
+  "susie wiles": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: null },
+  "tulsi gabbard": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "intelligence" },
+  "john ratcliffe": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "intelligence" },
+  "mike waltz": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "national security" },
+  "stephen miller": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "immigration" },
+  "karoline leavitt": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: null },
+  "russell vought": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "budget" },
+  "jerome powell": { role: "White House Official", jurisdiction: "United States", party: null, caucus: null, signatureIssue: "monetary policy" },
+  "jamieson greer": { role: "White House Official", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: "trade" },
+  // VP and Speaker (already covered by classifier worked examples but
+  // included here as belt-and-suspenders so cached/legacy classification
+  // glitches don't recur).
+  "jd vance": { role: "Vice President", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: null },
+  "mike johnson": { role: "Speaker", jurisdiction: "United States", party: "Republican", caucus: null, signatureIssue: null },
+};
+
+function normalizeStaticKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ");
+}
+
 /** GPT-4o-mini classifier. Returns meta when the subject is a
  *  recognizable US political figure; returns null otherwise. The
  *  caller is expected to have already filtered `category ===
@@ -295,6 +348,13 @@ export function isNationalJurisdiction(jurisdiction: string): boolean {
 export async function classifyPublicFigure(
   brandName: string,
 ): Promise<PublicFigureMeta | null> {
+  // Static override for figures whose current role post-dates the LLM's
+  // training cutoff. Bypasses the LLM entirely so these classify
+  // correctly regardless of model knowledge.
+  const key = normalizeStaticKey(brandName);
+  if (STATIC_FIGURE_OVERRIDES[key]) {
+    return { ...STATIC_FIGURE_OVERRIDES[key] };
+  }
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
