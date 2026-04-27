@@ -3,14 +3,18 @@
 import { useMemo } from "react";
 import type { NarrativeClaim } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface ClaimsSummaryProps {
   strengths: NarrativeClaim[];
   weaknesses: NarrativeClaim[];
   weaknessesAreNeutral?: boolean;
+  brandName?: string;
+  category?: string | null;
 }
 
-export function ClaimsSummary({ strengths, weaknesses, weaknessesAreNeutral }: ClaimsSummaryProps) {
+export function ClaimsSummary({ strengths, weaknesses, weaknessesAreNeutral, brandName, category }: ClaimsSummaryProps) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   const rows = useMemo(() => {
     const tagged = [
       ...strengths.map((c) => ({ ...c, type: "strength" as const })),
@@ -25,7 +29,7 @@ export function ClaimsSummary({ strengths, weaknesses, weaknessesAreNeutral }: C
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Most Common Claims</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
-        Claims AI models repeat most frequently about this brand
+        Claims AI models repeat most frequently about this {noun}
       </p>
 
       <div className="overflow-x-auto">

@@ -1,9 +1,12 @@
 "use client";
 
 import type { NarrativeDescriptor } from "@/types/api";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface TopDescriptorsProps {
   descriptors: NarrativeDescriptor[];
+  brandName?: string;
+  category?: string | null;
 }
 
 const POLARITY_BAR: Record<string, string> = {
@@ -18,7 +21,8 @@ const POLARITY_TEXT: Record<string, string> = {
   neutral: "text-muted-foreground",
 };
 
-export function TopDescriptors({ descriptors }: TopDescriptorsProps) {
+export function TopDescriptors({ descriptors, brandName, category }: TopDescriptorsProps) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   if (!descriptors || descriptors.length === 0) return null;
 
   const items = descriptors.slice(0, 10);
@@ -28,7 +32,7 @@ export function TopDescriptors({ descriptors }: TopDescriptorsProps) {
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Top Descriptors</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
-        Adjectives AI models use most when describing this brand
+        Adjectives AI models use most when describing this {noun}
       </p>
 
       {/* Polarity legend */}
