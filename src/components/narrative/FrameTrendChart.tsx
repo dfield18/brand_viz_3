@@ -50,6 +50,11 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
 
   // Extract frame names — prefer topFrameNames when provided so the chart
   // matches the "Top Narratives in AI Responses" section exactly.
+  // Drop frames that are 0% in every week of the filtered range. The
+  // "Top Narratives" list can include LLM-synthesized frames not present
+  // in any per-run analysisJson.frames, which causes them to flatline at
+  // 0% on the chart. Frames that *change* (e.g. 33% → 0%) are kept since
+  // the trajectory is informative.
   const frameNames = useMemo(() => {
     // Collect all frame keys present in the filtered trend data
     const dataKeys = new Set<string>();
@@ -59,13 +64,17 @@ export function FrameTrendChart({ frameTrend, topFrameNames }: FrameTrendChartPr
       }
     }
 
+    const hasNonZero = (name: string) =>
+      filteredData.some((e) => (Number(e[name]) || 0) > 0);
+
     if (topFrameNames && topFrameNames.length > 0) {
-      // Use the provided order, but only include frames that exist in the data
-      return topFrameNames.filter((name) => dataKeys.has(name));
+      // Use the provided order, but only include frames that have at
+      // least one non-zero value in the displayed range.
+      return topFrameNames.filter((name) => dataKeys.has(name) && hasNonZero(name));
     }
 
-    // Fallback: sort by average value descending
-    return [...dataKeys].sort((a, b) => {
+    // Fallback: sort by average value descending, drop all-zero frames
+    return [...dataKeys].filter(hasNonZero).sort((a, b) => {
       const avgA = filteredData.reduce((s, e) => s + (Number(e[a]) || 0), 0) / (filteredData.length || 1);
       const avgB = filteredData.reduce((s, e) => s + (Number(e[b]) || 0), 0) / (filteredData.length || 1);
       return avgB - avgA;
