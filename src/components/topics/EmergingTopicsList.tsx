@@ -9,6 +9,24 @@ interface Props {
   emerging: EmergingTopic[];
   brandName?: string;
   category?: string | null;
+  /** Range window in days (typically 7/30/90). Used to print the
+   *  actual date pair the growth comparison covers, e.g. "Jan 27–Mar 13
+   *  vs Mar 13–Apr 27" instead of an opaque "first vs second half of
+   *  range". Today is taken as the upper bound. */
+  range?: number;
+}
+
+function formatDate(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function buildHalfRangeLabel(rangeDays: number): string {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - rangeDays);
+  const mid = new Date(today);
+  mid.setDate(mid.getDate() - Math.round(rangeDays / 2));
+  return `${formatDate(start)}–${formatDate(mid)} vs ${formatDate(mid)}–${formatDate(today)}`;
 }
 
 const CONFIDENCE_STYLE: Record<string, { color: string; bg: string }> = {
@@ -17,8 +35,9 @@ const CONFIDENCE_STYLE: Record<string, { color: string; bg: string }> = {
   Low: { color: "text-red-700 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" },
 };
 
-export default function EmergingTopicsList({ emerging, brandName, category }: Props) {
+export default function EmergingTopicsList({ emerging, brandName, category, range }: Props) {
   const noun = subjectNoun(brandName ?? "Brand", category);
+  const dateLabel = range ? buildHalfRangeLabel(range) : "first vs second half of range";
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (emerging.length === 0) {
@@ -45,7 +64,7 @@ export default function EmergingTopicsList({ emerging, brandName, category }: Pr
     <div className="rounded-xl bg-card p-6 shadow-section">
       <h3 className="text-sm font-semibold mb-1">Emerging Topics</h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Topics with growing {noun} mentions (≥25% growth, comparing first vs second half of range)
+        Topics with growing {noun} mentions (≥25% growth, comparing {dateLabel})
       </p>
       <div className="space-y-3">
         {emerging.map((e) => {

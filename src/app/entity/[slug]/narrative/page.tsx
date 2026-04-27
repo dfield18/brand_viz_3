@@ -338,7 +338,7 @@ function NarrativeInner() {
         {/* Emerging Topics */}
         {topicsData?.hasData && topicsData.topics && topicsData.topics.emerging.length > 0 && (
           <div id="emerging-topics" className="scroll-mt-24">
-            <EmergingTopicsList emerging={topicsData.topics.emerging} brandName={brandName} category={brandCategory} />
+            <EmergingTopicsList emerging={topicsData.topics.emerging} brandName={brandName} category={brandCategory} range={range} />
           </div>
         )}
 
