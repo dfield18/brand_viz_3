@@ -73,6 +73,10 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
   }, [trend, focusPrompt]);
 
   // Pivot: one row per date with columns for all+mentionRate, chatgpt+mentionRate, etc.
+  // Then drop dates that have no value for the *active* metric — the API can return
+  // mentionRate without sovPct (e.g. no entities extracted), and a tick at a date
+  // with no SoV line was reading as "data is missing here" rather than "this metric
+  // wasn't computed for this date."
   const chartData = useMemo(() => {
     const byDate = new Map<string, Record<string, number | null>>();
     for (const t of filteredTrend) {
@@ -83,10 +87,23 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
       row[`${prefix}firstMentionPct`] = t.firstMentionPct;
       row[`${prefix}sovPct`] = t.sovPct;
     }
-    return [...byDate.entries()]
+    const allRows = [...byDate.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, row]) => ({ date, ...row }));
-  }, [filteredTrend]);
+    const activeKey = effectiveMetric === "visibility"
+      ? "mentionRate"
+      : effectiveMetric === "topResult"
+        ? "firstMentionPct"
+        : "sovPct";
+    return allRows.filter((row) => {
+      const r = row as Record<string, unknown>;
+      for (const [k, v] of Object.entries(r)) {
+        if (k === "date") continue;
+        if (k.endsWith(activeKey) && typeof v === "number") return true;
+      }
+      return false;
+    });
+  }, [filteredTrend, effectiveMetric]);
 
   const availableModels = useMemo(() => {
     const set = new Set(filteredTrend.map((t) => t.model));
