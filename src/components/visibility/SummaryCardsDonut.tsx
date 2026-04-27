@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import type { KpiDeltas } from "@/types/api";
-import { subjectNoun } from "@/lib/subjectNoun";
+import { subjectNoun, subjectNounPlural } from "@/lib/subjectNoun";
 
 type MetricTab = "visibility" | "sov" | "topResult";
 
@@ -201,6 +201,7 @@ export function SummaryCardsDonut({
   sparklines,
 }: SummaryCardsDonutProps) {
   const noun = subjectNoun(brandName, category);
+  const nounPlural = subjectNounPlural(brandName, category);
   const visibilityBadge = getVisibilityBadge(overallMentionRate);
   const sovBadge = getSovBadge(shareOfVoice);
   const topResultBadge = getTopResultBadge(firstMentionRate);
@@ -227,7 +228,7 @@ export function SummaryCardsDonut({
       percentage: shareOfVoice,
       color: "var(--chart-3)",
       badge: sovBadge,
-      description: `% of all AI brand mentions captured by ${brandName}`,
+      description: `% of all AI ${noun} mentions captured by ${brandName}`,
       tooltip: `Based on general industry questions — prompts that don't mention the ${noun} by name — so results reflect organic AI awareness.`,
       delta: kpiDeltas?.shareOfVoice ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,

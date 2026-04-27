@@ -2,12 +2,16 @@
 
 import type { VisibilityRankingEntry } from "@/types/api";
 import { EmptyState } from "@/components/EmptyState";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface AIVisibilityRankingProps {
   ranking: VisibilityRankingEntry[];
+  brandName?: string;
+  category?: string | null;
 }
 
-export function AIVisibilityRanking({ ranking }: AIVisibilityRankingProps) {
+export function AIVisibilityRanking({ ranking, brandName, category }: AIVisibilityRankingProps) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
   if (ranking.length === 0) {
     return (
       <section className="rounded-xl bg-card p-6 shadow-section">
@@ -25,7 +29,7 @@ export function AIVisibilityRanking({ ranking }: AIVisibilityRankingProps) {
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">AI Visibility Ranking</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
-        % of industry responses recommending or mentioning each brand
+        % of industry responses recommending or mentioning each {noun}
       </p>
       <div className="space-y-2.5">
         {ranking.map((entry) => (

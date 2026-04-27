@@ -11,6 +11,7 @@ import { VisibilityTrendChart } from "@/components/visibility/VisibilityTrendCha
 import { PositionDistribution } from "@/components/visibility/PositionDistribution";
 import { BrandPositionByPlatform } from "@/components/visibility/BrandPositionByPlatform";
 import { OnThisPage, type PageSection } from "@/components/OnThisPage";
+import { subjectNoun } from "@/lib/subjectNoun";
 import { DriverDecomposition } from "@/components/overview/DriverDecomposition";
 
 import { RefreshCw, ChevronDown } from "lucide-react";
@@ -54,11 +55,11 @@ function getMetricTitle(tab: MetricTab, name: string): string {
   }
 }
 
-function getMetricDescription(tab: MetricTab, name: string): string {
+function getMetricDescription(tab: MetricTab, name: string, noun: string): string {
   switch (tab) {
     case "visibility": return `How often AI platforms mention ${name} when answering general industry questions.`;
-    case "sov": return `${name}\u2019s share of all brand mentions in AI responses \u2014 how much of the conversation ${name} owns.`;
-    case "topResult": return `How often ${name} is the first brand mentioned in AI responses across all industry queries.`;
+    case "sov": return `${name}\u2019s share of all ${noun} mentions in AI responses \u2014 how much of the conversation ${name} owns.`;
+    case "topResult": return `How often ${name} is the first ${noun} mentioned in AI responses across all industry queries.`;
   }
 }
 
@@ -286,7 +287,7 @@ function VisibilityV2Inner() {
             {getMetricTitle(activeMetric, brandName)}
           </h3>
           <p className="text-sm text-muted-foreground mb-5">
-            {getMetricDescription(activeMetric, brandName)}
+            {getMetricDescription(activeMetric, brandName, subjectNoun(brandName, brandCategory))}
           </p>
 
           {/* Trend chart */}

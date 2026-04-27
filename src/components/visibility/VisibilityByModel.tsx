@@ -3,12 +3,17 @@
 import type { ModelBreakdownRow } from "@/types/api";
 import { MODEL_LABELS } from "@/lib/constants";
 import { EmptyState } from "@/components/EmptyState";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface VisibilityByModelProps {
   models: ModelBreakdownRow[];
+  brandName?: string;
+  category?: string | null;
 }
 
-export function VisibilityByModel({ models }: VisibilityByModelProps) {
+export function VisibilityByModel({ models, brandName, category }: VisibilityByModelProps) {
+  const noun = subjectNoun(brandName ?? "Brand", category);
+  const NounCap = noun.charAt(0).toUpperCase() + noun.slice(1);
   const withData = models.filter((m) => m.mentionRate !== null);
 
   if (withData.length === 0) {
@@ -28,7 +33,7 @@ export function VisibilityByModel({ models }: VisibilityByModelProps) {
     <section className="rounded-xl bg-card p-6 shadow-section">
       <h2 className="text-base font-semibold">Visibility by Model</h2>
       <p className="text-xs text-muted-foreground mt-1 mb-5">
-        Brand mention rate per model in industry responses
+        {NounCap} mention rate per model in industry responses
       </p>
       <div className="space-y-2.5">
         {sorted.map((row) => (
