@@ -211,8 +211,8 @@ function NarrativeInner() {
         <div id="narrative-insight" className="scroll-mt-24">
           {data.sentimentSplit && frames.length > 0 && (
             <div className="rounded-xl bg-card shadow-section overflow-hidden">
-              <div className="px-5 py-3.5">
-                <p className="text-[13px] text-foreground/70 leading-relaxed">
+              <div className="px-5 py-4">
+                <p className="text-base text-foreground/80 leading-relaxed">
                   {(() => {
                     const topFrame = frames[0];
                     const split = data.sentimentSplit!;
