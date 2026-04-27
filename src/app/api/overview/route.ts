@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VALID_MODELS, VALID_RANGES } from "@/lib/constants";
 import { parseAnalysis, computeStability } from "@/lib/aggregateAnalysis";
+import { dedupFramesGrouped, significantFrameTokens } from "@/lib/narrative/dedupFrames";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
 import {
   computeAvgRank,
@@ -623,16 +624,62 @@ export async function GET(req: NextRequest) {
         }
       }
       const totalResponses = dedupedAnalyses.length;
-      overview.topFrames = Object.entries(frameBuckets)
-        .map(([frame, count]) => ({
-          frame,
-          percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
-          byModel: { chatgpt: 0, gemini: 0, claude: 0, perplexity: 0, google: 0 },
-        }))
+      // Collapse near-duplicate frames before slicing the top 8 so the
+      // same theme (e.g. "Affordable Housing Champion" + "Affordable
+      // Housing Advocacy" + "Funding for Affordable Housing") doesn't
+      // occupy multiple slots and crowd out distinct narratives.
+      // Counts are summed across each token-overlap group; the
+      // highest-count variant becomes the canonical name. Group
+      // members are kept so the per-model byModel breakdown below
+      // can also aggregate across the theme.
+      const frameGroups = dedupFramesGrouped(
+        Object.entries(frameBuckets).map(([frame, count]) => ({ frame, count })),
+        (b) => significantFrameTokens(b.frame),
+        (b) => b.count,
+      );
+      // Map each raw frame name → its canonical so accumulators below
+      // assign counts to the canonical bucket.
+      const frameToCanonical: Record<string, string> = {};
+      for (const g of frameGroups) {
+        for (const m of g.members) frameToCanonical[m.frame] = g.canonical.frame;
+      }
+      // Recompute the canonical count per response. The initial
+      // frameGroups counts come from `frameBuckets` which counted each
+      // variant occurrence — so a single response listing four
+      // affordable-housing variants would contribute 4 to the merged
+      // count, inflating the canonical's percentage beyond 100% (we
+      // capped that, but the displayed number was still wrong). The
+      // correct value is "% of responses where the THEME appeared at
+      // least once," which requires per-response dedup of variants.
+      const canonicalResponseCounts: Record<string, number> = {};
+      for (const a of dedupedAnalyses) {
+        const seen = new Set<string>();
+        for (const f of a.frames) {
+          if (f.strength < STRENGTH_THRESHOLD) continue;
+          const canonical = frameToCanonical[f.name] ?? f.name;
+          if (seen.has(canonical)) continue;
+          seen.add(canonical);
+          canonicalResponseCounts[canonical] = (canonicalResponseCounts[canonical] ?? 0) + 1;
+        }
+      }
+      overview.topFrames = frameGroups
+        .map((g) => {
+          const responseCount = canonicalResponseCounts[g.canonical.frame] ?? 0;
+          return {
+            frame: g.canonical.frame,
+            percentage: totalResponses > 0 ? Math.round((responseCount / totalResponses) * 100) : 0,
+            byModel: { chatgpt: 0, gemini: 0, claude: 0, perplexity: 0, google: 0 },
+          };
+        })
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 8);
 
-      // Compute per-model frame percentages (same as narrative tab)
+      // Compute per-model frame percentages (same as narrative tab).
+      // Keys map raw frame names to their CANONICAL form via
+      // frameToCanonical so the byModel bars match the deduped overall
+      // percentages — without this, "Affordable Housing Champion"'s
+      // 80% overall would have a 30% chatgpt bar (only the Champion
+      // variant) instead of the 80%+ chatgpt bar the user expects.
       const modelRunCounts: Record<string, number> = {};
       const modelFrameCounts: Record<string, Record<string, number>> = {};
       for (const r of frameRuns) {
@@ -640,10 +687,17 @@ export async function GET(req: NextRequest) {
         if (!a) continue;
         modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
         if (!modelFrameCounts[r.model]) modelFrameCounts[r.model] = {};
+        // Per-(model,response) dedup of variants in the same theme so a
+        // single response that lists "Affordable Housing Champion" and
+        // "Funding for Affordable Housing" doesn't double-count its
+        // canonical.
+        const seenCanonicalsForResponse = new Set<string>();
         for (const f of a.frames) {
-          if (f.strength >= STRENGTH_THRESHOLD) {
-            modelFrameCounts[r.model][f.name] = (modelFrameCounts[r.model][f.name] ?? 0) + 1;
-          }
+          if (f.strength < STRENGTH_THRESHOLD) continue;
+          const canonical = frameToCanonical[f.name] ?? f.name;
+          if (seenCanonicalsForResponse.has(canonical)) continue;
+          seenCanonicalsForResponse.add(canonical);
+          modelFrameCounts[r.model][canonical] = (modelFrameCounts[r.model][canonical] ?? 0) + 1;
         }
       }
       for (const frame of overview.topFrames) {

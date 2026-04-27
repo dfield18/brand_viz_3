@@ -1,4 +1,5 @@
 import type { RunAnalysis } from "@/lib/analysisSchema";
+import { dedupFramesGrouped, significantFrameTokens } from "@/lib/narrative/dedupFrames";
 import type {
   OverviewResponse,
   KpiCard,
@@ -194,18 +195,47 @@ export function aggregateNarrative(
     avgStrength: avg(strengths),
   }));
 
+  // Collapse near-duplicate frames (e.g. "Affordable Housing Champion",
+  // "Affordable Housing Advocacy", "Funding for Affordable Housing")
+  // before slicing to top 8 — otherwise the same theme can occupy
+  // multiple slots and crowd out genuinely distinct narratives.
+  // Highest-frequency variant becomes canonical; per-response dedup
+  // below ensures the canonical's percentage is "% of responses where
+  // ANY variant of the theme appeared," not an inflated sum.
+  const frameGroups = dedupFramesGrouped(
+    rawFrames,
+    (f) => significantFrameTokens(f.name),
+    (f) => f.frequency,
+  );
+  const frameToCanonical: Record<string, string> = {};
+  for (const g of frameGroups) {
+    for (const m of g.members) frameToCanonical[m.name] = g.canonical.name;
+  }
+  const canonicalResponseCounts: Record<string, number> = {};
+  for (const a of analyses) {
+    const seen = new Set<string>();
+    for (const f of a.frames) {
+      if (f.strength < STRENGTH_THRESHOLD) continue;
+      const canonical = frameToCanonical[f.name] ?? f.name;
+      if (seen.has(canonical)) continue;
+      seen.add(canonical);
+      canonicalResponseCounts[canonical] = (canonicalResponseCounts[canonical] ?? 0) + 1;
+    }
+  }
+
   // Percentage = how often this frame appears (with meaningful strength) across responses
-  const frames: NarrativeFrame[] = rawFrames
-    .sort((a, b) => b.frequency - a.frequency)
-    .slice(0, 8)
-    .map((f) => {
-      const percentage = Math.round(f.frequency * 100);
+  const frames: NarrativeFrame[] = frameGroups
+    .map((g) => {
+      const responseCount = canonicalResponseCounts[g.canonical.name] ?? 0;
+      const percentage = totalResponses > 0 ? Math.round((responseCount / totalResponses) * 100) : 0;
       return {
-        frame: f.name,
+        frame: g.canonical.name,
         percentage,
         byModel: zeroByModel(model, percentage),
       };
-    });
+    })
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 8);
 
   // Positioning: average legitimacy/controversy
   const positioning: PositioningPoint[] = [
