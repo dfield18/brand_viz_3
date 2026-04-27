@@ -181,10 +181,10 @@ export function FreeDashboard({ showSignupCta, promptCount, models, exampleBrand
             <span className="flex justify-center items-baseline">
               {brandName ? (
                 <>
-                  <span className="text-blue-600 whitespace-pre">{brandName}</span>
+                  <span className="text-indigo-600 whitespace-pre">{brandName}</span>
                   <span
                     aria-hidden="true"
-                    className="ml-1 inline-block w-[3px] h-[0.9em] bg-blue-600 align-[-0.1em] cursor-blink"
+                    className="ml-1 inline-block w-[3px] h-[0.9em] bg-indigo-600 align-[-0.1em] cursor-blink"
                   />
                 </>
               ) : (
