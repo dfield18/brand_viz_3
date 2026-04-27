@@ -36,6 +36,7 @@ export function LandingDashboard({ brandName, industry, trend }: Props) {
         brandName={brandName}
         descriptionOverride={descriptions}
         hideDelta
+        disclaimerOverride="Last 90 days · Updated weekly"
       />
       {/* Line legend — the chart renders overall (solid) + per-platform
           (lighter) lines with no built-in key, so users couldn't tell

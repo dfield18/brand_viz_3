@@ -39,13 +39,17 @@ interface VisibilityTrendChartProps {
    *  brand with a declining trend doesn't anchor the first impression
    *  on a negative delta. */
   hideDelta?: boolean;
+  /** Replace the default footnote with a custom string. Used by the
+   *  landing-page preview to swap the analytical disclaimer for a
+   *  short marketing caption ("Last 90 days · Updated weekly"). */
+  disclaimerOverride?: string;
 }
 
 const MODEL_KEYS = ["chatgpt", "gemini", "claude", "perplexity", "google"] as const;
 
 type MetricMode = "visibility" | "topResult" | "sov";
 
-export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, category, compact, descriptionOverride, historicalEstimated = false, hideDelta = false }: VisibilityTrendChartProps) {
+export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMetric, brandName, category, compact, descriptionOverride, historicalEstimated = false, hideDelta = false, disclaimerOverride }: VisibilityTrendChartProps) {
   const [focusModel, setFocusModel] = useState("all");
   const [focusPrompt, setFocusPrompt] = useState("all");
   const [metric, setMetric] = useState<MetricMode>(fixedMetric ?? "visibility");
@@ -452,9 +456,10 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
            11 px) and shown at text-xs with higher contrast on sm+
            so the information is still available on larger screens. */
         <p className="hidden sm:block text-xs text-muted-foreground/70 italic mt-3">
-          {historicalEstimated
-            ? "Dashed historical points are derived from each model\u2019s training data (no live web access). The solid point for today reflects calibration to live web results."
-            : "Note: historical data points are estimated from the latest available response per model and question as of each date."}
+          {disclaimerOverride
+            ?? (historicalEstimated
+              ? "Dashed historical points are derived from each model\u2019s training data (no live web access). The solid point for today reflects calibration to live web results."
+              : "Note: historical data points are estimated from the latest available response per model and question as of each date.")}
         </p>
       )}
 

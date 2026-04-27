@@ -106,6 +106,8 @@ const PRICING_TIERS = [
       "ChatGPT + Gemini",
       "Visibility, sentiment, competitors, sources",
       "90-day trend — 3 points, 2 derived from model training data",
+      "Run as many reports as you want",
+      "Free forever — no credit card needed",
     ],
     cta: "Use it free",
     highlighted: false,
@@ -578,6 +580,7 @@ export default async function HomePage() {
             {FAQS.map((item) => (
               <details
                 key={item.q}
+                open={item.q.startsWith("What's the difference")}
                 className="group rounded-lg border border-border/60 bg-card px-5 py-4 transition-colors hover:border-border open:border-border"
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-6 text-sm font-semibold text-foreground list-none [&::-webkit-details-marker]:hidden">
@@ -617,7 +620,7 @@ export default async function HomePage() {
             <br className="hidden sm:block" />
             <span className="text-muted-foreground">Find out how AI is framing your story.</span>
           </h2>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col items-center gap-3">
             <Link
               href="/sign-up"
               className="inline-flex items-center justify-center gap-2 h-12 px-8 text-base font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-md"
@@ -626,7 +629,7 @@ export default async function HomePage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <span className="text-xs text-muted-foreground">
-              No credit card, no email.
+              Free · No credit card · 30-second report
             </span>
           </div>
         </div>
