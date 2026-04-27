@@ -46,6 +46,51 @@ function stripUrls(text: string): string {
 }
 
 /**
+ * Heuristic extractor for named people the LLM competitor extraction
+ * may have missed. computeBrandRank originally counted competitors
+ * solely from analysisJson.competitors — for Kamala Harris's run on
+ * "most influential Democratic figures in 2026" GPT-4o-mini returned
+ * an empty competitors array even though Joe Biden, Chuck Schumer,
+ * Nancy Pelosi, and Gavin Newsom were all clearly listed in the
+ * answer. The brand defaulted to rank=1 despite being second in the
+ * actual prose.
+ *
+ * Two patterns catch the typical enumerated-list shape AI uses for
+ * "list of named people" answers:
+ *
+ *   1. Markdown bold name: `**Joe Biden**` — common in numbered
+ *      Markdown lists (`1. **Joe Biden** - ...`).
+ *   2. Line-leading name with separator: `Joe Biden - ...` /
+ *      `Joe Biden — ...` / `Joe Biden: ...` — less formatted lists.
+ *
+ * Returns each match's position; computeBrandRank dedupes by name and
+ * combines with the GPT competitor list for ranking.
+ */
+function extractLikelyPersonNames(text: string): Array<{ name: string; pos: number }> {
+  const out: Array<{ name: string; pos: number }> = [];
+  // 1. Markdown bold names — the most reliable signal in AI-generated
+  //    list answers. Uses a non-greedy 1–3 trailing tokens cap so we
+  //    don't run on the whole bolded phrase.
+  const boldRe = /\*\*([A-Z][a-zA-Z'\-]+(?: [A-Z][a-zA-Z'\-]+){1,3})\*\*/g;
+  for (const m of text.matchAll(boldRe)) {
+    if (m.index !== undefined) {
+      const nameOffset = m[0].indexOf(m[1]);
+      out.push({ name: m[1], pos: m.index + nameOffset });
+    }
+  }
+  // 2. Line-leading capitalized name followed by separator (-, –, :).
+  //    Allows optional list marker (1. / - / *) before the name.
+  const lineLedRe = /(?:^|\n)\s*(?:\d+\.\s+|[-*]\s+)?([A-Z][a-zA-Z'\-]+(?: [A-Z][a-zA-Z'\-]+){1,3})\s*[-–:]/g;
+  for (const m of text.matchAll(lineLedRe)) {
+    if (m.index !== undefined) {
+      const nameOffset = m[0].indexOf(m[1]);
+      out.push({ name: m[1], pos: m.index + nameOffset });
+    }
+  }
+  return out;
+}
+
+/**
  * Filter the alias list down to terms safe to test against the
  * stripped text. Drops aliases that are just the brand name's first
  * token — e.g. "Mike" alone for "Mike Pence" — because common first
@@ -148,16 +193,45 @@ export function computeBrandRank(
     }
   }
 
-  // Count how many competitors appear before the brand (word-boundary
-  // match against the cleaned text — competitor names are also
-  // sometimes cited in URL slugs and we don't want those positions
-  // skewing the rank ordering).
-  let rank = 1;
+  // Build a deduped name → earliest-position map across both signals:
+  //   1. GPT-extracted competitors (positions found via word-boundary
+  //      match in the cleaned text)
+  //   2. Heuristic-extracted likely person names from the original
+  //      response text (markdown bold / line-leading list patterns).
+  //      Run against the un-stripped text since list structure can
+  //      live inside markdown (and the heuristic doesn't get tripped
+  //      by URLs the same way alias matching does).
+  // Dedup is case-insensitive by full name; we keep the earliest
+  // position so ties don't double-count.
+  const beforeBrandNames = new Map<string, number>(); // lowercase name → pos
+  const brandNameLower = brandName.toLowerCase();
+  const recordCandidate = (name: string, pos: number) => {
+    const key = name.toLowerCase();
+    // Skip the brand itself (incl. case-insensitive variants and the
+    // hash-suffixed cache form).
+    if (key === brandNameLower) return;
+    if (brandNameLower.startsWith(key) || key.startsWith(brandNameLower)) return;
+    const existing = beforeBrandNames.get(key);
+    if (existing === undefined || pos < existing) {
+      beforeBrandNames.set(key, pos);
+    }
+  };
   for (const comp of competitors) {
     const compPos = wordBoundaryIndex(cleaned, comp);
-    if (compPos >= 0 && compPos < brandPos) {
-      rank++;
-    }
+    if (compPos >= 0) recordCandidate(comp, compPos);
+  }
+  // Run the heuristic on the cleaned text so positions are comparable
+  // to brandPos (which was computed against cleaned). URLs stripped
+  // by stripUrls don't contain markdown bold names; markdown link
+  // labels survive (e.g. [Joe Biden](url) → Joe Biden), which is what
+  // we want for name detection.
+  for (const { name, pos } of extractLikelyPersonNames(cleaned)) {
+    recordCandidate(name, pos);
+  }
+
+  let rank = 1;
+  for (const pos of beforeBrandNames.values()) {
+    if (pos < brandPos) rank++;
   }
 
   return rank;
