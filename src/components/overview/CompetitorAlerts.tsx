@@ -37,9 +37,23 @@ interface Props {
   model: string;
   range: number;
   brandCategory?: string | null;
+  brandName?: string;
 }
 
-export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Props) {
+// Mirrors looksLikePersonName in src/lib/generateFeaturePrompts.ts.
+// Inlined here so the heuristic doesn't pull the openai-dependent
+// module into the client bundle. Two or three capitalized tokens with
+// no organization signal words = treat as a person ("Patty Murray",
+// "Barack Obama") vs an org ("ACLU", "Common Cause Foundation").
+const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
+const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
+function looksLikePerson(name: string | undefined): boolean {
+  if (!name) return false;
+  const trimmed = name.trim();
+  return PERSON_NAME_SHAPE.test(trimmed) && !ORG_SIGNAL_WORDS.test(trimmed);
+}
+
+export function CompetitorAlerts({ brandSlug, model, range, brandCategory, brandName }: Props) {
   const url = `/api/competitor-alerts?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const compUrl = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
   const { data, loading, error } = useCachedFetch<AlertsApiResponse>(url, { staleMs: 60_000 });
@@ -80,8 +94,18 @@ export function CompetitorAlerts({ brandSlug, model, range, brandCategory }: Pro
   const allAlerts = filteredAlerts.length > 0 ? filteredAlerts : rawAlerts;
   const periodLabel = data?.comparisonPeriodLabel ?? "prior period";
 
-  const isOrg = brandCategory === "political_advocacy";
-  const entityWord = isOrg ? "organization" : "competitor";
+  const isPoliticalAdvocacy = brandCategory === "political_advocacy";
+  const isPerson = isPoliticalAdvocacy && looksLikePerson(brandName);
+  // Drives the section title styling, icon colors, and movement-row
+  // direction colors. Person-shaped political subjects keep the same
+  // chrome treatment as orgs (neutral movement, no rivalry framing) —
+  // only the noun changes from "organization" to "public figure."
+  const isOrg = isPoliticalAdvocacy;
+  const entityWord = isPerson
+    ? "public figure"
+    : isOrg
+      ? "organization"
+      : "competitor";
 
   // Build a leaderboard fallback from /api/competition's already-fetched
   // data. The competition pipeline uses a more permissive detection path

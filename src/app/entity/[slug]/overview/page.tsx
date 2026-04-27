@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, MessageCircle, Users, Link2 } from "lucide-react";
 import { OverviewResponse, KpiDeltas, VisibilityTrendPoint } from "@/types/api";
 import { OverviewScorecard } from "@/components/overview/OverviewScorecard";
 import { NarrativeFrameBreakdown } from "@/components/narrative/NarrativeFrameBreakdown";
@@ -253,9 +253,12 @@ function OverviewInner() {
   const data = apiData.overview;
 
   const isOrg = apiData.brandCategory === "political_advocacy";
+  // Sidebar nav order matches the page's reading order. Key Insights
+  // promoted to the top so the most actionable plain-language summary
+  // is the first thing a marketer sees on load.
   const sections: PageSection[] = [
-    { id: "kpi-summary", label: "Scorecard" },
     { id: "key-insights", label: "Key Insights" },
+    { id: "kpi-summary", label: "Scorecard" },
     { id: "visibility-trend", label: "Mention Rate Trend" },
     { id: "cross-model", label: "By AI Platform" },
     { id: "narrative-section", label: `How AI Describes ${brandName}`, heading: "Narrative" },
@@ -313,8 +316,33 @@ function OverviewInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-8 xl:max-w-[1060px]">
-        {/* Scorecard */}
+      <div className="flex-1 min-w-0 space-y-10 xl:max-w-[1060px]">
+        {/* Key Insights — moved to TOP. The plain-language Key Insight +
+            Prompt Opportunity is the most actionable content on the page;
+            non-technical users should read it before drilling into KPIs. */}
+        <div id="key-insights" className="scroll-mt-24">
+          <div className="rounded-xl bg-card shadow-section overflow-hidden">
+            {apiData.aiSummary && (
+              <div className="flex items-start gap-3 px-5 py-4">
+                <Lightbulb className="h-4 w-4 text-blue-500 mt-1 shrink-0" />
+                <p className="text-base text-foreground/70 leading-relaxed">
+                  <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
+                  {highlightSummary(
+                    apiData.aiSummary,
+                    apiData.brandScopeFacets && apiData.brandScopeFacets.length > 0
+                      ? apiData.brandScopeFacets
+                      : apiData.brandIndustryScope || apiData.brandIndustry,
+                    brandName,
+                  )}
+                </p>
+              </div>
+            )}
+            <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
+          </div>
+          <DataFooter prompts="mixed" date={range} />
+        </div>
+
+        {/* Scorecard — supporting evidence for the Key Insight above */}
         <div id="kpi-summary" className="scroll-mt-24">
           {kpis && (
             <>
@@ -332,31 +360,6 @@ function OverviewInner() {
               <DataFooter prompts="mixed" date={range} />
             </>
           )}
-        </div>
-
-        {/* Key Insights: Executive Summary + Top Recommendation merged */}
-        <div id="key-insights" className="scroll-mt-24">
-          <div className="rounded-xl bg-card shadow-section overflow-hidden">
-            {/* 1-sentence AI insight */}
-            {apiData.aiSummary && (
-              <div className="flex items-start gap-3 px-5 py-4">
-                <Lightbulb className="h-4 w-4 text-blue-500 mt-1 shrink-0" />
-                <p className="text-base text-foreground/70 leading-relaxed">
-                  <span className="font-medium text-blue-700 mr-1.5">Key Insight:</span>
-                  {highlightSummary(
-                    apiData.aiSummary,
-                    apiData.brandScopeFacets && apiData.brandScopeFacets.length > 0
-                      ? apiData.brandScopeFacets
-                      : apiData.brandIndustryScope || apiData.brandIndustry,
-                    brandName,
-                  )}
-                </p>
-              </div>
-            )}
-            {/* Top Recommendation — inline separator */}
-            <TopRecommendation brandSlug={params.slug} brandName={brandName} model={model} range={range} />
-          </div>
-          <DataFooter prompts="mixed" date={range} />
         </div>
 
         {/* Mention Rate Trend — free-tier brands (slug ends in
@@ -386,58 +389,78 @@ function OverviewInner() {
           <DataFooter prompts="mixed" date={range} />
         </div>
 
-        {/* ── Narrative ──────────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Narrative</h2>
+        {/* ── Narrative section group ─────────────────────────────
+            Wrapped in a tinted bg-muted/30 block with bigger iconified
+            heading so the page reads as three distinct chapters
+            (Narrative · Competitive · Sources) instead of a flat
+            wall of cards. */}
+        <section className="rounded-2xl bg-muted/30 px-5 py-6 sm:px-6 sm:py-8 -mx-1 sm:-mx-2 space-y-6">
+          <header className="flex items-center gap-2.5">
+            <MessageCircle className="h-5 w-5 text-blue-500" aria-hidden="true" />
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Narrative</h2>
+          </header>
 
-        <div id="narrative-section" className="scroll-mt-24">
-          <NarrativeFrameBreakdown
-            frames={data.topFrames.map((f) => ({
-              frame: f.frame,
-              percentage: f.percentage,
-              byModel: {
-                chatgpt: f.byModel?.chatgpt ?? 0,
-                gemini: f.byModel?.gemini ?? 0,
-                claude: f.byModel?.claude ?? 0,
-                perplexity: f.byModel?.perplexity ?? 0,
-                google: f.byModel?.google ?? 0,
-              },
-            }))}
-            brandName={brandName}
-          />
-          <DataFooter prompts="all" date={range} />
-        </div>
-
-        {/* Standout Quotes */}
-        {quotesData?.quotes && quotesData.quotes.length > 0 && (
-          <div id="standout-quotes" className="scroll-mt-24">
-            <section className="rounded-xl bg-card px-5 py-4 shadow-section">
-              <h2 className="text-sm font-semibold mb-2">What AI Is Saying About {brandName}</h2>
-              <StandoutQuotes quotes={quotesData.quotes} />
-            </section>
+          <div id="narrative-section" className="scroll-mt-24">
+            <NarrativeFrameBreakdown
+              frames={data.topFrames.map((f) => ({
+                frame: f.frame,
+                percentage: f.percentage,
+                byModel: {
+                  chatgpt: f.byModel?.chatgpt ?? 0,
+                  gemini: f.byModel?.gemini ?? 0,
+                  claude: f.byModel?.claude ?? 0,
+                  perplexity: f.byModel?.perplexity ?? 0,
+                  google: f.byModel?.google ?? 0,
+                },
+              }))}
+              brandName={brandName}
+            />
             <DataFooter prompts="all" date={range} />
           </div>
-        )}
 
-        {/* ── Competition section ────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">{isOrg ? "Issue Landscape" : "Competitive Marketplace"}</h2>
+          {quotesData?.quotes && quotesData.quotes.length > 0 && (
+            <div id="standout-quotes" className="scroll-mt-24">
+              <section className="rounded-xl bg-card px-5 py-4 shadow-section">
+                <h2 className="text-sm font-semibold mb-3">What AI Is Saying About {brandName}</h2>
+                <StandoutQuotes quotes={quotesData.quotes} />
+              </section>
+              <DataFooter prompts="all" date={range} />
+            </div>
+          )}
+        </section>
 
-        <div id="competitor-snapshot" className="scroll-mt-24">
-          <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
-          <DataFooter prompts="all" date={range} />
-        </div>
+        {/* ── Competition section group ─────────────────────────── */}
+        <section className="space-y-6">
+          <header className="flex items-center gap-2.5">
+            <Users className="h-5 w-5 text-violet-500" aria-hidden="true" />
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+              {isOrg ? "Issue Landscape" : "Competitive Marketplace"}
+            </h2>
+          </header>
 
-        <div id="competitor-alerts" className="scroll-mt-24">
-          <CompetitorAlerts brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} />
-          <DataFooter prompts="industry" date={range} />
-        </div>
+          <div id="competitor-snapshot" className="scroll-mt-24">
+            <CompetitorSnapshot brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
+            <DataFooter prompts="all" date={range} />
+          </div>
 
-        {/* ── Sources ────────────────────────────── */}
-        <h2 className="text-lg font-semibold border-b border-border pb-2 mt-2">Sources</h2>
+          <div id="competitor-alerts" className="scroll-mt-24">
+            <CompetitorAlerts brandSlug={params.slug} model={model} range={range} brandCategory={apiData.brandCategory} brandName={brandName} />
+            <DataFooter prompts="industry" date={range} />
+          </div>
+        </section>
 
-        <div id="sources-trend" className="scroll-mt-24">
-          <TopSourcesList brandSlug={params.slug} model={model} range={range} />
-          <DataFooter prompts="all" date={range} />
-        </div>
+        {/* ── Sources section group ─────────────────────────────── */}
+        <section className="rounded-2xl bg-muted/30 px-5 py-6 sm:px-6 sm:py-8 -mx-1 sm:-mx-2 space-y-6">
+          <header className="flex items-center gap-2.5">
+            <Link2 className="h-5 w-5 text-emerald-500" aria-hidden="true" />
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Sources</h2>
+          </header>
+
+          <div id="sources-trend" className="scroll-mt-24">
+            <TopSourcesList brandSlug={params.slug} model={model} range={range} />
+            <DataFooter prompts="all" date={range} />
+          </div>
+        </section>
 
       </div>
     </div>

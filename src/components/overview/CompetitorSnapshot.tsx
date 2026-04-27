@@ -19,6 +19,17 @@ interface Props {
   brandName?: string;
 }
 
+// Mirrors looksLikePersonName in src/lib/generateFeaturePrompts.ts.
+// Inlined client-side so the openai-importing module stays out of the
+// browser bundle. See CompetitorAlerts.tsx for the rationale.
+const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
+const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
+function looksLikePerson(name: string | undefined): boolean {
+  if (!name) return false;
+  const trimmed = name.trim();
+  return PERSON_NAME_SHAPE.test(trimmed) && !ORG_SIGNAL_WORDS.test(trimmed);
+}
+
 export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, brandName }: Props) {
   const noun = subjectNoun(brandName ?? "Brand", brandCategory);
   const url = `/api/competition?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;
@@ -73,6 +84,14 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
 
   const maxShare = Math.max(...ranking.map((r) => r.mentionShare), 1);
   const isOrg = brandCategory === "political_advocacy";
+  const isPerson = isOrg && looksLikePerson(brandName);
+  // Person-shape political subjects (politicians, candidates, public
+  // intellectuals) get a "public figure" noun in body copy where the
+  // org default would read awkwardly ("Other organizations alongside
+  // Patty Murray"). Section title still reads "Issue Landscape" for
+  // both orgs and figures since they're both peer-network framings.
+  const peerNoun = isPerson ? "public figure" : isOrg ? "organization" : "brand";
+  const peerNounPlural = isPerson ? "public figures" : isOrg ? "organizations" : "brands";
 
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
@@ -81,7 +100,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
           <h2 className="text-base font-semibold">{isOrg ? "Issue Landscape" : "Competitive Landscape"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isOrg
-              ? `Other organizations AI mentions alongside ${brandName || `this ${noun}`} in this space`
+              ? `Other ${peerNounPlural} AI mentions alongside ${brandName || `this ${noun}`} in this space`
               : `How ${brandName || `this ${noun}`} stacks up against top competitors in AI responses`}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
@@ -108,7 +127,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                     <span className="relative group text-[10px] text-muted-foreground shrink-0 cursor-default">
                       Top result: {row.rank1Rate}%
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 hidden group-hover:block w-56 rounded-lg bg-card px-3 py-2 text-[11px] font-normal text-muted-foreground leading-relaxed shadow-md z-20 text-left whitespace-normal">
-                        How often AI lists this {isOrg ? "organization" : "brand"} first when answering industry questions.
+                        How often AI lists this {peerNoun} first when answering industry questions.
                       </span>
                     </span>
                   )}
@@ -142,7 +161,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
             <p className="text-xs text-muted-foreground">
               {isOrg ? (
                 <>
-                  <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer organization in AI responses
+                  <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer {peerNoun} in AI responses
                   {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
                     <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
