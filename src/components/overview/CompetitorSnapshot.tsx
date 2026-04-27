@@ -5,6 +5,7 @@ import { AlertTriangle, Trophy } from "lucide-react";
 import type { CompetitionResponse } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
 import { subjectNoun } from "@/lib/subjectNoun";
+import { looksLikePersonName } from "@/lib/personNameHeuristic";
 
 interface CompetitionApiResponse {
   hasData: boolean;
@@ -19,16 +20,7 @@ interface Props {
   brandName?: string;
 }
 
-// Mirrors looksLikePersonName in src/lib/generateFeaturePrompts.ts.
-// Inlined client-side so the openai-importing module stays out of the
-// browser bundle. See CompetitorAlerts.tsx for the rationale.
-const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
-const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
-function looksLikePerson(name: string | undefined): boolean {
-  if (!name) return false;
-  const trimmed = name.trim();
-  return PERSON_NAME_SHAPE.test(trimmed) && !ORG_SIGNAL_WORDS.test(trimmed);
-}
+const looksLikePerson = looksLikePersonName;
 
 export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, brandName }: Props) {
   const noun = subjectNoun(brandName ?? "Brand", brandCategory);

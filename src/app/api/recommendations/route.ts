@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchBrandRuns } from "@/lib/apiPipeline";
 import { requireBrandAccess, brandCacheControl } from "@/lib/brandAccess";
 import { VALID_MODELS } from "@/lib/constants";
+import { looksLikePersonName } from "@/lib/personNameHeuristic";
 import { buildEntityDisplayNames, resolveEntityName } from "@/lib/utils";
 import { isRunInBrandScope, filterRunsToBrandScope, filterRunsToBrandQueryUniverse, buildBrandIdentity } from "@/lib/visibility/brandScope";
 import { computeBrandRank } from "@/lib/visibility/brandMention";
@@ -209,15 +210,10 @@ export async function GET(req: NextRequest) {
   const brandName = brand.displayName || brand.name;
   const brandIdentity = buildBrandIdentity(brand);
   const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
-  // Detect person-shape names (two or three capitalized tokens with no
-  // organization signal words) so politicians get "other public figures"
-  // instead of "other organizations". Mirrors the regex pair used by
-  // looksLikePersonName / subjectNoun in src/lib/subjectNoun.ts.
-  const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
-  const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
-  const isPerson = isOrg
-    && PERSON_NAME_SHAPE.test(brandName.trim())
-    && !ORG_SIGNAL_WORDS.test(brandName.trim());
+  // Use the shared person-name heuristic so politicians get "other
+  // public figures" while advocacy orgs keep "other organizations" and
+  // commercial brands keep "competitors".
+  const isPerson = isOrg && looksLikePersonName(brandName);
   const competitorWord = isPerson
     ? "other public figures"
     : isOrg

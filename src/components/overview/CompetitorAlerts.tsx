@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { looksLikePersonName } from "@/lib/personNameHeuristic";
 
 interface CompetitorAlert {
   entityId: string;
@@ -40,18 +41,9 @@ interface Props {
   brandName?: string;
 }
 
-// Mirrors looksLikePersonName in src/lib/generateFeaturePrompts.ts.
-// Inlined here so the heuristic doesn't pull the openai-dependent
-// module into the client bundle. Two or three capitalized tokens with
-// no organization signal words = treat as a person ("Patty Murray",
-// "Barack Obama") vs an org ("ACLU", "Common Cause Foundation").
-const PERSON_NAME_SHAPE = /^[A-Z][a-zA-Z'\-]+( [A-Z][a-zA-Z'\-]+){1,3}$/;
-const ORG_SIGNAL_WORDS = /\b(Foundation|Society|Union|Coalition|Alliance|Committee|Council|Association|Fund|PAC|Institute|Center|Project|Campaign|Party|Caucus|Action|Network|LLC|Inc|Corp|Co)\b/i;
-function looksLikePerson(name: string | undefined): boolean {
-  if (!name) return false;
-  const trimmed = name.trim();
-  return PERSON_NAME_SHAPE.test(trimmed) && !ORG_SIGNAL_WORDS.test(trimmed);
-}
+// looksLikePerson is the shared looksLikePersonName helper imported
+// above; aliased locally for readability of the per-component branch.
+const looksLikePerson = looksLikePersonName;
 
 export function CompetitorAlerts({ brandSlug, model, range, brandCategory, brandName }: Props) {
   const url = `/api/competitor-alerts?brandSlug=${encodeURIComponent(brandSlug)}&model=${model}&range=${range}`;

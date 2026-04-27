@@ -4,16 +4,40 @@
  */
 
 /**
+ * Generational suffixes that disambiguate a senior from a junior who
+ * shares the same first+last name. Word-boundary matching for "Donald
+ * Trump" would otherwise succeed inside "Donald Trump Jr." (the trailing
+ * space + J is a valid word boundary), causing a response that only
+ * mentions Trump Jr. to flag Trump Sr. as mentioned. Same risk for
+ * any Sr/Jr/III pair in politics, finance, or family-business contexts.
+ *
+ * The check is skipped when the term we're matching ALREADY ends with
+ * one of these suffixes — a brand "Donald Trump Jr." should still
+ * match its own Jr. occurrences.
+ */
+const GENERATIONAL_SUFFIX_TEST = /\b(?:Jr\.?|Sr\.?|II|III|IV|V)\s*$/i;
+const TRAILING_SUFFIX_LOOKAHEAD = "(?!\\s*,?\\s*(?:Jr\\.?|Sr\\.?|II|III|IV)\\b)";
+
+/**
  * Build a regex that matches a term at word boundaries.
  * Handles terms with hyphens/special chars by escaping them and
  * using lookaround for word-boundary-like matching at string edges or
- * adjacent to non-alphanumeric characters.
+ * adjacent to non-alphanumeric characters. When the term doesn't
+ * itself end in a generational suffix, also rejects matches whose
+ * trailing context is a Jr/Sr/III suffix.
  */
 function wordBoundaryRegex(term: string): RegExp {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const trailingSuffixGuard = GENERATIONAL_SUFFIX_TEST.test(term)
+    ? ""
+    : TRAILING_SUFFIX_LOOKAHEAD;
   // Match term preceded by start-of-string or non-alphanumeric,
-  // and followed by end-of-string or non-alphanumeric.
-  return new RegExp(`(?<![a-zA-Z0-9])${escaped}(?![a-zA-Z0-9])`, "i");
+  // and followed by end-of-string or non-alphanumeric, AND not
+  // followed by a generational suffix when the term itself isn't one.
+  return new RegExp(
+    `(?<![a-zA-Z0-9])${escaped}(?![a-zA-Z0-9])${trailingSuffixGuard}`,
+    "i",
+  );
 }
 
 /**
