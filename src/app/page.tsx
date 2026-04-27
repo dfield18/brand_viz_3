@@ -319,13 +319,20 @@ export default async function HomePage() {
         </div>
       </nav>
 
+      {/* Hero + platform strip wrapper — fills the remaining viewport
+          (100vh minus nav h-16) so the hero block dominates the first
+          fold and the platform strip pins to the bottom of the
+          viewport, with the live-example section just barely peeking
+          below to invite scroll. flex-col + justify-center on the
+          hero centers its content vertically within the grown space. */}
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Hero + free dashboard — compressed so the brand-name input
           sits above the fold on a typical laptop viewport.  Previous
           layout (pt-8 sm:pt-12, text-3xl sm:text-5xl, mt-8) pushed the
           input ~100-150 px lower, which meant first-time visitors
           scrolled past a wall of headline before seeing there was
           anything to do. */}
-      <section id="top" className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-0 sm:pb-0">
+      <section id="top" className="flex-1 flex flex-col justify-center max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-6 sm:pb-10">
         <div className="max-w-2xl mx-auto sm:text-center">
           {/* Prominent "free, no signup" pill above the H1 so first-time
               visitors can't miss the entry bar's no-friction mode. Mobile
@@ -390,6 +397,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      </div>
 
       {/* Sample dashboard preview — real trend data for the example brand
           so visitors see what a live report actually looks like. Hidden
