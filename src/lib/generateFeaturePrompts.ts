@@ -1,4 +1,5 @@
 import { openai } from "@/lib/openai";
+import { getPerplexity } from "@/lib/perplexity";
 
 export type BrandCategory = "commercial" | "political_advocacy";
 
@@ -340,21 +341,138 @@ function normalizeStaticKey(name: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** GPT-4o-mini classifier. Returns meta when the subject is a
- *  recognizable US political figure; returns null otherwise. The
- *  caller is expected to have already filtered `category ===
+/** Web-grounded classifier fallback using Perplexity Sonar. Used when
+ *  the static override map and the GPT-4o-mini classifier both fail —
+ *  typically because the figure's current role post-dates GPT-4o-mini's
+ *  training cutoff (~Apr 2024) AND they aren't in the static map. Sonar
+ *  does live web search so it can answer "what is X's current US
+ *  political role" correctly for any recent appointment.
+ *
+ *  Cost: ~$0.01–0.03 per call, ~1–2s latency. Only fires for unknown
+ *  figures so the typical commercial / known-person path stays fast
+ *  and cheap.
+ */
+const PERPLEXITY_CLASSIFIER_TIMEOUT_MS = 10_000;
+
+async function classifyPublicFigureViaPerplexity(
+  brandName: string,
+): Promise<PublicFigureMeta | null> {
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const systemPrompt = `You classify a person by their CURRENT most senior US political role as of ${today}, using the most recent reliable information available.
+
+Return ONLY a JSON object with no prose, no citation marks like [1], no markdown:
+{
+  "role": one of "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Cabinet Secretary" | "Speaker" | "White House Official" | "Foreign Leader" | "Activist" | "Candidate" | "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Cabinet Secretary" | "Former Speaker" | "Former White House Official" | "Former Foreign Leader" | "Former Officeholder" | null,
+  "jurisdiction": "United States" for national figures, the state for state-level, the country for foreign leaders,
+  "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
+  "caucus": short caucus name or null,
+  "signatureIssue": short issue area they're most associated with or null
+}
+
+Rules:
+- Use "Cabinet Secretary" for ANY US Cabinet-level role (Secretary of State / Defense / Treasury, AG, etc).
+- Use "Speaker" only for the Speaker of the US House.
+- Use "White House Official" for non-Cabinet executive: White House Chief of Staff, NSA, DNI, CIA Director, US Trade Rep, UN Ambassador, Fed Chair, Press Secretary.
+- Use "Foreign Leader" for current heads of government outside the US.
+- Always return the MOST RECENT senior role, never an earlier one. If they served as a Senator and are now Cabinet Secretary, return "Cabinet Secretary".
+- If the person is not a recognizable political figure, return {"role": null}.
+
+Today: ${today}.`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PERPLEXITY_CLASSIFIER_TIMEOUT_MS);
+
+  try {
+    const response = await getPerplexity().chat.completions.create(
+      {
+        model: "sonar",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: brandName },
+        ],
+        max_tokens: 250,
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+
+    const raw = response.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+
+    // Sonar can wrap in code fences and include citation markers like
+    // [1], [2] anywhere in the response. Strip both, then extract the
+    // first JSON object so any preamble prose is ignored.
+    const cleaned = raw
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .replace(/\[\d+\]/g, "")
+      .trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      role?: unknown;
+      jurisdiction?: unknown;
+      party?: unknown;
+      caucus?: unknown;
+      signatureIssue?: unknown;
+    };
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.role !== "string") return null;
+    const normalizedRole = normalizePublicFigureRole(parsed.role);
+    if (!normalizedRole) return null;
+
+    return {
+      role: normalizedRole,
+      jurisdiction:
+        typeof parsed.jurisdiction === "string" && parsed.jurisdiction.trim()
+          ? parsed.jurisdiction
+          : "United States",
+      party: typeof parsed.party === "string" ? parsed.party : null,
+      caucus: typeof parsed.caucus === "string" ? parsed.caucus : null,
+      signatureIssue: typeof parsed.signatureIssue === "string" ? parsed.signatureIssue : null,
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.error("[classifyPublicFigureViaPerplexity] Failed:", err);
+    return null;
+  }
+}
+
+/** Public-figure classifier. Three-tier orchestration:
+ *
+ *   1. Static override map — known current officeholders whose role
+ *      post-dates LLM training cutoffs (full Trump 2025 cabinet etc).
+ *      Free, instant, deterministic.
+ *   2. GPT-4o-mini classifier — fast and cheap, but knowledge is
+ *      stale (~Apr 2024).
+ *   3. Perplexity Sonar fallback — web-grounded, real-time, ~$0.01–
+ *      0.03 per call, ~1–2s latency. Only fires when the static map
+ *      and the LLM both fail, so the typical case stays fast.
+ *
+ *  Caller is expected to have already filtered `category ===
  *  "political_advocacy"` and `looksLikePersonName()` so we don't
- *  waste the call on e.g. ACLU. */
+ *  waste any of these calls on e.g. ACLU. */
 export async function classifyPublicFigure(
   brandName: string,
 ): Promise<PublicFigureMeta | null> {
-  // Static override for figures whose current role post-dates the LLM's
-  // training cutoff. Bypasses the LLM entirely so these classify
-  // correctly regardless of model knowledge.
   const key = normalizeStaticKey(brandName);
   if (STATIC_FIGURE_OVERRIDES[key]) {
     return { ...STATIC_FIGURE_OVERRIDES[key] };
   }
+  const llmResult = await classifyPublicFigureViaLLM(brandName);
+  if (llmResult) return llmResult;
+  // LLM returned null — possibly because the figure's current role
+  // post-dates its training cutoff. Try Perplexity Sonar with live
+  // web search before giving up.
+  return await classifyPublicFigureViaPerplexity(brandName);
+}
+
+/** GPT-4o-mini classifier. Returns meta when the subject is a
+ *  recognizable US political figure; returns null otherwise. */
+async function classifyPublicFigureViaLLM(
+  brandName: string,
+): Promise<PublicFigureMeta | null> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
