@@ -17,6 +17,64 @@ function wordBoundaryRegex(term: string): RegExp {
 }
 
 /**
+ * Strip URLs, markdown link URLs, and citation blocks from text so
+ * brand-mention matching doesn't false-positive on URL-encoded
+ * fragments (e.g. "+Mike+Johnson+" inside a citation matched the alias
+ * "Mike" when the response was actually about Mike Johnson, not Mike
+ * Pence). The URL-as-text is fundamentally noise for "is the subject
+ * mentioned in the prose" — we want the human-readable answer body
+ * only.
+ *
+ * Removes:
+ *   - Markdown links: `[label](url)` → keeps `label`, drops the URL
+ *   - Bare URLs: `https://…` and `www.…` runs
+ *   - Domain-shaped tokens: `example.com/path` (dotted hostnames with
+ *     paths) — strips the path part to avoid `pence-deportation`-style
+ *     slug false positives.
+ */
+function stripUrls(text: string): string {
+  return text
+    // Markdown link: drop the URL, keep the label
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, "$1")
+    // Bare URLs (http/https) — drop everything until whitespace, ),
+    // ], or end of string
+    .replace(/\bhttps?:\/\/[^\s)\]]+/gi, " ")
+    // www.something/… (no scheme) — same treatment
+    .replace(/\bwww\.[^\s)\]]+/gi, " ")
+    // utm/query-string fragments still inside parens we missed
+    .replace(/\?[a-z0-9_=&%+-]+/gi, " ");
+}
+
+/**
+ * Filter the alias list down to terms safe to test against the
+ * stripped text. Drops aliases that are just the brand name's first
+ * token — e.g. "Mike" alone for "Mike Pence" — because common first
+ * names match any other person who shares the first name and produce
+ * false positives in any text that names other people. The full first
+ * name is fine when paired with the last (kept via multi-word aliases
+ * like "Mike Pence" itself).
+ *
+ * Keeps last-name-only aliases (e.g. "Pence", "Obama") since family
+ * names are typically distinctive enough in political/public-figure
+ * contexts. Multi-word aliases ("Vice President Pence") and unique
+ * nicknames ("Mikey P", "Pencey") are also kept.
+ */
+function filterAliases(aliases: string[] | undefined, brandName: string): string[] {
+  if (!aliases || aliases.length === 0) return [];
+  const firstToken = brandName.trim().split(/\s+/)[0]?.toLowerCase();
+  return aliases.filter((alias) => {
+    if (alias.length < 3) return false; // too short — false-positive prone
+    if (!firstToken) return true;
+    // Drop if the alias is exactly the brand's first name (case-insensitive)
+    // and the brand name has more than one token (i.e. there IS a last name).
+    const aliasLower = alias.trim().toLowerCase();
+    const brandTokens = brandName.trim().split(/\s+/);
+    if (brandTokens.length > 1 && aliasLower === firstToken) return false;
+    return true;
+  });
+}
+
+/**
  * Find the index of a word-boundary match for a term in text (case-insensitive).
  * Returns -1 if not found.
  */
@@ -36,14 +94,15 @@ export function isBrandMentioned(
   brandSlug: string,
   aliases?: string[],
 ): boolean {
-  if (wordBoundaryRegex(brandName).test(text)) return true;
-  if (wordBoundaryRegex(brandSlug).test(text)) return true;
-  if (aliases) {
-    for (const alias of aliases) {
-      // Skip very short aliases (< 3 chars) to avoid false positives
-      if (alias.length < 3) continue;
-      if (wordBoundaryRegex(alias).test(text)) return true;
-    }
+  // URLs in citations match aliases via their query-string `+` and `-`
+  // separators (e.g. "+Mike+Johnson+" matched the alias "Mike" for Mike
+  // Pence). Strip them before running the boundary check so detection
+  // reflects the prose answer, not citation noise.
+  const cleaned = stripUrls(text);
+  if (wordBoundaryRegex(brandName).test(cleaned)) return true;
+  if (wordBoundaryRegex(brandSlug).test(cleaned)) return true;
+  for (const alias of filterAliases(aliases, brandName)) {
+    if (wordBoundaryRegex(alias).test(cleaned)) return true;
   }
   return false;
 }
@@ -60,16 +119,18 @@ export function computeBrandRank(
   analysisJson: unknown,
   aliases?: string[],
 ): number | null {
-  // Find brand's first position using word-boundary matching
-  const namePos = wordBoundaryIndex(responseText, brandName);
-  const slugPos = wordBoundaryIndex(responseText, brandSlug);
+  // Strip URLs/citations before any matching — same rationale as
+  // isBrandMentioned. Without this a citation like
+  // "(news.example.com/?q=Speaker+Mike+Johnson)" matches the alias
+  // "Mike" and the brand falsely ranks #1 in a response that doesn't
+  // mention them.
+  const cleaned = stripUrls(responseText);
+  const namePos = wordBoundaryIndex(cleaned, brandName);
+  const slugPos = wordBoundaryIndex(cleaned, brandSlug);
   const positions = [namePos, slugPos].filter((p) => p >= 0);
-  if (aliases) {
-    for (const alias of aliases) {
-      if (alias.length < 3) continue; // Skip very short aliases to avoid false positives
-      const aliasPos = wordBoundaryIndex(responseText, alias);
-      if (aliasPos >= 0) positions.push(aliasPos);
-    }
+  for (const alias of filterAliases(aliases, brandName)) {
+    const aliasPos = wordBoundaryIndex(cleaned, alias);
+    if (aliasPos >= 0) positions.push(aliasPos);
   }
   if (positions.length === 0) return null; // brand not found
   const brandPos = Math.min(...positions);
@@ -87,10 +148,13 @@ export function computeBrandRank(
     }
   }
 
-  // Count how many competitors appear before the brand (word-boundary match)
+  // Count how many competitors appear before the brand (word-boundary
+  // match against the cleaned text — competitor names are also
+  // sometimes cited in URL slugs and we don't want those positions
+  // skewing the rank ordering).
   let rank = 1;
   for (const comp of competitors) {
-    const compPos = wordBoundaryIndex(responseText, comp);
+    const compPos = wordBoundaryIndex(cleaned, comp);
     if (compPos >= 0 && compPos < brandPos) {
       rank++;
     }
