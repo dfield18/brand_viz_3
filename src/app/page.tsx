@@ -135,7 +135,15 @@ const PRICING_TIERS = [
     price: "Custom",
     period: "",
     description: "For multi-brand companies and agencies",
-    features: ["Unlimited brands", "Custom prompts", "API access", "Dedicated support", "SSO"],
+    features: [
+      "Unlimited brands tracked",
+      "Custom prompts written for your team",
+      "API access for programmatic exports",
+      "Multi-seat workspace with role-based access",
+      "Dedicated success contact + onboarding",
+      "SSO + audit logging",
+      "SLA + uptime guarantee",
+    ],
     cta: "Contact us",
     highlighted: false,
   },
@@ -343,7 +351,7 @@ export default async function HomePage() {
             <span className="hidden sm:inline">Free to use the basic version — no sign-up required</span>
             <span className="sm:hidden">Free — no sign-up required</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
             See what AI is saying about your brand.
           </h1>
           <div className="mt-5 sm:mt-10">
@@ -538,30 +546,6 @@ export default async function HomePage() {
                 </div>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works — numbered steps so the flow is scannable in 2 s
-          instead of reading three paragraphs. */}
-      <section className="border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            The process
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-8">
-            How it works
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-10">
-            {HOW_IT_WORKS_STEPS.map((item, i) => (
-              <div key={item.title} className="relative">
-                <div className="flex items-center justify-center h-9 w-9 rounded-full bg-foreground text-background text-sm font-semibold tabular-nums mb-4">
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
