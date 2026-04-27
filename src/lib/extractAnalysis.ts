@@ -22,8 +22,8 @@ function buildSystemPrompt(category?: string): string {
 Given an AI response about a brand or organization, extract the following as JSON:
 
 {
-  "brandMentioned": boolean,
-  "brandMentionStrength": 0-100 (how prominently the brand is discussed),
+  "brandMentioned": boolean — STRICT: set true ONLY when the response text contains a literal substring of the brand name OR one of its common aliases / abbreviations (case-insensitive). Do NOT set true based on contextual relevance, topical proximity, or the original question's framing — if the brand name (or an alias visitors would recognize) does not literally appear in the response text, return false.
+  "brandMentionStrength": 0-100 (how prominently the brand is discussed; 0 when brandMentioned is false),
   ${competitorsInstruction}
   "topics": [{"name": string, "relevance": 0-100}] (up to 5 most relevant topics),
   "frames": [{"name": string, "strength": 0-100}] (the main narrative frames — see below),

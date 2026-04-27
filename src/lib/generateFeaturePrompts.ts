@@ -15,7 +15,19 @@ export type PublicFigureRole =
   | "State Rep"
   | "Mayor"
   | "Activist"
-  | "Candidate";
+  | "Candidate"
+  // Former officeholders — historical/legacy figures who haven't held
+  // current office in years. The current-officeholder prompt templates
+  // ("most influential senators in 2026") naturally exclude them, so we
+  // route to a separate cohort-based template ("most consequential
+  // recent presidents", "former senators turned senior statespeople")
+  // that gives organic recall a real chance.
+  | "Former President"
+  | "Former Senator"
+  | "Former Rep"
+  | "Former Governor"
+  | "Former Mayor"
+  | "Former Officeholder";
 
 /** Map common LLM output variants to the canonical role label. Keeps
  *  the allowlist strict while tolerating minor phrasing differences —
@@ -47,8 +59,75 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "mayor": "Mayor",
     "activist": "Activist",
     "candidate": "Candidate",
+    // Former-officeholder variants
+    "former president": "Former President",
+    "ex-president": "Former President",
+    "former us senator": "Former Senator",
+    "former senator": "Former Senator",
+    "ex-senator": "Former Senator",
+    "former us representative": "Former Rep",
+    "former representative": "Former Rep",
+    "former us rep": "Former Rep",
+    "former rep": "Former Rep",
+    "former congressman": "Former Rep",
+    "former congresswoman": "Former Rep",
+    "former member of congress": "Former Rep",
+    "former governor": "Former Governor",
+    "ex-governor": "Former Governor",
+    "former mayor": "Former Mayor",
+    "former officeholder": "Former Officeholder",
+    "former politician": "Former Officeholder",
   };
   return variantMap[key] ?? null;
+}
+
+/** True when the role represents someone who's no longer in office.
+ *  Drives the prompt-template branch (cohort/legacy questions instead
+ *  of current-officeholder roster questions). */
+function isFormerRole(role: PublicFigureRole): boolean {
+  return role.startsWith("Former");
+}
+
+/** Build a single brand-direct "anchor" prompt that asks AI about the
+ *  figure by name. Stored with cluster="direct" so it feeds sentiment,
+ *  themes, and narrative data without polluting the organic-recall
+ *  KPIs (Mention Rate / SoV / Top Result Rate, all industry-cluster
+ *  scoped). Guarantees the free-tier report shows meaningful sentiment
+ *  + narrative even when organic recall yields 0% — the floor previously
+ *  hit by former officeholders and obscure-but-real public figures. */
+export function buildDirectAnchorPrompt(
+  brandName: string,
+  figureMeta: PublicFigureMeta | null,
+): GeneratedPrompt {
+  let text: string;
+  if (figureMeta) {
+    if (figureMeta.role === "Former President") {
+      text = `What is ${brandName}'s legacy as a US president?`;
+    } else if (figureMeta.role.startsWith("Former")) {
+      const roleNoun = figureMeta.role.replace(/^Former /, "").toLowerCase();
+      text = `What is ${brandName} best known for from their time as ${roleNoun}?`;
+    } else if (figureMeta.role === "US Senator" || figureMeta.role === "US Rep") {
+      text = `What is ${brandName} known for in the US Congress?`;
+    } else if (figureMeta.role === "Governor") {
+      text = `What is ${brandName} known for as a US governor?`;
+    } else if (figureMeta.role === "Mayor") {
+      text = `What is ${brandName} known for as a US mayor?`;
+    } else if (figureMeta.role === "Activist") {
+      text = `What is ${brandName} known for as an activist?`;
+    } else if (figureMeta.role === "Candidate") {
+      text = `What is ${brandName} running on?`;
+    } else {
+      text = `What is ${brandName} best known for?`;
+    }
+  } else {
+    text = `What is ${brandName} best known for?`;
+  }
+  return {
+    text,
+    cluster: "direct" as const,
+    intent: "informational" as const,
+    source: "generated" as const,
+  };
 }
 
 export type PublicFigureMeta = {
@@ -99,14 +178,19 @@ export async function classifyPublicFigure(
           role: "system",
           content: `You classify a public person by their political role. Return ONLY a JSON object or the literal string null.
 
-When the person IS a recognizable political figure (current or recent officeholder, candidate, or prominent activist), return:
+When the person IS a recognizable political figure (current or recent officeholder, former officeholder, candidate, or prominent activist), return:
 {
-  "role": one of "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate" — if none fit cleanly, return null instead of guessing,
+  "role": one of:
+    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Activist" | "Candidate"
+    Former / legacy roles (use these for officeholders who left office years ago and aren't currently running): "Former President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Officeholder"
+    If none fit cleanly, return null instead of guessing.
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
   "caucus": short sub-grouping if notable ("Progressive", "Freedom Caucus", "Blue Dog") or null,
-  "signatureIssue": short issue area they're most associated with ("worker rights", "immigration", "climate") or null
+  "signatureIssue": short issue area they're most associated with ("worker rights", "immigration", "climate", "healthcare reform") or null
 }
+
+Rule of thumb for "Former" vs current: if the person held a federal office and has been out of that office for ≥3 years and isn't actively running, return the Former variant. Barack Obama → "Former President". Joe Biden (in 2026, after his term ended) → "Former President". Patty Murray (still serving in 2026) → "US Senator".
 
 When the person is NOT primarily a political figure, return null.
 
@@ -487,7 +571,7 @@ export function buildFeaturePrompts(
 
 interface GeneratedPrompt {
   text: string;
-  cluster: "brand" | "industry";
+  cluster: "brand" | "industry" | "direct";
   intent: "informational" | "high-intent";
   source: "generated";
 }
@@ -743,6 +827,134 @@ function buildFallbackIndustryPrompts(
   }));
 }
 
+/** Deterministic last-resort fallback for FORMER officeholders. Current-
+ *  officeholder roster questions ("most influential senators in 2026")
+ *  exclude legacy figures by definition, so they need cohort-based
+ *  questions ("most consequential US presidents of the 21st century",
+ *  "former senators turned senior statespeople") to give organic recall
+ *  a real chance. */
+function buildLegacyFigureFallbackPrompts(
+  figureMeta: PublicFigureMeta,
+  count: number,
+): GeneratedPrompt[] {
+  const role = figureMeta.role; // already a Former* variant
+  const party = figureMeta.party;
+  const issue = figureMeta.signatureIssue;
+  const candidates: string[] = [];
+  if (role === "Former President") {
+    candidates.push("Who are the most consequential US presidents of the 21st century?");
+    if (party) candidates.push(`Who are the most influential former ${party} presidents in modern US history?`);
+    if (issue) candidates.push(`Which recent US presidents shaped ${issue}?`);
+    candidates.push("Which former US presidents have remained influential after leaving office?");
+    candidates.push("Who are the most respected elder statespeople in American politics today?");
+  } else if (role === "Former Senator" || role === "Former Rep") {
+    const chamber = role === "Former Senator" ? "US Senate" : "US House";
+    candidates.push(`Which former members of the ${chamber} have transitioned to influential post-Congress roles?`);
+    if (party) candidates.push(`Who are the most respected former ${party} ${role === "Former Senator" ? "senators" : "representatives"} of the past 20 years?`);
+    if (issue) candidates.push(`Who shaped ${issue} from the ${chamber} in recent decades?`);
+    candidates.push("Which retired members of Congress are still active in public life?");
+  } else if (role === "Former Governor") {
+    candidates.push("Which former US governors went on to national political careers?");
+    if (party) candidates.push(`Who are the most influential former ${party} governors in modern US politics?`);
+    if (issue) candidates.push(`Which former governors shaped ${issue} during their tenure?`);
+    candidates.push("Which former state governors are still influential in national politics?");
+  } else if (role === "Former Mayor") {
+    candidates.push("Which former US mayors went on to national prominence?");
+    if (party) candidates.push(`Who are the most influential former ${party} mayors in recent decades?`);
+    candidates.push("Which former big-city mayors have shaped national policy debates?");
+  } else {
+    candidates.push("Who are the most influential former US officeholders still active in public life?");
+    if (issue) candidates.push(`Which former US officeholders shaped ${issue}?`);
+    if (party) candidates.push(`Who are the most respected former ${party} elected officials of the past 20 years?`);
+  }
+  return candidates.slice(0, Math.max(1, count)).map((text) => ({
+    text,
+    cluster: "industry" as const,
+    intent: "informational" as const,
+    source: "generated" as const,
+  }));
+}
+
+/** Build the tiered system prompt used for FORMER officeholders. Same
+ *  three-tier shape as the current-officeholder version (roster ⇒ role
+ *  + stance ⇒ broad issue) but the roster questions are cohort-based
+ *  ("most consequential 21st-century presidents", "former senators with
+ *  influential post-Senate careers") so legacy figures have a real
+ *  chance to be named without the prompt mentioning them. */
+function buildLegacyFigurePrompt(
+  brandName: string,
+  figureMeta: PublicFigureMeta,
+  count: number,
+): string {
+  const aCount = Math.max(1, Math.round(count * 0.4));
+  const bCount = Math.max(1, Math.round(count * 0.4));
+  const cCount = Math.max(1, count - aCount - bCount);
+  const role = figureMeta.role;
+  const party = figureMeta.party;
+  const issue = figureMeta.signatureIssue;
+
+  // Cohort framing tailored to the role — each example is a question
+  // whose natural answer is a list of NAMED former officeholders.
+  let cohortExamples: string[] = [];
+  if (role === "Former President") {
+    cohortExamples = [
+      `"Who are the most consequential US presidents of the 21st century?"`,
+      party ? `"Who are the most influential former ${party} presidents in modern US history?"` : `"Who are the most influential former US presidents in modern history?"`,
+      `"Which former US presidents have remained influential after leaving office?"`,
+    ];
+  } else if (role === "Former Senator") {
+    cohortExamples = [
+      `"Which former US senators have transitioned to influential post-Senate roles?"`,
+      party ? `"Who are the most respected former ${party} senators of the past 20 years?"` : `"Who are the most respected former US senators of the past 20 years?"`,
+      `"Which retired senators are still shaping national politics?"`,
+    ];
+  } else if (role === "Former Rep") {
+    cohortExamples = [
+      `"Which former US House members have transitioned to influential post-Congress roles?"`,
+      party ? `"Who are the most respected former ${party} representatives of the past 20 years?"` : `"Who are the most respected former US representatives of the past 20 years?"`,
+    ];
+  } else if (role === "Former Governor") {
+    cohortExamples = [
+      `"Which former US governors went on to national political careers?"`,
+      party ? `"Who are the most influential former ${party} governors in modern US politics?"` : `"Who are the most influential former US governors in modern politics?"`,
+    ];
+  } else if (role === "Former Mayor") {
+    cohortExamples = [
+      `"Which former US mayors went on to national prominence?"`,
+      party ? `"Who are the most influential former ${party} mayors in recent decades?"` : `"Who are the most influential former US mayors in recent decades?"`,
+    ];
+  } else {
+    cohortExamples = [
+      `"Who are the most influential former US officeholders still active in public life?"`,
+      `"Who are the most respected elder statespeople in American politics today?"`,
+    ];
+  }
+
+  return `You generate search queries that voters, journalists, historians, and political researchers would type into AI assistants when researching modern US political history — NOT asking about a specific person.
+
+The target figure is "${brandName}" — a ${role}${figureMeta.jurisdiction ? ` (${figureMeta.jurisdiction})` : ""}${party ? `, ${party}` : ""}${issue ? `, associated with ${issue}` : ""}. They are no longer in current office; questions should target the cohort of former / legacy figures they belong to so AI has a natural reason to name them.
+
+Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer must be a list of NAMED PEOPLE.
+
+TIER A — cohort questions (${aCount} questions). The answer is essentially a list of former officeholders that INCLUDES "${brandName}". Examples:
+${cohortExamples.map((e) => `- ${e}`).join("\n")}
+
+TIER B — role + legacy + stance (${bCount} questions). Narrower cohort focused on a specific dimension (party, issue area, era) so "${brandName}" is likely but not guaranteed to be named. Examples:
+${issue ? `- "Which recent US ${role.replace(/^Former /, "").toLowerCase()}s shaped ${issue}?"` : `- "Who shaped major US policy debates during the past 20 years?"`}
+${party ? `- "Who are the most influential elder statespeople in the ${party} Party today?"` : `- "Who are the most influential elder statespeople in modern US politics?"`}
+
+TIER C — broad legacy / 21st-century influence (${cCount} question${cCount === 1 ? "" : "s"}). Broad enough that surfacing is genuinely organic.
+- "Who are the most consequential American political figures of the 21st century?"
+
+Rules:
+- Do NOT mention "${brandName}" anywhere in any question
+- Sound natural — how a real person types into ChatGPT or Perplexity
+- Vary phrasing; don't copy the examples verbatim
+- The questions should produce answers that NAME former officeholders, not abstract topic discussions
+
+Return ONLY a JSON array of objects, each with "text" (string), "intent" ("informational" | "high-intent"), and "tier" ("A" | "B" | "C"). No code fences.`;
+}
+
 /** Build the tiered system prompt used for political figures. Produces
  *  `count` questions split across three concentric scopes so the
  *  figure has a near-certain chance of surfacing in Tier A while
@@ -812,15 +1024,25 @@ export async function generateIndustryPrompts(
   // the extra context lets us scope Tier A questions to the roster
   // the figure is literally in, which raises organic-mention rate from
   // "lucky if we get one hit" to "reliable baseline in every run."
+  // Former officeholders branch to a cohort/legacy template instead;
+  // current-officeholder roster prompts ("senators in 2026") would
+  // exclude them by definition.
   if (category === "political_advocacy" && figureMeta) {
+    const isFormer = isFormerRole(figureMeta.role);
+    const systemPrompt = isFormer
+      ? buildLegacyFigurePrompt(brandName, figureMeta, targetCount)
+      : buildTieredFigurePrompt(brandName, figureMeta, targetCount);
+    const userPrompt = isFormer
+      ? `Generate ${targetCount} questions about the cohort of former officeholders that includes "${brandName}" — but do NOT mention them.`
+      : `Generate ${targetCount} questions about the political scene around ${figureMeta.jurisdiction} — the target is "${brandName}" but do NOT mention them.`;
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0.4,
         max_tokens: 600,
         messages: [
-          { role: "system", content: buildTieredFigurePrompt(brandName, figureMeta, targetCount) },
-          { role: "user", content: `Generate ${targetCount} questions about the political scene around ${figureMeta.jurisdiction} — the target is "${brandName}" but do NOT mention them.` },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
       });
       const content = response.choices?.[0]?.message?.content?.trim();
@@ -955,7 +1177,9 @@ Intent must be "informational" (learning/researching) or "high-intent" (deciding
   //      let the caller surface the error (rare — the generic LLM
   //      path handles commercial brands reliably).
   if (figureMeta) {
-    return buildFallbackIndustryPrompts(figureMeta, targetCount);
+    return isFormerRole(figureMeta.role)
+      ? buildLegacyFigureFallbackPrompts(figureMeta, targetCount)
+      : buildFallbackIndustryPrompts(figureMeta, targetCount);
   }
   if (category === "political_advocacy") {
     return buildGenericPoliticsFallback(industry, targetCount);

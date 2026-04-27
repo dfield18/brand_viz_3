@@ -13,6 +13,7 @@ import { sha256 } from "@/lib/hash";
 import { smartTitleCaseName } from "@/lib/utils";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import {
+  buildDirectAnchorPrompt,
   classifyBrandCategory,
   classifyBrandIndustry,
   classifyCanonicalBrandName,
@@ -435,7 +436,7 @@ export async function POST(req: NextRequest) {
       return errorRes;
     }
 
-    // Save the prompts (one row per question) so they're tied to this brand.
+    // Save the industry-cluster prompts (organic-recall measurement).
     const createdPrompts = await Promise.all(
       promptTexts.map((text) =>
         prisma.prompt.create({
@@ -450,6 +451,28 @@ export async function POST(req: NextRequest) {
         }),
       ),
     );
+
+    // For political figures, append a brand-direct "anchor" prompt as
+    // cluster="direct". It feeds sentiment, themes, and narrative data
+    // without polluting the organic-recall KPIs (Mention Rate / SoV /
+    // Top Result Rate, all industry-cluster scoped). Guarantees the
+    // free-tier report has meaningful sentiment + narrative even when
+    // organic recall yields 0% — the floor previously hit by former
+    // officeholders (e.g. Barack Obama) and obscure-but-real figures.
+    if (category === "political_advocacy") {
+      const anchor = buildDirectAnchorPrompt(brandName, figureMeta);
+      const anchorPrompt = await prisma.prompt.create({
+        data: {
+          text: anchor.text,
+          cluster: anchor.cluster,
+          intent: anchor.intent,
+          brandId: brand.id,
+          source: anchor.source,
+          enabled: true,
+        },
+      });
+      createdPrompts.push(anchorPrompt);
+    }
 
     // 3. Build the list of time points the run will cover. Today's point
     //    uses the full set of prompts with live web search; each historical
