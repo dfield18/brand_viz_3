@@ -2,6 +2,7 @@
 
 import { Info } from "lucide-react";
 import type { CompetitionScope, CompetitorRow, WinLossData, FragmentationMetric } from "@/types/api";
+import { subjectNoun, subjectNounPlural } from "@/lib/subjectNoun";
 
 interface CompetitionSummaryCardsProps {
   scope: CompetitionScope;
@@ -9,6 +10,7 @@ interface CompetitionSummaryCardsProps {
   winLoss: WinLossData;
   fragmentation?: FragmentationMetric;
   brandName: string;
+  category?: string | null;
 }
 
 /* ── Donut ring (same pattern as visibility tab) ───────────────────── */
@@ -65,10 +67,10 @@ function getMentionShareBadge(pct: number): { text: string; color: string } {
   return { text: "Low share", color: "text-orange-700 bg-orange-50 border-orange-200" };
 }
 
-function getFragmentationBadge(score: number): { text: string; color: string } {
+function getFragmentationBadge(score: number, peerNounPlural: string): { text: string; color: string } {
   if (score >= 70) return { text: "Highly fragmented", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
   if (score >= 40) return { text: "Moderately concentrated", color: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { text: "Dominated by few brands", color: "text-orange-700 bg-orange-50 border-orange-200" };
+  return { text: `Dominated by few ${peerNounPlural}`, color: "text-orange-700 bg-orange-50 border-orange-200" };
 }
 
 function getWinRateBadge(rate: number): { text: string; color: string } {
@@ -97,7 +99,16 @@ export function CompetitionSummaryCards({
   winLoss,
   fragmentation,
   brandName,
+  category,
 }: CompetitionSummaryCardsProps) {
+  const noun = subjectNoun(brandName, category);
+  const nounPlural = subjectNounPlural(brandName, category);
+  // "Competitors Tracked" reads strangely for advocacy orgs / public
+  // figures (they aren't strictly competing), but the dominant
+  // alternative would require a much wider rename pass — keep the card
+  // label and just swap the body noun. Politicians get "X public figures";
+  // advocacy orgs get "X organizations"; commercial brands "X brands".
+
   // Compute overall win rate
   const totalWins = winLoss.byCompetitor.reduce((s, c) => s + c.wins, 0);
   const totalLosses = winLoss.byCompetitor.reduce((s, c) => s + c.losses, 0);
@@ -107,9 +118,9 @@ export function CompetitionSummaryCards({
   const cards: CardConfig[] = [
     {
       label: "COMPETITORS TRACKED",
-      tooltip: `Total number of brands detected across all AI responses for ${brandName}'s industry.`,
-      description: `Number of unique brands AI mentions when discussing ${brandName}'s industry`,
-      badge: { text: `${scope.entitiesTracked} brands`, color: "text-blue-700 bg-blue-50 border-blue-200" },
+      tooltip: `Total number of ${nounPlural} detected across all AI responses for ${brandName}'s industry.`,
+      description: `Number of unique ${nounPlural} AI mentions when discussing ${brandName}'s industry`,
+      badge: { text: `${scope.entitiesTracked} ${nounPlural}`, color: "text-blue-700 bg-blue-50 border-blue-200" },
       donutPct: Math.min(scope.entitiesTracked * 5, 100),
       donutColor: "var(--chart-1)",
       donutValue: String(scope.entitiesTracked),
@@ -117,8 +128,8 @@ export function CompetitionSummaryCards({
     },
     {
       label: `${brandName.toUpperCase()} SHARE OF VOICE`,
-      tooltip: `${brandName}'s share of all entity mentions across AI responses. Higher means AI models mention ${brandName} more often relative to competitors.`,
-      description: `${brandName}'s share of all brand mentions across AI responses`,
+      tooltip: `${brandName}'s share of all entity mentions across AI responses. Higher means AI models mention ${brandName} more often relative to peer ${nounPlural}.`,
+      description: `${brandName}'s share of all ${noun} mentions across AI responses`,
       badge: getMentionShareBadge(brandCompetitor.mentionShare),
       donutPct: brandCompetitor.mentionShare,
       donutColor: "var(--chart-3)",
@@ -127,9 +138,9 @@ export function CompetitionSummaryCards({
     },
     {
       label: "MARKET FRAGMENTATION",
-      tooltip: "How spread out AI mentions are across brands. Higher = more brands share the spotlight; lower = a few brands dominate. Not all mentions are explicit recommendations.",
+      tooltip: `How spread out AI mentions are across ${nounPlural}. Higher = more ${nounPlural} share the spotlight; lower = a few dominate. Not all mentions are explicit recommendations.`,
       description: `How spread out AI mentions are — not all mentions are explicit recommendations`,
-      badge: getFragmentationBadge(fragmentation?.score ?? 0),
+      badge: getFragmentationBadge(fragmentation?.score ?? 0, nounPlural),
       donutPct: fragmentation?.score ?? 0,
       donutColor: "var(--chart-2)",
       donutValue: `${Math.round(fragmentation?.score ?? 0)}`,

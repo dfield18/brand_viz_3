@@ -15,7 +15,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import type { CompetitiveTrendPoint, CompetitionResponse } from "@/types/api";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
-import { subjectNoun } from "@/lib/subjectNoun";
+import { subjectNoun, subjectNounPlural } from "@/lib/subjectNoun";
 
 type MetricMode = "visibility" | "mentionShare" | "topResult";
 
@@ -45,8 +45,8 @@ const METRIC_CONFIG: Record<MetricMode, {
   reversed?: boolean;
 }> = {
   visibility: {
-    title: "How Often AI Mentions Each Brand",
-    subtitle: "% of AI responses that mention each brand (top 10)",
+    title: "How Often AI Mentions Each {NounCap}",
+    subtitle: "% of AI responses that mention each {nounPlural} (top 10)",
     yAxisLabel: "Mention Rate",
     yDomain: [0, 100],
     tickFormatter: (v) => `${v}%`,
@@ -54,7 +54,7 @@ const METRIC_CONFIG: Record<MetricMode, {
   },
   mentionShare: {
     title: "Share of Voice Over Time",
-    subtitle: "Each brand's share of all AI brand mentions",
+    subtitle: "Each {noun}'s share of all AI mentions",
     yAxisLabel: "Share of Voice",
     yDomain: [0, 100],
     tickFormatter: (v) => `${v}%`,
@@ -62,13 +62,25 @@ const METRIC_CONFIG: Record<MetricMode, {
   },
   topResult: {
     title: "Top Result Rate Over Time",
-    subtitle: "% of mentions where each brand appears as the #1 recommendation",
+    subtitle: "% of mentions where each {noun} appears as the #1 recommendation",
     yAxisLabel: "Top Result Rate",
     yDomain: [0, 100],
     tickFormatter: (v) => `${v}%`,
     tooltipFormatter: (v) => `${v}%`,
   },
 };
+
+// Replace the {noun}/{nounPlural}/{NounCap} placeholders in METRIC_CONFIG
+// strings with the per-subject noun. Mention chart titles read "How Often
+// AI Mentions Each Public Figure" for politicians, "...Each Organization"
+// for advocacy orgs, "...Each Brand" for commercial brands.
+function applyNoun(s: string, noun: string, nounPlural: string): string {
+  const cap = noun.charAt(0).toUpperCase() + noun.slice(1);
+  return s
+    .replace(/\{NounCap\}/g, cap)
+    .replace(/\{nounPlural\}/g, nounPlural)
+    .replace(/\{noun\}/g, noun);
+}
 
 export function CompetitiveVisibilityTrend({
   trend: initialTrend,
@@ -83,6 +95,7 @@ export function CompetitiveVisibilityTrend({
   const [model, setModel] = useState(pageModel);
   const [metric, setMetric] = useState<MetricMode>("visibility");
   const noun = subjectNoun(brandName ?? "Brand", category);
+  const nounPlural = subjectNounPlural(brandName ?? "Brand", category);
 
   const url =
     model !== pageModel
@@ -174,7 +187,7 @@ export function CompetitiveVisibilityTrend({
   return (
     <section className="rounded-xl bg-card p-6 shadow-section">
       <div className="flex items-start justify-between mb-4">
-        <h2 className="text-base font-semibold">{config.title}</h2>
+        <h2 className="text-base font-semibold">{applyNoun(config.title, noun, nounPlural)}</h2>
         <select
           value={model}
           onChange={(e) => setModel(e.target.value)}
@@ -239,7 +252,7 @@ export function CompetitiveVisibilityTrend({
         How {brandName ?? `the ${noun}`}&apos;s metrics compare to competitors over time
       </p>
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-        {config.subtitle}
+        {applyNoun(config.subtitle, noun, nounPlural)}
       </p>
 
       {loading && (

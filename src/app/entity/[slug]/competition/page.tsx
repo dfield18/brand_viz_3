@@ -154,6 +154,7 @@ function CompetitionInner() {
               winLoss={data.winLoss}
               fragmentation={data.fragmentation}
               brandName={compBrandName}
+              category={brandCategory}
             />
           )}
         </div>
@@ -205,6 +206,7 @@ function CompetitionInner() {
             rankDistribution={data.rankDistribution}
             brandEntityId={brandEntityId}
             prompts={prompts}
+            category={brandCategory}
           />
         </div>
 

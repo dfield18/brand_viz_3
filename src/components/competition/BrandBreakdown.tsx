@@ -6,6 +6,7 @@ import type { CompetitorRow, CompetitionResponse, WinLossData, ModelSplitRow } f
 import { CompetitorRankDistribution } from "@/components/competition/CompetitorRankDistribution";
 import { VALID_MODELS, MODEL_LABELS } from "@/lib/constants";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 interface PromptOption {
   id: string;
@@ -23,6 +24,7 @@ interface BrandBreakdownProps {
   rankDistribution?: Record<string, Record<number, number>>;
   brandEntityId?: string;
   prompts?: PromptOption[];
+  category?: string | null;
 }
 
 const SENTIMENT_ORDER: Record<string, number> = { Strong: 5, Positive: 4, Neutral: 3, Conditional: 2, Negative: 1 };
@@ -51,7 +53,10 @@ export function BrandBreakdown({
   rankDistribution: initialRankDistribution,
   brandEntityId,
   prompts = [],
+  category,
 }: BrandBreakdownProps) {
+  const noun = subjectNoun(brandName, category);
+  const NounCap = noun.charAt(0).toUpperCase() + noun.slice(1);
   const [model, setModel] = useState(pageModel);
   const [promptId, setPromptId] = useState("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -190,18 +195,18 @@ export function BrandBreakdown({
             </colgroup>
             <thead className="sticky top-0 bg-card z-10">
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="pb-4 pr-6 text-left font-medium">Brand</th>
+                <th className="pb-4 pr-6 text-left font-medium">{NounCap}</th>
                 <th className="pb-4 px-4 text-center font-medium">
                   <div>Mention Rate</div>
-                  <div className="font-normal text-[10px] mt-0.5">How often brand appears</div>
+                  <div className="font-normal text-[10px] mt-0.5">How often {noun} appears</div>
                 </th>
                 <th className="pb-4 px-4 text-center font-medium">
                   <div>Share of Voice</div>
-                  <div className="font-normal text-[10px] mt-0.5">Brand&apos;s share of mentions</div>
+                  <div className="font-normal text-[10px] mt-0.5">{NounCap}&apos;s share of mentions</div>
                 </th>
                 <th className="pb-4 px-4 text-center font-medium">
                   <div>Top Result Rate</div>
-                  <div className="font-normal text-[10px] mt-0.5">First brand mentioned in response</div>
+                  <div className="font-normal text-[10px] mt-0.5">First {noun} mentioned in response</div>
                 </th>
                 <th className="pb-4 px-4 text-center font-medium">
                   <div>Avg. Position</div>
@@ -209,7 +214,7 @@ export function BrandBreakdown({
                 </th>
                 <th className="pb-4 pl-4 text-center font-medium">
                   <div>Avg. Sentiment</div>
-                  <div className="font-normal text-[10px] mt-0.5">How AI presents brand</div>
+                  <div className="font-normal text-[10px] mt-0.5">How AI presents {noun}</div>
                 </th>
               </tr>
             </thead>
