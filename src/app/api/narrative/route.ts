@@ -12,6 +12,7 @@ import { expandPromptPlaceholders } from "@/lib/utils";
 import { getOpenAIDefault } from "@/lib/openai";
 import { splitSentences, getEntityContextWindow, isSourceOrJunkClaim, countSignalHits } from "@/lib/narrative/textUtils";
 import { HEDGING_SIGNALS } from "@/lib/narrative/signalLexicons";
+import { dedupFramesGrouped, significantFrameTokens } from "@/lib/narrative/dedupFrames";
 import { isRunInBrandScope, filterRunsToBrandScope, buildBrandIdentity } from "@/lib/visibility/brandScope";
 
 // Static fallback labels for older runs with keyword-based themes
@@ -433,8 +434,42 @@ export async function GET(req: NextRequest) {
       })),
     );
 
-  // Frame trend: group by (week, model) with "all" aggregate
-  // Uses allTrendRuns so older runs without narrativeJson still contribute
+  // Build a canonical-name map for the trend so the chart's per-week
+  // data matches the deduped Top Narratives list. aggregateNarrative
+  // collapses near-duplicate frames (e.g. "Affordable Housing
+  // Champion" + "Affordable Housing Advocacy" + "Funding for
+  // Affordable Housing" → one canonical) for the overall percentages,
+  // but the trend buckets used to key on raw f.name — so the chart
+  // would show only ONE variant's per-week data instead of the
+  // canonical's combined trend. Re-run the same dedup here over the
+  // aggregate raw counts to get the canonical mapping.
+  const STRENGTH_THRESHOLD = 20;
+  const aggregateRawFrameCounts: Record<string, number> = {};
+  for (const dr of allTrendRuns) {
+    const a = parseAnalysis(dr.analysisJson);
+    if (!a) continue;
+    for (const f of a.frames) {
+      if (f.strength >= STRENGTH_THRESHOLD) {
+        aggregateRawFrameCounts[f.name] = (aggregateRawFrameCounts[f.name] ?? 0) + 1;
+      }
+    }
+  }
+  const frameGroupsForTrend = dedupFramesGrouped(
+    Object.entries(aggregateRawFrameCounts).map(([name, count]) => ({ name, count })),
+    (b) => significantFrameTokens(b.name),
+    (b) => b.count,
+  );
+  const frameToCanonical: Record<string, string> = {};
+  for (const g of frameGroupsForTrend) {
+    for (const m of g.members) frameToCanonical[m.name] = g.canonical.name;
+  }
+
+  // Frame trend: group by (week, model) with "all" aggregate. Bucket
+  // by CANONICAL frame name (so multiple variants of the same theme
+  // contribute to the same line) and dedup per-run-per-model so a
+  // single response listing four "Affordable Housing" variants
+  // doesn't quadruple-count its canonical's count for that week.
+  // Uses allTrendRuns so older runs without narrativeJson still contribute.
   const frameWeekModelBuckets: Record<string, Record<string, Record<string, number[]>>> = {};
   for (const dr of allTrendRuns) {
     const a = parseAnalysis(dr.analysisJson);
@@ -447,10 +482,13 @@ export async function GET(req: NextRequest) {
     if (!frameWeekModelBuckets[weekKey]) frameWeekModelBuckets[weekKey] = {};
     for (const m of [dr.model, "all"]) {
       if (!frameWeekModelBuckets[weekKey][m]) frameWeekModelBuckets[weekKey][m] = {};
+      const seenCanonicals = new Set<string>();
       for (const f of a.frames) {
-        if (f.strength >= 20) {
-          (frameWeekModelBuckets[weekKey][m][f.name] ??= []).push(f.strength);
-        }
+        if (f.strength < STRENGTH_THRESHOLD) continue;
+        const canonical = frameToCanonical[f.name] ?? f.name;
+        if (seenCanonicals.has(canonical)) continue;
+        seenCanonicals.add(canonical);
+        (frameWeekModelBuckets[weekKey][m][canonical] ??= []).push(f.strength);
       }
     }
   }

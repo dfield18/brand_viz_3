@@ -182,10 +182,16 @@ describe("decomposeKpi", () => {
       makeRun({ model: "gemini", cluster: "industry", topic: "brand_reputation", brandMentionStrength: 40, rank: 2 }),
     ];
 
-    const result = decomposeKpi(current, previous, "mentionRate", "2025-02 to 2025-03", "2025-01 to 2025-02");
+    // Test fixture's runs all have brandMentioned: true (the makeRun
+    // default), so mentionRate is 100% in both periods → delta = 0.
+    // The test's clear intent was to verify a positive delta against
+    // a kpi that distinguishes the two periods — and the rank columns
+    // do exactly that (current 1,1,2 vs previous 2,3,2). firstMentionRate
+    // exercises that signal: 2/3 = 66.7% vs 0/3 = 0% → delta +66.7.
+    const result = decomposeKpi(current, previous, "firstMentionRate", "2025-02 to 2025-03", "2025-01 to 2025-02");
 
-    assert.equal(result.kpi, "mentionRate");
-    assert.equal(result.kpiLabel, "Mention Rate");
+    assert.equal(result.kpi, "firstMentionRate");
+    assert.equal(result.kpiLabel, "Top Result Rate");
     assert.ok(result.totalDelta > 0, "Delta should be positive");
     assert.ok(result.drivers.length > 0, "Should have drivers");
     assert.ok(result.narrative.length > 0, "Should have narrative");

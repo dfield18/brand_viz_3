@@ -21,6 +21,16 @@ export type PublicFigureRole =
   // specificity to construct cohort-style questions.
   | "Cabinet Secretary"
   | "Speaker"
+  // Catches non-Cabinet executive-branch officials: White House Chief
+  // of Staff, National Security Advisor, DNI, CIA Director, US Trade
+  // Representative, UN Ambassador, Federal Reserve Chair, etc. The
+  // template anchors on "the current presidential administration" and
+  // "senior White House staff" which surfaces these officials.
+  | "White House Official"
+  // Heads of government / state outside the US — Prime Ministers,
+  // foreign Presidents, Chancellors. figureMeta.jurisdiction holds the
+  // country name and the templates anchor on it.
+  | "Foreign Leader"
   | "Activist"
   | "Candidate"
   // Former officeholders — historical/legacy figures who haven't held
@@ -37,6 +47,8 @@ export type PublicFigureRole =
   | "Former Mayor"
   | "Former Cabinet Secretary"
   | "Former Speaker"
+  | "Former White House Official"
+  | "Former Foreign Leader"
   | "Former Officeholder";
 
 /** Map common LLM output variants to the canonical role label. Keeps
@@ -89,6 +101,36 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "speaker": "Speaker",
     "speaker of the house": "Speaker",
     "house speaker": "Speaker",
+    // White House Official — non-Cabinet executive-branch roles
+    "white house official": "White House Official",
+    "white house chief of staff": "White House Official",
+    "chief of staff": "White House Official",
+    "national security advisor": "White House Official",
+    "national security adviser": "White House Official",
+    "nsa": "White House Official",
+    "director of national intelligence": "White House Official",
+    "dni": "White House Official",
+    "cia director": "White House Official",
+    "director of the cia": "White House Official",
+    "us trade representative": "White House Official",
+    "ustr": "White House Official",
+    "un ambassador": "White House Official",
+    "us ambassador to the un": "White House Official",
+    "federal reserve chair": "White House Official",
+    "fed chair": "White House Official",
+    "fed chairman": "White House Official",
+    "press secretary": "White House Official",
+    "white house press secretary": "White House Official",
+    // Foreign leaders — heads of government / state outside the US
+    "foreign leader": "Foreign Leader",
+    "head of state": "Foreign Leader",
+    "head of government": "Foreign Leader",
+    "prime minister": "Foreign Leader",
+    "pm": "Foreign Leader",
+    "chancellor": "Foreign Leader",
+    "president": "Foreign Leader", // generic; if classifier picks it the figure is non-US
+    "premier": "Foreign Leader",
+    "taoiseach": "Foreign Leader",
     "activist": "Activist",
     "candidate": "Candidate",
     // Former-officeholder variants
@@ -111,6 +153,24 @@ function normalizePublicFigureRole(raw: string): PublicFigureRole | null {
     "former speaker": "Former Speaker",
     "former speaker of the house": "Former Speaker",
     "former house speaker": "Former Speaker",
+    "former white house official": "Former White House Official",
+    "former white house chief of staff": "Former White House Official",
+    "former chief of staff": "Former White House Official",
+    "former national security advisor": "Former White House Official",
+    "former national security adviser": "Former White House Official",
+    "former dni": "Former White House Official",
+    "former cia director": "Former White House Official",
+    "former fed chair": "Former White House Official",
+    "former federal reserve chair": "Former White House Official",
+    "former us trade representative": "Former White House Official",
+    "former un ambassador": "Former White House Official",
+    "former press secretary": "Former White House Official",
+    "former foreign leader": "Former Foreign Leader",
+    "former prime minister": "Former Foreign Leader",
+    "former chancellor": "Former Foreign Leader",
+    "former premier": "Former Foreign Leader",
+    "former head of state": "Former Foreign Leader",
+    "former head of government": "Former Foreign Leader",
     "former us senator": "Former Senator",
     "former senator": "Former Senator",
     "ex-senator": "Former Senator",
@@ -158,6 +218,13 @@ export function buildDirectAnchorPrompt(
       text = `What is ${brandName}'s legacy in the US Cabinet?`;
     } else if (figureMeta.role === "Former Speaker") {
       text = `What is ${brandName}'s legacy as US House Speaker?`;
+    } else if (figureMeta.role === "Former White House Official") {
+      text = `What is ${brandName}'s legacy in the US executive branch?`;
+    } else if (figureMeta.role === "Former Foreign Leader") {
+      const country = figureMeta.jurisdiction;
+      text = country && !isNationalJurisdiction(country)
+        ? `What is ${brandName}'s legacy as a leader of ${country}?`
+        : `What is ${brandName}'s legacy as a world leader?`;
     } else if (figureMeta.role.startsWith("Former")) {
       const roleNoun = figureMeta.role.replace(/^Former /, "").toLowerCase();
       text = `What is ${brandName} best known for from their time as ${roleNoun}?`;
@@ -167,6 +234,13 @@ export function buildDirectAnchorPrompt(
       text = `What is ${brandName} known for as a US Cabinet official?`;
     } else if (figureMeta.role === "Speaker") {
       text = `What is ${brandName} known for as US House Speaker?`;
+    } else if (figureMeta.role === "White House Official") {
+      text = `What is ${brandName} known for in the US executive branch?`;
+    } else if (figureMeta.role === "Foreign Leader") {
+      const country = figureMeta.jurisdiction;
+      text = country && !isNationalJurisdiction(country)
+        ? `What is ${brandName} known for as the leader of ${country}?`
+        : `What is ${brandName} known for as a world leader?`;
     } else if (figureMeta.role === "US Senator" || figureMeta.role === "US Rep") {
       text = `What is ${brandName} known for in the US Congress?`;
     } else if (figureMeta.role === "Governor") {
@@ -234,10 +308,12 @@ export async function classifyPublicFigure(
 When the person IS a recognizable political figure (current or recent officeholder, former officeholder, candidate, or prominent activist), return:
 {
   "role": one of:
-    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Cabinet Secretary" | "Speaker" | "Activist" | "Candidate"
-    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Cabinet Secretary" | "Former Speaker" | "Former Officeholder"
-    Use "Cabinet Secretary" for ANY cabinet-level role (Secretary of State / Defense / Treasury, Attorney General, etc.) — the single bucket keeps the allowlist compact.
+    Current/active roles: "US Senator" | "US Rep" | "Governor" | "State Senator" | "State Rep" | "Mayor" | "Vice President" | "Cabinet Secretary" | "Speaker" | "White House Official" | "Foreign Leader" | "Activist" | "Candidate"
+    Former / legacy roles (for officeholders who left their most senior office years ago and aren't currently running): "Former President" | "Former Vice President" | "Former Senator" | "Former Rep" | "Former Governor" | "Former Mayor" | "Former Cabinet Secretary" | "Former Speaker" | "Former White House Official" | "Former Foreign Leader" | "Former Officeholder"
+    Use "Cabinet Secretary" for ANY US cabinet-level role (Secretary of State / Defense / Treasury, Attorney General, etc.).
     Use "Speaker" only for the Speaker of the US House. Use "Former Speaker" for past Speakers.
+    Use "White House Official" for non-Cabinet US executive-branch officials: White House Chief of Staff, National Security Advisor, DNI, CIA Director, US Trade Representative, UN Ambassador, Federal Reserve Chair, Press Secretary, etc.
+    Use "Foreign Leader" for current heads of government / state OUTSIDE the United States (Prime Ministers, foreign Presidents, Chancellors, Premiers). Set jurisdiction to the country name. Use "Former Foreign Leader" for past foreign heads of government.
     If none fit cleanly, return null instead of guessing.
   "jurisdiction": the state, city, or district they represent (e.g. "Pennsylvania", "New York NY-14", or "United States" for national figures),
   "party": "Democrat" | "Republican" | "Independent" | "Other" | null,
@@ -268,6 +344,20 @@ Worked examples (today is in 2026):
 - Nancy Pelosi → "Former Speaker"
 - Kevin McCarthy → "Former Speaker"
 - Paul Ryan → "Former Speaker"
+- Susie Wiles → "White House Official" (current US White House Chief of Staff)
+- Ron Klain → "Former White House Official" (Biden's former Chief of Staff)
+- Jerome Powell → "White House Official" (current US Federal Reserve Chair)
+- Janet Yellen → "Former Cabinet Secretary" (Treasury Secretary 2021–2025; her most senior recent role)
+- Jake Sullivan → "Former White House Official" (former NSA)
+- Justin Trudeau → "Former Foreign Leader" (Canadian PM 2015–2025; jurisdiction "Canada")
+- Mark Carney → "Foreign Leader" (current Canadian PM since 2025; jurisdiction "Canada")
+- Emmanuel Macron → "Foreign Leader" (current French President; jurisdiction "France")
+- Keir Starmer → "Foreign Leader" (current UK PM; jurisdiction "United Kingdom")
+- Olaf Scholz → "Former Foreign Leader" (former German Chancellor; jurisdiction "Germany")
+- Lula → "Foreign Leader" (Luiz Inácio Lula da Silva, current Brazilian President; jurisdiction "Brazil")
+- Xi Jinping → "Foreign Leader" (current Chinese President; jurisdiction "China")
+- Angela Merkel → "Former Foreign Leader" (German Chancellor 2005–2021)
+- Tony Blair → "Former Foreign Leader" (UK PM 1997–2007)
 - Bernie Sanders → "US Senator" (still serving in 2026)
 - Patty Murray → "US Senator" (still serving in 2026)
 - Mitt Romney → return based on his current 2026 status (if no longer Senator, "Former Senator")
@@ -923,6 +1013,38 @@ function buildFallbackIndustryPrompts(
       source: "generated" as const,
     }));
   }
+  if (figureMeta.role === "White House Official") {
+    candidates.push(`Who are the senior officials in the current US presidential administration?`);
+    candidates.push(`Who are the top advisors to the current US president?`);
+    if (figureMeta.signatureIssue) {
+      candidates.push(`Which White House officials shape US ${figureMeta.signatureIssue} policy in ${year}?`);
+    }
+    candidates.push(`Who are the most influential figures in the current US executive branch?`);
+    return candidates.slice(0, Math.max(1, count)).map((text) => ({
+      text,
+      cluster: "industry" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    }));
+  }
+  if (figureMeta.role === "Foreign Leader") {
+    const country = figureMeta.jurisdiction;
+    if (country && !isNationalJurisdiction(country)) {
+      candidates.push(`Who is the current head of government of ${country}?`);
+      candidates.push(`Who leads ${country}'s government in ${year}?`);
+    }
+    candidates.push(`Who are the most influential heads of government worldwide in ${year}?`);
+    if (figureMeta.signatureIssue) {
+      candidates.push(`Which world leaders are most active on ${figureMeta.signatureIssue} in ${year}?`);
+    }
+    candidates.push(`Who are the most prominent G7 / G20 leaders in ${year}?`);
+    return candidates.slice(0, Math.max(1, count)).map((text) => ({
+      text,
+      cluster: "industry" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    }));
+  }
   if (national) {
     candidates.push(`Who are the current US ${roleLower}s?`);
     if (figureMeta.party) {
@@ -1013,6 +1135,19 @@ function buildLegacyFigureFallbackPrompts(
     candidates.push("Who are the most consequential former Speakers of the US House?");
     if (party) candidates.push(`Who are the most influential former ${party} House Speakers in modern US history?`);
     candidates.push("Which former House Speakers have remained influential after leaving office?");
+  } else if (role === "Former White House Official") {
+    candidates.push("Who are the most influential former White House officials of recent US administrations?");
+    if (party) candidates.push(`Who are the most respected former ${party} senior White House staff of recent decades?`);
+    if (issue) candidates.push(`Which former White House officials shaped US ${issue}?`);
+    candidates.push("Which former presidential advisors have remained influential after leaving office?");
+  } else if (role === "Former Foreign Leader") {
+    const country = figureMeta.jurisdiction;
+    if (country && !isNationalJurisdiction(country)) {
+      candidates.push(`Who are the most consequential former heads of government of ${country}?`);
+    }
+    candidates.push("Who are the most consequential former world leaders of the 21st century?");
+    if (issue) candidates.push(`Which former world leaders shaped global ${issue} policy?`);
+    candidates.push("Who are the most influential former G7 / G20 leaders in modern history?");
   } else {
     candidates.push("Who are the most influential former US officeholders still active in public life?");
     if (issue) candidates.push(`Which former US officeholders shaped ${issue}?`);
@@ -1091,6 +1226,19 @@ function buildLegacyFigurePrompt(
       `"Who are the most consequential former Speakers of the US House?"`,
       party ? `"Who are the most influential former ${party} House Speakers in modern US history?"` : `"Who are the most influential former US House Speakers in modern history?"`,
     ];
+  } else if (role === "Former White House Official") {
+    cohortExamples = [
+      `"Who are the most influential former White House officials of recent US administrations?"`,
+      party ? `"Who are the most respected former ${party} senior White House staff of recent decades?"` : `"Who are the most respected former senior White House staff of recent decades?"`,
+      `"Which former presidential advisors have remained influential after leaving office?"`,
+    ];
+  } else if (role === "Former Foreign Leader") {
+    const countryPhrase = figureMeta.jurisdiction && !isNationalJurisdiction(figureMeta.jurisdiction) ? figureMeta.jurisdiction : "their country";
+    cohortExamples = [
+      `"Who are the most consequential former heads of government of ${countryPhrase}?"`,
+      `"Who are the most consequential former world leaders of the 21st century?"`,
+      `"Who are the most influential former G7 / G20 leaders in modern history?"`,
+    ];
   } else {
     cohortExamples = [
       `"Who are the most influential former US officeholders still active in public life?"`,
@@ -1143,6 +1291,8 @@ function buildTieredFigurePrompt(
   const isSittingVP = figureMeta.role === "Vice President";
   const isSittingCabinet = figureMeta.role === "Cabinet Secretary";
   const isSittingSpeaker = figureMeta.role === "Speaker";
+  const isSittingWhiteHouse = figureMeta.role === "White House Official";
+  const isSittingForeign = figureMeta.role === "Foreign Leader";
   // National figures get jurisdiction-less roster shapes so the LLM
   // doesn't produce awkward "senators from United States" questions.
   // Single-person offices (VP, Speaker) and tight-roster offices
@@ -1163,6 +1313,20 @@ function buildTieredFigurePrompt(
     rosterExample1 = `"Who is the current Speaker of the US House of Representatives?"`;
     rosterExample2 = `"Who leads the US House majority caucus in ${year}?"`;
     rosterExample3 = `- "Who are the top members of US House leadership in ${year}?"`;
+  } else if (isSittingWhiteHouse) {
+    rosterExample1 = `"Who are the senior officials in the current US presidential administration?"`;
+    rosterExample2 = `"Who are the top advisors to the current US president?"`;
+    rosterExample3 = `- "Who are the most influential figures in the current US executive branch?"`;
+  } else if (isSittingForeign) {
+    const country = figureMeta.jurisdiction;
+    const hasCountry = country && !isNationalJurisdiction(country);
+    rosterExample1 = hasCountry
+      ? `"Who is the current head of government of ${country}?"`
+      : `"Who are the most influential heads of government worldwide in ${year}?"`;
+    rosterExample2 = hasCountry
+      ? `"Who leads ${country}'s government in ${year}?"`
+      : `"Who are the most prominent G7 / G20 leaders in ${year}?"`;
+    rosterExample3 = `- "Who are the most influential heads of government worldwide in ${year}?"`;
   } else if (national) {
     rosterExample1 = `"Who are the current US ${figureMeta.role}s?"`;
     rosterExample2 = `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`;
