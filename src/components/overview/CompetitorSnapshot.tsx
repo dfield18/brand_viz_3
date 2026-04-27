@@ -164,7 +164,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                   <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer {peerNoun} in AI responses
                   {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
-                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
+                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear in the same response</>
                   )}
                 </>
               ) : (
@@ -172,7 +172,7 @@ export function CompetitorSnapshot({ brandSlug, model, range, brandCategory, bra
                   <span className="font-semibold text-foreground">{threat.name}</span> is the most visible peer brand in AI responses
                   {" — "}it holds <span className="font-semibold text-foreground">{Number(threat.mentionShare).toFixed(1)}%</span> share of voice
                   {threat.lossRate > 0 && (
-                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear</>
+                    <> and is ranked higher than {brandName} <span className="font-semibold text-foreground">{Number(threat.lossRate).toFixed(1)}%</span> of the time they both appear in the same response</>
                   )}
                 </>
               )}
