@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { SourcesResponse } from "@/types/api";
 import { useCachedFetch } from "@/lib/useCachedFetch";
+import { subjectNoun } from "@/lib/subjectNoun";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reviews: "Reviews",
@@ -71,7 +72,7 @@ const DONUT_COLORS: Record<string, string> = {
 
 /* ─── Mini Donut ──────────────────────────────────────────────────── */
 
-function SourceTypeDonut({ categoryBreakdown }: { categoryBreakdown: { category: string; count: number; pct: number }[] }) {
+function SourceTypeDonut({ categoryBreakdown, labels }: { categoryBreakdown: { category: string; count: number; pct: number }[]; labels: Record<string, string> }) {
   const { pieData, chartTotal } = useMemo(() => {
     if (categoryBreakdown.length === 0) return { pieData: [], chartTotal: 0 };
     const total = categoryBreakdown.reduce((s, c) => s + c.count, 0);
@@ -85,7 +86,7 @@ function SourceTypeDonut({ categoryBreakdown }: { categoryBreakdown: { category:
       } else {
         slices.push({
           key: entry.category,
-          name: CATEGORY_LABELS[entry.category] ?? entry.category,
+          name: labels[entry.category] ?? entry.category,
           value: entry.count,
           pct: Math.round(pct),
         });
@@ -100,7 +101,7 @@ function SourceTypeDonut({ categoryBreakdown }: { categoryBreakdown: { category:
       });
     }
     return { pieData: slices, chartTotal: total };
-  }, [categoryBreakdown]);
+  }, [categoryBreakdown, labels]);
 
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; pct: number } | null>(null);
 
@@ -198,6 +199,8 @@ interface Props {
   brandSlug: string;
   model: string;
   range: number;
+  brandName?: string;
+  category?: string | null;
 }
 
 const MODEL_OPTIONS: { value: string; label: string }[] = [
@@ -209,10 +212,27 @@ const MODEL_OPTIONS: { value: string; label: string }[] = [
   { value: "google", label: "Google" },
 ];
 
-export function TopSourcesList({ brandSlug, model, range }: Props) {
+export function TopSourcesList({ brandSlug, model, range, brandName, category }: Props) {
   const [localModel, setLocalModel] = useState(model);
   const url = `/api/sources?brandSlug=${encodeURIComponent(brandSlug)}&model=${localModel}&range=${range}`;
   const { data: apiData, loading } = useCachedFetch<SourcesApiResponse>(url);
+
+  // Override the brand_official source-category label and tooltip
+  // for non-brand subjects: "Public Figure / Official" for politicians,
+  // "Organization / Official" for advocacy orgs, "Brand / Official"
+  // for commercial brands. The other category labels are subject-
+  // agnostic so we just shadow the one entry instead of rewriting
+  // the whole record.
+  const noun = subjectNoun(brandName ?? "Brand", category);
+  const nounCap = noun.charAt(0).toUpperCase() + noun.slice(1);
+  const categoryLabels: Record<string, string> = {
+    ...CATEGORY_LABELS,
+    brand_official: `${nounCap} / Official`,
+  };
+  const categoryDescriptions: Record<string, string> = {
+    ...CATEGORY_DESCRIPTIONS,
+    brand_official: `${noun}'s own website`,
+  };
 
   if (loading) {
     return (
@@ -277,9 +297,9 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
                     <span className="text-sm font-medium truncate">{d.domain}</span>
                     <span
                       className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none shrink-0 ${CATEGORY_BADGE_COLORS[cat] || CATEGORY_BADGE_COLORS.other}`}
-                      title={CATEGORY_DESCRIPTIONS[cat] || ""}
+                      title={categoryDescriptions[cat] || ""}
                     >
-                      {CATEGORY_LABELS[cat] || "Other"}
+                      {categoryLabels[cat] || "Other"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -310,6 +330,7 @@ export function TopSourcesList({ brandSlug, model, range }: Props) {
         <div className="hidden sm:block" style={{ flex: "0 1 45%" }}>
           <SourceTypeDonut
             categoryBreakdown={apiData.sources.allDomainCategoryBreakdown ?? []}
+            labels={categoryLabels}
           />
         </div>
       </div>

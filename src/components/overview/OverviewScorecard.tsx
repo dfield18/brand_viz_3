@@ -214,7 +214,15 @@ export function OverviewScorecard({
     })(),
     (() => {
       const sourcePct = topSourceType ? Math.round((topSourceType.count / topSourceType.totalSources) * 100) : 0;
-      const sourceLabel = topSourceType ? (SOURCE_TYPE_LABELS[topSourceType.category] ?? topSourceType.category) : null;
+      // Override the "brand_official" label so politicians/orgs don't
+      // get a "Brand Official" badge. Other categories are subject-
+      // agnostic so the static record carries through.
+      const nounCap = noun.charAt(0).toUpperCase() + noun.slice(1);
+      const sourceTypeLabels: Record<string, string> = {
+        ...SOURCE_TYPE_LABELS,
+        brand_official: `${nounCap} Official`,
+      };
+      const sourceLabel = topSourceType ? (sourceTypeLabels[topSourceType.category] ?? topSourceType.category) : null;
       return {
         label: "MOST CITED SOURCE TYPE",
         value: topSourceType ? `${sourcePct}%` : "\u2014",

@@ -227,7 +227,11 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
         <div>
           {!compact && (
             <h2 className="text-sm text-muted-foreground font-medium">
-              {effectiveMetric === "visibility" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Mention Rate Over Time</> : effectiveMetric === "topResult" ? <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Top Result Rate Over Time</> : <>{brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s</> : "Brand"} Share of Voice Over Time</>}
+              {(() => {
+                const titleLabel = effectiveMetric === "visibility" ? "Mention Rate Over Time" : effectiveMetric === "topResult" ? "Top Result Rate Over Time" : "Share of Voice Over Time";
+                const fallback = noun.charAt(0).toUpperCase() + noun.slice(1);
+                return brandName ? <><strong className="text-foreground">{brandName}</strong>&apos;s {titleLabel}</> : <>{fallback} {titleLabel}</>;
+              })()}
             </h2>
           )}
           {/* Metric toggle lives on its own line so the pill doesn't

@@ -457,7 +457,7 @@ function OverviewInner() {
           </header>
 
           <div id="sources-trend" className="scroll-mt-24">
-            <TopSourcesList brandSlug={params.slug} model={model} range={range} />
+            <TopSourcesList brandSlug={params.slug} model={model} range={range} brandName={brandName} category={apiData.brandCategory} />
             <DataFooter prompts="all" date={range} />
           </div>
         </section>
