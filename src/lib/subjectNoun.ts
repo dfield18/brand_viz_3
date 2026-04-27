@@ -14,7 +14,11 @@
 export function subjectNoun(brandName: string, category?: string | null): string {
   if (category !== "political_advocacy") return "brand";
   const name = brandName.trim();
-  const looksLikePerson = /^[A-Z][a-zA-Z'-]+( [A-Z][a-zA-Z'-]+){1,2}$/.test(name);
+  // Allow 2–4 tokens to handle middle-name forms like "Hillary Rodham
+  // Clinton" or "John Fitzgerald Kennedy". Matches the looksLikePersonName
+  // regex in generateFeaturePrompts.ts so the noun decision agrees with
+  // the prompt-generator path.
+  const looksLikePerson = /^[A-Z][a-zA-Z'-]+( [A-Z][a-zA-Z'-]+){1,3}$/.test(name);
   const orgSignal =
     /\b(Foundation|Society|Union|Coalition|Alliance|Institute|Council|Forum|Network|Cause|Fund|PAC|Action|Matters|Watch|Party|Project|Committee|Center|Parenthood|Rights|Trust|League|Federation|Association)\b/i;
   if (looksLikePerson && !orgSignal.test(name)) return "public figure";
