@@ -211,24 +211,29 @@ function NarrativeInner() {
         <div id="narrative-insight" className="scroll-mt-24">
           {data.sentimentSplit && frames.length > 0 && (
             <div className="rounded-xl bg-card shadow-section overflow-hidden">
-              <div className="px-5 py-4">
-                <p className="text-base text-foreground/80 leading-relaxed">
-                  {(() => {
-                    const topFrame = frames[0];
-                    const split = data.sentimentSplit!;
-                    let summary = `AI frames ${brandName} as "${topFrame.frame}" (${topFrame.percentage}% of responses). `;
-
-                    if (split.positive >= 60) summary += `Sentiment: ${split.positive}% positive.`;
-                    else if (split.negative >= 40) summary += `${split.negative}% negative sentiment — worth monitoring.`;
-                    else if (split.neutral >= 50) summary += `Mostly neutral (${split.neutral}%).`;
-                    else if (split.positive >= 40) summary += `Leaning positive (${split.positive}%).`;
-                    else summary += `Mixed: ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`;
-
-                    if (data.polarization === "High") summary += ` Platforms disagree significantly.`;
-
-                    return summary;
-                  })()}
-                </p>
+              <div className="px-5 py-4 space-y-2">
+                {(() => {
+                  const topFrame = frames[0];
+                  const split = data.sentimentSplit!;
+                  let sentimentLine: string;
+                  if (split.positive >= 60) sentimentLine = `Sentiment: ${split.positive}% positive.`;
+                  else if (split.negative >= 40) sentimentLine = `${split.negative}% negative sentiment — worth monitoring.`;
+                  else if (split.neutral >= 50) sentimentLine = `Mostly neutral (${split.neutral}%).`;
+                  else if (split.positive >= 40) sentimentLine = `Leaning positive (${split.positive}%).`;
+                  else sentimentLine = `Mixed: ${split.positive}% positive, ${split.neutral}% neutral, ${split.negative}% negative.`;
+                  if (data.polarization === "High") sentimentLine += ` Platforms disagree significantly.`;
+                  const themeLine = `AI frames ${brandName} as "${topFrame.frame}" (${topFrame.percentage}% of responses).`;
+                  return (
+                    <>
+                      <p className="text-base text-foreground/80 leading-relaxed">
+                        {sentimentLine}
+                      </p>
+                      <p className="text-base text-foreground/80 leading-relaxed">
+                        {themeLine}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
 
               {recsData?.hasData && recsData.negativeNarratives?.weaknesses && recsData.negativeNarratives.weaknesses.length > 0 && (
