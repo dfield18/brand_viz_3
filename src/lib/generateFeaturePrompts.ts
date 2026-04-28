@@ -1347,6 +1347,17 @@ function buildLegacyFigureFallbackPrompts(
   }));
 }
 
+/** Reject prompts whose natural answer is a list of ORGS, not people.
+ *  The system prompts for figure paths already forbid these shapes,
+ *  but GPT-4o-mini occasionally slips through with "What organizations
+ *  are leading the charge for healthcare reform?" anyway. This is a
+ *  defensive post-filter so person-shape figures never display
+ *  org-shaped questions. */
+const ORG_SHAPED_QUESTION_RE = /\b(?:what|which|who)\s+(?:are|is|were)?\s*(?:the\s+)?(?:most\s+)?(?:influential|leading|prominent|active|notable|top|major)?\s*(?:US\s+|U\.S\.\s+|American\s+)?(?:advocacy\s+)?(?:organizations?|orgs?|groups?|coalitions?|movements?|nonprofits?|non-profits?|pacs?|associations?|federations?|alliances?|committees?|councils?|caucuses?|think\s+tanks?|institutes?|foundations?|companies?|corporations?|firms?|agencies?|networks?|unions?)\b/i;
+function isOrgShapedQuestion(text: string): boolean {
+  return ORG_SHAPED_QUESTION_RE.test(text);
+}
+
 /** Build the tiered system prompt used for FORMER officeholders. Same
  *  three-tier shape as the current-officeholder version (roster ⇒ role
  *  + stance ⇒ broad issue) but the roster questions are cohort-based
@@ -1448,6 +1459,8 @@ ${party ? `- "Who are the most influential elder statespeople in the ${party} Pa
 TIER C — broad legacy / 21st-century influence (${cCount} question${cCount === 1 ? "" : "s"}). Broad enough that surfacing is genuinely organic.
 - "Who are the most consequential American political figures of the 21st century?"
 
+CRITICAL anti-patterns — questions whose natural answer is a list of ORGANIZATIONS, GROUPS, COALITIONS, MOVEMENTS, NONPROFITS, PACs, ASSOCIATIONS, AGENCIES, or THINK TANKS are forbidden because "${brandName}" is a PERSON. Reject shapes like "What organizations…" / "Which groups…" / "What think tanks…" / "Which advocacy organizations…" / "What committees…". Always phrase the question so the answer is a roster of NAMES OF PEOPLE.
+
 Rules:
 - Do NOT mention "${brandName}" anywhere in any question
 - Sound natural — how a real person types into ChatGPT or Perplexity
@@ -1528,7 +1541,7 @@ function buildTieredFigurePrompt(
 
 The target figure is "${brandName}" — a ${figureMeta.role}${national ? "" : ` representing ${figureMeta.jurisdiction}`}${figureMeta.party ? ` (${figureMeta.party})` : ""}${figureMeta.caucus ? `, ${figureMeta.caucus} caucus` : ""}${issuePhrase ? `, associated with ${issuePhrase}` : ""}.
 
-Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer must be a list of NAMED PEOPLE.
+Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer MUST be a list of NAMED PEOPLE — politicians, officials, candidates, public figures by name.
 
 TIER A — roster questions (${aCount} questions). The answer is essentially the roster of officeholders that INCLUDES "${brandName}". Examples of the shape:
 - ${rosterExample1}
@@ -1541,6 +1554,13 @@ TIER B — role + stance questions (${bCount} questions). Narrow enough that "${
 
 TIER C — broad issue area (${cCount} question${cCount === 1 ? "" : "s"}). The current style — broad enough that surfacing is genuinely organic.
 - "Who are the most influential voices on ${issuePhrase ?? "progressive politics"} in ${year}?"
+
+CRITICAL anti-patterns — questions whose natural answer is a list of ORGANIZATIONS, GROUPS, COALITIONS, MOVEMENTS, NONPROFITS, PACs, ASSOCIATIONS, AGENCIES, or COMPANIES are forbidden because "${brandName}" is a PERSON, not an org. Reject question shapes like:
+- "What organizations are leading…" — wrong, would surface ORGS
+- "Which groups are most active on…" — wrong, would surface GROUPS
+- "What advocacy organizations…" / "Which nonprofits…" / "Which coalitions…" / "Which movements…" / "Which PACs…" — all wrong
+- "What committees are pushing for…" — wrong
+Always phrase the question so the answer is a roster of NAMES OF PEOPLE.
 
 Rules:
 - Do NOT mention "${brandName}" anywhere in any question
@@ -1592,8 +1612,14 @@ export async function generateIndustryPrompts(
         ) as { text: string; intent: string; tier?: string }[];
         if (Array.isArray(parsed) && parsed.length > 0) {
           const brandLower = brandName.toLowerCase();
+          // Person-shape figures should never get org-shaped questions
+          // ("What organizations are leading…"). System prompt forbids
+          // them but the LLM occasionally slips one through; reject
+          // post-hoc so the user never sees them.
           const filtered = parsed
-            .filter((p) => typeof p?.text === "string" && !p.text.toLowerCase().includes(brandLower))
+            .filter((p) => typeof p?.text === "string"
+              && !p.text.toLowerCase().includes(brandLower)
+              && !isOrgShapedQuestion(p.text))
             .slice(0, targetCount)
             .map((p) => ({
               text: p.text,
@@ -1604,9 +1630,19 @@ export async function generateIndustryPrompts(
           if (filtered.length > 0) return filtered;
         }
       }
-      // fall through to generic generator on empty/malformed output
+      // Tiered LLM emptied out — for person-shape figures, skip the
+      // generic LLM path (which explicitly asks for org-shaped
+      // questions) and go straight to the deterministic figure
+      // fallback. Generic LLM is reserved for advocacy orgs without
+      // a figureMeta classification.
+      return isFormer
+        ? buildLegacyFigureFallbackPrompts(figureMeta, targetCount)
+        : buildFallbackIndustryPrompts(figureMeta, targetCount);
     } catch (err) {
-      console.error("[generateIndustryPrompts tiered] Failed, falling back to generic:", err);
+      console.error("[generateIndustryPrompts tiered] Failed, falling back to deterministic figure prompts:", err);
+      return isFormer
+        ? buildLegacyFigureFallbackPrompts(figureMeta, targetCount)
+        : buildFallbackIndustryPrompts(figureMeta, targetCount);
     }
   }
 
