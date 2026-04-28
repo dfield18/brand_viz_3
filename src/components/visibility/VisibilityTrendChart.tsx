@@ -217,14 +217,14 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
 
   return (
     <div>
-      {/* Header row: title block stacked above the dropdown filters
-          so the description gets the full container width. Side-by-
-          side layout was squeezing the description down to ~590 px,
-          which forced longer captions like
-          "How often AI mentions Patty Murray in questions about
-          Democratic senators — last 90 days" onto two lines. */}
-      <div className="flex flex-col items-stretch gap-3 mb-4">
-        <div>
+      {/* Header row: title block on the left, dropdown filters pinned
+          to the top-right on sm+. Mobile stacks them. The title block's
+          description still gets the full container width on mobile;
+          on desktop it shares the row with the dropdowns but the
+          dropdowns hug their own content (shrink-0) so the title
+          space stays generous. */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div className="min-w-0 flex-1">
           {!compact && (
             <h2 className="text-sm text-muted-foreground font-medium">
               {(() => {
@@ -300,17 +300,16 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             </>
           )}
         </div>
-        {/* Dropdowns now sit on their own row below the title block
-            (parent stacks via flex-col always). On mobile they stretch
-            full-width via flex-1; on sm+ each select hugs its own
-            content so the row reads as compact filter chips rather
-            than form fields. */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Dropdowns pin to the top-right on sm+. items-center inside
+            the row keeps both selects vertically aligned so they read
+            as a single filter unit. shrink-0 on the wrapper means the
+            title block keeps its width even when prompt labels are long. */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:shrink-0">
           {prompts.length > 0 && (
             <select
               value={focusPrompt}
               onChange={(e) => setFocusPrompt(e.target.value)}
-              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card flex-1 sm:flex-initial sm:max-w-[220px] truncate"
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 h-8 bg-card flex-1 sm:flex-initial sm:max-w-[220px] truncate"
             >
               <option value="all">All Questions</option>
               {prompts.map((p) => (
@@ -322,7 +321,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
             <select
               value={focusModel}
               onChange={(e) => setFocusModel(e.target.value)}
-              className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-card flex-1 sm:flex-initial"
+              className="text-xs border border-border rounded-lg px-2.5 py-1.5 h-8 bg-card flex-1 sm:flex-initial"
             >
               <option value="all">All AI Platforms</option>
               {availableModels.map((m) => (
