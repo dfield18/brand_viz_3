@@ -242,8 +242,13 @@ export function buildDirectAnchorPrompt(
       text = country && !isNationalJurisdiction(country)
         ? `What is ${brandName} known for as the leader of ${country}?`
         : `What is ${brandName} known for as a world leader?`;
-    } else if (figureMeta.role === "US Senator" || figureMeta.role === "US Rep") {
-      text = `What is ${brandName} known for in the US Congress?`;
+    } else if (figureMeta.role === "US Senator") {
+      // Avoid generic "Congress" wording for senators — AI responses
+      // about "members of Congress" tend to focus on the House, which
+      // misses the senator we're asking about.
+      text = `What is ${brandName} known for in the US Senate?`;
+    } else if (figureMeta.role === "US Rep") {
+      text = `What is ${brandName} known for in the US House of Representatives?`;
     } else if (figureMeta.role === "Governor") {
       text = `What is ${brandName} known for as a US governor?`;
     } else if (figureMeta.role === "Mayor") {
@@ -1239,7 +1244,7 @@ function buildFallbackIndustryPrompts(
   } else {
     candidates.push(`Who are the current ${roleLower}s from ${figureMeta.jurisdiction}?`);
     if (figureMeta.party) {
-      candidates.push(`Which ${partyPlural} represent ${figureMeta.jurisdiction} in ${chamber === "office" ? "office" : "Congress"} in ${year}?`);
+      candidates.push(`Which ${partyPlural} represent ${figureMeta.jurisdiction} in ${chamber === "office" ? "office" : chamber} in ${year}?`);
     }
     if (figureMeta.role.includes("Senator")) {
       candidates.push(`Who won recent US Senate races in ${figureMeta.jurisdiction}?`);
@@ -1293,10 +1298,16 @@ function buildLegacyFigureFallbackPrompts(
     candidates.push("Who are the most respected elder statespeople in American politics today?");
   } else if (role === "Former Senator" || role === "Former Rep") {
     const chamber = role === "Former Senator" ? "US Senate" : "US House";
-    candidates.push(`Which former members of the ${chamber} have transitioned to influential post-Congress roles?`);
+    const postChamber = role === "Former Senator" ? "post-Senate" : "post-House";
+    const retiredNoun = role === "Former Senator" ? "US senators" : "US House members";
+    // Use chamber-specific phrasings ("post-Senate", "retired US
+    // senators") instead of generic "Congress" / "members of Congress"
+    // — those tend to surface House-leaning answers from AI and miss
+    // the senator we're targeting.
+    candidates.push(`Which former members of the ${chamber} have transitioned to influential ${postChamber} roles?`);
     if (party) candidates.push(`Who are the most respected former ${party} ${role === "Former Senator" ? "senators" : "representatives"} of the past 20 years?`);
     if (issue) candidates.push(`Who shaped ${issue} from the ${chamber} in recent decades?`);
-    candidates.push("Which retired members of Congress are still active in public life?");
+    candidates.push(`Which retired ${retiredNoun} are still active in public life?`);
   } else if (role === "Former Vice President") {
     candidates.push("Who are the most consequential US vice presidents of the 21st century?");
     if (party) candidates.push(`Who are the most influential former ${party} vice presidents in modern US history?`);
@@ -1529,10 +1540,25 @@ function buildTieredFigurePrompt(
     rosterExample3 = `- "Who are the most influential heads of government worldwide in ${year}?"`;
   } else if (national) {
     rosterExample1 = `"Who are the current US ${figureMeta.role}s?"`;
-    rosterExample2 = `"Which ${partyPhrase} hold ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "congressional seats" : "national office"} in ${year}?"`;
+    // Chamber-specific phrasing for Senators / Reps so AI doesn't
+    // default to House-leaning "members of Congress" answers.
+    const chamberSeats = figureMeta.role === "US Senator"
+      ? "US Senate seats"
+      : figureMeta.role === "US Rep"
+        ? "US House seats"
+        : "national office";
+    rosterExample2 = `"Which ${partyPhrase} hold ${chamberSeats} in ${year}?"`;
   } else {
     rosterExample1 = `"Who are the current ${figureMeta.role}s from ${figureMeta.jurisdiction}?"`;
-    rosterExample2 = `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${figureMeta.role.includes("Senator") || figureMeta.role.includes("Rep") ? "Congress" : "office"} in ${year}?"`;
+    // Chamber-specific phrasing — "in the US Senate" for senators,
+    // "in the US House" for reps. Generic "Congress" wording tends
+    // to bias AI toward House-side answers.
+    const chamberPhrase = figureMeta.role === "US Senator"
+      ? "the US Senate"
+      : figureMeta.role === "US Rep"
+        ? "the US House"
+        : "office";
+    rosterExample2 = `"Which ${partyPhrase} represent ${figureMeta.jurisdiction} in ${chamberPhrase} in ${year}?"`;
     if (figureMeta.role === "US Senator") {
       rosterExample3 = `- "Who won US Senate races in ${figureMeta.jurisdiction} in recent cycles?"`;
     }
