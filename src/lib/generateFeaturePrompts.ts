@@ -1456,8 +1456,9 @@ TIER B — role + legacy + stance (${bCount} questions). Narrower cohort focused
 ${issue ? `- "Which recent US ${role.replace(/^Former /, "").toLowerCase()}s shaped ${issue}?"` : `- "Who shaped major US policy debates during the past 20 years?"`}
 ${party ? `- "Who are the most influential elder statespeople in the ${party} Party today?"` : `- "Who are the most influential elder statespeople in modern US politics?"`}
 
-TIER C — broad legacy / 21st-century influence (${cCount} question${cCount === 1 ? "" : "s"}). Broad enough that surfacing is genuinely organic.
+TIER C — broad legacy / 21st-century influence (${cCount} question${cCount === 1 ? "" : "s"}). Broad enough that surfacing is genuinely organic. CRITICAL: Tier C MUST cover a DIFFERENT angle than any Tier B question — if Tier B is anchored on ${issue ?? "an issue area"}, Tier C should pivot to a SEPARATE dimension (general 21st-century influence, post-office life, generational standing, ideological wing, era of service).${issue ? ` In particular, Tier C must NOT mention "${issue}" — that's Tier B's territory.` : ""} Examples:
 - "Who are the most consequential American political figures of the 21st century?"
+- "Which former US officeholders are still shaping public discourse today?"
 
 CRITICAL anti-patterns — questions whose natural answer is a list of ORGANIZATIONS, GROUPS, COALITIONS, MOVEMENTS, NONPROFITS, PACs, ASSOCIATIONS, AGENCIES, or THINK TANKS are forbidden because "${brandName}" is a PERSON. Reject shapes like "What organizations…" / "Which groups…" / "What think tanks…" / "Which advocacy organizations…" / "What committees…". Always phrase the question so the answer is a roster of NAMES OF PEOPLE.
 
@@ -1552,8 +1553,16 @@ TIER B — role + stance questions (${bCount} questions). Narrow enough that "${
 - "Which ${caucusPhrase}${figureMeta.role.toLowerCase()}s are most outspoken on ${issuePhrase ?? "current policy debates"}?"
 - "Who are the most prominent ${caucusPhrase}${partyPhrase} in the ${figureMeta.role.includes("Senator") ? "US Senate" : figureMeta.role.includes("Rep") ? "US House" : "country"} right now?"
 
-TIER C — broad issue area (${cCount} question${cCount === 1 ? "" : "s"}). The current style — broad enough that surfacing is genuinely organic.
-- "Who are the most influential voices on ${issuePhrase ?? "progressive politics"} in ${year}?"
+TIER C — broad issue area (${cCount} question${cCount === 1 ? "" : "s"}). The current style — broad enough that surfacing is genuinely organic. CRITICAL: Tier C MUST cover a DIFFERENT issue area than any Tier B question — pick a separate policy domain (a different domestic issue, foreign policy, election dynamics, generational/identity politics, broad ideological framing) so the figure has multiple distinct shots at being named instead of redundant healthcare-on-healthcare-on-healthcare prompts.
+${issuePhrase
+  ? `Tier B is anchored on "${issuePhrase}", so Tier C must NOT mention "${issuePhrase}" — pick another policy area entirely. Examples:
+- "Who are the most influential voices on the future of the ${figureMeta.party ?? ""} Party in ${year}?"
+- "Who are the most influential voices on ${figureMeta.party === "Democrat" ? "progressive" : figureMeta.party === "Republican" ? "conservative" : "American"} politics in ${year}?"
+- "Who are the most influential ${figureMeta.party ?? ""} voices on national elections in ${year}?"`
+  : `Examples:
+- "Who are the most influential voices on progressive politics in ${year}?"
+- "Who are the most influential voices on the future of the ${figureMeta.party ?? ""} Party in ${year}?"`
+}
 
 CRITICAL anti-patterns — questions whose natural answer is a list of ORGANIZATIONS, GROUPS, COALITIONS, MOVEMENTS, NONPROFITS, PACs, ASSOCIATIONS, AGENCIES, or COMPANIES are forbidden because "${brandName}" is a PERSON, not an org. Reject question shapes like:
 - "What organizations are leading…" — wrong, would surface ORGS
