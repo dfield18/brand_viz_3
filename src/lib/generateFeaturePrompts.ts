@@ -444,11 +444,19 @@ Today: ${today}.`;
  *   1. Static override map — known current officeholders whose role
  *      post-dates LLM training cutoffs (full Trump 2025 cabinet etc).
  *      Free, instant, deterministic.
- *   2. GPT-4o-mini classifier — fast and cheap, but knowledge is
- *      stale (~Apr 2024).
- *   3. Perplexity Sonar fallback — web-grounded, real-time, ~$0.01–
- *      0.03 per call, ~1–2s latency. Only fires when the static map
- *      and the LLM both fail, so the typical case stays fast.
+ *   2. Perplexity Sonar (web search) — primary classifier when the
+ *      static map misses. Live web grounding catches recent
+ *      appointments / role changes that the LLM's training cutoff
+ *      can't see. ~$0.01–0.03 per call, ~1–2s latency.
+ *   3. GPT-4o-mini fallback — only if Sonar errors or times out.
+ *      Stale knowledge (~Apr 2024) but better than null.
+ *
+ *  Sonar runs before the LLM (rather than as a fallback after) because
+ *  most missing-from-static-map cases are figures whose current role
+ *  the LLM literally doesn't know. Going LLM-first frequently
+ *  returned a confidently-wrong stale role; going Sonar-first reads
+ *  current reality and the LLM is just there as a safety net for
+ *  Sonar outages.
  *
  *  Caller is expected to have already filtered `category ===
  *  "political_advocacy"` and `looksLikePersonName()` so we don't
@@ -460,12 +468,12 @@ export async function classifyPublicFigure(
   if (STATIC_FIGURE_OVERRIDES[key]) {
     return { ...STATIC_FIGURE_OVERRIDES[key] };
   }
-  const llmResult = await classifyPublicFigureViaLLM(brandName);
-  if (llmResult) return llmResult;
-  // LLM returned null — possibly because the figure's current role
-  // post-dates its training cutoff. Try Perplexity Sonar with live
-  // web search before giving up.
-  return await classifyPublicFigureViaPerplexity(brandName);
+  const sonarResult = await classifyPublicFigureViaPerplexity(brandName);
+  if (sonarResult) return sonarResult;
+  // Sonar errored or returned null — fall back to the LLM. Stale
+  // knowledge but at least it has a chance to recognize historical
+  // figures Sonar might have refused to classify.
+  return await classifyPublicFigureViaLLM(brandName);
 }
 
 /** GPT-4o-mini classifier. Returns meta when the subject is a
