@@ -21,6 +21,14 @@ export interface PipelineBrand {
   slug: string;
   industry: string | null;
   aliases: string[];
+  /** Two-bucket classification — "commercial" | "political_advocacy" |
+   *  null. Drives noun choice in user-facing copy (brand vs public
+   *  figure vs organization) and routes the prompt generator into
+   *  political-advocacy branches. Originally absent from the pipeline
+   *  brand select, which silently broke noun-rendering for politicians
+   *  (the recommendations route's category check evaluated to
+   *  undefined → fell through to the commercial "competitors" path). */
+  category: string | null;
 }
 
 export interface PipelineJob {
@@ -148,7 +156,7 @@ export async function fetchBrandRuns<R extends { model: string; promptId: string
   // Look up brand
   const rawBrand = await prisma.brand.findUnique({
     where: { slug: brandSlug },
-    select: { id: true, name: true, displayName: true, slug: true, industry: true, aliases: true },
+    select: { id: true, name: true, displayName: true, slug: true, industry: true, aliases: true, category: true },
   });
   if (!rawBrand) {
     return {

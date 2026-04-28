@@ -209,7 +209,7 @@ export async function GET(req: NextRequest) {
   const { brand, runs: rawRuns } = result;
   const brandName = brand.displayName || brand.name;
   const brandIdentity = buildBrandIdentity(brand);
-  const isOrg = (brand as unknown as { category?: string | null }).category === "political_advocacy";
+  const isOrg = brand.category === "political_advocacy";
   // Use the shared person-name heuristic so politicians get "other
   // public figures" while advocacy orgs keep "other organizations" and
   // commercial brands keep "competitors".
