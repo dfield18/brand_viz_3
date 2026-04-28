@@ -214,7 +214,7 @@ export function SummaryCardsDonut({
       percentage: overallMentionRate,
       color: "var(--chart-1)",
       badge: visibilityBadge,
-      description: `% of broad ${industryLabel} prompts where AI mentions ${brandName}`,
+      description: `% of broad prompts about ${industryLabel} where AI mentions ${brandName}`,
       tooltip: `We ask AI generic questions about the industry without naming any ${noun}. This measures how often AI brings up ${brandName} on its own.`,
       delta: kpiDeltas?.mentionRate ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
