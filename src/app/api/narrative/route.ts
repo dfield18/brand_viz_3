@@ -116,25 +116,62 @@ export async function GET(req: NextRequest) {
     isAll ? "all" : model,
   );
 
-  // Fix byModel + build frame→runId mapping for example quotes
-  // Track which exact run IDs contributed to each frame name during aggregation
+  // Fix byModel + build frame→runId mapping for example quotes.
+  // narrativeBase.frames now carries CANONICAL frame names (the dedup
+  // pass collapses near-duplicates), so the per-model count lookup
+  // must also key on canonicals — otherwise looking up
+  // modelFrameCounts["gemini"][canonical] returns 0 whenever Gemini's
+  // raw variant got merged into a different model's variant. That hid
+  // entire models from the dropdown ("How AI Describes Josh Shapiro"
+  // showed only ChatGPT because Gemini's frame names were all
+  // canonicalized to ChatGPT's variants).
+  //
+  // Build the same frameToCanonical mapping the trend buckets use.
+  const STRENGTH_THRESHOLD_FRAMES = 20;
+  const aggregateRawCountsForByModel: Record<string, number> = {};
+  for (const r of runs) {
+    const a = parseAnalysis(r.analysisJson);
+    if (!a) continue;
+    for (const f of a.frames) {
+      if (f.strength >= STRENGTH_THRESHOLD_FRAMES) {
+        aggregateRawCountsForByModel[f.name] = (aggregateRawCountsForByModel[f.name] ?? 0) + 1;
+      }
+    }
+  }
+  const frameGroupsForByModel = dedupFramesGrouped(
+    Object.entries(aggregateRawCountsForByModel).map(([name, count]) => ({ name, count })),
+    (b) => significantFrameTokens(b.name),
+    (b) => b.count,
+  );
+  const frameToCanonicalForByModel: Record<string, string> = {};
+  for (const g of frameGroupsForByModel) {
+    for (const m of g.members) frameToCanonicalForByModel[m.name] = g.canonical.name;
+  }
+
   const frameRunIds = new Map<string, { runId: string; strength: number }[]>();
   {
-    const STRENGTH_THRESHOLD = 20;
     const modelRunCounts: Record<string, number> = {};
+    // Per-model frame counts now keyed on CANONICAL frame name with
+    // per-(run, model) dedup so a single response listing four
+    // variants of the same theme contributes 1 to the canonical's
+    // count, not 4.
     const modelFrameCounts: Record<string, Record<string, number>> = {};
     for (const r of runs) {
       const a = parseAnalysis(r.analysisJson);
       if (!a) continue;
       modelRunCounts[r.model] = (modelRunCounts[r.model] ?? 0) + 1;
       if (!modelFrameCounts[r.model]) modelFrameCounts[r.model] = {};
+      const seenCanonicalsForRun = new Set<string>();
       for (const f of a.frames) {
-        if (f.strength >= STRENGTH_THRESHOLD) {
-          modelFrameCounts[r.model][f.name] = (modelFrameCounts[r.model][f.name] ?? 0) + 1;
-          // Track this run as a contributor to this exact frame name
-          if (!frameRunIds.has(f.name)) frameRunIds.set(f.name, []);
-          frameRunIds.get(f.name)!.push({ runId: r.id, strength: f.strength });
-        }
+        if (f.strength < STRENGTH_THRESHOLD_FRAMES) continue;
+        const canonical = frameToCanonicalForByModel[f.name] ?? f.name;
+        // Track this run as a contributor to this CANONICAL frame
+        // (so example-quote lookups via canonical still find runs).
+        if (!frameRunIds.has(canonical)) frameRunIds.set(canonical, []);
+        frameRunIds.get(canonical)!.push({ runId: r.id, strength: f.strength });
+        if (seenCanonicalsForRun.has(canonical)) continue;
+        seenCanonicalsForRun.add(canonical);
+        modelFrameCounts[r.model][canonical] = (modelFrameCounts[r.model][canonical] ?? 0) + 1;
       }
     }
     // Patch each frame's byModel with frequency percentages
