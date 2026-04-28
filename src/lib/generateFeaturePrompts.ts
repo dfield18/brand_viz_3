@@ -208,8 +208,32 @@ function isFormerRole(role: PublicFigureRole): boolean {
 export function buildDirectAnchorPrompt(
   brandName: string,
   figureMeta: PublicFigureMeta | null,
+  nonPoliticalMeta?: NonPoliticalFigureMeta | null,
 ): GeneratedPrompt {
   let text: string;
+  if (nonPoliticalMeta) {
+    if (nonPoliticalMeta.signatureContext) {
+      text = `What is ${brandName} best known for in ${nonPoliticalMeta.signatureContext}?`;
+    } else if (nonPoliticalMeta.kind === "athlete") {
+      text = `What is ${brandName}'s legacy as a ${nonPoliticalMeta.cohort.replace(/s$/, "")}?`;
+    } else if (nonPoliticalMeta.kind === "entertainer") {
+      text = `What is ${brandName} best known for in their entertainment career?`;
+    } else if (nonPoliticalMeta.kind === "business_leader") {
+      text = `What is ${brandName} best known for as a business leader?`;
+    } else if (nonPoliticalMeta.kind === "author_intellectual") {
+      text = `What is ${brandName} best known for as a writer or thinker?`;
+    } else if (nonPoliticalMeta.kind === "media_personality") {
+      text = `What is ${brandName} best known for as a media personality?`;
+    } else {
+      text = `What is ${brandName} best known for?`;
+    }
+    return {
+      text,
+      cluster: "direct" as const,
+      intent: "informational" as const,
+      source: "generated" as const,
+    };
+  }
   if (figureMeta) {
     if (figureMeta.role === "Former President") {
       text = `What is ${brandName}'s legacy as a US president?`;
@@ -277,6 +301,41 @@ export type PublicFigureMeta = {
   party: string | null;       // "Democrat" | "Republican" | "Independent" | "Other" | null
   caucus: string | null;      // "Progressive" | "Freedom Caucus" | null
   signatureIssue: string | null; // "worker rights" | "climate" | null
+};
+
+/** Non-political public figures — athletes, entertainers, business
+ *  leaders, authors, media personalities, etc. The classifier returns
+ *  the cohort context AI will naturally list them in (e.g. "NFL
+ *  quarterbacks", "pop artists of the 2020s", "tech founders") so the
+ *  prompt builder can ask cohort questions whose answers organically
+ *  include the subject by name.
+ *
+ *  Distinct from PublicFigureMeta because the political pipeline's
+ *  role/party/jurisdiction shape doesn't map onto sports / arts /
+ *  business — and trying to fold them into one type led to awkward
+ *  field reuse. */
+export type NonPoliticalFigureKind =
+  | "athlete"
+  | "entertainer"        // musicians, actors, comedians, tv hosts
+  | "business_leader"    // founders, CEOs known by name
+  | "author_intellectual"
+  | "media_personality"  // podcasters, journalists, social-media figures
+  | "other_public_figure";
+
+export type NonPoliticalFigureMeta = {
+  kind: NonPoliticalFigureKind;
+  /** Cohort phrase the figure naturally appears in — e.g. "NFL
+   *  quarterbacks", "pop artists of the 2020s", "tech founders",
+   *  "Nobel laureates in literature". The prompt builder asks
+   *  questions like "Who are the most consequential ${cohort} of the
+   *  21st century?" so this needs to be a noun phrase that completes
+   *  that sentence cleanly. */
+  cohort: string;
+  /** Optional signature anchor — "Super Bowl wins" / "Grammy
+   *  nominations" / "Tesla and SpaceX" — used by the direct anchor
+   *  copy and as a Tier B specificity hook. Null when the figure
+   *  doesn't have a single dominant accomplishment to anchor on. */
+  signatureContext: string | null;
 };
 
 // Re-exported from the shared no-deps module so client code can import
@@ -583,6 +642,165 @@ No prose, no code fences.`,
       party: typeof parsed.party === "string" ? parsed.party : null,
       caucus: typeof parsed.caucus === "string" ? parsed.caucus : null,
       signatureIssue: typeof parsed.signatureIssue === "string" ? parsed.signatureIssue : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const VALID_NON_POLITICAL_KINDS: NonPoliticalFigureKind[] = [
+  "athlete",
+  "entertainer",
+  "business_leader",
+  "author_intellectual",
+  "media_personality",
+  "other_public_figure",
+];
+
+/** Classify a non-political public figure (athlete, musician, actor,
+ *  business leader, etc.). Sonar primary, GPT-4o-mini fallback —
+ *  same orchestration pattern as classifyPublicFigure but no static
+ *  override map (the cohort isn't volatile the way current cabinet
+ *  appointments are; a cached classification stays accurate for
+ *  years). Returns null when the subject isn't a recognizable
+ *  non-political public figure (e.g. unknown-person searches, or a
+ *  political figure misrouted into this path). */
+export async function classifyNonPoliticalFigure(
+  brandName: string,
+): Promise<NonPoliticalFigureMeta | null> {
+  const sonarResult = await classifyNonPoliticalFigureViaPerplexity(brandName);
+  if (sonarResult) return sonarResult;
+  return await classifyNonPoliticalFigureViaLLM(brandName);
+}
+
+const NON_POLITICAL_CLASSIFIER_TIMEOUT_MS = 10_000;
+
+async function classifyNonPoliticalFigureViaPerplexity(
+  brandName: string,
+): Promise<NonPoliticalFigureMeta | null> {
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const systemPrompt = `You classify a public figure who is NOT primarily a political figure (no current/former elected office, not a candidate, not primarily known for political activism). Use the most recent reliable information available.
+
+Return ONLY a JSON object with no prose, no citation marks like [1], no markdown:
+{
+  "kind": one of "athlete" | "entertainer" | "business_leader" | "author_intellectual" | "media_personality" | "other_public_figure" | null,
+  "cohort": short noun phrase that completes "Who are the most consequential ___ of the 21st century?" — e.g. "NFL quarterbacks", "pop artists", "tech founders", "Nobel laureates in literature", "late-night TV hosts",
+  "signatureContext": short anchor for what they're best known for — e.g. "Super Bowl wins", "Grammy nominations", "Tesla and SpaceX", or null if they don't have a single dominant accomplishment
+}
+
+Rules:
+- Use "athlete" for current or former professional athletes, coaches, sports figures.
+- Use "entertainer" for musicians, actors, comedians, performers, TV personalities (when known for performing/creative work).
+- Use "business_leader" for individuals known by name as founders / CEOs / investors / business celebrities (Elon Musk, Mark Cuban, Warren Buffett, Sara Blakely). NOT for the companies themselves.
+- Use "author_intellectual" for authors, academics, public intellectuals, scientists known by name.
+- Use "media_personality" for podcasters, journalists, social-media figures, talk-show hosts known primarily as a media voice.
+- Use "other_public_figure" only when none of the above clearly fits.
+- Pick the cohort tightly — "NFL quarterbacks" beats "athletes"; "pop artists of the 2020s" beats "musicians"; "tech founders" beats "businesspeople".
+- If the person is a CURRENT or FORMER elected official, candidate, or primarily-political activist, return {"kind": null} so the political-figure pipeline handles them.
+- If the brand name refers to a company / organization rather than a person, return {"kind": null}.
+
+Today: ${today}.`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), NON_POLITICAL_CLASSIFIER_TIMEOUT_MS);
+  try {
+    const response = await getPerplexity().chat.completions.create(
+      {
+        model: "sonar",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: brandName },
+        ],
+        max_tokens: 250,
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    const raw = response.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+    const cleaned = raw
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .replace(/\[\d+\]/g, "")
+      .trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      kind?: unknown;
+      cohort?: unknown;
+      signatureContext?: unknown;
+    };
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.kind !== "string") return null;
+    const kind = parsed.kind as NonPoliticalFigureKind;
+    if (!VALID_NON_POLITICAL_KINDS.includes(kind)) return null;
+    if (typeof parsed.cohort !== "string" || !parsed.cohort.trim()) return null;
+    return {
+      kind,
+      cohort: parsed.cohort.trim(),
+      signatureContext:
+        typeof parsed.signatureContext === "string" && parsed.signatureContext.trim()
+          ? parsed.signatureContext.trim()
+          : null,
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.error("[classifyNonPoliticalFigureViaPerplexity] Failed:", err);
+    return null;
+  }
+}
+
+async function classifyNonPoliticalFigureViaLLM(
+  brandName: string,
+): Promise<NonPoliticalFigureMeta | null> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 200,
+      messages: [
+        {
+          role: "system",
+          content: `Classify a public figure who is NOT primarily a political figure. Return ONLY JSON or the literal string null.
+
+When recognizable, return:
+{
+  "kind": "athlete" | "entertainer" | "business_leader" | "author_intellectual" | "media_personality" | "other_public_figure",
+  "cohort": short noun phrase that completes "Who are the most consequential ___ of the 21st century?" (e.g. "NFL quarterbacks", "pop artists", "tech founders", "Nobel laureates in literature"),
+  "signatureContext": short anchor for their main accomplishment, or null
+}
+
+Examples:
+- Tom Brady → {"kind":"athlete","cohort":"NFL quarterbacks","signatureContext":"Super Bowl wins"}
+- Beyoncé → {"kind":"entertainer","cohort":"pop artists of the 21st century","signatureContext":"Grammy wins"}
+- Elon Musk → {"kind":"business_leader","cohort":"tech founders","signatureContext":"Tesla and SpaceX"}
+- Joe Rogan → {"kind":"media_personality","cohort":"podcast hosts","signatureContext":"The Joe Rogan Experience"}
+- Yuval Noah Harari → {"kind":"author_intellectual","cohort":"public intellectuals","signatureContext":"Sapiens"}
+
+If the person is primarily a politician / candidate / political activist, return null.
+If the name refers to a company / organization, return null.
+
+No prose, no code fences.`,
+        },
+        { role: "user", content: brandName },
+      ],
+    });
+    const raw = response.choices?.[0]?.message?.content?.trim();
+    if (!raw || raw === "null") return null;
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleaned) as { kind?: unknown; cohort?: unknown; signatureContext?: unknown } | null;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.kind !== "string") return null;
+    const kind = parsed.kind as NonPoliticalFigureKind;
+    if (!VALID_NON_POLITICAL_KINDS.includes(kind)) return null;
+    if (typeof parsed.cohort !== "string" || !parsed.cohort.trim()) return null;
+    return {
+      kind,
+      cohort: parsed.cohort.trim(),
+      signatureContext:
+        typeof parsed.signatureContext === "string" && parsed.signatureContext.trim()
+          ? parsed.signatureContext.trim()
+          : null,
     };
   } catch {
     return null;
@@ -1369,6 +1587,90 @@ function isOrgShapedQuestion(text: string): boolean {
   return ORG_SHAPED_QUESTION_RE.test(text);
 }
 
+/** Deterministic fallback prompts for non-political public figures.
+ *  Pure templates — no LLM call. Mirrors buildFallbackIndustryPrompts
+ *  shape (3 mandatory + up to 2 optional). Used when the LLM tier
+ *  builder for non-political figures emptied out / errored. */
+function buildNonPoliticalFigureFallbackPrompts(
+  meta: NonPoliticalFigureMeta,
+  count: number,
+): GeneratedPrompt[] {
+  const year = new Date().getFullYear();
+  const candidates: string[] = [];
+  candidates.push(`Who are the most consequential ${meta.cohort} of the 21st century?`);
+  candidates.push(`Who are the most influential ${meta.cohort} in ${year}?`);
+  if (meta.signatureContext) {
+    candidates.push(`Which ${meta.cohort} are best known for ${meta.signatureContext}?`);
+  }
+  candidates.push(`Who are the most respected ${meta.cohort} of the past 20 years?`);
+  if (meta.kind === "athlete") {
+    candidates.push(`Who are the greatest ${meta.cohort} of all time?`);
+  } else if (meta.kind === "entertainer") {
+    candidates.push(`Who are the most celebrated ${meta.cohort} working today?`);
+  } else if (meta.kind === "business_leader") {
+    candidates.push(`Who are the most influential ${meta.cohort} shaping the industry today?`);
+  } else if (meta.kind === "author_intellectual") {
+    candidates.push(`Who are the most cited ${meta.cohort} of recent decades?`);
+  } else if (meta.kind === "media_personality") {
+    candidates.push(`Who are the most popular ${meta.cohort} right now?`);
+  }
+  return candidates.slice(0, Math.max(1, count)).map((text) => ({
+    text,
+    cluster: "industry" as const,
+    intent: "informational" as const,
+    source: "generated" as const,
+  }));
+}
+
+/** Build the tiered LLM system prompt for non-political public
+ *  figures. Same Tier A / B / C shape as the political-figure builder
+ *  but the cohort context comes from NonPoliticalFigureMeta.cohort
+ *  (e.g. "NFL quarterbacks") rather than role + jurisdiction. The
+ *  natural answers are still NAMED PEOPLE — same anti-org-pattern
+ *  guard applies. */
+function buildNonPoliticalFigurePrompt(
+  brandName: string,
+  meta: NonPoliticalFigureMeta,
+  count: number,
+): string {
+  const aCount = Math.max(1, Math.round(count * 0.4));
+  const bCount = Math.max(1, Math.round(count * 0.4));
+  const cCount = Math.max(1, count - aCount - bCount);
+  const year = new Date().getFullYear();
+  const sigBlock = meta.signatureContext
+    ? `Tier B may anchor on the figure's signature context: "${meta.signatureContext}".`
+    : ``;
+
+  return `You generate search queries that fans, journalists, and curious users would type into AI assistants when researching a public-figure cohort — NOT asking about a specific person.
+
+The target figure is "${brandName}" — a ${meta.kind.replace(/_/g, " ")}, part of the cohort "${meta.cohort}"${meta.signatureContext ? `, best known for ${meta.signatureContext}` : ""}.
+
+Generate EXACTLY ${count} questions, split into three tiers. Each question's natural answer MUST be a list of NAMED PEOPLE.
+
+TIER A — cohort questions (${aCount} questions). The answer is essentially a list of ${meta.cohort} that INCLUDES "${brandName}". Examples:
+- "Who are the most consequential ${meta.cohort} of the 21st century?"
+- "Who are the most influential ${meta.cohort} in ${year}?"
+- "Who are the greatest ${meta.cohort} of all time?"
+
+TIER B — narrower cohort, signature angle (${bCount} questions). Narrower than Tier A so "${brandName}" usually makes the list, but doesn't guarantee it. ${sigBlock} Examples:
+${meta.signatureContext ? `- "Which ${meta.cohort} are best known for ${meta.signatureContext}?"` : `- "Which ${meta.cohort} have had the longest-running careers?"`}
+- "Who are the highest-profile ${meta.cohort} working today?"
+
+TIER C — adjacent / broader recognition (${cCount} question${cCount === 1 ? "" : "s"}). MUST cover a different angle than Tier B — pivot to a SEPARATE dimension (cultural impact, awards, all-time rankings, generational standing, broader category) so the figure has multiple distinct shots. Examples:
+- "Who are the most culturally influential ${meta.kind === "athlete" ? "athletes" : meta.kind === "entertainer" ? "entertainers" : meta.kind === "business_leader" ? "business leaders" : meta.kind === "author_intellectual" ? "thinkers" : meta.kind === "media_personality" ? "media voices" : "public figures"} of the past two decades?"
+- "Who are the most recognized ${meta.kind === "athlete" ? "professional athletes" : meta.kind === "entertainer" ? "performers" : meta.kind === "business_leader" ? "business celebrities" : meta.kind === "author_intellectual" ? "public intellectuals" : meta.kind === "media_personality" ? "podcasters and broadcasters" : "celebrities"} alive today?"
+
+CRITICAL anti-patterns — questions whose natural answer is a list of ORGANIZATIONS, GROUPS, COMPANIES, BRANDS, TEAMS, or LABELS are forbidden because "${brandName}" is a PERSON. Reject shapes like "What teams…" / "Which record labels…" / "What brands…" / "Which production companies…" / "Which networks…". Always phrase the question so the answer is a roster of NAMES OF PEOPLE.
+
+Rules:
+- Do NOT mention "${brandName}" anywhere in any question
+- Sound natural — how a real person types into ChatGPT or Perplexity
+- Vary phrasing; don't copy the examples verbatim
+- If you reference a year, use ${year}
+
+Return ONLY a JSON array of objects, each with "text" (string), "intent" ("informational" | "high-intent"), and "tier" ("A" | "B" | "C"). No code fences.`;
+}
+
 /** Build the tiered system prompt used for FORMER officeholders. Same
  *  three-tier shape as the current-officeholder version (roster ⇒ role
  *  + stance ⇒ broad issue) but the roster questions are cohort-based
@@ -1610,10 +1912,62 @@ export async function generateIndustryPrompts(
   brandName: string,
   industry: string,
   category: BrandCategory,
-  opts?: { figureMeta?: PublicFigureMeta | null; count?: number },
+  opts?: {
+    figureMeta?: PublicFigureMeta | null;
+    nonPoliticalMeta?: NonPoliticalFigureMeta | null;
+    count?: number;
+  },
 ): Promise<GeneratedPrompt[]> {
   const figureMeta = opts?.figureMeta ?? null;
+  const nonPoliticalMeta = opts?.nonPoliticalMeta ?? null;
   const targetCount = opts?.count ?? 8;
+
+  // Non-political public-figure path (athletes, entertainers, business
+  // leaders, authors, media personalities). Routes BEFORE the political
+  // and commercial paths because a person-shape brand could otherwise
+  // fall through to the commercial brand-list generator and produce
+  // useless "best running shoes"-style prompts for someone like
+  // Tom Brady.
+  if (nonPoliticalMeta) {
+    const systemPrompt = buildNonPoliticalFigurePrompt(brandName, nonPoliticalMeta, targetCount);
+    const userPrompt = `Generate ${targetCount} questions about the cohort of "${nonPoliticalMeta.cohort}" that includes "${brandName}" — but do NOT mention them.`;
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.4,
+        max_tokens: 600,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+      const content = response.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        const parsed = JSON.parse(
+          content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim(),
+        ) as { text: string; intent: string; tier?: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const brandLower = brandName.toLowerCase();
+          const filtered = parsed
+            .filter((p) => typeof p?.text === "string"
+              && !p.text.toLowerCase().includes(brandLower)
+              && !isOrgShapedQuestion(p.text))
+            .slice(0, targetCount)
+            .map((p) => ({
+              text: p.text,
+              cluster: "industry" as const,
+              intent: (p.intent === "high-intent" ? "high-intent" : "informational") as "informational" | "high-intent",
+              source: "generated" as const,
+            }));
+          if (filtered.length > 0) return filtered;
+        }
+      }
+      return buildNonPoliticalFigureFallbackPrompts(nonPoliticalMeta, targetCount);
+    } catch (err) {
+      console.error("[generateIndustryPrompts non-political figure] Failed:", err);
+      return buildNonPoliticalFigureFallbackPrompts(nonPoliticalMeta, targetCount);
+    }
+  }
 
   // Tiered path for political figures with known role + jurisdiction —
   // the extra context lets us scope Tier A questions to the roster

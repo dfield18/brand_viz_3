@@ -17,6 +17,7 @@ import {
   classifyBrandCategory,
   classifyBrandIndustry,
   classifyCanonicalBrandName,
+  classifyNonPoliticalFigure,
   classifyPublicFigure,
   generateBrandAliases,
   generateIndustryPrompts,
@@ -401,6 +402,18 @@ export async function POST(req: NextRequest) {
       mayBePerson ? classifyPublicFigure(brandName) : Promise.resolve(null),
     ]);
     const figureMeta = category === "political_advocacy" ? rawFigureMeta : null;
+    // Non-political public figures (athletes, entertainers, business
+    // leaders, authors, media personalities). Only call this classifier
+    // when (a) the input looks like a person, AND (b) we DIDN'T classify
+    // them as a political figure — the political path takes precedence.
+    // For commercial-but-person-shape brands like "Tom Brady" or
+    // "Elon Musk", this returns the cohort context the prompt builder
+    // needs ("NFL quarterbacks" / "tech founders") so we generate
+    // person-shaped questions instead of treating them as a brand.
+    const nonPoliticalMeta =
+      mayBePerson && !figureMeta
+        ? await classifyNonPoliticalFigure(brandName)
+        : null;
     // When the figure's current role is a US political office, force
     // industry to "politics" regardless of what the industry classifier
     // said. The industry LLM doesn't know about Cabinet appointments
@@ -420,6 +433,7 @@ export async function POST(req: NextRequest) {
     const [generatedPrompts] = await Promise.all([
       generateIndustryPrompts(brandName, industry, category, {
         figureMeta,
+        nonPoliticalMeta,
         count: FREE_TIER_CONFIG.promptCount,
       }),
       prisma.brand.update({
@@ -461,15 +475,17 @@ export async function POST(req: NextRequest) {
       ),
     );
 
-    // For political figures, append a brand-direct "anchor" prompt as
-    // cluster="direct". It feeds sentiment, themes, and narrative data
-    // without polluting the organic-recall KPIs (Mention Rate / SoV /
-    // Top Result Rate, all industry-cluster scoped). Guarantees the
-    // free-tier report has meaningful sentiment + narrative even when
-    // organic recall yields 0% — the floor previously hit by former
-    // officeholders (e.g. Barack Obama) and obscure-but-real figures.
-    if (category === "political_advocacy") {
-      const anchor = buildDirectAnchorPrompt(brandName, figureMeta);
+    // For ANY recognizable public figure (political or non-political),
+    // append a brand-direct "anchor" prompt as cluster="direct". It
+    // feeds sentiment, themes, and narrative data without polluting
+    // the organic-recall KPIs (Mention Rate / SoV / Top Result Rate,
+    // all industry-cluster scoped). Guarantees the free-tier report
+    // has meaningful sentiment + narrative even when organic recall
+    // yields 0% — the floor previously hit by former officeholders
+    // (e.g. Barack Obama), obscure-but-real political figures, and
+    // now non-political public figures (Tom Brady / Elon Musk / etc.).
+    if (category === "political_advocacy" || nonPoliticalMeta) {
+      const anchor = buildDirectAnchorPrompt(brandName, figureMeta, nonPoliticalMeta);
       const anchorPrompt = await prisma.prompt.create({
         data: {
           text: anchor.text,
