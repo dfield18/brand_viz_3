@@ -501,7 +501,7 @@ export function VisibilityTrendChart({ trend, prompts: promptsProp = [], fixedMe
         <p className="hidden sm:block text-xs text-muted-foreground/70 italic mt-3">
           {disclaimerOverride
             ?? (historicalEstimated
-              ? "Dashed historical points are derived from each model\u2019s training data (no live web access). The solid point for today reflects calibration to live web results."
+              ? "Historical points are derived from each model\u2019s training data (no live web access)."
               : "Note: historical data points are estimated from the latest available response per model and question as of each date.")}
         </p>
       )}
