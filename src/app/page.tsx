@@ -550,6 +550,41 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* How it works — three-step methodology, matched to the
+          HowTo schema in JSON-LD so the visible copy and the
+          structured data stay in sync. */}
+      <section id="how-it-works" className="border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Methodology
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+            How it works
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            Three steps from brand name to a live report on what AI is saying.
+          </p>
+          <ol className="grid sm:grid-cols-3 gap-4">
+            {HOW_IT_WORKS_STEPS.map((step, i) => (
+              <li
+                key={step.title}
+                className="rounded-xl border border-border/60 bg-card p-5"
+              >
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-foreground text-background text-sm font-semibold mb-3">
+                  {i + 1}
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       {/* FAQ — placed between Pricing and the final CTA so evaluators
           who read the tiers can resolve lingering "how does this
           actually work / can I trust it" questions before the close.

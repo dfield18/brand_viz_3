@@ -1,9 +1,17 @@
 "use client";
 
 import type { ModelComparison } from "@/types/api";
+import type { ComponentType, SVGProps } from "react";
 import { CircleHelp } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { subjectNoun } from "@/lib/subjectNoun";
+import {
+  AnthropicIcon,
+  GeminiIcon,
+  GoogleIcon,
+  OpenAIIcon,
+  PerplexityIcon,
+} from "@/components/landing/PlatformIcons";
 
 interface CrossModelTableProps {
   models: ModelComparison[];
@@ -17,6 +25,14 @@ const MODEL_LABELS: Record<string, string> = {
   claude: "Claude",
   perplexity: "Perplexity",
   google: "Google AI Overview",
+};
+
+const MODEL_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  chatgpt: OpenAIIcon,
+  gemini: GeminiIcon,
+  claude: AnthropicIcon,
+  perplexity: PerplexityIcon,
+  google: GoogleIcon,
 };
 
 /**
@@ -158,7 +174,13 @@ export function CrossModelTable({ models, brandName = "Brand", category }: Cross
             {models.map((m) => (
               <tr key={m.model} className="border-b border-border last:border-b-0">
                 <td className="py-3 pr-4 text-sm text-muted-foreground">
-                  {MODEL_LABELS[m.model] ?? m.model.toUpperCase()}
+                  <span className="inline-flex items-center gap-2">
+                    {(() => {
+                      const Icon = MODEL_ICONS[m.model];
+                      return Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null;
+                    })()}
+                    {MODEL_LABELS[m.model] ?? m.model.toUpperCase()}
+                  </span>
                 </td>
                 {metrics.map((metric) => {
                   const isBest = best[metric.key] === m.model && models.length > 1;

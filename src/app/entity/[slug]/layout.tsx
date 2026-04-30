@@ -9,7 +9,7 @@ import { ResponseViewerProvider } from "@/components/ResponseViewer";
 import { useBrands } from "@/lib/useBrands";
 import { prefetchAll } from "@/lib/useCachedFetch";
 
-const PREFETCH_TABS = ["overview", "visibility-v2", "narrative", "competition", "sources"];
+const PREFETCH_TABS = ["overview", "visibility", "narrative", "competition", "sources"];
 
 export default function EntityLayout({
   children,
