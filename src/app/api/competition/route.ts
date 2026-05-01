@@ -226,6 +226,7 @@ export async function GET(req: NextRequest) {
         analysisJson: run.analysisJson,
         brandName: brand.name,
         brandSlug: brand.slug,
+        aliases: brandAliases,
         includeBrand: true,
         limit: Infinity,
       });
@@ -493,6 +494,7 @@ export async function GET(req: NextRequest) {
           analysisJson: run.analysisJson,
           brandName: brand.name,
           brandSlug: brand.slug,
+          aliases: brandAliases,
         });
         modelSovTotal += counts.totalMentions;
       }
@@ -703,6 +705,7 @@ export async function GET(req: NextRequest) {
           analysisJson: r.analysisJson,
           brandName: brand.name,
           brandSlug: brand.slug,
+          aliases: brandAliases,
           includeBrand: true,
           limit: Infinity,
         });

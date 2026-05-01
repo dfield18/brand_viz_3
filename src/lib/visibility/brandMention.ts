@@ -128,7 +128,7 @@ function extractLikelyPersonNames(text: string): Array<{ name: string; pos: numb
  * contexts. Multi-word aliases ("Vice President Pence") and unique
  * nicknames ("Mikey P", "Pencey") are also kept.
  */
-function filterAliases(aliases: string[] | undefined, brandName: string): string[] {
+export function filterAliases(aliases: string[] | undefined, brandName: string): string[] {
   if (!aliases || aliases.length === 0) return [];
   const firstToken = brandName.trim().split(/\s+/)[0]?.toLowerCase();
   return aliases.filter((alias) => {

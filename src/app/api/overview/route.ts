@@ -455,6 +455,7 @@ export async function GET(req: NextRequest) {
           analysisJson: run.analysisJson,
           brandName: visBrand.name,
           brandSlug: visBrand.slug,
+          aliases: brandAliases,
         });
         modelBm += counts.brandMentions;
         modelTotal += counts.totalMentions;
@@ -472,6 +473,7 @@ export async function GET(req: NextRequest) {
           analysisJson: run.analysisJson,
           brandName: visBrand.name,
           brandSlug: visBrand.slug,
+          aliases: brandAliases,
         });
         bm += counts.brandMentions;
         total += counts.totalMentions;

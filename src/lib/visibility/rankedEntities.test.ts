@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getRankedEntitiesForRun, getTopBrandsForRun } from "./rankedEntities";
+import { getRankedEntitiesForRun, getSovCountsForRun, getTopBrandsForRun } from "./rankedEntities";
 
 const RESPONSE_TEXT = `Here are the top companies in software:
 
@@ -138,6 +138,38 @@ describe("getRankedEntitiesForRun", () => {
     });
 
     assert.equal(result.length, 3);
+  });
+
+  it("text-verifies the focal brand via aliases when full name is absent", () => {
+    // Historical responses about a public figure often refer to them by
+    // surname only ("Hegseth" rather than "Pete Hegseth"). Without the
+    // alias path the brand falls out of SoV totals even though
+    // computeBrandRank picks it up.
+    const result = getRankedEntitiesForRun({
+      rawResponseText: "Defense Secretary Hegseth announced the policy alongside Marco Rubio.",
+      analysisJson: { competitors: [{ name: "Marco Rubio" }] },
+      brandName: "Pete Hegseth",
+      brandSlug: "pete-hegseth",
+      aliases: ["Hegseth"],
+      includeBrand: true,
+    });
+
+    assert.equal(result.length, 2);
+    assert.equal(result[0].canonicalId, "pete-hegseth");
+    assert.equal(result[1].name, "Marco Rubio");
+  });
+
+  it("getSovCountsForRun counts a surname-only mention as a brand mention", () => {
+    const counts = getSovCountsForRun({
+      rawResponseText: "Hegseth and Rubio attended the briefing.",
+      analysisJson: { competitors: [{ name: "Marco Rubio" }] },
+      brandName: "Pete Hegseth",
+      brandSlug: "pete-hegseth",
+      aliases: ["Hegseth", "Marco Rubio"],
+    });
+
+    assert.equal(counts.brandMentions, 1);
+    assert.ok(counts.totalMentions >= 1);
   });
 
   it("matches CSV export semantics (getTopBrandsForRun)", () => {

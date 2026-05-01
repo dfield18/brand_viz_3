@@ -172,6 +172,7 @@ export async function GET(req: NextRequest) {
         analysisJson: run.analysisJson,
         brandName: brand.name,
         brandSlug: brand.slug,
+        aliases: brandAliases,
       });
       sovBrandMentions += sovCounts.brandMentions;
       sovTotalEntityMentions += sovCounts.totalMentions;
@@ -352,6 +353,7 @@ export async function GET(req: NextRequest) {
           analysisJson: run.analysisJson,
           brandName: brand.name,
           brandSlug: brand.slug,
+          aliases: brandAliases,
         });
         bm += counts.brandMentions;
         total += counts.totalMentions;
@@ -450,6 +452,7 @@ export async function GET(req: NextRequest) {
         analysisJson: run.analysisJson,
         brandName: brand.name,
         brandSlug: brand.slug,
+        aliases: brandAliases,
       }));
     }
 
@@ -685,6 +688,7 @@ export async function GET(req: NextRequest) {
         analysisJson: run.analysisJson,
         brandName: brand.name,
         brandSlug: brand.slug,
+        aliases: brandAliases,
       });
     }
 

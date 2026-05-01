@@ -11,7 +11,7 @@
  * - limited to top N
  */
 
-import { wordBoundaryIndex } from "./brandMention";
+import { wordBoundaryIndex, filterAliases } from "./brandMention";
 import { canonicalizeEntityId } from "../competition/canonicalize";
 
 /**
@@ -36,6 +36,12 @@ interface GetRankedEntitiesArgs {
   includeBrand?: boolean;
   /** Alias map for competitor canonicalization */
   aliasMap?: Map<string, string>;
+  /** Brand aliases (last names, abbreviations) used for focal-brand
+   *  text verification. Without these, responses that refer to the
+   *  brand only by a last name ("Hegseth") or alias don't text-verify
+   *  and the brand drops out of SoV totals — even though MR/TR pick
+   *  it up via the same alias path. */
+  aliases?: string[];
   /** Max entities to return. Default: 5 */
   limit?: number;
 }
@@ -62,6 +68,7 @@ export function getRankedEntitiesForRun(args: GetRankedEntitiesArgs): RankedEnti
     brandSlug,
     includeBrand = true,
     aliasMap,
+    aliases,
     limit = 5,
   } = args;
 
@@ -71,11 +78,24 @@ export function getRankedEntitiesForRun(args: GetRankedEntitiesArgs): RankedEnti
   const entities: RankedEntity[] = [];
   const seenCanonicals = new Set<string>();
 
-  // Optionally add the focal brand
+  // Optionally add the focal brand. Match on brand name, slug, or any
+  // alias — same set computeBrandRank uses — and pick the earliest
+  // position. Without the alias path, historical responses that refer
+  // to the subject only by surname (e.g. "Hegseth") or initials don't
+  // text-verify and the brand drops out of SoV denominators even
+  // though Mention Rate and Top Result pick it up.
   if (includeBrand) {
-    const brandPos = wordBoundaryIndex(rawResponseText, brandName);
-    if (brandPos >= 0) {
-      entities.push({ name: brandName, canonicalId: brandSlug, position: brandPos });
+    const positions: number[] = [];
+    const namePos = wordBoundaryIndex(rawResponseText, brandName);
+    if (namePos >= 0) positions.push(namePos);
+    const slugPos = wordBoundaryIndex(rawResponseText, brandSlug);
+    if (slugPos >= 0) positions.push(slugPos);
+    for (const alias of filterAliases(aliases, brandName)) {
+      const aliasPos = wordBoundaryIndex(rawResponseText, alias);
+      if (aliasPos >= 0) positions.push(aliasPos);
+    }
+    if (positions.length > 0) {
+      entities.push({ name: brandName, canonicalId: brandSlug, position: Math.min(...positions) });
       seenCanonicals.add(brandSlug);
     }
   }
@@ -145,6 +165,7 @@ export function getSovCountsForRun(args: {
   brandName: string;
   brandSlug: string;
   aliasMap?: Map<string, string>;
+  aliases?: string[];
 }): RunSovCounts {
   const ranked = getRankedEntitiesForRun({
     ...args,
