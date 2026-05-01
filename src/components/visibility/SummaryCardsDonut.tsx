@@ -227,7 +227,7 @@ export function SummaryCardsDonut({
       percentage: shareOfVoice,
       color: "var(--chart-3)",
       badge: sovBadge,
-      description: `% of all AI ${noun} mentions captured by ${brandName}`,
+      description: `${brandName}'s share of all ${noun} mentions in AI responses`,
       tooltip: `Based on general industry questions — prompts that don't mention the ${noun} by name — so results reflect organic AI awareness.`,
       delta: kpiDeltas?.shareOfVoice ?? null,
       deltaFormat: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} pts vs prior month`,
