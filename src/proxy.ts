@@ -7,6 +7,11 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/unsubscribe(.*)",
+  // Legal pages are linked from the public footer and need to be
+  // reachable without sign-in for basic compliance (GDPR, app-store
+  // reviews, etc.).
+  "/privacy(.*)",
+  "/terms(.*)",
   // Entity/overview pages are viewable by anonymous users so a free run can
   // redirect straight into the overview. The routes themselves only fetch
   // from already-public read APIs; Pro-only actions still check auth in their
